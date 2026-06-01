@@ -1,0 +1,140 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## What this repo is
+
+This repo is the **`genvid-dev` plugin** for Claude Code: shared skills, agents, hooks, and conventions used across Genvid game projects. It is published through a separate marketplace repo, [`genvid-holdings/claude-code-marketplace`](https://github.com/genvid-holdings/claude-code-marketplace) (catalog name `genvid-plugins`).
+
+Consuming repos install the plugin via Claude Code's `/plugin install` flow — there is **no submodule, no template engine, no render step**. Skills and agents are flat files that read project context at runtime from a small convention contract (`CLAUDE.md`, `CONVENTIONS.md`, `docs/TOC.md`, `.genvid-agent.json`) in the consuming repo.
+
+The contract itself is documented in [`CONVENTIONS.md`](CONVENTIONS.md).
+
+## Repo layout
+
+```
+claude-code-plugin-genvid-dev/
+├── .claude-plugin/plugin.json    # Plugin manifest
+├── CONVENTIONS.md                # Public contract (canonical source)
+├── skills/<name>/SKILL.md        # One directory per skill
+├── agents/<name>.md              # Flat .md files (not directories)
+├── hooks/
+│   ├── hooks.json                # Hook wiring (PreToolUse on Bash)
+│   └── pre-commit-lint.js        # The actual hook script
+├── docs/
+│   └── development-principles.md # Shared reference imported by skills/agents
+├── examples/                     # Example consuming-repo files (CLAUDE.md, .genvid-agent.json, docs/TOC.md)
+└── audit-conventions-evals/      # Skill eval harness (developer tooling)
+```
+
+**Important layout details:**
+
+- **The plugin lives at the repo root** — `.claude-plugin/plugin.json` plus `skills/`, `agents/`, `hooks/`, `docs/` are all top-level.
+- **Skills are directories** (`skills/<name>/SKILL.md`). The directory can include supporting files (sub-docs, scripts).
+- **Agents are flat files** (`agents/<name>.md`). Subdirectories are NOT discovered by the plugin loader.
+
+## Commands
+
+```bash
+# Validate the plugin manifest and component frontmatter
+claude plugin validate .
+
+# Re-install / update the local plugin from the marketplace
+claude plugin marketplace add https://github.com/genvid-holdings/claude-code-marketplace.git
+claude plugin install genvid-dev@genvid-plugins
+claude plugin update genvid-dev@genvid-plugins
+claude plugin details genvid-dev
+
+# Run audit-conventions tests
+node --test skills/audit-conventions/scripts/test/*.test.mjs
+
+# Run the audit script against this repo or any consuming repo
+node skills/audit-conventions/scripts/audit.mjs           # validate
+node skills/audit-conventions/scripts/audit.mjs --fix     # dry-run a migration
+node skills/audit-conventions/scripts/audit.mjs --fix --apply  # apply
+```
+
+## Self-declaring skill / agent metadata
+
+Every skill and agent in the plugin uses YAML frontmatter with custom `metadata.expects` declaring its prerequisites. The `audit-conventions` skill reads these declarations and validates them against the consuming repo.
+
+```yaml
+---
+name: plan-task
+description: Third-person what+when description — used by Claude for routing.
+metadata:
+  expects:
+    files:
+      - path: CLAUDE.md
+        reason: Required file
+      - path: docs/ARCHITECTURE.md
+        required: false
+        reason: Optional file
+    config:
+      - key: project.name
+        in: .genvid-agent.json
+        reason: Required config key
+    tools:
+      - command: git
+        reason: Required tool
+---
+```
+
+- Top-level frontmatter stays Anthropic's standard (`name`, `description`, `tools`, `model`).
+- Custom data goes under `metadata` so `claude plugin validate` doesn't reject it.
+- `required: true` is the default; only `required: false` is written. Mark a prerequisite `required: false` when it's **skill-conditional** (only one skill needs it) rather than part of the universal contract — the audit aggregates required expectations across all skills, so a skill-specific required file would make unrelated repos fail. The `package.json` expectation in `publish-npm-package` is the canonical example.
+- The `reason` field is mandatory and load-bearing — it's what `audit-conventions` prints to explain why a missing item matters.
+
+See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
+
+## Adding a new skill
+
+1. Create `skills/<verb-noun-name>/SKILL.md` with frontmatter (name, description, optional metadata.expects).
+2. Avoid skill names containing `claude` or `anthropic` (reserved by Anthropic's validator).
+3. Prefer verb-noun names that read alone (`commit-changes`, not `commit`) — avoids collisions with built-in Claude Code skills.
+4. Verify with `claude plugin validate .`.
+5. Smoke-test by updating the local install (`claude plugin update genvid-dev@genvid-plugins`) and checking `claude plugin details genvid-dev`.
+
+## Adding a new agent
+
+1. Create `agents/<name>.md` — **flat file**, not a directory.
+2. Agent frontmatter supports `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, plus custom `metadata`.
+3. Skills dispatching the agent use `subagent_type: "genvid-dev:<name>"` — plugin agents are namespaced.
+
+## Adding shared reference content
+
+Reference docs that multiple skills/agents import live at `docs/`. Reference them via `${CLAUDE_PLUGIN_ROOT}/docs/<filename>.md` — the substitution works in skill and agent content (but NOT in CLAUDE.md `@`-imports).
+
+Sub-docs specific to one skill live alongside that skill (e.g., `skills/plan-task/multi-session.md`).
+
+## Releasing a new version
+
+The marketplace catalog ([`claude-code-marketplace`](https://github.com/genvid-holdings/claude-code-marketplace)) pins this plugin to a specific commit via the `sha` field in its `marketplace.json`. To ship an update:
+
+1. Commit and push plugin changes to this repo's default branch.
+2. Bump `version` in `.claude-plugin/plugin.json` for a meaningful change.
+3. Get the new commit SHA: `git rev-parse HEAD`.
+4. In the marketplace repo, update the `genvid-dev` entry's `sha` to that value and push.
+5. Consumers pick it up with `/plugin update genvid-dev@genvid-plugins`.
+
+## Conventions in this repo
+
+- **Commit messages**: scope-based freeform (`<scope>: <description>`), no ticket prefix. The `BUN-XXXX` format in `examples/` is illustrative of a *consuming* game project, not this repo.
+- **Branches**: descriptive kebab-case, no prefix (e.g., `split-marketplace`).
+- **Skill names**: verb-noun, namespaced as `/genvid-dev:<name>` at invocation time.
+- **Agent dispatch references** inside skills: always namespaced (`genvid-dev:validator`, `genvid-dev:analyst`, etc.).
+- **Versioning**: `.claude-plugin/plugin.json` carries a semver `version`. Bump it when shipping a meaningful change to skills/agents/hooks.
+- **Release tags**: annotated, named `genvid-dev-v<semver>` (e.g. `genvid-dev-v2.0.0`). Plugin installs read `plugin.json` `version` + commit SHA, not tags, so tags are release hygiene only.
+- **License**: MIT-0 (`LICENSE` at repo root).
+
+## Testing
+
+The plugin has no top-level test runner (no `package.json`, no npm). The audit-conventions skill ships its own unit tests using native `node --test`:
+
+```bash
+node --test skills/audit-conventions/scripts/test/*.test.mjs
+```
+
+For skill/agent **content**, `claude plugin validate` catches schema errors, manual review catches content drift, and `claude plugin details` confirms the plugin's component inventory after changes.
+
+For skill **behavior** — does Claude wielding the skill do the right thing? — there's a skill-level eval harness under [`audit-conventions-evals/`](audit-conventions-evals/) (see its README). It runs the skill against fixture consuming-repos via subagents and grades behavioral assertions (ran the validator vs. hand-rolled, identified state, previewed `--fix` before applying, stopped at the dry-run for approval). It's worth building one for a skill whose correctness is **objectively verifiable, state-dependent, or safety-gated**; judgment-heavy workflow skills (most of the plugin) don't need it. The harness is developer tooling — it requires Claude subagents, so it doesn't run in CI.

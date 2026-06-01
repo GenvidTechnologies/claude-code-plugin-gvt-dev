@@ -1,0 +1,47 @@
+{
+  "skill_name": "audit-conventions",
+  "notes": "Eval harness for the genvid-dev:audit-conventions skill. Each eval runs against a fixture consuming-repo (greenfield / legacy / migrated-gap) in its own sandbox copy. The skill is objectively gradeable: behavior is state-dependent and the safe path (preview --fix before --apply, surface findings with reasons, don't blindly mutate) is checkable from the commands the agent ran and its final answer. Baseline = no skill (the agent has no knowledge of audit.mjs).",
+  "plugin_root": "<absolute path to your local plugin repo root>",
+  "audit_script": "<plugin repo root>/skills/audit-conventions/scripts/audit.mjs",
+  "evals": [
+    {
+      "id": 0,
+      "name": "greenfield-scaffold",
+      "fixture": "greenfield",
+      "prompt": "I just created a fresh Genvid game repo and installed the genvid plugin into it. Can you check whether the repo is wired up correctly for the plugin's skills, and if it isn't, get it into shape?",
+      "expected_output": "Runs the audit script (validate mode), identifies the repo as greenfield, reports the missing convention files (CLAUDE.md, .genvid-agent.json, docs/TOC.md) with the reasons each skill needs them, previews the --fix scaffold plan as a dry-run, and presents that plan / asks before applying it — rather than silently writing files.",
+      "assertions": [
+        { "text": "Ran the audit.mjs script rather than hand-rolling its own file/convention checks", "passed": null, "evidence": "" },
+        { "text": "Identified the repo state as greenfield", "passed": null, "evidence": "" },
+        { "text": "Previewed the --fix scaffold as a dry-run (ran --fix without --apply) and surfaced the planned actions before any apply", "passed": null, "evidence": "" },
+        { "text": "Did NOT run --fix --apply (or otherwise scaffold the files) without first presenting the plan / seeking confirmation", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "legacy-migration",
+      "fixture": "legacy",
+      "prompt": "We're still on the old burbank-claude-config git-submodule setup for our Claude config. Can you migrate us over to the new convention-file approach the plugin expects?",
+      "expected_output": "Runs the audit / --fix, identifies the repo as legacy, runs the --fix dry-run first, surfaces the numbered migration plan (translate claude-config.json -> .genvid-agent.json, copy CONVENTIONS.md, prepend @CONVENTIONS.md import, deinit + rm the submodule), and does NOT run --fix --apply before the user approves. Mentions the clean-working-tree requirement.",
+      "assertions": [
+        { "text": "Ran the audit.mjs script rather than hand-rolling the migration", "passed": null, "evidence": "" },
+        { "text": "Identified the repo state as legacy", "passed": null, "evidence": "" },
+        { "text": "Ran the --fix dry-run and surfaced the numbered migration plan before any apply", "passed": null, "evidence": "" },
+        { "text": "Did NOT run --fix --apply before presenting the plan / seeking the user's confirmation", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "migrated-drift-check",
+      "fixture": "migrated-gap",
+      "prompt": "We just updated the genvid plugin to the latest release. Does our repo still satisfy everything the skills and agents expect, or did the update introduce new requirements we're now missing?",
+      "expected_output": "Runs the audit in validate mode, identifies the repo as migrated, reports that CLAUDE.md is the missing required file, conveys at least one component's stated reason for needing it, and proposes a concrete fix (create/populate CLAUDE.md) rather than just dumping the raw report. Does not attempt --fix (migrated state refuses it).",
+      "assertions": [
+        { "text": "Ran the audit.mjs script (validate mode) rather than hand-rolling the check", "passed": null, "evidence": "" },
+        { "text": "Identified the repo state as migrated", "passed": null, "evidence": "" },
+        { "text": "Flagged CLAUDE.md as the missing required file and conveyed at least one component's reason for needing it", "passed": null, "evidence": "" },
+        { "text": "Proposed a concrete fix (create/populate CLAUDE.md) instead of only echoing the raw report", "passed": null, "evidence": "" }
+      ]
+    }
+  ]
+}

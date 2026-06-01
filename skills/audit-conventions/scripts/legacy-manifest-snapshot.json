@@ -1,0 +1,30 @@
+{
+  "_comment": "Snapshot of the burbank-claude-config manifest.json at the time of plugin conversion. Used by audit --fix to identify files that were rendered by the legacy template engine (so they can be safely deleted during migration without touching project-local additions).",
+  "templates": [
+    { "source": "skills/rebase/SKILL.md.tmpl", "target": ".claude/skills/rebase/SKILL.md" },
+    { "source": "skills/pr/SKILL.md.tmpl", "target": ".claude/skills/pr/SKILL.md" },
+    { "source": "skills/plan/SKILL.md.tmpl", "target": ".claude/skills/plan/SKILL.md" },
+    { "source": "skills/plan/multi-session.md.tmpl", "target": ".claude/skills/plan/multi-session.md" },
+    { "source": "skills/plan/approval-and-audit.md.tmpl", "target": ".claude/skills/plan/approval-and-audit.md" },
+    { "source": "skills/commit/SKILL.md.tmpl", "target": ".claude/skills/commit/SKILL.md" },
+    { "source": "skills/retro/SKILL.md.tmpl", "target": ".claude/skills/retro/SKILL.md" },
+    { "source": "skills/split-branch/SKILL.md.tmpl", "target": ".claude/skills/split-branch/SKILL.md" },
+    { "source": "skills/rebase-stack/SKILL.md.tmpl", "target": ".claude/skills/rebase-stack/SKILL.md" },
+    { "source": "skills/validate/SKILL.md.tmpl", "target": ".claude/skills/validate/SKILL.md" },
+    { "source": "skills/update-claude-config/SKILL.md.tmpl", "target": ".claude/skills/update-claude-config/SKILL.md" },
+    { "source": "skills/audit/SKILL.md.tmpl", "target": ".claude/skills/audit/SKILL.md" },
+    { "source": "skills/condense-lessons/SKILL.md.tmpl", "target": ".claude/skills/condense-lessons/SKILL.md" },
+    { "source": "skills/cleanup-initiative/SKILL.md.tmpl", "target": ".claude/skills/cleanup-initiative/SKILL.md" },
+    { "source": "skills/clear-worktree/SKILL.md.tmpl", "target": ".claude/skills/clear-worktree/SKILL.md" },
+    { "source": "agents/code-reviewer/code-reviewer.md.tmpl", "target": ".claude/agents/code-reviewer/code-reviewer.md" },
+    { "source": "agents/analyst/analyst.md.tmpl", "target": ".claude/agents/analyst/analyst.md" },
+    { "source": "agents/designer/designer.md.tmpl", "target": ".claude/agents/designer/designer.md" },
+    { "source": "agents/planner/planner.md.tmpl", "target": ".claude/agents/planner/planner.md" },
+    { "source": "agents/tech-writer/tech-writer.md.tmpl", "target": ".claude/agents/tech-writer/tech-writer.md" },
+    { "source": "agents/validator/validator.md.tmpl", "target": ".claude/agents/validator/validator.md" },
+    { "source": "agents/ts-implementer/ts-implementer.md.tmpl", "target": ".claude/agents/ts-implementer/ts-implementer.md" },
+    { "source": "hooks/pre-commit-lint.js", "target": ".claude/hooks/pre-commit-lint.js" },
+    { "source": "development-principles.md.tmpl", "target": ".claude/development-principles.md" }
+  ],
+  "auto_generated_marker": "AUTO-GENERATED from burbank-claude-config templates"
+}

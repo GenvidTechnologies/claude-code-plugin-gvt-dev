@@ -1,0 +1,17 @@
+{
+  "project": "bunny",
+  "variables": {
+    "BASE_BRANCH": "development",
+    "PACKAGE_MANAGER": "pnpm",
+    "TEST_COMMAND": "pnpm run test:min",
+    "TICKET_PREFIX": "BUN",
+    "REPO_SLUG": "<org>/<repo>"
+  },
+  "features": { "HAS_TDD_NOTES": true, "HAS_MEMORY_SECTION": true, "HAS_LESSONS_LEARNED": true },
+  "blocks": {
+    "VALIDATION_COMMANDS_BASH": "pnpm run lint\npnpm run levels:validate\npnpm run test:min",
+    "REVIEW_COMMANDS": "pnpm run lint && pnpm run test:min",
+    "COMMIT_FORMAT": "BUN-XXXX: <description>",
+    "DOCS_TABLE": "| Doc | Purpose |\n| --- | --- |"
+  }
+}
