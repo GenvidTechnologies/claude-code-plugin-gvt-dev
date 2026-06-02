@@ -109,13 +109,9 @@ Sub-docs specific to one skill live alongside that skill (e.g., `skills/plan-tas
 
 ## Releasing a new version
 
-The marketplace catalog ([`claude-code-marketplace`](https://github.com/genvid-holdings/claude-code-marketplace)) pins this plugin to a specific commit via the `sha` field in its `marketplace.json`. To ship an update:
+Use `/genvid-dev:release-plugin` — it owns the full release runbook: assessing repo state (and distinguishing a stale local checkout from a genuine inconsistency), bumping `.claude-plugin/plugin.json` `version`, moving the `CHANGELOG.md` `[Unreleased]` section, authoring the `release: vX.Y.Z` commit, pushing the annotated `vX.Y.Z` tag, bumping the plugin's `source.ref` in the marketplace catalog, and handing off the consumer-facing `/plugin update` step.
 
-1. Commit and push plugin changes to this repo's default branch.
-2. Bump `version` in `.claude-plugin/plugin.json` for a meaningful change.
-3. Get the new commit SHA: `git rev-parse HEAD`.
-4. In the marketplace repo, update the `genvid-dev` entry's `sha` to that value and push.
-5. Consumers pick it up with `/plugin update genvid-dev@genvid-plugins`.
+The marketplace catalog ([`claude-code-marketplace`](https://github.com/genvid-holdings/claude-code-marketplace)) pins this plugin by a **plain annotated `vX.Y.Z` tag** via the `source.ref` field in its `.claude-plugin/marketplace.json` — the tag string (minus `v`) must equal `plugin.json` `version`. Consumers pick up a release with `/plugin update genvid-dev@genvid-plugins`.
 
 ## Conventions in this repo
 
@@ -124,7 +120,7 @@ The marketplace catalog ([`claude-code-marketplace`](https://github.com/genvid-h
 - **Skill names**: verb-noun, namespaced as `/genvid-dev:<name>` at invocation time.
 - **Agent dispatch references** inside skills: always namespaced (`genvid-dev:validator`, `genvid-dev:analyst`, etc.).
 - **Versioning**: `.claude-plugin/plugin.json` carries a semver `version`. Bump it when shipping a meaningful change to skills/agents/hooks.
-- **Release tags**: annotated, named `genvid-dev-v<semver>` (e.g. `genvid-dev-v2.0.0`). Plugin installs read `plugin.json` `version` + commit SHA, not tags, so tags are release hygiene only.
+- **Release tags**: plain annotated tags named `v<semver>` (e.g. `v2.0.0`). The marketplace pins by `source.ref` in `.claude-plugin/marketplace.json`, which must match the tag name exactly (tag minus `v` == `plugin.json` `version`).
 - **License**: MIT-0 (`LICENSE` at repo root).
 
 ## Testing
