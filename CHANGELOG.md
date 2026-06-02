@@ -7,6 +7,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-06-02
+
+### Fixed
+
+- Trimmed the `publish-npm-package` skill description from 1609 to 1481 chars so
+  it fits under the default `skillListingMaxDescChars` cap (1536) and is no longer
+  silently truncated in the session skill listing. All positive and negative
+  triggers preserved. (#1)
+
 ## [2.0.0] - 2026-05-31
 
 ### Changed

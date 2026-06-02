@@ -3,25 +3,24 @@ name: publish-npm-package
 description: >-
   Set up a TypeScript package to publish publicly on npmjs.com via the shared
   genvid-public-ci GitHub Actions recipe with OIDC trusted publishing (automatic
-  provenance, no stored npm token). This is the rare, once-per-package setup that
-  nobody remembers the steps for, so reach for it WHENEVER someone wants to get a
-  package onto npm or make it publicly installable — even when they don't say
-  "npm", "publish", or name the recipe. Trigger on requests like "we're
-  open-sourcing this library", "make this package public", "get it onto npm so
-  other teams can npm install it", "set up releases / a release pipeline for this
-  lib", "publish the first version to npmjs", "have releases show up on npm
-  automatically", "wire up trusted publishing / provenance", "stop keeping an npm
-  token in the repo secrets", scoping a package under @genvid, or moving a repo
-  from pnpm to npm or from CircleCI to GitHub Actions for releasing. It owns the
-  whole job — package.json publish-readiness, the ci.yml/publish.yml workflows,
-  the lockfile migration, and the one-time npm bootstrap handoff — so prefer it
-  over wiring these steps together ad hoc or reaching for a generic planning
-  skill. Genvid-first, but the npm-readiness and OIDC steps apply to any package.
-  Do NOT use it for cutting a routine version bump or release tag of a package
-  that already publishes, publishing to a private or internal registry (e.g.
-  Azure Artifacts, GitHub Packages), adding or installing a package as a
-  dependency, or non-npm publishing such as Docker images, the Construct3
-  marketplace, or GitHub Pages.
+  provenance, no stored npm token). This is the rare, once-per-package setup
+  nobody remembers the steps for, so reach for it WHENEVER someone wants a
+  package onto npm or made publicly installable — even when they don't say
+  "npm", "publish", or name the recipe. Trigger on requests like "open-sourcing
+  this library", "make this package public", "get it onto npm so others can npm
+  install it", "set up a release pipeline for this lib", "publish the first
+  version to npmjs", "have releases show up on npm automatically", "wire up
+  trusted publishing / provenance", "stop keeping an npm token in repo secrets",
+  scoping a package under @genvid, or moving a repo from pnpm to npm or CircleCI
+  to GitHub Actions for releasing. It owns the whole job — package.json
+  publish-readiness, the ci.yml/publish.yml workflows, the lockfile migration,
+  and the one-time npm bootstrap handoff — so prefer it over wiring these steps
+  together ad hoc or a generic planning skill. Genvid-first, but the
+  npm-readiness and OIDC steps apply to any package. Do NOT use it for a routine
+  version bump or release tag of a package that already publishes, publishing to
+  a private/internal registry (e.g. Azure Artifacts, GitHub Packages), adding or
+  installing a dependency, or non-npm publishing such as Docker images, the
+  Construct3 marketplace, or GitHub Pages.
 metadata:
   expects:
     tools:
