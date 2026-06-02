@@ -18,7 +18,9 @@ jobs:
         run: |
           set -euo pipefail
           patterns='C:/repos/|C:/Users/|@genvidtech|fninoles|genvidtech/'
-          if git ls-files | xargs grep -nE "$patterns"; then
+          # Exclude this workflow file itself: it necessarily contains the
+          # patterns above as its own definition, which would self-match.
+          if git ls-files -- ':!.github/workflows/leak-guard.yml' | xargs grep -nE "$patterns"; then
             echo "::error::org-specific leak pattern found"
             exit 1
           fi
