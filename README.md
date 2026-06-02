@@ -2,7 +2,7 @@
 
 The **`genvid-dev` plugin** for Claude Code — shared skills, agents, and hooks used across Genvid game projects.
 
-The plugin provides workflows for git (`commit-changes`, `create-pr`, `rebase-branch`, `rebase-stack`, `split-branch`), planning (`plan-task` with an analyst → designer → planner pipeline), validation, code review, session retrospectives, and convention auditing.
+The plugin provides workflows for git (`commit-changes`, `create-pr`, `rebase-branch`, `rebase-stack`, `split-branch`), planning (`plan-task` with an analyst → designer → planner pipeline), validation, code review, session retrospectives, convention auditing, and plugin releasing (`release-plugin`).
 
 It is distributed through the [`claude-code-marketplace`](https://github.com/genvid-holdings/claude-code-marketplace) catalog (marketplace name `genvid-plugins`).
 
@@ -41,6 +41,7 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `cleanup-initiative` | Close out an initiative folder (optional convention) |
 | `condense-lessons` | Extract reusable insights from a lessons-learned doc |
 | `publish-npm-package` | Set up a package to publish on npmjs via OIDC trusted publishing |
+| `release-plugin` | Cut a plugin release — bump, tag, and bump the marketplace `source.ref` |
 | `audit-conventions` | Validate / migrate against the convention contract |
 
 **Agents** (dispatched via `subagent_type: "genvid-dev:<name>"`):
