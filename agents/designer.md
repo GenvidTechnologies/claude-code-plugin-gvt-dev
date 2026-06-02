@@ -48,9 +48,16 @@ From a requirements document (produced by the analyst), propose a concrete desig
    - If the original code shared infrastructure across all consumers of X (e.g., a uniform helper called from every template), expanding the helper's footprint into N independent variants is a frequent miss.
    - Document the audit result in the design doc — even when nothing is missed, the explicit enumeration prevents the implementer from carrying assumptions you couldn't verify.
 
-6. **When proposing a custom DSL, evaluator, or substitution language, surface the library option first.** If the design calls for a string-substitution mini-language, conditional markup inside JSON/YAML, expression evaluation, or "just a few directives," propose an existing library (json-e, Mustache, Handlebars, JsonLogic, JSONata, etc.) before specifying the custom grammar. Quantify the comparison: LOC saved by the library vs. dependency added, syntax familiarity, debuggability, footgun surface. The user gets to choose; don't assume custom is better.
+6. **Run the placement audit when the design extracts or relocates shared knowledge or code into a new home** — required gate whenever the design moves something out of where it currently lives (into a plugin, a shared package, an MCP `docs://` resource, a new doc, or the consuming repo):
+   - **Don't default to the status quo.** "It already lives in X" reflects the extraction targets that existed *when it was written*, not where it belongs. When a new home becomes available (a plugin, a new package), every existing placement is re-litigable on the merits — treat "leave it where it is" as a decision that must be justified, not a default.
+   - **Route each piece by what it changes-together with, not by topic.** The canonical split: *tooling / implementation reference* (how a specific tool behaves — its API, gotchas, output format) → travels with that tool's code/package, versioned together; *platform / domain reference* (how the underlying platform behaves, independent of any one tool) → travels with the platform's own versioning, often a dedicated plugin or doc; *project-specific facts* (named entities, file paths, provenance/commit evidence) → stay in the consuming repo. Name the driving criterion for each asset.
+   - **Prefer a move over a copy.** Duplicating knowledge across two homes guarantees drift; a single canonical owner does not. The "but bundling duplicates it" objection dissolves once it's a move, not a copy — so evaluate the move, not just the copy.
+   - **Redirect stubs beat deletion when the relocated doc has many in-repo referrers.** Grep the referrer count; if it's more than a handful, convert the old path to a thin stub pointing at the new home (preserves every cross-link) rather than deleting and repointing N referrers — especially when the new home isn't a browsable link. State the referrer count in the design.
+   - Document the placement decision per asset in the design doc, each with its driving criterion.
 
-7. **Define test criteria** — for each requirement, specify how to verify it:
+7. **When proposing a custom DSL, evaluator, or substitution language, surface the library option first.** If the design calls for a string-substitution mini-language, conditional markup inside JSON/YAML, expression evaluation, or "just a few directives," propose an existing library (json-e, Mustache, Handlebars, JsonLogic, JSONata, etc.) before specifying the custom grammar. Quantify the comparison: LOC saved by the library vs. dependency added, syntax familiarity, debuggability, footgun surface. The user gets to choose; don't assume custom is better.
+
+8. **Define test criteria** — for each requirement, specify how to verify it:
    - Unit tests for logic
    - Manual verification steps for UI/behavior
    - Validation commands that should pass
@@ -101,6 +108,11 @@ Step-by-step walkthrough of how the feature is used.
 - Sites that read/branch on X: ...
 - Independent dimensions of X: ...
 - Per-site coverage classification: ...
+
+## Placement Audit (only when the design extracts/relocates shared knowledge or code)
+- Per-asset home + driving criterion (tooling→tool/package, platform→plugin/doc, project facts→consuming repo): ...
+- Move vs copy (single canonical owner): ...
+- Referrer count + redirect-stub vs delete decision: ...
 
 ## Library vs Custom (only when the design proposes a custom DSL / evaluator)
 - Existing library candidate: ...
