@@ -7,6 +7,22 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-06-02
+
+### Added
+
+- `designer` agent: a knowledge/code **placement audit** gate. When a design
+  extracts or relocates shared knowledge/code into a new home (plugin, package,
+  MCP `docs://` resource, or the consuming repo), the designer now routes each
+  asset by what it changes-together with, prefers a move over a copy, and uses
+  redirect stubs over deletion when a relocated doc has many referrers. (#2)
+
+### Fixed
+
+- `leak-guard` workflow: excluded the workflow's own file from its scan. Its
+  pattern definition listed the leak patterns literally, so it self-matched and
+  failed on every branch (including `main`), blocking all PRs. (#3)
+
 ## [2.0.1] - 2026-06-02
 
 ### Fixed
