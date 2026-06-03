@@ -82,6 +82,16 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
+### Deletion Completeness
+
+When the diff **deletes** a tracked file, checking code imports for dangling references is not enough — documentation references break too, and the harder call is classifying which broken references actually need fixing. For each deleted file:
+
+- [ ] Grep the repo — especially docs (`*.md`) — for the deleted file's basename and path.
+- [ ] Classify every hit:
+  - **Live pointer** — a markdown link (`](…/deleted-file)`) or prose citing the file as a current example ("see `bin/foo.ts`", "the canonical pattern is in…"). These are now broken: a silent 404 or a dangling citation. **Flag for fix** — repoint at git history (`git log --all -- <path>`, a permalink) or rewrite the prose.
+  - **Historical prose** — a dated retro / lessons-learned entry, a changelog line, or any text describing what *was* true at a point in time. Leave it as the record.
+- [ ] Do **not** default broken links to "leave as educational record." A live markdown link to a deleted file is a defect regardless of how informative the surrounding prose is — the classification (historical-vs-live) is the deciding factor, not whether the reference is interesting.
+
 ## False-Positive Guardrails
 
 Run these before flagging anything — especially before assigning **critical/blocking** severity. A false-positive critical is expensive: it forces the orchestrator to stop and disprove the finding before continuing, and it erodes trust in the severity labels.
