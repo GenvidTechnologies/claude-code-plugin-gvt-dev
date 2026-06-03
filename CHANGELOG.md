@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-06-02
+
 ### Added
 
 - `release-plugin` skill: the producer-side analogue of `publish-npm-package`.
