@@ -53,6 +53,8 @@ Dispatch the **`genvid-dev:analyst`** agent with the task description. The analy
 
 **Output:** a requirements document. Present it to the user.
 
+**For bug tickets, confirm the reported symptom is observable before moving to design.** Reproduce it, or trace the *read/render* path end-to-end (who actually observes the suspect value), not just the *write* path. A defect can exist in the code yet never surface — a self-healing re-render, a `trigger-once` re-init, or every reader re-deriving the value from a correct source can mask it. If no reader observes the bad value, reclassify the task as tech-debt/cleanup (`chore`/`refactor`) rather than a fix, and say so explicitly to the user. (This is distinct from the "re-trace on didn't work" check during execution, which verifies a *fix* worked — this verifies the *bug is real* up front.)
+
 **Checkpoint:** "Here are the requirements. Any additions or corrections?"
 
 Wait for user feedback. Iterate if needed.
