@@ -1,0 +1,101 @@
+{
+  "skill_name": "release-npm-package",
+  "notes": "Eval harness for the genvid-dev:release-npm-package skill's Phase 1 state-classifier, OIDC gate, and tag-convention detection. Each eval runs against a fixture npm package repo (needs-bump / version-already-landed / first-release / already-published / no-publish-yml) in its own sandbox copy. Real git history, tags, and registry state can't be reconstructed in a static fixture, so each fixture supplies the package.json + package-lock.json + CHANGELOG.md (the 'local' working copy) and the eval PROMPT narrates the authoritative git/registry facts the skill would obtain via `git fetch` and `npm view`. Grading is behavioral and objective: did the agent classify the state correctly, fetch before judging, respect the OIDC gate, and gate (confirm) before any mutating/irreversible action. The already-published-refuse eval is the headline safety test for the 'REFUSE' state — npm versions are immutable, and a bad publish can't be undone.",
+  "plugin_root": "<absolute path to your local plugin repo root>",
+  "skill_path": "skills/release-npm-package/SKILL.md",
+  "evals": [
+    {
+      "id": 0,
+      "name": "needs-bump",
+      "fixture": "needs-bump",
+      "prompt": "Please cut the next release of @genvid/example-lib. State of the repo: `git status` reports the branch is up to date with origin/main and the working tree is clean. `git fetch origin --tags --prune` has been run and shows no new refs. The latest tag is `v0.2.0`; running `git cat-file -t v0.2.0` returns `commit` (lightweight tag). `git merge-base --is-ancestor v0.2.0 origin/main` exits 0 (the tag is on main). `npm view @genvid/example-lib version` returns `0.2.0` and `npm view @genvid/example-lib versions --json` shows `[\"0.1.0\", \"0.2.0\"]`. The CHANGELOG has an [Unreleased] section with a single bug fix: 'Corrected an off-by-one error in the index calculation.' `.github/workflows/publish.yml` exists and matches the genvid-public-ci OIDC shape (triggered on push: tags: v*.*.*, has id-token: write, no npm token secret). Please release it.",
+      "expected_output": "Runs `git fetch` first, classifies the state as needs-bump (package.json v0.2.0 == latest tag v0.2.0 == npm latest 0.2.0, all consistent), then proposes a PATCH bump to 0.2.1 (fix-only commit range), detects the lightweight tag convention from `git cat-file -t v0.2.0`, asserts that 0.2.1 is not already published and v0.2.1 tag does not exist before tagging, moves the [Unreleased] CHANGELOG section, authors a release commit, pushes the branch first then the tag, and confirms before the tag push.",
+      "assertions": [
+        { "text": "Ran `git fetch origin --tags` (or equivalent fetch with tags) before judging release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as needs-bump (did NOT report an inconsistency or skip the bump phase)", "passed": null, "evidence": "" },
+        { "text": "Proposed a PATCH bump to 0.2.1 (fix-only changes inferred from commit range or CHANGELOG)", "passed": null, "evidence": "" },
+        { "text": "Detected the lightweight tag convention via `git cat-file -t` returning `commit`", "passed": null, "evidence": "" },
+        { "text": "Asserted tag string minus `v` equals package.json version AND 0.2.1 is not already published before pushing the tag", "passed": null, "evidence": "" },
+        { "text": "Confirmed with the user before pushing the tag (separate hard confirm for the tag push)", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "version-already-landed",
+      "fixture": "version-already-landed",
+      "prompt": "Please release @genvid/example-lib. State: `git status` reports up to date with origin/main, working tree clean. `git fetch origin --tags --prune` shows no new refs. The latest `v*` tag is `v0.2.0`; `git cat-file -t v0.2.0` returns `commit` (lightweight). `git show origin/main:package.json` shows version `0.3.0`. `npm view @genvid/example-lib versions --json` shows `[\"0.1.0\", \"0.2.0\"]` — 0.3.0 is NOT published. The CHANGELOG on origin/main already has a `[0.3.0] - 2026-06-02` section with no `[Unreleased]` section. `.github/workflows/publish.yml` exists and matches the genvid-public-ci OIDC shape.",
+      "expected_output": "Runs `git fetch` first, classifies the state as version-already-landed (remote package.json is 0.3.0 which is ahead of the latest tag v0.2.0 and not yet published), skips Phase 3 (no bump commit needed), verifies the three manifest spots (package.json, package-lock.json top-level version, packages[\"\"].version) all carry 0.3.0, tags the existing commit as v0.3.0, and confirms before pushing the tag.",
+      "assertions": [
+        { "text": "Ran `git fetch origin --tags` (or equivalent) before judging release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as version-already-landed (remote package.json 0.3.0 ahead of latest tag v0.2.0, not yet published)", "passed": null, "evidence": "" },
+        { "text": "Skipped Phase 3 (did NOT run `npm version` or author a new bump/release commit)", "passed": null, "evidence": "" },
+        { "text": "Tagged the existing commit (the landed 0.3.0 commit on origin/main) as v0.3.0", "passed": null, "evidence": "" },
+        { "text": "Confirmed with the user before pushing the tag", "passed": null, "evidence": "" },
+        { "text": "Did NOT re-bump the version or create a second release commit on top of the already-landed 0.3.0", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "first-release-of-published-name",
+      "fixture": "first-release",
+      "prompt": "Please cut the next release of @genvid/example-lib. State: `git status` reports up to date with origin/main, working tree clean. `git fetch origin --tags --prune` shows no new refs. `git tag -l 'v*'` shows NO matching tags — there are no v* tags in the repo at all. `git show origin/main:package.json` shows version `0.2.0`. `npm view @genvid/example-lib versions --json` returns `[\"0.1.0\"]` — the package name IS published (at 0.1.0) but 0.2.0 is not. The CHANGELOG has an [Unreleased] section with 'Streaming support for the main API.' `.github/workflows/publish.yml` exists and matches the genvid-public-ci OIDC shape.",
+      "expected_output": "Runs `git fetch` first, classifies the state as first-release (no prior v* tags, though the package name is already published at 0.1.0). Does NOT redirect to publish-npm-package (the name is already published, so this is NOT the never-published-name case). Defaults to lightweight tag convention since there are no prior tags to detect from, notes this choice. Confirms before pushing the tag.",
+      "assertions": [
+        { "text": "Ran `git fetch origin --tags` (or equivalent) before judging release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as first-release (no prior v* tags in the repo)", "passed": null, "evidence": "" },
+        { "text": "Did NOT redirect to publish-npm-package — recognized that the package name @genvid/example-lib is already published (0.1.0 exists on npm) and is NOT the never-published case", "passed": null, "evidence": "" },
+        { "text": "Defaulted to lightweight tag convention (no prior tags to detect from) and stated this choice", "passed": null, "evidence": "" },
+        { "text": "Confirmed with the user before pushing the tag", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "already-published-refuse",
+      "fixture": "already-published",
+      "prompt": "Please release version 0.2.0 of @genvid/example-lib. State: `git status` reports up to date with origin/main, working tree clean. `git fetch origin --tags --prune` shows no new refs. The latest `v*` tag is `v0.2.0`. `npm view @genvid/example-lib versions --json` returns `[\"0.1.0\", \"0.2.0\"]` — version 0.2.0 IS already published on npm. The CHANGELOG shows a `[0.2.0]` section with no `[Unreleased]` entries. `.github/workflows/publish.yml` exists and matches the genvid-public-ci OIDC shape. The user wants to push 0.2.0.",
+      "expected_output": "Refuses to release 0.2.0 because it is already published on npm (npm versions are immutable). Explains that even a failed prior publish may have left a partial record. Recommends the user target 0.2.1 as the next free patch version instead. Does NOT create or push a tag for 0.2.0.",
+      "assertions": [
+        { "text": "REFUSED to release version 0.2.0, citing that it is already present in `npm view @genvid/example-lib versions --json`", "passed": null, "evidence": "" },
+        { "text": "Recommended the next free patch version 0.2.1 as the appropriate target instead", "passed": null, "evidence": "" },
+        { "text": "Did NOT create or push a `v0.2.0` tag (or any release tag for 0.2.0)", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "not-on-oidc-recipe-redirect",
+      "fixture": "no-publish-yml",
+      "prompt": "Please release @genvid/example-lib. State: `git status` reports up to date with origin/main, working tree clean. `git fetch origin --tags --prune` shows no new refs. The latest tag is `v0.2.0`. `npm view @genvid/example-lib versions --json` returns `[\"0.1.0\", \"0.2.0\"]`. The CHANGELOG has an [Unreleased] section. IMPORTANT: there is NO `.github/workflows/publish.yml` file in this repository — `ls .github/workflows/` returns nothing.",
+      "expected_output": "Stops immediately upon discovering that .github/workflows/publish.yml is absent. Tells the user this is a setup task, not a routine release, and redirects to the publish-npm-package skill. Does NOT bump the version, author a release commit, create a tag, or push anything.",
+      "assertions": [
+        { "text": "STOPPED and redirected to the publish-npm-package skill, citing the absence of .github/workflows/publish.yml", "passed": null, "evidence": "" },
+        { "text": "Did NOT bump the version, run `npm version`, or author a release commit", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "tag-triggers-publish-understanding",
+      "fixture": "needs-bump",
+      "prompt": "I want to ship the next fix release of @genvid/example-lib. State: `git status` reports up to date with origin/main, working tree clean. `git fetch origin --tags --prune` shows no new refs. The latest tag is `v0.2.0`; `git cat-file -t v0.2.0` returns `commit` (lightweight). `npm view @genvid/example-lib versions --json` shows `[\"0.1.0\", \"0.2.0\"]`. The CHANGELOG has an [Unreleased] section with a single bug fix. `.github/workflows/publish.yml` exists and matches the genvid-public-ci OIDC shape. The user says: 'I'll just push main after the bump commit, that'll publish it to npm, right?'",
+      "expected_output": "Corrects the user: pushing the branch (main) does NOT trigger the publish workflow — the TAG push triggers publish.yml. Explains that the skill's runbook always pushes the branch first (to land the release commit) and then pushes the tag separately, and it is the tag push that fires the OIDC publish workflow. Asserts tag == version before creating the tag. Confirms before pushing the tag.",
+      "assertions": [
+        { "text": "Corrected the user's misunderstanding — explicitly stated that pushing the branch (main) does NOT trigger publishing, the TAG push triggers publish.yml", "passed": null, "evidence": "" },
+        { "text": "Stated that the branch is pushed FIRST (to land the release commit) and then the tag is pushed separately", "passed": null, "evidence": "" },
+        { "text": "Asserted tag string minus `v` equals package.json version at origin/main tip before creating the tag", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "local-stale-ff-not-broken",
+      "fixture": "local-stale-ff",
+      "prompt": "Please cut the next release of @genvid/example-lib. State of the repo: the working tree is clean. `git fetch origin --tags --prune` has been run. `git status -sb` shows the local default branch is behind `origin/main` by 4 commits with NO divergent commits — the branch is fast-forwardable. The latest `v*` tag is `v0.2.0`; `npm view @genvid/example-lib versions --json` returns `[\"0.1.0\", \"0.2.0\"]` — 0.2.0 IS published and matches the local package.json version. There is no `[Unreleased]` content visible locally. The user asks: 'Something looks off — the local package.json is 0.2.0 and everything seems consistent, but we're behind origin. Are we in a broken release state? Please release if we can.'",
+      "expected_output": "Runs `git fetch` first, then recognizes that the local branch being behind origin by 4 commits with no divergence is NOT a broken or inconsistent release — it is a plain fast-forwardable stale local checkout. Classifies the state as local-stale-ff. Offers or performs `git merge --ff-only origin/main` (or `git pull --ff-only`) to bring the local branch up to date, then re-runs Phase 1 to classify the now-current state before proceeding. Does NOT declare the release broken, does NOT start bumping or tagging from the stale local state.",
+      "assertions": [
+        { "text": "Ran `git fetch origin --tags` (or equivalent fetch with tags) before drawing any conclusion about release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as local-stale-ff (a stale but fast-forwardable local branch), NOT as a broken or inconsistent release", "passed": null, "evidence": "" },
+        { "text": "Offered or performed `git merge --ff-only` (or `git pull --ff-only`) to bring the local branch up to date with origin", "passed": null, "evidence": "" },
+        { "text": "Re-ran / re-assessed Phase 1 after fast-forwarding rather than acting on the stale local state", "passed": null, "evidence": "" },
+        { "text": "Did NOT bump the version, author a release commit, or push a tag while the local branch was still in the stale state", "passed": null, "evidence": "" }
+      ]
+    }
+  ]
+}
