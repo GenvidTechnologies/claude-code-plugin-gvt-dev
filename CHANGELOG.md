@@ -14,6 +14,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- `planner` agent: added a "mirror fidelity" principle — when a task clones an
+  existing structure (eval harness, sibling skill, fixture set), enumerate the
+  model's coverage and justify any omission in the plan, rather than silently
+  shipping a reduced set that only surfaces at review.
 - `analyst` agent: added a "sync before judging git/release state" principle —
   run `git fetch` and compare against `origin` before concluding a repo is in a
   broken/inconsistent state, since a merely-behind local checkout is a
