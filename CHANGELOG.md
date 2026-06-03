@@ -19,7 +19,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
-- `plan-task` skill: added an "Execution resilience" note to the Pipeline — if a
+- `plan-task` skill: added a "Dispatch resilience" note to the Pipeline — if a
   delegated agent returns empty, errors, or hits a session/token limit, resume it
   via `SendMessage` to reuse its context when that tool is available, otherwise
   complete the phase inline from the prior phase's artifact rather than retrying
