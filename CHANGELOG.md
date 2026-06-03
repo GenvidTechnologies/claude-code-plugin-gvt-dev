@@ -7,6 +7,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `analyst` agent: added a "refresh refreshable artifacts before diffing" Key
+  Principle — when the analysis premise depends on a checked-in snapshot or
+  generated artifact that has a documented refresh/fetch/regenerate command, surface
+  freshness as an explicit pre-analysis step instead of treating the committed copy
+  as ground truth, and treat any mismatch set as provisional until the artifact is
+  confirmed current. Advisory, with detection leaning on signals the analyst already
+  gathers (`fetch-*`/`generate-*` scripts, `.prettierignore`/`.gitattributes`
+  entries, fetched-verbatim doc notes). (#16)
+
 ## [2.4.0] - 2026-06-03
 
 ### Added
