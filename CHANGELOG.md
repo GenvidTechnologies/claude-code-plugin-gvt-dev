@@ -27,6 +27,12 @@ and follows [semantic versioning](https://semver.org/).
   still consumes, `git mv` it to a permanent home outside `initiatives/`, update
   references, and repoint any tool's default output before deleting, rather than
   redirect-or-strip which would remove a live dependency. (#12)
+- `cleanup-initiative` skill: Step 4 gained a "convert to issue tracker"
+  alternative to the successor-folder flow — when-to-use detection, granularity,
+  preserving forward-looking specs by inlining + a pre-deletion `git show` SHA
+  reference, filtering obsolete items, routing cross-repo items, and the
+  full-URL link gotcha; with a Step 6 note that the delete intentionally removes
+  design docs the new issues point at by SHA. (#10)
 
 ## [2.2.0] - 2026-06-03
 

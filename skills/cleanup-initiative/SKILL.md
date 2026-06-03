@@ -108,6 +108,17 @@ If the deferred items don't need any of the original specs/designs (e.g., the or
 
 If there are no forward-looking items, skip this step.
 
+#### Alternative: convert to issue tracker
+
+Many consuming repos track backlog in an **issue tracker** (GitHub/Bitbucket issues) rather than successor `initiatives/` folders. When that's the case, file issues **instead of** creating a successor folder.
+
+1. **When to use it.** The project tracks backlog as issues — detectable by a configured issue host, `gh` being available, or the user asking for it ("convert the remaining items into github issues"). File issues for the Deferred/Improvement/Bug/Open-Question items.
+2. **Granularity.** Small or related items → one issue with a task checklist; substantial features → their own issue.
+3. **Preserve forward-looking specs.** This is the issues-path equivalent of the successor flow's "copy forward-looking files." Since Step 6 **deletes** the directory, inline the essential spec into the issue body and reference the pre-deletion commit (`git show <sha>:path/to/design.md`) so the full design stays retrievable from history.
+4. **Filter obsolete items before filing.** During inventory, confirm each item is still relevant — don't file dead work (e.g. a proposal targeting a since-removed submodule/toolchain). Report obsolete items in the Step 7 summary instead of filing them.
+5. **Cross-repo items.** An item about another tool/package belongs in *that* repo's tracker, not the consuming game repo.
+6. **Link gotcha.** Issue/PR bodies don't resolve repo-relative markdown links — use full `https://github.com/<owner>/<repo>/blob/<branch>/…` URLs, and `owner/repo#N` for cross-references.
+
 ### 5. Migrate worktree memories
 
 If the current session is running in a git worktree (path contains `worktrees/`), memories stored in the worktree-specific memory directory will be lost when the worktree is deleted.
@@ -134,6 +145,8 @@ Use `git rm -r`, not `rm -rf` — `git rm -r` stages the deletion as a reviewabl
 `git rm -r` refuses to delete files with **unstaged local modifications**. A typical case: the multi-phase Step 0 row-flip in `initiative.md` was made earlier in the same session and not yet committed. Either commit the row-flip first (recommended — it preserves the final-state record in git history alongside the deletion commit's parent) or pass `-rf` to force-delete the unstaged edit. Discarding the row-flip leaves the deletion commit's parent showing the just-shipped phase as `Planned`, which is misleading for future archaeology.
 
 This is not destructive — git history preserves the directory. Deleting it prevents stale session plans from accumulating in the working tree and confusing future readers.
+
+If Step 4 took the issue-tracker path, this deletion removes design docs that the freshly-filed issues now point at by git SHA (`git show <sha>:path`). That's intended — git history preserves them — but say so in the Step 7 summary so a reviewer doesn't think the issues reference dead paths.
 
 Only skip this step if the user explicitly asks to keep the directory. If skipping, say why in the summary.
 
