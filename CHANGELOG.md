@@ -13,6 +13,26 @@ and follows [semantic versioning](https://semver.org/).
   skill is usually invoked from the just-merged (and possibly squash-deleted)
   feature branch — check out an up-to-date default branch before classifying, so
   the release isn't prepared on the wrong ref.
+- `planner` agent: added a "flag throwaway intermediate steps" heuristic — when a
+  later task routes through a high-level upstream aggregate (`detect*`/`analyze*`/
+  `build*`), read its implementation; if an earlier task installs parallel work
+  into code the later task deletes wholesale, fold the deletions forward and
+  de-risk with equivalence tests instead of a discarded intermediate refactor. (#6)
+- `cleanup-initiative` skill: Step 0 now verifies a non-shipped phase status
+  against git history before trusting it — `git log --grep` + a deliverable
+  cross-check catch the "table says Planned/in-progress but the scope actually
+  shipped" drift, which would otherwise skip cleanup of a done initiative. (#11)
+- `cleanup-initiative` skill: Step 2 inbound-reference handling gained a third
+  option — if a hit points at a live data/code artifact (not prose) the project
+  still consumes, `git mv` it to a permanent home outside `initiatives/`, update
+  references, and repoint any tool's default output before deleting, rather than
+  redirect-or-strip which would remove a live dependency. (#12)
+- `cleanup-initiative` skill: Step 4 gained a "convert to issue tracker"
+  alternative to the successor-folder flow — when-to-use detection, granularity,
+  preserving forward-looking specs by inlining + a pre-deletion `git show` SHA
+  reference, filtering obsolete items, routing cross-repo items, and the
+  full-URL link gotcha; with a Step 6 note that the delete intentionally removes
+  design docs the new issues point at by SHA. (#10)
 
 ## [2.2.0] - 2026-06-03
 

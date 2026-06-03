@@ -37,7 +37,13 @@ The user may specify an initiative directory name (e.g., `story-battle-menu`). I
 
 Some initiatives are designed as **living documents covering multiple phases** — they ship Phase 1, then Phase 2 in a follow-up PR, then Phase 3 (design or implementation), all under the same `initiatives/<name>/` folder. Look for a **Phases table** in `initiative.md` listing shipped vs planned vs design-pending status.
 
-If the initiative has any unshipped phases (Planned, Design-pending, In progress, etc.):
+**Verify a non-shipped status against git before trusting it.** Stale status is the common failure mode, and it drifts in *both* directions. The skill already warns about a phase row that says `Planned` on already-shipped work; the inverse is just as common — the table says `in-progress`/`Planned` but the whole scope actually **shipped** (e.g. as a single PR), and trusting the table would wrongly skip cleanup of a genuinely-done initiative. Before concluding any phase is unshipped:
+
+- Run `git log --oneline --grep '<initiative keyword>'` and/or look for a merge commit / PR matching the phase's scope.
+- Cross-check one concrete deliverable from the plan against the working tree (e.g. "the migration this phase describes — is it already present in the code/data?").
+- If git shows the work shipped but `initiative.md` says otherwise, treat the phase as complete (flip to the full close-out flow below) and note the status drift in the Step 7 summary.
+
+If the initiative has any **genuinely** unshipped phases (Planned, Design-pending, In progress — and confirmed against git, not just the table):
 
 1. **Do NOT delete the directory.** The folder is a long-lived working space; deleting it strands the next phase's plan.
 2. **Do NOT create a successor initiative.** The "successor" is the next phase, which lives in the same folder.
@@ -81,6 +87,7 @@ Adjust the include globs for the project's languages (consult `.genvid-agent.jso
 
 - Redirect the reference to surviving documentation (the relevant test-file JSDoc, a `docs/` page, an entry in the project's lessons-learned doc).
 - Strip the dead-link line as part of the same close-out commit.
+- If the reference points at a **live data/code artifact** (not prose) that the project still consumes at build/validate/runtime — a checked-in snapshot, fixture, or generated file — redirect-or-strip is wrong. **Relocate the artifact to a permanent home** outside `initiatives/` (e.g. a `data/`, `fixtures/`, or `snapshots/` dir), update every reference, and — if a tool writes the artifact — repoint its default output. Only then proceed to deletion, or the delete removes a live dependency. Use `git mv` (not delete + recreate) to preserve the artifact's history; note that `git mv` can leave an empty source subdir that needs its own cleanup before the folder delete.
 
 The doc-only check above does **not** catch this — it looks at outbound knowledge, not inbound references — and the gap is structural for any initiative whose design docs got cited by source `@see` annotations. Skipping this step ships dead JSDoc links into the default branch.
 
@@ -100,6 +107,17 @@ If there are Deferred, Improvement, Bug, or Open Question items, create a new in
 If the deferred items don't need any of the original specs/designs (e.g., the original initiative's plans/designs are fully spent and the follow-up is just a list of items), a single `initiative.md` summary file is sufficient — don't copy plan/design files just to have something there.
 
 If there are no forward-looking items, skip this step.
+
+#### Alternative: convert to issue tracker
+
+Many consuming repos track backlog in an **issue tracker** (GitHub/Bitbucket issues) rather than successor `initiatives/` folders. When that's the case, file issues **instead of** creating a successor folder.
+
+1. **When to use it.** The project tracks backlog as issues — detectable by a configured issue host, `gh` being available, or the user asking for it ("convert the remaining items into github issues"). File issues for the Deferred/Improvement/Bug/Open-Question items.
+2. **Granularity.** Small or related items → one issue with a task checklist; substantial features → their own issue.
+3. **Preserve forward-looking specs.** This is the issues-path equivalent of the successor flow's "copy forward-looking files." Since Step 6 **deletes** the directory, inline the essential spec into the issue body and reference the pre-deletion commit (`git show <sha>:path/to/design.md`) so the full design stays retrievable from history.
+4. **Filter obsolete items before filing.** During inventory, confirm each item is still relevant — don't file dead work (e.g. a proposal targeting a since-removed submodule/toolchain). Report obsolete items in the Step 7 summary instead of filing them.
+5. **Cross-repo items.** An item about another tool/package belongs in *that* repo's tracker, not the consuming game repo.
+6. **Link gotcha.** Issue/PR bodies don't resolve repo-relative markdown links — use full `https://github.com/<owner>/<repo>/blob/<branch>/…` URLs, and `owner/repo#N` for cross-references.
 
 ### 5. Migrate worktree memories
 
@@ -127,6 +145,8 @@ Use `git rm -r`, not `rm -rf` — `git rm -r` stages the deletion as a reviewabl
 `git rm -r` refuses to delete files with **unstaged local modifications**. A typical case: the multi-phase Step 0 row-flip in `initiative.md` was made earlier in the same session and not yet committed. Either commit the row-flip first (recommended — it preserves the final-state record in git history alongside the deletion commit's parent) or pass `-rf` to force-delete the unstaged edit. Discarding the row-flip leaves the deletion commit's parent showing the just-shipped phase as `Planned`, which is misleading for future archaeology.
 
 This is not destructive — git history preserves the directory. Deleting it prevents stale session plans from accumulating in the working tree and confusing future readers.
+
+If Step 4 took the issue-tracker path, this deletion removes design docs that the freshly-filed issues now point at by git SHA (`git show <sha>:path`). That's intended — git history preserves them — but say so in the Step 7 summary so a reviewer doesn't think the issues reference dead paths.
 
 Only skip this step if the user explicitly asks to keep the directory. If skipping, say why in the summary.
 
