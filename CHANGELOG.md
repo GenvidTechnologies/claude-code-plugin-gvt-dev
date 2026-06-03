@@ -7,6 +7,25 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `release-plugin` skill: the producer-side analogue of `publish-npm-package`.
+  Cuts a marketplace plugin release end to end across both repos — assesses and
+  reconciles repo state (clean / local-stale-ff / genuine-inconsistency /
+  first-release), bumps `plugin.json` + CHANGELOG, commits `release: vX.Y.Z`,
+  pushes a plain annotated `vX.Y.Z` tag, bumps the marketplace `source.ref`, and
+  hands off `/plugin update`. (#4)
+- `release-plugin-evals/`: behavioral eval harness for the skill's Phase 1
+  state-classifier (four fixture classes), including a regression test for
+  misreading a stale local checkout as a broken release. (#4)
+
+### Changed
+
+- Corrected stale release-procedure claims in `CLAUDE.md`: release tags are
+  plain `vX.Y.Z` (not `genvid-dev-v<semver>`) and the marketplace pins by
+  `source.ref`, not a `sha` field. The "Releasing a new version" section now
+  points at `/genvid-dev:release-plugin`. (#4)
+
 ## [2.0.2] - 2026-06-02
 
 ### Added
