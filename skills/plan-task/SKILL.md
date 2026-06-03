@@ -93,6 +93,13 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
 4. **Commit the plan and any companion design docs as a single prep commit** before kicking off the first implementation task. This keeps git history in logical order (`prep → task 1 → task 2 → ...`) and prevents retroactive plan commits from landing after tested code. **Exception:** some repos gitignore `plan.md` (or the planning location) so it stays a local-only working artifact — check `git check-ignore plan.md` first. If it's ignored, that's intentional; don't force-add it. Skip the prep commit (or commit only the tracked companion design docs), and keep `plan.md` local.
 5. The plan is now ready for execution.
 
+### Dispatch resilience
+
+Every phase above (and every implementer dispatch during execution) is delegated to an agent that can come back empty — it errors, or hits a session/token limit and returns an empty final message (`subagent_tokens: 0`). When that happens, **do not retry blindly or stall**:
+
+- **Resume the same agent via `SendMessage` when that tool is available** — this reuses its accumulated context and is the cheapest recovery.
+- **Otherwise, complete the phase inline from the prior phase's artifact.** The requirements doc, design doc, or the concrete touch points you already gathered usually carry enough to finish the next phase directly. Write the missing output yourself and continue, rather than re-running the whole dispatch from scratch.
+
 ## Execution (Post-Approval)
 
 When the user says to execute:
