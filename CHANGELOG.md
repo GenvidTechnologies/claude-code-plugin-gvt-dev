@@ -18,6 +18,10 @@ and follows [semantic versioning](https://semver.org/).
   `build*`), read its implementation; if an earlier task installs parallel work
   into code the later task deletes wholesale, fold the deletions forward and
   de-risk with equivalence tests instead of a discarded intermediate refactor. (#6)
+- `cleanup-initiative` skill: Step 0 now verifies a non-shipped phase status
+  against git history before trusting it — `git log --grep` + a deliverable
+  cross-check catch the "table says Planned/in-progress but the scope actually
+  shipped" drift, which would otherwise skip cleanup of a done initiative. (#11)
 
 ## [2.2.0] - 2026-06-03
 

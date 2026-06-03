@@ -37,7 +37,13 @@ The user may specify an initiative directory name (e.g., `story-battle-menu`). I
 
 Some initiatives are designed as **living documents covering multiple phases** — they ship Phase 1, then Phase 2 in a follow-up PR, then Phase 3 (design or implementation), all under the same `initiatives/<name>/` folder. Look for a **Phases table** in `initiative.md` listing shipped vs planned vs design-pending status.
 
-If the initiative has any unshipped phases (Planned, Design-pending, In progress, etc.):
+**Verify a non-shipped status against git before trusting it.** Stale status is the common failure mode, and it drifts in *both* directions. The skill already warns about a phase row that says `Planned` on already-shipped work; the inverse is just as common — the table says `in-progress`/`Planned` but the whole scope actually **shipped** (e.g. as a single PR), and trusting the table would wrongly skip cleanup of a genuinely-done initiative. Before concluding any phase is unshipped:
+
+- Run `git log --oneline --grep '<initiative keyword>'` and/or look for a merge commit / PR matching the phase's scope.
+- Cross-check one concrete deliverable from the plan against the working tree (e.g. "the migration this phase describes — is it already present in the code/data?").
+- If git shows the work shipped but `initiative.md` says otherwise, treat the phase as complete (flip to the full close-out flow below) and note the status drift in the Step 7 summary.
+
+If the initiative has any **genuinely** unshipped phases (Planned, Design-pending, In progress — and confirmed against git, not just the table):
 
 1. **Do NOT delete the directory.** The folder is a long-lived working space; deleting it strands the next phase's plan.
 2. **Do NOT create a successor initiative.** The "successor" is the next phase, which lives in the same folder.
