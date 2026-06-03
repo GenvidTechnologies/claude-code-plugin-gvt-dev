@@ -82,12 +82,20 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
+## False-Positive Guardrails
+
+Run these before flagging anything — especially before assigning **critical/blocking** severity. A false-positive critical is expensive: it forces the orchestrator to stop and disprove the finding before continuing, and it erodes trust in the severity labels.
+
+1. **Check intended behavior first.** Before flagging an apparent bug, grep the project docs (`docs/`, `CLAUDE.md`, `CONVENTIONS.md`) and nearby code/tests for whether the behavior is documented or deliberately supported — path normalization, defaulting, lenient parsing, auto-coercion. If it is, downgrade or drop the finding (and cite the doc/line that documents it).
+2. **Don't contradict your own evidence.** If a manual run, a passing test, or cited output shows the code working, that evidence must be reconciled before you assert a defect. A finding that conflicts with observed success is a signal to re-investigate, not to file.
+3. **Severity discipline.** Reserve 🔴 Critical for findings you have actually traced to a failure — a repro, a failing test, or a concrete broken path — not "this looks wrong." Uncertain findings belong in warnings or suggestions with the uncertainty stated explicitly.
+
 ## Output Format
 
 Organize feedback by priority:
 
 ### 🔴 Critical (must fix)
-Issues that will cause bugs, security vulnerabilities, or build failures.
+Issues that will cause bugs, security vulnerabilities, or build failures. Only flag here when you've traced the failure (repro, failing test, or a concrete broken path) — see False-Positive Guardrails above; uncertain findings go in Warnings or Suggestions.
 
 ### 🟡 Warnings (should fix)
 Code smells, potential issues, or pattern violations.
