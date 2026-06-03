@@ -53,6 +53,8 @@ Dispatch the **`genvid-dev:analyst`** agent with the task description. The analy
 
 **Output:** a requirements document. Present it to the user.
 
+**For bug tickets, confirm the reported symptom is observable before moving to design.** Reproduce it, or trace the *read/render* path end-to-end (who actually observes the suspect value), not just the *write* path. A defect can exist in the code yet never surface — a self-healing re-render, a `trigger-once` re-init, or every reader re-deriving the value from a correct source can mask it. If no reader observes the bad value, reclassify the task as tech-debt/cleanup (`chore`/`refactor`) rather than a fix, and say so explicitly to the user. (This is distinct from the "re-trace on didn't work" check during execution, which verifies a *fix* worked — this verifies the *bug is real* up front.)
+
 **Checkpoint:** "Here are the requirements. Any additions or corrections?"
 
 Wait for user feedback. Iterate if needed.
@@ -92,6 +94,13 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
    If behind, fast-forward (`git merge --ff-only origin/<default-branch>`) before starting. Stale-base execution produces a PR diff that mixes the plan's changes with upstream-merge noise.
 4. **Commit the plan and any companion design docs as a single prep commit** before kicking off the first implementation task. This keeps git history in logical order (`prep → task 1 → task 2 → ...`) and prevents retroactive plan commits from landing after tested code. **Exception:** some repos gitignore `plan.md` (or the planning location) so it stays a local-only working artifact — check `git check-ignore plan.md` first. If it's ignored, that's intentional; don't force-add it. Skip the prep commit (or commit only the tracked companion design docs), and keep `plan.md` local.
 5. The plan is now ready for execution.
+
+### Dispatch resilience
+
+Every phase above (and every implementer dispatch during execution) is delegated to an agent that can come back empty — it errors, or hits a session/token limit and returns an empty final message (`subagent_tokens: 0`). When that happens, **do not retry blindly or stall**:
+
+- **Resume the same agent via `SendMessage` when that tool is available** — this reuses its accumulated context and is the cheapest recovery.
+- **Otherwise, complete the phase inline from the prior phase's artifact.** The requirements doc, design doc, or the concrete touch points you already gathered usually carry enough to finish the next phase directly. Write the missing output yourself and continue, rather than re-running the whole dispatch from scratch.
 
 ## Execution (Post-Approval)
 
