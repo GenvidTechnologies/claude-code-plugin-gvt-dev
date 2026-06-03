@@ -13,6 +13,11 @@ and follows [semantic versioning](https://semver.org/).
   skill is usually invoked from the just-merged (and possibly squash-deleted)
   feature branch — check out an up-to-date default branch before classifying, so
   the release isn't prepared on the wrong ref.
+- `planner` agent: added a "flag throwaway intermediate steps" heuristic — when a
+  later task routes through a high-level upstream aggregate (`detect*`/`analyze*`/
+  `build*`), read its implementation; if an earlier task installs parallel work
+  into code the later task deletes wholesale, fold the deletions forward and
+  de-risk with equivalence tests instead of a discarded intermediate refactor. (#6)
 
 ## [2.2.0] - 2026-06-03
 
