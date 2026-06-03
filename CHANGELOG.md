@@ -16,6 +16,11 @@ and follows [semantic versioning](https://semver.org/).
 - `plan-task` skill: Phase 4 now handles a gitignored `plan.md` — if the repo
   keeps `plan.md` as a local-only artifact, skip the prep commit instead of
   force-adding it.
+- `plan-task` skill: continuation shortcut now guards against a stale gitignored
+  `plan.md` — a gitignored plan lingers after its branch merges, so confirm an
+  existing plan maps to the current task (branch unmerged, tasks not already in
+  the default branch) before resuming it; otherwise treat the work as a fresh
+  plan and overwrite.
 - `CLAUDE.md`: documented that this repo squash-merges PRs (merge commits
   disabled).
 

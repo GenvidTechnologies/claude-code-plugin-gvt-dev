@@ -114,6 +114,7 @@ For **continuation** of existing work:
 
 - Read the project's tracking doc (if any) and the prior plan
 - Check git log for completed tasks
+- **Guard against a stale gitignored `plan.md`.** A gitignored plan lingers on disk after its branch merges, so an existing `plan.md` may describe *already-shipped, unrelated* work. Before treating it as continuation, confirm it maps to the current task — its branch is unmerged and its tasks aren't already in `origin/<default-branch>`'s log. If it's stale, treat the new work as a fresh plan and overwrite it; don't resume it.
 - If a `plan.md` exists with unexecuted tasks:
   1. Spot-check a few representative items from the plan against the current code to confirm they haven't drifted
   2. Present a brief summary: "Plan exists for X, Y tasks remaining. Ready to execute?"
