@@ -127,6 +127,12 @@ Then gather the facts (read the remote/authoritative side, not just local):
 - The plugin's marketplace `ref` (read it live, above).
 - Whether `CHANGELOG.md` has a `## [<version>]` section for that version.
 
+> **Windows note.** Under git-bash (the Bash tool on Windows), the
+> `git show <ref>:<path>` forms above get mangled — the `:` becomes `;` and `/`
+> becomes `\`, so `git show origin/main:.claude-plugin/plugin.json` fails with an
+> "ambiguous argument" error. Prefix the command with `MSYS_NO_PATHCONV=1`, or
+> read the file after checking out the branch (PowerShell is unaffected).
+
 Classify into exactly one state and act accordingly:
 
 | State | How to recognize it | Action |

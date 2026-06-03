@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `release-plugin` skill: added a Windows note to Phase 1 — under git-bash the
+  `git show <ref>:<path>` state-assessment commands get path-mangled (`:`→`;`,
+  `/`→`\`) and fail with "ambiguous argument"; prefix with `MSYS_NO_PATHCONV=1` or
+  read the file after checkout.
+
 ## [2.6.0] - 2026-06-03
 
 ### Added
