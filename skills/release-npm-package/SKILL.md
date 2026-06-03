@@ -116,6 +116,13 @@ Start every run with:
 git fetch origin --tags --prune
 ```
 
+**You were probably invoked from the just-merged feature branch.** Releasing
+right after a PR merges is the common case, so the working checkout is often the
+feature branch — which a squash-merge may have already deleted on the remote
+(`git status` shows `[gone]`). Get onto an up-to-date default branch *before*
+classifying: `git checkout <default> && git merge --ff-only origin/<default>`.
+Otherwise Phase 3 prepares the release on the wrong ref.
+
 Then gather these signals:
 
 - Remote default-branch tip: `git rev-parse origin/<default>`; local tip: `git

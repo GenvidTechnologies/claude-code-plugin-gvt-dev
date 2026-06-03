@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `release-plugin` and `release-npm-package` skills: Phase 1 now notes that the
+  skill is usually invoked from the just-merged (and possibly squash-deleted)
+  feature branch — check out an up-to-date default branch before classifying, so
+  the release isn't prepared on the wrong ref.
+
 ## [2.2.0] - 2026-06-03
 
 ### Added

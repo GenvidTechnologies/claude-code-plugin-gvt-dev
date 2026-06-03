@@ -107,6 +107,14 @@ The single most common false alarm is a local branch that is simply behind
 git fetch origin --tags --prune
 ```
 
+**You were probably invoked from the just-merged feature branch.** Releasing
+right after a PR merges is the common case, so the working checkout is often the
+feature branch — which a squash-merge may have already deleted on the remote
+(`git status` shows `[gone]`). Get onto an up-to-date default branch *before*
+classifying: `git checkout <default-branch> && git merge --ff-only origin/<default-branch>`.
+Otherwise Phase 3's "work on the default branch" lands you mid-flow on the wrong
+ref.
+
 Then gather the facts (read the remote/authoritative side, not just local):
 
 - Default branch tip: `git rev-parse origin/<default-branch>`; local tip:
