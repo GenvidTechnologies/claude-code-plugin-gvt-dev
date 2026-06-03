@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-06-03
+
 ### Changed
 
 - `analyst` agent: added a "refresh refreshable artifacts before diffing" Key
