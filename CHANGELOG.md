@@ -7,6 +7,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `code-reviewer` agent: a "Deletion completeness" checklist item — when the diff
+  deletes a tracked file, grep docs (`*.md`) for the basename and classify each hit
+  as a **live pointer** (markdown link or "see X"/"canonical example" prose → flag
+  for fix, repoint at git history) versus **historical prose** (dated retro /
+  changelog entry → leave as the record). Counters the under-flag where a broken
+  markdown link gets rated "leave as educational record." (#23)
+
 ## [2.6.1] - 2026-06-03
 
 ### Changed
