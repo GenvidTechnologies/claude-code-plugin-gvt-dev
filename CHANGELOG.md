@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-06-03
+
 ### Added
 
 - `code-reviewer` agent: a "False-positive guardrails" subsection that runs before
