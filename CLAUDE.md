@@ -117,6 +117,7 @@ The marketplace catalog ([`claude-code-marketplace`](https://github.com/genvid-h
 
 - **Commit messages**: scope-based freeform (`<scope>: <description>`), no ticket prefix. The `BUN-XXXX` format in `examples/` is illustrative of a *consuming* game project, not this repo.
 - **Branches**: descriptive kebab-case, no prefix (e.g., `split-marketplace`).
+- **Merging PRs**: merge commits are disabled — PRs are **squash-merged** (`gh pr merge <n> --squash`). A `--merge` will be rejected by the repository.
 - **Skill names**: verb-noun, namespaced as `/genvid-dev:<name>` at invocation time.
 - **Agent dispatch references** inside skills: always namespaced (`genvid-dev:validator`, `genvid-dev:analyst`, etc.).
 - **Versioning**: `.claude-plugin/plugin.json` carries a semver `version`. Bump it when shipping a meaningful change to skills/agents/hooks.

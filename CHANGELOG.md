@@ -7,6 +7,18 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `analyst` agent: added a "sync before judging git/release state" principle —
+  run `git fetch` and compare against `origin` before concluding a repo is in a
+  broken/inconsistent state, since a merely-behind local checkout is a
+  fast-forward, not a defect.
+- `plan-task` skill: Phase 4 now handles a gitignored `plan.md` — if the repo
+  keeps `plan.md` as a local-only artifact, skip the prep commit instead of
+  force-adding it.
+- `CLAUDE.md`: documented that this repo squash-merges PRs (merge commits
+  disabled).
+
 ## [2.1.0] - 2026-06-02
 
 ### Added

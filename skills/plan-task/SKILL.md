@@ -90,7 +90,7 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
    git log --oneline HEAD..origin/<default-branch>   # should be empty
    ```
    If behind, fast-forward (`git merge --ff-only origin/<default-branch>`) before starting. Stale-base execution produces a PR diff that mixes the plan's changes with upstream-merge noise.
-4. **Commit the plan and any companion design docs as a single prep commit** before kicking off the first implementation task. This keeps git history in logical order (`prep → task 1 → task 2 → ...`) and prevents retroactive plan commits from landing after tested code.
+4. **Commit the plan and any companion design docs as a single prep commit** before kicking off the first implementation task. This keeps git history in logical order (`prep → task 1 → task 2 → ...`) and prevents retroactive plan commits from landing after tested code. **Exception:** some repos gitignore `plan.md` (or the planning location) so it stays a local-only working artifact — check `git check-ignore plan.md` first. If it's ignored, that's intentional; don't force-add it. Skip the prep commit (or commit only the tracked companion design docs), and keep `plan.md` local.
 5. The plan is now ready for execution.
 
 ## Execution (Post-Approval)
