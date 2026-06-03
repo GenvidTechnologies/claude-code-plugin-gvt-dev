@@ -7,8 +7,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `release-npm-package` skill: routine release of an npm package on the OIDC `genvid-public-ci` `publish.yml` recipe — bump, tag, and trigger the publish workflow. (#5)
+- `release-npm-package-evals/`: behavioral eval harness for the skill's Phase 1 state-classifier and OIDC-recipe gate (seven evals across six fixture classes). (#5)
+
 ### Changed
 
+- `planner` agent: added a "mirror fidelity" principle — when a task clones an
+  existing structure (eval harness, sibling skill, fixture set), enumerate the
+  model's coverage and justify any omission in the plan, rather than silently
+  shipping a reduced set that only surfaces at review.
 - `analyst` agent: added a "sync before judging git/release state" principle —
   run `git fetch` and compare against `origin` before concluding a repo is in a
   broken/inconsistent state, since a merely-behind local checkout is a
@@ -16,6 +25,11 @@ and follows [semantic versioning](https://semver.org/).
 - `plan-task` skill: Phase 4 now handles a gitignored `plan.md` — if the repo
   keeps `plan.md` as a local-only artifact, skip the prep commit instead of
   force-adding it.
+- `plan-task` skill: continuation shortcut now guards against a stale gitignored
+  `plan.md` — a gitignored plan lingers after its branch merges, so confirm an
+  existing plan maps to the current task (branch unmerged, tasks not already in
+  the default branch) before resuming it; otherwise treat the work as a fresh
+  plan and overwrite.
 - `CLAUDE.md`: documented that this repo squash-merges PRs (merge commits
   disabled).
 

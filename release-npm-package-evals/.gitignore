@@ -1,0 +1,8 @@
+# Generated eval run artifacts — regenerable, kept local.
+# The reusable test infra (evals.json, fixtures/, this dir's README) IS
+# committed; the per-iteration outputs/grading/benchmark/viewer are not.
+iteration-*/
+outputs/
+grading.json
+benchmark.json
+*.html
