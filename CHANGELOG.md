@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-06-03
+
 ### Added
 
 - `plan-task` skill: Shortcuts section now names a third compression case — a
