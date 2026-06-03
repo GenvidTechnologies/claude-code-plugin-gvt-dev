@@ -1,0 +1,7 @@
+{
+  "name": "genvid-foo",
+  "version": "0.1.0",
+  "description": "A brand-new Genvid plugin not yet in the marketplace",
+  "author": { "name": "Genvid" },
+  "license": "MIT-0"
+}

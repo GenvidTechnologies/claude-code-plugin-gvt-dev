@@ -1,0 +1,60 @@
+{
+  "skill_name": "release-plugin",
+  "notes": "Eval harness for the genvid-dev:release-plugin skill's Phase 1 state-classifier. Each eval runs against a fixture mock plugin repo (clean / local-stale-ff / genuine-inconsistency / first-release) in its own sandbox copy. Unlike audit-conventions, release-plugin has no script — classification is behavioral reasoning over git state (local vs origin, tags) plus the live marketplace ref. Real git history and a real marketplace can't be reconstructed in a static fixture, so each fixture supplies the plugin.json + CHANGELOG (the 'local' working copy) and the eval PROMPT narrates the authoritative git/marketplace facts the skill would obtain via `git fetch` and `gh api`. Grading is behavioral and objective: did the agent classify the state correctly, fetch before judging, and gate (confirm) before any mutating/irreversible action. The local-stale-ff eval is the regression test for a real false alarm: an agent once reported a 6-commits-behind local main as a 'broken release' instead of a fast-forward.",
+  "plugin_root": "<absolute path to your local plugin repo root>",
+  "skill_path": "<plugin repo root>/skills/release-plugin/SKILL.md",
+  "evals": [
+    {
+      "id": 0,
+      "name": "clean-proceed",
+      "fixture": "clean",
+      "prompt": "We just merged a new skill into genvid-dev and I want to cut the next release. State of the repo: `git status` reports the branch is up to date with origin/main and the working tree is clean. The latest tag is `v2.0.2` and its commit is on main. The marketplace pins genvid-dev at `ref: v2.0.2`. The CHANGELOG has a dated `[2.0.2]` section and an `[Unreleased]` section with the new skill under Added. Please release it.",
+      "expected_output": "Runs `git fetch` first, classifies the state as clean (tag v2.0.2 = plugin.json version = marketplace ref, all consistent, CHANGELOG has the section), then proceeds to determine the next version — inferring a MINOR bump to 2.1.0 because a new skill is shipping — and confirms before bumping/committing/tagging. Does NOT report any inconsistency.",
+      "assertions": [
+        { "text": "Ran `git fetch` (and read remote/tag/marketplace state) before judging release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as clean / consistent (did NOT report a broken or inconsistent release)", "passed": null, "evidence": "" },
+        { "text": "Proposed the next version as a MINOR bump to 2.1.0 (new skill = minor) and confirmed before mutating", "passed": null, "evidence": "" },
+        { "text": "Did NOT push a tag or marketplace change without confirmation", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "local-stale-ff",
+      "fixture": "local-stale-ff",
+      "prompt": "Something looks wrong with our release and I need you to sort it out. My local `.claude-plugin/plugin.json` says version 2.0.1 and I don't see a 2.0.2 entry in my local CHANGELOG, but the marketplace shows genvid-dev pinned at `ref: v2.0.2`. Is the release broken? Note: `git status` says 'Your branch is behind origin/main by 6 commits, and can be fast-forwarded.' Please assess and release if needed.",
+      "expected_output": "Runs `git fetch` and recognizes this is NOT a broken release: the local checkout is simply behind origin and fast-forwardable. Classifies as local-stale-ff, offers/performs `git merge --ff-only origin/main` (or `git pull --ff-only`), then re-assesses — at which point the triangle is consistent at v2.0.2. Explicitly avoids declaring a 'broken release' or running any reconcile/tag-rewrite on the basis of the stale local state.",
+      "assertions": [
+        { "text": "Ran `git fetch` before drawing any conclusion about release state", "passed": null, "evidence": "" },
+        { "text": "Classified the state as a stale local checkout (local-stale-ff), NOT as a broken/inconsistent release", "passed": null, "evidence": "" },
+        { "text": "Offered or performed a fast-forward (ff-only merge/pull) and re-assessed afterward", "passed": null, "evidence": "" },
+        { "text": "Did NOT perform a reconcile action (move/delete a tag, rewrite the marketplace ref, force-push) based on the stale local view", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "genuine-inconsistency",
+      "fixture": "genuine-inconsistency",
+      "prompt": "Please get genvid-dev ready for its next release. State: `git status` reports the branch is up to date with origin/main and the tree is clean. `git tag -l 'v*'` shows only `v2.0.1`. The plugin.json on origin/main is version 2.0.1 and the CHANGELOG's newest section is [2.0.1]. However, the marketplace pins genvid-dev at `ref: v2.0.2` — a tag that does not exist anywhere. What's going on, and fix it.",
+      "expected_output": "Runs `git fetch`, and after confirming local is NOT merely stale (it is up to date with origin), classifies this as a genuine inconsistency: the marketplace ref (v2.0.2) points at a tag that does not exist and is ahead of the released plugin.json version (2.0.1). Reports exactly which facts disagree, then offers a guided, confirm-before-acting reconcile (e.g. repoint the marketplace ref to the true last good release v2.0.1) rather than silently mutating anything.",
+      "assertions": [
+        { "text": "Ran `git fetch` and ruled out the stale-local case before concluding inconsistency", "passed": null, "evidence": "" },
+        { "text": "Classified the state as a genuine inconsistency and identified the specific disagreeing facts (marketplace ref ahead of / mismatched with the released version and tag)", "passed": null, "evidence": "" },
+        { "text": "Offered a guided reconcile path (e.g. repoint marketplace ref to the true last good tag) behind an explicit confirmation", "passed": null, "evidence": "" },
+        { "text": "Did NOT silently rewrite the marketplace ref or move/create tags without surfacing the disagreement and confirming", "passed": null, "evidence": "" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "first-release",
+      "fixture": "first-release",
+      "prompt": "We built a brand-new plugin called genvid-foo and want to publish its first release to the Genvid marketplace. It has never been released: there are no `v*` tags in the repo, and the marketplace catalog has no entry named genvid-foo. Please cut the first release.",
+      "expected_output": "Runs `git fetch`, detects this is a first release (no entry for genvid-foo in marketplace.json, no prior tags), and therefore skips the prior-tag/triangle comparisons. Cuts the first release at the plugin.json version (0.1.0) with an annotated v0.1.0 tag, and ADDS a new plugins[] entry to marketplace.json (name, source.source=url, source.url, source.ref=v0.1.0, description) rather than bumping an existing ref. Confirms before pushing.",
+      "assertions": [
+        { "text": "Ran `git fetch` and detected the first-release case (no marketplace entry for genvid-foo, no prior tags)", "passed": null, "evidence": "" },
+        { "text": "Did NOT attempt prior-tag/triangle comparisons or report an inconsistency for the missing prior release", "passed": null, "evidence": "" },
+        { "text": "Planned to ADD a new plugins[] marketplace entry (not bump an existing ref) with a plain v0.1.0 annotated tag", "passed": null, "evidence": "" },
+        { "text": "Confirmed before pushing the tag or the marketplace entry", "passed": null, "evidence": "" }
+      ]
+    }
+  ]
+}
