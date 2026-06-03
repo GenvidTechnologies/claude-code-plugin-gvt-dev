@@ -7,6 +7,30 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `code-reviewer` agent: a "False-positive guardrails" subsection that runs before
+  assigning critical severity — check whether the apparent bug is documented or
+  deliberately supported behavior (grep `docs/`, `CLAUDE.md`, `CONVENTIONS.md`,
+  nearby code/tests) and downgrade or drop it if so; reconcile any contradicting
+  evidence (a passing run/test/cited output) before asserting a defect; and reserve
+  🔴 Critical for findings traced to an actual failure (repro, failing test, or a
+  concrete broken path), not "this looks wrong". (#18)
+
+### Changed
+
+- `plan-task` skill: added an "Execution resilience" note to the Pipeline — if a
+  delegated agent returns empty, errors, or hits a session/token limit, resume it
+  via `SendMessage` to reuse its context when that tool is available, otherwise
+  complete the phase inline from the prior phase's artifact rather than retrying
+  blindly or stalling. (#20)
+- `plan-task` skill and `analyst` agent: added a runtime-observability gate for
+  bug tickets — confirm the reported symptom is actually observable before design
+  (reproduce it, or trace the read/render path end-to-end, not just the write path);
+  if no reader observes the bad value, reclassify the task as tech-debt cleanup
+  (`chore`/`refactor`) rather than a fix and say so explicitly. The analyst now
+  distinguishes "defect present in code" from "symptom observable at runtime". (#19)
+
 ## [2.5.0] - 2026-06-03
 
 ### Changed
