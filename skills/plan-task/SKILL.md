@@ -110,6 +110,13 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 - Skip the designer if the approach is obvious
 - The planner can produce a minimal plan directly
 
+For an **issue that's already a full proposal** (rationale + proposed change + explicit open questions):
+
+- Treat the **issue as the requirements doc** — skip the analyst.
+- Resolve the open questions (if any) with a single `AskUserQuestion` call — one question per open question, recommended option first — instead of dispatching the designer.
+- Present a combined design + plan in **one checkpoint**, explicitly flagging any friction the chosen answers introduce.
+- Still produce `plan.md`, a prep commit, one-commit-each tasks, and the validator + code-reviewer gates.
+
 For **continuation** of existing work:
 
 - Read the project's tracking doc (if any) and the prior plan
