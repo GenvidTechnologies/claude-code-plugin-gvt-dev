@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-06-03
+
 ### Changed
 
 - `release-plugin` skill: added a Windows note to Phase 1 — under git-bash the
