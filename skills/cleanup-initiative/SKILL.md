@@ -87,6 +87,7 @@ Adjust the include globs for the project's languages (consult `.genvid-agent.jso
 
 - Redirect the reference to surviving documentation (the relevant test-file JSDoc, a `docs/` page, an entry in the project's lessons-learned doc).
 - Strip the dead-link line as part of the same close-out commit.
+- If the reference points at a **live data/code artifact** (not prose) that the project still consumes at build/validate/runtime — a checked-in snapshot, fixture, or generated file — redirect-or-strip is wrong. **Relocate the artifact to a permanent home** outside `initiatives/` (e.g. a `data/`, `fixtures/`, or `snapshots/` dir), update every reference, and — if a tool writes the artifact — repoint its default output. Only then proceed to deletion, or the delete removes a live dependency. Use `git mv` (not delete + recreate) to preserve the artifact's history; note that `git mv` can leave an empty source subdir that needs its own cleanup before the folder delete.
 
 The doc-only check above does **not** catch this — it looks at outbound knowledge, not inbound references — and the gap is structural for any initiative whose design docs got cited by source `@see` annotations. Skipping this step ships dead JSDoc links into the default branch.
 

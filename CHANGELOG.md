@@ -22,6 +22,11 @@ and follows [semantic versioning](https://semver.org/).
   against git history before trusting it — `git log --grep` + a deliverable
   cross-check catch the "table says Planned/in-progress but the scope actually
   shipped" drift, which would otherwise skip cleanup of a done initiative. (#11)
+- `cleanup-initiative` skill: Step 2 inbound-reference handling gained a third
+  option — if a hit points at a live data/code artifact (not prose) the project
+  still consumes, `git mv` it to a permanent home outside `initiatives/`, update
+  references, and repoint any tool's default output before deleting, rather than
+  redirect-or-strip which would remove a live dependency. (#12)
 
 ## [2.2.0] - 2026-06-03
 
