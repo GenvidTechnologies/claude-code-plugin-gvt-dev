@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-06-03
+
 ### Changed
 
 - `release-plugin` and `release-npm-package` skills: Phase 1 now notes that the
