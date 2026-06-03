@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `plan-task` skill: Shortcuts section now names a third compression case — a
+  GitHub issue that's already a full proposal (rationale + proposed change +
+  explicit open questions). Treat the issue as the requirements doc, resolve any
+  open questions with a single `AskUserQuestion` call, and present a combined
+  design + plan in one checkpoint. (#14)
+
 ## [2.3.0] - 2026-06-03
 
 ### Changed
