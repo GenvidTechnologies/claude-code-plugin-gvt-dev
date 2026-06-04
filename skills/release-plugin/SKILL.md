@@ -20,6 +20,11 @@ description: >-
   or routine non-release work like adding a skill without shipping a release.
 metadata:
   expects:
+    config:
+      - key: paths.plugin_root
+        in: .genvid-agent.json
+        required: false
+        reason: Path from the repo root to the directory containing .claude-plugin/plugin.json; defaults to "." (plugin at repo root). Set to e.g. "plugin" for a subfolder layout, which also selects the git-subdir marketplace source shape.
     tools:
       - command: git
         reason: Reads remote state, creates the release commit and annotated tag, and pushes the branch and tag to origin
@@ -42,6 +47,23 @@ the one step a skill cannot perform: the consumer-facing `/plugin update`.
 Work in small, ordered steps. The release is a **two-repo, multi-push**
 operation — get the ordering right (tag before marketplace ref) so a partial
 failure never points the catalog at a tag that doesn't exist yet.
+
+## Resolve the plugin root first
+
+Most plugins live flat at the repo root — for them `<plugin_root>` is `.` and
+every command below is exactly the historical command. A plugin MAY instead live
+in a **subfolder** (so one repo can hold several plugins, or a plugin plus a
+dev/consumer workspace). Read `paths.plugin_root` from `.genvid-agent.json` once,
+up front; use `.` when the key is absent or empty.
+
+Everywhere below, `<plugin_root>/` prefixes the shipped paths —
+`<plugin_root>/.claude-plugin/plugin.json`, `<plugin_root>/CHANGELOG.md`,
+`claude plugin validate <plugin_root>`. When `<plugin_root>` is `.` the prefix
+collapses to the bare path and the flat-at-root case is unchanged. When it is,
+say, `plugin`, the manifest is at `plugin/.claude-plugin/plugin.json`, the
+changelog at `plugin/CHANGELOG.md`, and the marketplace entry uses the
+**`git-subdir`** source shape (`path` = `<plugin_root>`) instead of the
+whole-repo `url` shape (see Phase 5).
 
 ## When this applies / when it doesn't
 
@@ -66,8 +88,8 @@ A correct release keeps these four facts equal and consistent — call it the
 
 1. The git tag is a **plain annotated `vX.Y.Z`** (e.g. `v2.1.0`) — *not* a
    prefixed name like `<plugin>-v2.1.0`, *not* a lightweight tag, *not* a SHA.
-2. The tag string minus its leading `v` **equals** `.claude-plugin/plugin.json`
-   `version` at the tagged commit.
+2. The tag string minus its leading `v` **equals**
+   `<plugin_root>/.claude-plugin/plugin.json` `version` at the tagged commit.
 3. The marketplace pins the plugin by **`source.ref` = that exact tag** (never a
    SHA, never a branch).
 4. `CHANGELOG.md` has a dated `## [X.Y.Z]` section for the released version.
@@ -87,15 +109,27 @@ gh api repos/genvid-holdings/claude-code-marketplace/contents/.claude-plugin/mar
   --jq .content | base64 -d
 ```
 
-Each plugin entry has the shape:
+Each plugin entry has one of two source shapes, chosen by `<plugin_root>`:
 
 ```json
+// plugin at repo root (<plugin_root> = ".") — whole-repo "url" source
 {
   "name": "<plugin>",
   "source": { "source": "url", "url": "https://github.com/genvid-holdings/<repo>.git", "ref": "vX.Y.Z" },
   "description": "..."
 }
+
+// plugin in a subfolder (<plugin_root> = "plugin") — "git-subdir" source with a path
+{
+  "name": "<plugin>",
+  "source": { "source": "git-subdir", "url": "https://github.com/genvid-holdings/<repo>.git", "path": "<plugin_root>", "ref": "vX.Y.Z" },
+  "description": "..."
+}
 ```
+
+For a `git-subdir` source the subdirectory key is **`path`** (`url` and `path`
+are both required; `ref` pins the version). The triangle's fact #3 reads the same
+`source.ref` in either shape.
 
 ## Phase 1 — Assess state (fetch first, then classify)
 
@@ -120,16 +154,20 @@ Then gather the facts (read the remote/authoritative side, not just local):
 - Default branch tip: `git rev-parse origin/<default-branch>`; local tip:
   `git rev-parse HEAD`; and `git status -sb`.
 - `plugin.json` version at the remote default branch:
-  `git show origin/<default-branch>:.claude-plugin/plugin.json`.
+  `git show origin/<default-branch>:<plugin_root>/.claude-plugin/plugin.json`
+  (when `<plugin_root>` is `.`, this is the bare
+  `git show origin/<default-branch>:.claude-plugin/plugin.json`).
 - Highest existing tag: `git tag -l 'v*' --sort=-v:refname | head -1`, and
   whether its commit is on the default branch:
   `git merge-base --is-ancestor <tag> origin/<default-branch>`.
 - The plugin's marketplace `ref` (read it live, above).
-- Whether `CHANGELOG.md` has a `## [<version>]` section for that version.
+- Whether `<plugin_root>/CHANGELOG.md` has a `## [<version>]` section for that
+  version.
 
 > **Windows note.** Under git-bash (the Bash tool on Windows), the
 > `git show <ref>:<path>` forms above get mangled — the `:` becomes `;` and `/`
-> becomes `\`, so `git show origin/main:.claude-plugin/plugin.json` fails with an
+> becomes `\` (the `<plugin_root>/` prefix is part of that colon-path), so
+> `git show origin/main:plugin/.claude-plugin/plugin.json` fails with an
 > "ambiguous argument" error. Prefix the command with `MSYS_NO_PATHCONV=1`, or
 > read the file after checking out the branch (PowerShell is unaffected).
 
@@ -193,15 +231,16 @@ free one. State the chosen first-publishable / next version explicitly.
 Make all in-repo edits, then a single release commit. Work on the default branch
 (or a short-lived branch if it is protected — see Phase 5).
 
-1. **Version.** Set `.claude-plugin/plugin.json` `version` to `X.Y.Z`.
-2. **CHANGELOG.** Move the `## [Unreleased]` content into a new dated section
-   `## [X.Y.Z] - <today>` (Keep a Changelog format), leaving an empty
-   `## [Unreleased]` above it. Use the session's current date. If the repo has
-   no `CHANGELOG.md`, create one (first release) seeded from the history.
-3. **Validate** before committing:
+1. **Version.** Set `<plugin_root>/.claude-plugin/plugin.json` `version` to `X.Y.Z`.
+2. **CHANGELOG.** In `<plugin_root>/CHANGELOG.md`, move the `## [Unreleased]`
+   content into a new dated section `## [X.Y.Z] - <today>` (Keep a Changelog
+   format), leaving an empty `## [Unreleased]` above it. Use the session's
+   current date. If `<plugin_root>` has no `CHANGELOG.md`, create one (first
+   release) seeded from the history.
+3. **Validate** before committing (point validate at the plugin root):
 
    ```bash
-   claude plugin validate .
+   claude plugin validate <plugin_root>      # bare `.` when plugin is at the repo root
    ```
 
 4. **Commit** both files together with the subject `release: vX.Y.Z`. Show the
@@ -244,7 +283,8 @@ exist and be pushed **before** the marketplace points at it, or every consumer's
    git push origin vX.Y.Z
    ```
 
-   Plain `vX.Y.Z`. Confirm `vX.Y.Z` (minus `v`) equals `plugin.json` `version`.
+   Plain `vX.Y.Z`. Confirm `vX.Y.Z` (minus `v`) equals
+   `<plugin_root>/.claude-plugin/plugin.json` `version`.
 4. **Update the marketplace `ref`.** Clone the catalog shallowly into a temp
    dir, edit only the one ref value, review the diff, commit, push:
 
@@ -252,15 +292,33 @@ exist and be pushed **before** the marketplace points at it, or every consumer's
    git clone --depth 1 https://github.com/genvid-holdings/claude-code-marketplace.git <tmp>
    ```
 
-   In `<tmp>/.claude-plugin/marketplace.json`, change **only** the target
-   plugin's `"ref": "vOLD"` to `"ref": "vX.Y.Z"` (version-bump), **or** add a
-   new `plugins[]` entry with `name`, `source.source: "url"`, `source.url`,
-   `source.ref: "vX.Y.Z"`, `description` (first release). Do a **single-value
-   string replace — never re-serialize the JSON** (re-serializing reorders keys
-   and reindents, producing a noisy, unreviewable diff). Then:
+   In `<tmp>/.claude-plugin/marketplace.json`, the edit depends on the case —
+   each keeps the JSON byte-stable except the lines it must touch (**never
+   re-serialize the JSON**: re-serializing reorders keys and reindents, producing
+   a noisy, unreviewable diff):
+
+   - **Version bump (steady state).** Change **only** the target plugin's
+     `"ref": "vOLD"` to `"ref": "vX.Y.Z"` — a single-value string replace.
+     Same for either source shape (`url` or `git-subdir`).
+   - **First release at the repo root** (`<plugin_root>` = `.`). Add a new
+     `plugins[]` entry with `name`, `source.source: "url"`, `source.url`,
+     `source.ref: "vX.Y.Z"`, `description`.
+   - **First release from a subfolder** (`<plugin_root>` ≠ `.`). Add a new
+     `plugins[]` entry whose source is the `git-subdir` shape:
+     `source.source: "git-subdir"`, `source.url`, `source.path: "<plugin_root>"`,
+     `source.ref: "vX.Y.Z"`, `description`.
+   - **🔻 First *subfolder* publish of a plugin that already has a `url` entry**
+     (the one-time migration moment). This is the **single named exception** to
+     "one string, one edit": the existing entry transitions from `url` to
+     `git-subdir` — change `source.source` `"url"`→`"git-subdir"`, **add**
+     `source.path: "<plugin_root>"`, and bump `source.ref`. Touch nothing else;
+     the `git -C <tmp> diff` below must show only those lines.
+
+   Then:
 
    ```bash
-   git -C <tmp> diff                 # must show only the one ref line changing
+   git -C <tmp> diff                 # only the ref line (bump); or, on a first
+                                     # subfolder publish, only source/path/ref
    git -C <tmp> commit -am "release: <plugin> vX.Y.Z"
    git -C <tmp> push
    ```
@@ -301,7 +359,15 @@ The ordering makes the failure windows safe:
   that fails after tagging leaves consumers untouched.
 - **Single-value string replace on `marketplace.json`.** Re-serializing JSON
   reorders keys and changes indentation, turning a one-line bump into an
-  unreviewable diff. The edit is one string; keep it one string.
+  unreviewable diff. Every steady-state release is one string; keep it one
+  string. The lone exception is the first subfolder publish (`url`→`git-subdir`),
+  which touches exactly `source`, `path`, and `ref` — still a hand-checked,
+  minimal diff, never a re-serialization.
+
+- **`plugin_root` defaults to `.`.** A plugin at the repo root resolves every
+  path to its historical form and keeps the whole-repo `url` source, so existing
+  plugins are unaffected; only a repo that opts into a subfolder (via
+  `paths.plugin_root`) gets the `git-subdir` shape.
 - **Plain annotated `vX.Y.Z`, ref-pinned (not SHA).** A readable tag that equals
   `plugin.json` `version` is the contract the marketplace and consumers share; a
   SHA pin hides which version is live and breaks the triangle.
