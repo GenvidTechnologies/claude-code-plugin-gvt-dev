@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-06-04
+
 ### Changed
 
 - `release-plugin`: subfolder-layout awareness. Reads `paths.plugin_root` from
