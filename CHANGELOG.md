@@ -7,6 +7,18 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `release-plugin`: subfolder-layout awareness. Reads `paths.plugin_root` from
+  `.genvid-agent.json` (default `"."` → unchanged for every plugin-at-root repo)
+  and resolves `.claude-plugin/plugin.json`, `CHANGELOG.md`,
+  `claude plugin validate`, and the release-triangle `git show` paths relative to
+  it. The marketplace step now supports the `git-subdir` source shape
+  (`path` = `<plugin_root>`) alongside the whole-repo `url` shape, including the
+  one-time `url`→`git-subdir` flip on a first subfolder publish. `paths.plugin_root`
+  is documented in `CONVENTIONS.md` as a reserved key and declared
+  `required: false` in the skill's `metadata.expects`.
+
 ### Added
 
 - `triage-bugs`: new skill for interactive, tracker-agnostic bug-backlog triage.
