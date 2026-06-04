@@ -8,7 +8,9 @@ edit the file here, not a JS string literal.
 
 - `.genvid-agent.json` — empty config schema (the consumer fills in real values)
 - `CLAUDE.md` — stub with the `@CONVENTIONS.md` import and section placeholders
-- `docs/TOC.md` — placeholder documentation index
+- `docs/TOC.md` — placeholder documentation index (its `architecture.md` /
+  `design-patterns.md` / `runbook.md` entries are prompts for the consumer to
+  create and fill in, not files that ship with the scaffold)
 
 `CONVENTIONS.md` is **not** here: the scaffold copies the plugin's own canonical
 `CONVENTIONS.md` from the repo root, which is already a single source of truth.
