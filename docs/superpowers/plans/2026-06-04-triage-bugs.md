@@ -248,14 +248,16 @@ GitHub task-list under a `Depends on` heading.
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{p}`, `{a}`, `{text}`, `{canonical}`, `{other}`, `{title}`,
-`{body}`, `{tmpfile}`, and `{triagedLabel}` are substituted by the skill.
+`{body}`, `{tmpfile}`, `{triagedLabel}`, and `{needsInfoLabel}` are substituted
+by the skill.
 
 - Set type: `gh issue edit {id} --remove-label "type:bug,type:crash,type:regression" --add-label "type:{type}"`
 - Set priority: `gh issue edit {id} --remove-label "priority/P0,priority/P1,priority/P2,priority/P3" --add-label "priority/{p}"`
 - Add area: `gh issue edit {id} --add-label "area:{a}"`
 - Remove area: `gh issue edit {id} --remove-label "area:{a}"`
-- Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}`
+- Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
 - Comment: `gh issue comment {id} --body "{text}"`
+- Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
 - Close duplicate (only with approval): `gh issue close {id} --reason "not planned" --comment "Duplicate of #{canonical}"`
 - Create split issue: `gh issue create --title "{title}" --body "{body}" --label "type:{type},area:{a}"`
