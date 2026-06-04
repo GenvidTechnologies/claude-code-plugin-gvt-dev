@@ -8,6 +8,7 @@ import { dirname, resolve, join } from 'node:path';
 
 import {
   translateLegacyConfig,
+  planGreenfield,
   planLegacy,
   applyPlan,
   scanDanglingReferences,
@@ -203,6 +204,49 @@ test('planLegacy: rendered file with LOCAL EDIT block is skipped, not deleted', 
     assert.ok(deletes.some((p) => p.includes('code-reviewer.md')), 'pristine code-reviewer.md should be deleted');
     assert.ok(notes.some((s) => s.includes('designer.md') && /LOCAL EDIT/.test(s)),
       'a prominent note must flag the LOCAL EDIT file');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #25 — greenfield scaffold must not clobber pre-existing convention files
+// ---------------------------------------------------------------------------
+
+test('planGreenfield: empty repo scaffolds all four files', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const plan = await planGreenfield(dir, PLUGIN_ROOT);
+    const writes = plan.actions.filter((a) => a.type === 'write-file').map((a) => a.path);
+    assert.ok(writes.some((p) => p.endsWith('CONVENTIONS.md')), 'CONVENTIONS.md scaffolded');
+    assert.ok(writes.some((p) => p.endsWith('CLAUDE.md')), 'CLAUDE.md scaffolded');
+    assert.equal(plan.actions.filter((a) => a.type === 'note').length, 0, 'no SKIPPED notes on empty repo');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planGreenfield: pre-existing CONVENTIONS.md / CLAUDE.md are SKIPPED, not overwritten', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'CONVENTIONS.md', 'hand-written c3 contract\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'detailed hand-written project context\n');
+  });
+  try {
+    const plan = await planGreenfield(dir, PLUGIN_ROOT);
+    const writes = plan.actions.filter((a) => a.type === 'write-file').map((a) => a.path);
+    const notes = plan.actions.filter((a) => a.type === 'note').map((a) => a.summary);
+
+    assert.ok(!writes.some((p) => p.endsWith('CONVENTIONS.md')), 'CONVENTIONS.md must NOT be overwritten');
+    assert.ok(!writes.some((p) => p.endsWith('CLAUDE.md')), 'CLAUDE.md must NOT be overwritten');
+    assert.ok(notes.some((s) => s.includes('CONVENTIONS.md') && /SKIPPED/.test(s)),
+      'a SKIPPED note must flag the pre-existing CONVENTIONS.md');
+    assert.ok(notes.some((s) => s.includes('CLAUDE.md') && /SKIPPED/.test(s)),
+      'a SKIPPED note must flag the pre-existing CLAUDE.md');
+
+    // The preserved files keep their original content after applying the plan.
+    await applyPlan(plan, dir);
+    assert.equal(await fs.readFile(join(dir, 'CONVENTIONS.md'), 'utf8'), 'hand-written c3 contract\n');
+    assert.equal(await fs.readFile(join(dir, 'CLAUDE.md'), 'utf8'), 'detailed hand-written project context\n');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -127,39 +127,41 @@ export async function planGreenfield(repoRoot, pluginRoot) {
   const actions = [];
   const conventionsSource = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
 
-  actions.push({
-    type: 'write-file',
-    path: join(repoRoot, CONVENTIONS_FILENAME),
-    content: conventionsSource,
-    summary: `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`,
-  });
+  // Scaffold each convention file only when it doesn't already exist. A repo can
+  // be classified greenfield (no .genvid-agent.json) while still owning a
+  // hand-written CONVENTIONS.md or CLAUDE.md — overwriting those would silently
+  // destroy authored content (issue #25). Skip-if-exists, and surface the skip
+  // as a note so the dry-run plan shows what's being preserved.
+  await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
+    `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
 
-  actions.push({
-    type: 'write-file',
-    path: join(repoRoot, NEW_CONFIG_FILENAME),
-    content: JSON.stringify(emptyAgentConfig(), null, 2) + '\n',
-    summary: `Scaffold ${NEW_CONFIG_FILENAME} with empty schema (fill in your project values)`,
-  });
+  await pushScaffold(actions, repoRoot, NEW_CONFIG_FILENAME,
+    JSON.stringify(emptyAgentConfig(), null, 2) + '\n',
+    `Scaffold ${NEW_CONFIG_FILENAME} with empty schema (fill in your project values)`);
 
-  if (!(await fileExists(join(repoRoot, CLAUDE_MD)))) {
-    actions.push({
-      type: 'write-file',
-      path: join(repoRoot, CLAUDE_MD),
-      content: scaffoldClaudeMd(),
-      summary: `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`,
-    });
-  }
+  await pushScaffold(actions, repoRoot, CLAUDE_MD, scaffoldClaudeMd(),
+    `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
 
-  if (!(await fileExists(join(repoRoot, TOC)))) {
-    actions.push({
-      type: 'write-file',
-      path: join(repoRoot, TOC),
-      content: scaffoldTOC(),
-      summary: `Scaffold ${TOC} with placeholder doc map`,
-    });
-  }
+  await pushScaffold(actions, repoRoot, TOC, scaffoldTOC(),
+    `Scaffold ${TOC} with placeholder doc map`);
 
   return { state: 'greenfield', actions };
+}
+
+// Queue a write-file action only when `rel` is absent under `repoRoot`; if it
+// already exists, queue a SKIPPED note instead so the greenfield scaffold never
+// clobbers pre-existing user content (issue #25) and the skip stays visible in
+// the dry-run plan.
+async function pushScaffold(actions, repoRoot, rel, content, writeSummary) {
+  const path = join(repoRoot, rel);
+  if (await fileExists(path)) {
+    actions.push({
+      type: 'note',
+      summary: `SKIPPED ${rel} — target already exists; keeping your copy`,
+    });
+    return;
+  }
+  actions.push({ type: 'write-file', path, content, summary: writeSummary });
 }
 
 // -----------------------------------------------------------------------------
