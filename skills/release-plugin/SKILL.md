@@ -92,7 +92,8 @@ A correct release keeps these four facts equal and consistent — call it the
    `<plugin_root>/.claude-plugin/plugin.json` `version` at the tagged commit.
 3. The marketplace pins the plugin by **`source.ref` = that exact tag** (never a
    SHA, never a branch).
-4. `CHANGELOG.md` has a dated `## [X.Y.Z]` section for the released version.
+4. `<plugin_root>/CHANGELOG.md` has a dated `## [X.Y.Z]` section for the released
+   version.
 
 The tagged commit must be reachable on `origin`'s default branch. Most "broken
 release" reports are really just a **stale local checkout** — assess before you
