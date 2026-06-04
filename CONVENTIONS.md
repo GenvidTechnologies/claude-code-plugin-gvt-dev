@@ -75,8 +75,9 @@ Skills tolerate missing sections — they fall back to generic behavior — but 
 - Use sparingly. If a flag can be detected from repo state (`package.json`, file presence), prefer detection over a flag.
 - Suggested toggles: `tdd` (project practices TDD), `monorepo` (multiple sub-projects in one repo).
 
-**`paths`** (optional object) — only set when a convention file lives somewhere non-default.
-- Example: `{"docs/TOC.md": "documentation/INDEX.md"}` if your project uses different paths.
+**`paths`** (optional object) — two distinct uses, told apart by key name.
+- **Convention-file overrides** — keys are convention-file names, values are the override path. Set only when a convention file lives somewhere non-default. Example: `{"docs/TOC.md": "documentation/INDEX.md"}`.
+- **Reserved key `plugin_root`** — *not* a convention-file override. When this repo **publishes** a Claude Code plugin from a subfolder (so several plugins, or a plugin plus a dev/consumer workspace, can share one repo), `paths.plugin_root` names that subfolder — the directory containing `.claude-plugin/plugin.json` (e.g. `"plugin"`). Consumed only by `/genvid-dev:release-plugin`, which resolves `.claude-plugin/plugin.json`, `CHANGELOG.md`, `claude plugin validate`, and the release-triangle `git show` paths relative to it, and selects the `git-subdir` marketplace source shape. Defaults to `"."` (plugin at the repo root → current behavior, fully backward-compatible) when absent. Declared `required: false` in `release-plugin`'s `metadata.expects`. A convention-file override never uses the key name `plugin_root`.
 
 ### Skill-specific config blocks
 
