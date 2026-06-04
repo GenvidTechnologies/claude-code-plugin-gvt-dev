@@ -32,13 +32,15 @@ Review the conversation and identify:
 
 ## 2. Documentation Improvements
 
-Check the project's documentation index (`docs/TOC.md`) and the consuming repo's `CLAUDE.md`. For each doc that's adjacent to what this session worked on, decide:
+Start from the project's documentation index (`docs/TOC.md`) and the repo's `CLAUDE.md`. **If `docs/TOC.md` is absent** (a greenfield consumer that hasn't scaffolded the contract, or the plugin repo itself), don't dead-end — discover the doc surface directly instead: glob `docs/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
+
+For each doc that's adjacent to what this session worked on, decide:
 
 - Does it need a correction (something was wrong)?
 - Does it need an addition (something missing)?
 - Does it need a clarification (something ambiguous)?
 
-Common files to check (vary by project — consult `docs/TOC.md`):
+Common files to check (vary by project — consult `docs/TOC.md`, or the glob above when there's no index):
 
 - `CLAUDE.md` — project-specific facts the plugin's skills reference
 - `docs/architecture.md` — system architecture and component boundaries
@@ -46,6 +48,8 @@ Common files to check (vary by project — consult `docs/TOC.md`):
 - `docs/coding-conventions.md` — naming, style, language-specific patterns
 - `docs/runbook.md` — operations procedures
 - `docs/lessons-learned.md` — accumulated insights (if the project uses one)
+
+**Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `CONVENTIONS.md`, `CLAUDE.md`, `docs/development-principles.md`, and the `skills/*/SKILL.md` / `agents/*.md` bodies. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
 
 ## 3. Claude Configuration Improvements
 
