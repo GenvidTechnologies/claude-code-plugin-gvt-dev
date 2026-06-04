@@ -28,6 +28,7 @@ const SETTINGS_JSON = '.claude/settings.json';
 const PACKAGE_JSON = 'package.json';
 const LEGACY_HOOK_BASENAME = 'pre-commit-lint.js';
 const LOCAL_EDIT_MARKER = 'LOCAL EDIT';
+const SKELETON_DIR = 'skeleton';
 
 // Legacy per-agent context sidecars (inlined via {{FILE:path}} by the old
 // template engine) map onto the docs the new plugin agents read via
@@ -132,20 +133,32 @@ export async function planGreenfield(repoRoot, pluginRoot) {
   // hand-written CONVENTIONS.md or CLAUDE.md — overwriting those would silently
   // destroy authored content (issue #25). Skip-if-exists, and surface the skip
   // as a note so the dry-run plan shows what's being preserved.
+  //
+  // CONVENTIONS.md is copied from the plugin's own canonical file; the other
+  // three come from the skeleton/ folder (the single file-based source of truth
+  // for what --fix writes — see skeleton/README.md).
   await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
     `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
 
   await pushScaffold(actions, repoRoot, NEW_CONFIG_FILENAME,
-    JSON.stringify(emptyAgentConfig(), null, 2) + '\n',
+    await readSkeleton(pluginRoot, NEW_CONFIG_FILENAME),
     `Scaffold ${NEW_CONFIG_FILENAME} with empty schema (fill in your project values)`);
 
-  await pushScaffold(actions, repoRoot, CLAUDE_MD, scaffoldClaudeMd(),
+  await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
 
-  await pushScaffold(actions, repoRoot, TOC, scaffoldTOC(),
+  await pushScaffold(actions, repoRoot, TOC, await readSkeleton(pluginRoot, TOC),
     `Scaffold ${TOC} with placeholder doc map`);
 
   return { state: 'greenfield', actions };
+}
+
+// Read a pristine placeholder convention file from the plugin's skeleton/ folder.
+// These are the exact bytes greenfield --fix writes; keeping them as real files
+// (rather than inline JS templates) gives one reviewable source of truth and
+// removes the drift hazard against examples/.
+async function readSkeleton(pluginRoot, rel) {
+  return fs.readFile(join(pluginRoot, SKELETON_DIR, rel), 'utf8');
 }
 
 // Queue a write-file action only when `rel` is absent under `repoRoot`; if it
@@ -216,7 +229,7 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
     actions.push({
       type: 'write-file',
       path: claudeMdPath,
-      content: scaffoldClaudeMd(),
+      content: await readSkeleton(pluginRoot, CLAUDE_MD),
       summary: `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`,
     });
   }
@@ -357,64 +370,6 @@ export async function applyPlan(plan, repoRoot) {
     }
   }
   return results;
-}
-
-// -----------------------------------------------------------------------------
-// Scaffold templates
-// -----------------------------------------------------------------------------
-
-function emptyAgentConfig() {
-  return {
-    project: { name: '<your-project-name>', description: '', languages: [] },
-    commands: { test: '', lint: '', build: '', validate: '' },
-    repo: {},
-    features: {},
-    paths: {},
-  };
-}
-
-function scaffoldClaudeMd() {
-  return `@CONVENTIONS.md
-
-# <Project Name>
-
-<!--
-Project context for Claude Code. The genvid plugin's skills read this
-file for project-specific facts the plugin can't infer. The
-@CONVENTIONS.md import above brings in the plugin's contract.
--->
-
-## Commit Format
-
-<!-- Document your project's commit format here. -->
-
-## Pull Request Format
-
-<!-- Document your project's PR title and body conventions. -->
-
-## Branching
-
-<!-- Branch naming, base branch, when to rebase vs. merge. -->
-`;
-}
-
-function scaffoldTOC() {
-  return `# Documentation Index
-
-<!--
-Genvid plugin skills consult this index to find your project's docs.
-Each entry should be a one-line description.
--->
-
-## Project context
-
-- \`architecture.md\` — system architecture
-- \`design-patterns.md\` — design patterns
-
-## Operations
-
-- \`runbook.md\` — operational procedures
-`;
 }
 
 // -----------------------------------------------------------------------------

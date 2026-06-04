@@ -1,0 +1,16 @@
+{
+  "project": {
+    "name": "<your-project-name>",
+    "description": "",
+    "languages": []
+  },
+  "commands": {
+    "test": "",
+    "lint": "",
+    "build": "",
+    "validate": ""
+  },
+  "repo": {},
+  "features": {},
+  "paths": {}
+}
