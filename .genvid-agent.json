@@ -1,0 +1,19 @@
+{
+  "project": {
+    "name": "genvid-dev",
+    "description": "The genvid-dev Claude Code plugin: shared skills, agents, hooks, and conventions for Genvid game projects.",
+    "languages": ["javascript"]
+  },
+  "commands": {
+    "test": "node --test skills/audit-conventions/scripts/test/*.test.mjs",
+    "lint": "",
+    "build": "",
+    "validate": "claude plugin validate . && node --test skills/audit-conventions/scripts/test/*.test.mjs"
+  },
+  "repo": {
+    "default_branch": "main",
+    "host": "github"
+  },
+  "features": {},
+  "paths": {}
+}

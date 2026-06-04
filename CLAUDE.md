@@ -15,6 +15,7 @@ The contract itself is documented in [`CONVENTIONS.md`](CONVENTIONS.md).
 ```
 claude-code-plugin-genvid-dev/
 ├── .claude-plugin/plugin.json    # Plugin manifest
+├── .genvid-agent.json            # This repo's own contract config (dogfood — makes genvid skills work here)
 ├── CONVENTIONS.md                # Public contract (canonical source)
 ├── skills/<name>/SKILL.md        # One directory per skill
 ├── agents/<name>.md              # Flat .md files (not directories)
@@ -22,8 +23,10 @@ claude-code-plugin-genvid-dev/
 │   ├── hooks.json                # Hook wiring (PreToolUse on Bash)
 │   └── pre-commit-lint.js        # The actual hook script
 ├── docs/
+│   ├── TOC.md                    # This repo's documentation index (dogfood)
 │   └── development-principles.md # Shared reference imported by skills/agents
-├── examples/                     # Example consuming-repo files (CLAUDE.md, .genvid-agent.json, docs/TOC.md)
+├── skeleton/                     # Pristine placeholder files greenfield --fix writes (source of truth for the scaffold)
+├── examples/                     # Worked, filled-in example consuming-repo files (Bunny game) for reference
 └── audit-conventions-evals/      # Skill eval harness (developer tooling)
 ```
 
@@ -32,6 +35,8 @@ claude-code-plugin-genvid-dev/
 - **The plugin lives at the repo root** — `.claude-plugin/plugin.json` plus `skills/`, `agents/`, `hooks/`, `docs/` are all top-level.
 - **Skills are directories** (`skills/<name>/SKILL.md`). The directory can include supporting files (sub-docs, scripts).
 - **Agents are flat files** (`agents/<name>.md`). Subdirectories are NOT discovered by the plugin loader.
+- **`skeleton/` is the scaffold's source of truth.** The greenfield `audit-conventions --fix` copies `skeleton/{.genvid-agent.json,CLAUDE.md,docs/TOC.md}` verbatim into a new repo (and `CONVENTIONS.md` from this repo's root). Edit the placeholder there, never a JS string literal. `skeleton/` holds *empty placeholders*; `examples/` holds a *filled-in* worked example — different purposes (see `skeleton/README.md`).
+- **This repo dogfoods its own contract.** It carries a real `.genvid-agent.json` and `docs/TOC.md` so the genvid skills (`plan-task`, `run-retro`, `validator`, …) work when developing the plugin itself. The audit therefore classifies this repo as `migrated`, not `greenfield`.
 
 ## Commands
 
