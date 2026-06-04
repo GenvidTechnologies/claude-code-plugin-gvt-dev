@@ -91,11 +91,11 @@ Run with no arguments to validate. Exit code is non-zero if any required expecta
 
 **Fix mode** (`--fix`):
 1. Detects the repo's state — greenfield (no conventions yet), legacy (still on the old template-rendered system), or migrated.
-2. **Greenfield:** scaffolds the four convention files with sensible defaults.
+2. **Greenfield:** scaffolds the four convention files with sensible defaults; any that already exist are left untouched and reported as SKIPPED.
 3. **Legacy:** translates the old `claude-config.json` into `.genvid-agent.json`, adds the `@CONVENTIONS.md` import to `CLAUDE.md`, removes the `burbank-claude-config` submodule, and deletes files rendered from the legacy templates (using an embedded snapshot of the old manifest to avoid touching project-local additions).
 4. **Migrated:** validates only; never modifies files.
 
-`--fix` refuses to run with a dirty working tree and prints the full plan + diff before applying. Always review and commit the result yourself.
+`--fix --apply` refuses to run with a dirty working tree (the dry-run previews fine on a dirty tree) and prints the full plan before applying. Always review and commit the result yourself.
 
 ## Self-declaring skills
 

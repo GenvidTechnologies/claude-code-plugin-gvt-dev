@@ -82,7 +82,7 @@ Review the plan, then run:
 /genvid-dev:audit-conventions --fix --apply
 ```
 
-The migration script refuses to run on a dirty working tree and doesn't auto-commit. After it runs, review `git status` / `git diff` and commit.
+The migration script's `--apply` step refuses to run on a dirty working tree and doesn't auto-commit (the dry-run previews safely on a dirty tree). After it runs, review `git status` / `git diff` and commit.
 
 ## Forking and adapting
 
