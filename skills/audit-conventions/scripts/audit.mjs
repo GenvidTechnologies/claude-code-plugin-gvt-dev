@@ -257,11 +257,12 @@ async function runFix(state) {
     process.exit(0);
   }
 
-  if (!APPLY_MODE && !(await workingTreeClean())) {
-    console.error('## --fix mode\n');
+  if (APPLY_MODE && !(await workingTreeClean())) {
+    console.error('## --fix --apply\n');
     console.error(`State: ${state}\n`);
-    console.error('Refusing to run with a dirty working tree. Commit or stash your changes first.');
-    console.error('(Note: --fix dry-run also refuses on a dirty tree so the planned changes can be safely applied later.)');
+    console.error('Refusing to apply with a dirty working tree. Commit or stash your changes first,');
+    console.error('so the migration lands as a reviewable diff with nothing else mixed in.');
+    console.error('(The --fix dry-run writes nothing and runs fine on a dirty tree — preview there first.)');
     process.exit(1);
   }
 
