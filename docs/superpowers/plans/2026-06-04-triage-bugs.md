@@ -62,6 +62,10 @@ metadata:
         in: .genvid-agent.json
         required: false
         reason: The wider read-only query used to detect duplicates against already-triaged or closed issues
+      - key: bugTracker.readOne
+        in: .genvid-agent.json
+        required: false
+        reason: The command the analyst runs to read a single issue's full body and comments
 ---
 
 You are a read-only bug-triage analyst for this project.
@@ -114,7 +118,7 @@ Run ONLY read commands (`list`, `view`, `get`, equivalents). Never run a command
 ### Split candidates
 - #61 — bundles 3 unrelated defects → propose 3 issues / sub-issues per Splitting policy.
 
-### Per-bug enrichment   (one entry per action-set bug)
+### Per-bug enrichment (one entry per action-set bug)
 - #12: type bug→crash · priority ∅→P1 · labels +area:netcode · body: language cleanup · missing: repro steps → needs-info · deps: none
 - #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none
 
@@ -329,6 +333,14 @@ metadata:
         in: .genvid-agent.json
         required: false
         reason: Wider read-only query used to detect duplicates against already-triaged or closed issues
+      - key: bugTracker.triagedLabel
+        in: .genvid-agent.json
+        required: false
+        reason: The label the skill stamps when a bug's triage is complete (and excludes from the default action set for idempotent re-runs)
+      - key: bugTracker.needsInfoLabel
+        in: .genvid-agent.json
+        required: false
+        reason: The label the skill applies when a triaged bug is missing required fields
     tools:
       - command: git
         required: false
