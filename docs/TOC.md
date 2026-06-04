@@ -18,7 +18,8 @@ read and update.
 Each skill and agent carries its own documentation in its frontmatter (`metadata.expects`) and body:
 
 - `../skills/*/SKILL.md` — one directory per skill
-- `../agents/*.md` — flat agent definitions (analyst, designer, planner, code-reviewer, ts-implementer, tech-writer, validator)
+- `../agents/*.md` — flat agent definitions (analyst, designer, planner, code-reviewer, ts-implementer, tech-writer, validator, bug-triage-analyst)
+- `../skills/triage-bugs/SKILL.md` — interactive bug-backlog triage; reads project conventions from a consuming repo's `docs/bug-triage.md` + `bugTracker` block (see `skills/triage-bugs/bug-triage.template.md` for the template)
 
 ## Scaffolding sources
 

@@ -7,6 +7,18 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `triage-bugs`: new skill for interactive, tracker-agnostic bug-backlog triage.
+  A main-thread orchestrator dispatches a read-only `bug-triage-analyst` agent to
+  fetch the untriaged bugs (plus a wider comparison set for dedup) and propose
+  duplicate clusters, overlaps, dependencies, split candidates, and per-bug
+  field/label/priority/language fixes; the orchestrator then drives a two-phase
+  approval and applies the writes, stamping a `triaged` label last for
+  idempotent re-runs. Project specifics come from a new `bugTracker` block in
+  `.genvid-agent.json` and a `docs/bug-triage.md` conventions doc (both
+  skill-conditional / `required: false`; a template ships with the skill).
+
 ## [2.7.0] - 2026-06-04
 
 ### Changed

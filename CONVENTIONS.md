@@ -78,6 +78,15 @@ Skills tolerate missing sections — they fall back to generic behavior — but 
 **`paths`** (optional object) — only set when a convention file lives somewhere non-default.
 - Example: `{"docs/TOC.md": "documentation/INDEX.md"}` if your project uses different paths.
 
+### Skill-specific config blocks
+
+The keys above are the shared core, but the schema is **not closed**. A single skill that needs project-specific config for an external system may introduce its own **namespaced top-level block** — e.g. `triage-bugs` reads a `bugTracker` block (its fetch queries, command templates, and label names). Such a block:
+
+- is declared by that skill's (or its agent's) `metadata.expects` with `required: false`, so the audit surfaces it as optional and never fails a repo that doesn't use the skill;
+- is owned by the skill, not the shared contract — only repos that use the skill need it.
+
+This is expected extensibility, **not** schema drift. Keep these blocks lean (machine-read access mechanics); put prose conventions and command recipes in a `docs/<skill>.md` doc instead. (Reserve `features` for booleans the plugin can't infer; reserve a namespaced block for richer per-skill config.)
+
 ## How `/genvid-dev:audit-conventions` works
 
 `audit-conventions` is the plugin's validator and migration tool.
