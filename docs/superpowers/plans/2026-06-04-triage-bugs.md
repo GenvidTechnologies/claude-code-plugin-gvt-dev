@@ -317,7 +317,7 @@ Expected: `ABSENT`
 ````markdown
 ---
 name: triage-bugs
-description: Triages a project's bug backlog interactively — fetches the untriaged bugs, dispatches a read-only analyst subagent to detect duplicates, overlaps, dependencies and split candidates and to propose field/label/priority/language fixes, then drives a two-phase approval that applies the changes and stamps a 'triaged' label. Tracker-agnostic; all project specifics come from docs/bug-triage.md and the bugTracker block in .genvid-agent.json. Use when triaging a bug backlog, grooming issues, or cleaning up duplicates and priorities.
+description: Triages a project's bug backlog interactively — deduplicates, enriches, links dependencies, splits overstuffed issues, and stamps a 'triaged' label. Tracker-agnostic; project specifics come from docs/bug-triage.md and the bugTracker block in .genvid-agent.json. Use when triaging a bug backlog, grooming issues, or cleaning up duplicates and priorities.
 metadata:
   expects:
     files:
@@ -381,7 +381,9 @@ recipes) and the `bugTracker` block in `.genvid-agent.json` (access mechanics).
 Dispatch the `genvid-dev:bug-triage-analyst` agent with: the resolved scope, the
 `bugTracker` block verbatim, and the path `docs/bug-triage.md`. It returns one
 structured triage report. **Do not fetch issue bodies yourself** — keeping them
-off this thread is the point of the split.
+off this thread is the point of the split. Mode flags (`--non-interactive`,
+`--force`) govern only this thread's approval and write behavior; the analyst
+always runs read-only regardless.
 
 ## 2. Phase 1 review — cross-cutting findings (interactive)
 
@@ -389,16 +391,19 @@ Present the **relational** findings as a set: duplicate clusters, overlaps,
 dependencies, split candidates. For each, let the user accept / reject / adjust
 (e.g. change the canonical, drop a cluster member, reject a split). Destructive
 items — close-as-duplicate, create split issues — are **recorded but NOT applied
-here**; they are scheduled into the per-bug walk.
+here**; they are carried into the per-bug walk, matched to each affected bug by
+issue number.
 
 In `--non-interactive`, accept the analyst's findings as-is, but still defer the
 destructive items unless `--force` was passed.
 
 ## 3. Phase 2 — per-bug walk (interactive)
 
-For each action-set bug, present its proposed enrichment plus any relational
-actions inherited from Phase 1, then apply the approved changes using the
-**Mutation recipes** in `docs/bug-triage.md`:
+For each action-set bug, gather its work from two places in the analyst's
+report: its **Per-bug enrichment** row, and any Phase 1 relational findings
+whose membership includes this bug's number (duplicate-cluster membership, an
+accepted dependency, an approved split). Present both together, then apply the
+approved changes using the **Mutation recipes** in `docs/bug-triage.md`:
 
 - type / priority / field updates, label add/remove, body language fixes;
 - `needsInfoLabel` + a comment when a required field is missing (or let the
