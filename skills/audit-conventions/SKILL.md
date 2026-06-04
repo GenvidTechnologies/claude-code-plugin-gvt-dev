@@ -55,7 +55,7 @@ When a required check is missing, take the reason seriously — it's what the sk
 
 - **Missing required file** — create it with project-appropriate content. The plugin's `CONVENTIONS.md` describes the expected shape of each convention file.
 - **Missing required config key** — add the key to the named file (typically `.genvid-agent.json`) per the schema in `CONVENTIONS.md`.
-- **Missing tool** — install the tool, or document in `CLAUDE.md` why the skill in question isn't usable in this repo.
+- **Missing tool** — install the tool, or document in `CLAUDE.md` why the skill in question isn't usable in this repo. **Windows caveat:** the tool check probes the PATH of the *shell that launched the audit*, so a POSIX tool like `grep` (the `cleanup-initiative` requirement) reports **missing** from PowerShell but **present** from Git Bash, which puts `usr/bin` on PATH. That's an environmental difference, not a false positive — if a skill you actually use needs `grep`, run it from a shell that has the tool (or install it on the system PATH) rather than treating the finding as a bug.
 - **State = greenfield** — run `/genvid-dev:audit-conventions --fix` to scaffold the four convention files.
 - **State = legacy** — run `/genvid-dev:audit-conventions --fix` to migrate from the old template-rendered setup.
 
@@ -83,13 +83,13 @@ Executes the same plan against the filesystem and prints per-action results.
 
 ### Behavior by state
 
-- **Greenfield** — scaffolds `CLAUDE.md`, `CONVENTIONS.md` (copy of the plugin's canonical), `docs/TOC.md`, `.genvid-agent.json`. The scaffolded files have placeholders the user fills in.
+- **Greenfield** — scaffolds `CLAUDE.md`, `CONVENTIONS.md` (copy of the plugin's canonical), `docs/TOC.md`, `.genvid-agent.json`. The scaffolded files have placeholders the user fills in. Any of these that **already exist** are left untouched and reported as SKIPPED — a repo can own a hand-written `CONVENTIONS.md` or `CLAUDE.md` while still classifying greenfield (no `.genvid-agent.json`), and the scaffold never overwrites existing content.
 - **Legacy** — translates the old `claude-config.json` into `.genvid-agent.json` (mapping the project's real `PACKAGE_MANAGER` / `TEST_COMMAND` / validation commands into `commands.*`, not generic `npm` placeholders), adds the `@CONVENTIONS.md` import to `CLAUDE.md`, copies `CONVENTIONS.md` to the repo root, deletes the rendered `.claude/` files that came from the legacy templates (only files carrying the `AUTO-GENERATED` marker — and no `LOCAL EDIT` block — are deleted; user-edited and locally-extended files are kept and surfaced in the SKIPPED notes), ports legacy per-agent context sidecars (`.claude/agents/*/project-*.md`) to their new `docs/` homes, removes dangling references to the deleted files (the `pre-commit-lint.js` hook entry in `.claude/settings.json`, submodule-referencing `package.json` scripts), and removes the `burbank-claude-config` submodule via `git submodule deinit` + `git rm`. After applying, it prints a **Manual follow-up** report listing any stale text references (in `CLAUDE.md`, `docs/`) or orphaned sidecars it could not clean up automatically.
 - **Migrated** — refuses to "fix" anything (validation only). Tell the user the repo is already migrated.
 
 ### Safety rails
 
-- Refuses to run (in either step) on a dirty working tree. Commit or stash first.
+- Refuses to **apply** on a dirty working tree (commit or stash first, so the migration lands as a clean reviewable diff). The dry-run writes nothing and previews fine on a dirty tree.
 - Doesn't auto-commit. The user reviews `git status` / `git diff` and commits manually.
 - User-edited rendered files (no `AUTO-GENERATED` marker) are preserved — the plan reports them as SKIPPED so the user knows what was kept.
 - Rendered files that keep the `AUTO-GENERATED` marker but add a `LOCAL EDIT` block are also preserved (never silently deleted) — the plan flags them as SKIPPED so their local content can be ported before the file is removed by hand.
