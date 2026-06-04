@@ -48,6 +48,12 @@ Work in small, ordered steps. The release is a **two-repo, multi-push**
 operation — get the ordering right (tag before marketplace ref) so a partial
 failure never points the catalog at a tag that doesn't exist yet.
 
+> **Self-referential releases.** When a release changes *this* skill in a way a
+> **later** release depends on (e.g. adding subfolder support before a repo moves
+> its plugin into a subfolder), ship that release and `/plugin update` it **before**
+> cutting the dependent one. The *installed* skill runs the release, not the
+> working tree — so the enabling change must already be installed.
+
 ## Resolve the plugin root first
 
 Most plugins live flat at the repo root — for them `<plugin_root>` is `.` and

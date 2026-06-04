@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `release-plugin`: note that a self-referential release (one that changes this
+  skill in a way a later release depends on) must be shipped and installed before
+  the dependent release — the installed skill runs the release, not the working
+  tree.
+
 ## [2.8.0] - 2026-06-04
 
 ### Changed
