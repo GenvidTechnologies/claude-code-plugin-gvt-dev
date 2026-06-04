@@ -7,6 +7,22 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `audit-conventions`: greenfield `--fix` no longer clobbers a pre-existing
+  `CONVENTIONS.md` (and now reports `CLAUDE.md` / `docs/TOC.md` skips as visible
+  `SKIPPED` notes in the dry-run). The `--fix` dry-run is allowed on a dirty
+  working tree (only `--apply` refuses). Documented the grep/Windows-PATH
+  shell-sensitivity caveat. (#25)
+- `audit-conventions`: the greenfield scaffold now sources its placeholder files
+  from a new `skeleton/` folder (`.genvid-agent.json`, `CLAUDE.md`,
+  `docs/TOC.md`) instead of inline JS string literals — one reviewable,
+  file-based source of truth, removing the drift hazard against `examples/`.
+- `run-retro`: added an explicit fallback for when `docs/TOC.md` is absent
+  (greenfield consumers, or the plugin repo itself) — discover docs by globbing
+  `docs/**/*.md` and reading `CLAUDE.md` / `CONVENTIONS.md` instead of
+  dead-ending, plus guidance for running the retro inside the plugin repo.
+
 ## [2.6.2] - 2026-06-03
 
 ### Added
