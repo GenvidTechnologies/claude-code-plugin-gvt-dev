@@ -226,6 +226,27 @@ test('planGreenfield: empty repo scaffolds all four files', async () => {
   }
 });
 
+test('planGreenfield: scaffold content is sourced verbatim from skeleton/', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const plan = await planGreenfield(dir, PLUGIN_ROOT);
+    const writeFor = (suffix) => plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith(suffix));
+
+    const agentCfg = writeFor('.genvid-agent.json');
+    assert.equal(agentCfg.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/.genvid-agent.json'), 'utf8'));
+    assert.doesNotThrow(() => JSON.parse(agentCfg.content), 'skeleton .genvid-agent.json must be valid JSON');
+
+    const claudeMd = writeFor('CLAUDE.md');
+    assert.equal(claudeMd.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/CLAUDE.md'), 'utf8'));
+    assert.match(claudeMd.content, /@CONVENTIONS\.md/, 'skeleton CLAUDE.md must keep the @CONVENTIONS.md import');
+
+    const toc = writeFor('TOC.md');
+    assert.equal(toc.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/docs/TOC.md'), 'utf8'));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('planGreenfield: pre-existing CONVENTIONS.md / CLAUDE.md are SKIPPED, not overwritten', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'CONVENTIONS.md', 'hand-written c3 contract\n');
