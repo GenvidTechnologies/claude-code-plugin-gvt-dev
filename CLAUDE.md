@@ -100,6 +100,13 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 4. Verify with `claude plugin validate .`.
 5. Smoke-test by updating the local install (`claude plugin update genvid-dev@genvid-plugins`) and checking `claude plugin details genvid-dev`.
 
+**If the skill needs project-specific config for an external system** (a bug tracker, CI, a dashboard — anything the plugin can't infer), follow the **two-surface pattern** rather than hardcoding one tool or stuffing prose into JSON:
+
+- **Structured access mechanics** → a namespaced top-level block in `.genvid-agent.json` (e.g. `bugTracker`: queries, command templates, key names). Lean, machine-read. Declared in the skill's `metadata.expects` as `required: false` (skill-conditional — see `CONVENTIONS.md`).
+- **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/bug-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
+- **A bundled template** alongside the skill (e.g. `skills/triage-bugs/bug-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
+- **A read-only exploration agent** (e.g. `bug-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-bugs` is the reference implementation.
+
 ## Adding a new agent
 
 1. Create `agents/<name>.md` — **flat file**, not a directory.
@@ -138,5 +145,7 @@ node --test skills/audit-conventions/scripts/test/*.test.mjs
 ```
 
 For skill/agent **content**, `claude plugin validate` catches schema errors, manual review catches content drift, and `claude plugin details` confirms the plugin's component inventory after changes.
+
+**Executing a TDD-style plan for skills/agents** (e.g. via the superpowers `writing-plans` / `subagent-driven-development` flow): there's no test runner to make "write the failing test" literal, so map red→green onto the tools that exist. **Red** = a presence/structural check that fails before the file exists (`test -f …`, or a `grep` for required headings/frontmatter). **Green** = that same structural check passing, plus `claude plugin validate .`, plus `node skills/audit-conventions/scripts/audit.mjs` exiting 0 (proves new `required: false` expectations stayed optional and didn't widen the contract). Commit per task as usual.
 
 For skill **behavior** — does Claude wielding the skill do the right thing? — there's a skill-level eval harness under [`audit-conventions-evals/`](audit-conventions-evals/) (see its README). It runs the skill against fixture consuming-repos via subagents and grades behavioral assertions (ran the validator vs. hand-rolled, identified state, previewed `--fix` before applying, stopped at the dry-run for approval). It's worth building one for a skill whose correctness is **objectively verifiable, state-dependent, or safety-gated**; judgment-heavy workflow skills (most of the plugin) don't need it. The harness is developer tooling — it requires Claude subagents, so it doesn't run in CI.
