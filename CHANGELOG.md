@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-06-04
+
 ### Changed
 
 - `audit-conventions`: greenfield `--fix` no longer clobbers a pre-existing
