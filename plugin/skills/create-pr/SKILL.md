@@ -51,8 +51,8 @@ Check `git status` for stray scratch files at the repo root and handle them deli
 
 Inspect `git remote get-url origin` and pick the flow:
 
-- Contains `github.com` → **GitHub** flow (Step 4a, uses `gh pr create`)
-- Contains `bitbucket.org` → **Bitbucket** flow (Step 4b, copy-paste link)
+- Contains `github.com` → **GitHub** flow (Step 5a, uses `gh pr create`)
+- Contains `bitbucket.org` → **Bitbucket** flow (Step 5b, copy-paste link)
 - Anything else → check `.genvid-agent.json` `repo.host`, or ask the user
 
 ### 2. Gather information
@@ -70,7 +70,25 @@ git diff --stat origin/<base>..HEAD          # file change summary
 - If the branch is stacked on a feature branch: use that branch
 - If the user specifies: use their choice
 
-### 4. Prepare PR description
+### 4. Detect issues this PR closes
+
+Scan for issues this branch resolves, then **confirm with the user before adding any closing keyword** — never auto-inject one.
+
+- **Find candidates** by scanning the commit log and branch name for `#N` references:
+  ```bash
+  git log origin/<base>..HEAD --format='%s%n%b'   # commit subjects + bodies
+  git branch --show-current                        # e.g. fix-issue-41
+  ```
+- **Confirm with the user:** "This PR looks like it closes #N — add a closing keyword?" Only add a keyword for an issue the PR **fully** resolves. If it only partially addresses one, leave the keyword out (reference it without a keyword if useful).
+- **Add the keyword to the body, not the title:** one `Closes #N` (or `Fixes #N`) line per resolved issue, placed at the end of the `## Summary` section — after its bullets, before the next heading.
+
+**Why the body, not the title (the gotcha):** GitHub auto-closes a linked issue on merge **only when a closing keyword** (`Closes`/`Fixes`/`Resolves #N`) appears in the PR **body** (or a commit message), **and only when the PR merges into the default branch**. A bare `(#N)` cross-reference — what squash-title conventions like `feat: … (#6)` produce — links the issue but never closes it. So the keyword belongs in the description regardless of the project's title convention.
+
+**Stacked PRs:** if this PR targets a feature branch rather than `<base>` (the default branch), still add the keyword, but warn the user it won't fire until the stack lands on the default branch — they may need to close the issue manually, or it'll close when the final PR in the stack merges.
+
+**Bitbucket:** this applies to the GitHub flow (Step 5a). Bitbucket uses its own `Closes #N` smart-commit syntax in commit messages — a separate follow-up.
+
+### 5. Prepare PR description
 
 Read `CLAUDE.md` for the project's PR title format (some projects use a ticket prefix, some don't; some require a type tag like `[infra]`) and any project-specific test plan items.
 
@@ -82,6 +100,8 @@ Default description template (override sections per CLAUDE.md):
 - Bullet point covering what changed
 - Bullet point covering why
 - Bullet point covering anything reviewers should pay attention to
+
+Closes #N
 
 ## Changes
 
@@ -99,7 +119,7 @@ Default description template (override sections per CLAUDE.md):
 🤖 Generated with [Claude Code](https://claude.ai/code)
 ```
 
-### 4a. Create the PR — GitHub
+### 5a. Create the PR — GitHub
 
 Use the `gh` CLI directly (no copy-paste step). Pass the body via heredoc:
 
@@ -112,6 +132,8 @@ gh pr create --base <base> --title "<title>" --body "$(cat <<'EOF'
 ## Summary
 
 - ...
+
+Closes #N
 
 ## Changes
 
@@ -134,7 +156,7 @@ EOF
 - **If a PR already exists:** do not create a second one. Either report the existing URL or use `gh pr edit <number> --body "$(cat <<'EOF' ... EOF)"` to update it (after user confirmation).
 - **Return the PR URL** that `gh pr create` prints.
 
-### 4b. Create the PR — Bitbucket
+### 5b. Create the PR — Bitbucket
 
 Bitbucket has no CLI flow that accepts a body — generate a link and have the user paste the description.
 
@@ -156,7 +178,7 @@ Check whether a PR already exists (the `git push` output often prints `View pull
 https://bitbucket.org/<workspace>/<repo>/pull-requests/new?source=<source-branch>&dest=<base>
 ```
 
-### 5. Present to user
+### 6. Present to user
 
 For both providers, give the user:
 

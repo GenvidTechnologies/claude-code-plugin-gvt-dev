@@ -36,6 +36,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`create-pr`: link-and-close tracked issues (#41).** A new "Detect issues this
+  PR closes" step scans the commit log and branch name for `#N` references and,
+  after user confirmation, adds a `Closes #N` (or `Fixes #N`) line to the PR
+  **body** under `## Summary` — one per fully-resolved issue, never auto-injected.
+  Documents the gotcha that GitHub auto-closes only when a closing *keyword* is in
+  the body (or a commit) *and* the PR merges into the default branch; a bare
+  `(#N)` squash-title cross-reference links but does not close. Warns that a
+  stacked PR's keyword won't fire until the stack reaches the default branch.
+  GitHub flow only; the Bitbucket smart-commit equivalent is a follow-up.
 - **Renamed `triage-bugs` → `triage-issues`** (and its agent `bug-triage-analyst`
   → `issue-triage-analyst`, conventions doc `docs/bug-triage.md` →
   `docs/issue-triage.md`, bundled template `bug-triage.template.md` →
