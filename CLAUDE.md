@@ -113,6 +113,21 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 2. Agent frontmatter supports `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, plus custom `metadata`.
 3. Skills dispatching the agent use `subagent_type: "genvid-dev:<name>"` — plugin agents are namespaced.
 
+## Renaming a skill or agent
+
+A rename touches more than the file — work the whole cross-reference surface:
+
+1. **`git mv`** the file/directory (and any bundled sub-docs/templates) so history is preserved.
+2. **Frontmatter `name:`** in the moved `SKILL.md` / agent `.md`, plus the body title and self-references.
+3. **Dispatch references** — every `genvid-dev:<old-name>` (skills dispatching an agent) and `/genvid-dev:<old-name>` invocation mention.
+4. **`metadata.expects` paths** — a renamed scaffolded doc (e.g. `docs/<x>.md`) is declared in *both* the skill and its agent.
+5. **Cross-doc references** — `CONVENTIONS.md`, `CLAUDE.md`, `docs/TOC.md`.
+6. **`CHANGELOG.md`** — add an `[Unreleased]` migration note; **leave shipped version entries intact** (they record what actually shipped).
+7. **Leave `docs/superpowers/specs|plans/` historical artifacts unchanged** — they're dated design records.
+8. **Decide config-schema scope** — a namespaced config block (e.g. `bugTracker`) can keep its name to avoid a consumer config break even when the skill is renamed; if so, note the intentional decoupling.
+9. **Consumer impact** — a renamed invocation name or scaffolded doc path is **breaking**: it needs a version bump and a CHANGELOG migration note.
+10. **Verify** — `claude plugin validate .` and `node skills/audit-conventions/scripts/audit.mjs` (exit 0).
+
 ## Adding shared reference content
 
 Reference docs that multiple skills/agents import live at `docs/`. Reference them via `${CLAUDE_PLUGIN_ROOT}/docs/<filename>.md` — the substitution works in skill and agent content (but NOT in CLAUDE.md `@`-imports).
