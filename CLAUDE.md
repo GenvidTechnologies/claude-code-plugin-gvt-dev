@@ -103,9 +103,9 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 **If the skill needs project-specific config for an external system** (a bug tracker, CI, a dashboard — anything the plugin can't infer), follow the **two-surface pattern** rather than hardcoding one tool or stuffing prose into JSON:
 
 - **Structured access mechanics** → a namespaced top-level block in `.genvid-agent.json` (e.g. `bugTracker`: queries, command templates, key names). Lean, machine-read. Declared in the skill's `metadata.expects` as `required: false` (skill-conditional — see `CONVENTIONS.md`).
-- **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/bug-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
-- **A bundled template** alongside the skill (e.g. `skills/triage-bugs/bug-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
-- **A read-only exploration agent** (e.g. `bug-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-bugs` is the reference implementation.
+- **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/issue-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
+- **A bundled template** alongside the skill (e.g. `skills/triage-issues/issue-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
+- **A read-only exploration agent** (e.g. `issue-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-issues` is the reference implementation.
 
 ## Adding a new agent
 

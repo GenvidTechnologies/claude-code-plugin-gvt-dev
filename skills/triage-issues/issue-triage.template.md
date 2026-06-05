@@ -1,7 +1,7 @@
-# Bug Triage Conventions
+# Issue Triage Conventions
 
-> Project conventions consumed by `/genvid-dev:triage-bugs`. Copy this file to
-> `docs/bug-triage.md` and edit it for your tracker and taxonomy. The companion
+> Project conventions consumed by `/genvid-dev:triage-issues`. Copy this file to
+> `docs/issue-triage.md` and edit it for your tracker and taxonomy. The companion
 > **access mechanics** (fetch queries, label names) live in the `bugTracker`
 > block of `.genvid-agent.json` — see the skill's SKILL.md for that block.
 >
@@ -29,7 +29,7 @@ Decision rule: pick by the worst **observable** impact, not the suspected cause.
 ## Labels
 
 - `type:*` — exactly one (mutually exclusive): `type:bug`, `type:crash`, `type:regression`.
-- `area:*` — one or more subsystem tags: `area:skills`, `area:agents`, `area:hooks`, `area:audit`, `area:docs`, `area:marketplace`.
+- `area:*` — one or more subsystem tags (`area:netcode`, `area:ui`, …).
 - `priority/*` — exactly one: `priority/P0` … `priority/P3`.
 - `needs-info` — set when required fields are missing; cleared when supplied.
 - `duplicate` — set on non-canonical members of a duplicate cluster.
@@ -39,7 +39,7 @@ The triager sets `type:*`, `area:*`, and `priority/*`. Reporters may set `area:*
 
 ## Required fields
 
-Every triaged bug must have: a reproduction (steps or a failing case), expected
+Every triaged issue must have: a reproduction (steps or a failing case), expected
 vs. actual behavior, the build/version, and at least one `area:*` label. Missing
 any of these → add `needs-info` and comment exactly what is missing.
 

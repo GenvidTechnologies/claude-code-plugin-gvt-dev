@@ -81,7 +81,7 @@ Skills tolerate missing sections — they fall back to generic behavior — but 
 
 ### Skill-specific config blocks
 
-The keys above are the shared core, but the schema is **not closed**. A single skill that needs project-specific config for an external system may introduce its own **namespaced top-level block** — e.g. `triage-bugs` reads a `bugTracker` block (its fetch queries, command templates, and label names). Such a block:
+The keys above are the shared core, but the schema is **not closed**. A single skill that needs project-specific config for an external system may introduce its own **namespaced top-level block** — e.g. `triage-issues` reads a `bugTracker` block (its fetch queries, command templates, and label names). Such a block:
 
 - is declared by that skill's (or its agent's) `metadata.expects` with `required: false`, so the audit surfaces it as optional and never fails a repo that doesn't use the skill;
 - is owned by the skill, not the shared contract — only repos that use the skill need it.
