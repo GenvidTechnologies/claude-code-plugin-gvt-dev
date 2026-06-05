@@ -29,6 +29,14 @@ and follows [semantic versioning](https://semver.org/).
   break. **Consumer migration:** invoke `/genvid-dev:triage-issues` instead of
   `triage-bugs`, and rename your repo's `docs/bug-triage.md` to
   `docs/issue-triage.md` (the skill will otherwise offer to re-scaffold it).
+- **`triage-issues`: light-touch groom path (#35).** §0 step 1 no longer dead-ends
+  at scaffold-or-stop. When the user declines scaffolding `docs/issue-triage.md`, or
+  a quick scan shows a tiny enhancement/chore backlog with no bugs, the skill now
+  offers a **light-touch groom** (new §0a): propose label / priority / clarity /
+  cross-reference fixes directly via the tracker's native CLI using only existing
+  labels — no `docs/issue-triage.md` or `bugTracker` writes, no `triagedLabel`,
+  bypassing §1–§5. Covers the common "just tidy these few issues" case without
+  committing the repo to the full taxonomy.
 - `release-plugin`: note that a self-referential release (one that changes this
   skill in a way a later release depends on) must be shipped and installed before
   the dependent release — the installed skill runs the release, not the working
