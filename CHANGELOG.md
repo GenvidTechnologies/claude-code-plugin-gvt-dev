@@ -9,6 +9,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`triage-issues`: flat-label template variant (#34).** Repos using a simple
+  category-label set (GitHub's defaults — `bug`, `enhancement`, `documentation`,
+  `duplicate`, `question`, …) with no `type:`/`priority/`/`area:` scheme no longer
+  have to hand-rewrite the structured convention template. A new bundled
+  `issue-triage.flat.template.md` ships the flat shape (single category label, no
+  priorities, `question` doubling as needs-info), and §0 step 1 now probes the
+  repo's labels to default to the matching variant, confirms with the user, and
+  scaffolds it. `--non-interactive` uses the detected default.
 - **New `plan-next-issue` skill** — a small orchestrator that goes from a backlog
   to a plan: it auto-detects untriaged open issues and offers to run
   `triage-issues`, proposes a ranked shortlist of candidate issues for the user to
