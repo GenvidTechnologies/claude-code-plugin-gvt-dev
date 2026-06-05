@@ -98,7 +98,12 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 2. Avoid skill names containing `claude` or `anthropic` (reserved by Anthropic's validator).
 3. Prefer verb-noun names that read alone (`commit-changes`, not `commit`) — avoids collisions with built-in Claude Code skills.
 4. Verify with `claude plugin validate .`.
-5. Smoke-test by updating the local install (`claude plugin update genvid-dev@genvid-plugins`) and checking `claude plugin details genvid-dev`.
+5. **Run the audit** — `node skills/audit-conventions/scripts/audit.mjs` (exit 0) — to confirm any new `required: false` expectations stayed optional and didn't widen the aggregated contract (see [Testing](#testing)).
+6. **`CHANGELOG.md`** — add an `[Unreleased]` entry. A new invocable skill is consumer-visible surface, so it needs a version bump and a changelog note.
+7. **`docs/TOC.md`** — add a one-line Components entry for discoverability (especially orchestrators or skills carrying notable config — the `triage-issues` line is the precedent).
+8. Smoke-test by updating the local install (`claude plugin update genvid-dev@genvid-plugins`) and checking `claude plugin details genvid-dev`.
+
+**If the new skill orchestrates other skills** (invokes them via the Skill tool rather than doing the work itself — e.g. `plan-next-issue` chains `triage-issues` → `plan-task`), keep it a *pure orchestrator*: it owns no exploration and no writes, it sequences the delegated skills and makes only the decisions *between* them. Redeclare any config it reads (e.g. a `bugTracker` key consulted to rank candidates) in its own `metadata.expects` as `required: false` — accurate, and since it's optional the audit's aggregated contract is unaffected. This differs from the agent-dispatching orchestrators (`plan-task`) and from the two-surface external-system pattern below: a pure orchestrator introduces no new agent, template, or contract file of its own.
 
 **If the skill needs project-specific config for an external system** (a bug tracker, CI, a dashboard — anything the plugin can't infer), follow the **two-surface pattern** rather than hardcoding one tool or stuffing prose into JSON:
 
