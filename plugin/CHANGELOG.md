@@ -17,6 +17,12 @@ and follows [semantic versioning](https://semver.org/).
   spec (`npx -y @genvid/<pkg>@<version> …`) because `npx` resolves by package
   name, not bin name. Linked from `docs/TOC.md`. Internal authoring guidance — no
   consumer-facing or behavioral change.
+- **`docs/plugin-authoring.md`: numbered-step renumbering gotcha.** A note that
+  inserting/removing a `## Process` step cascades every following number and
+  invalidates cross-references to them — including refs *above* the insertion
+  point and in sibling skills, which `claude plugin validate` can't catch. Ships
+  a grep to reconcile them. Surfaced authoring the #41 `create-pr` change.
+  Internal authoring guidance — no consumer-facing or behavioral change.
 - **`triage-issues`: flat-label template variant (#34).** Repos using a simple
   category-label set (GitHub's defaults — `bug`, `enhancement`, `documentation`,
   `duplicate`, `question`, …) with no `type:`/`priority/`/`area:` scheme no longer
@@ -45,6 +51,10 @@ and follows [semantic versioning](https://semver.org/).
   `(#N)` squash-title cross-reference links but does not close. Warns that a
   stacked PR's keyword won't fire until the stack reaches the default branch.
   GitHub flow only; the Bitbucket smart-commit equivalent is a follow-up.
+- **`split-branch`: note the stacked-PR issue-closing caveat (#41).** Step 7
+  ("Create PRs") now points out that `create-pr`'s `Closes #N` keyword won't fire
+  on a stacked PR until the stack reaches the default branch, so the keyword
+  belongs on the branch whose merge actually lands the fix.
 - **Renamed `triage-bugs` → `triage-issues`** (and its agent `bug-triage-analyst`
   → `issue-triage-analyst`, conventions doc `docs/bug-triage.md` →
   `docs/issue-triage.md`, bundled template `bug-triage.template.md` →

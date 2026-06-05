@@ -156,6 +156,8 @@ Use `/genvid-dev:create-pr` for each branch. Set targets to create a stack:
 | Branch 3 | Branch 2 |
 | ... | ... |
 
+`create-pr` will offer to add a `Closes #N` keyword for any issue a branch resolves. On a stacked PR that keyword won't fire until the stack reaches the default branch — so put it on (and expect the close from) the branch whose merge actually lands the fix on the default branch.
+
 ## Tips
 
 - **Keep branches focused** — each should have a clear theme reviewers can understand at a glance.
