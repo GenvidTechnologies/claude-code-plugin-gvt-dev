@@ -139,6 +139,11 @@ Reference docs that multiple skills/agents import live at `docs/`. Reference the
 
 Sub-docs specific to one skill live alongside that skill (e.g., `skills/plan-task/multi-session.md`).
 
+When adding a **new** doc under `docs/`: add it to `docs/TOC.md` and an `[Unreleased]` `CHANGELOG.md` entry. Whether it needs a **version bump** depends on the doc's audience — `docs/` holds two kinds:
+
+- **Runtime-imported reference content** (pulled in by a skill/agent via `${CLAUDE_PLUGIN_ROOT}/docs/…`, e.g. `development-principles.md`) ships to consumers and is part of the plugin's behavioral surface → **bump**.
+- **Maintainer/authoring notes** read only by humans working *on* the plugin (e.g. `docs/plugin-authoring.md`) are internal → CHANGELOG entry for traceability, **no bump**.
+
 ## Releasing a new version
 
 Use `/genvid-dev:release-plugin` — it owns the full release runbook: assessing repo state (and distinguishing a stale local checkout from a genuine inconsistency), bumping `.claude-plugin/plugin.json` `version`, moving the `CHANGELOG.md` `[Unreleased]` section, authoring the `release: vX.Y.Z` commit, pushing the annotated `vX.Y.Z` tag, bumping the plugin's `source.ref` in the marketplace catalog, and handing off the consumer-facing `/plugin update` step.

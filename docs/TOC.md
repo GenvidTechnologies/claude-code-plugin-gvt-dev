@@ -12,6 +12,7 @@ read and update.
 - [`../CLAUDE.md`](../CLAUDE.md) — maintainer guide: repo layout, commands, how to add skills/agents, release flow
 - [`../README.md`](../README.md) — plugin overview and install instructions
 - [`development-principles.md`](development-principles.md) — the philosophy behind the analysis → design → planning pipeline
+- [`plugin-authoring.md`](plugin-authoring.md) — cross-plugin authoring gotchas (shipping MCP servers via `plugin.json`; `npx` package-name resolution; version pinning)
 
 ## Components
 

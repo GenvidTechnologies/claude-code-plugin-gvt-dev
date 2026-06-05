@@ -9,6 +9,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`docs/plugin-authoring.md`: cross-plugin authoring gotchas (#30).** A short
+  note capturing two gotchas that cost real debugging time while authoring a
+  sibling plugin (genvid-c3): ship MCP servers via `.claude-plugin/plugin.json`
+  `mcpServers` rather than a root `.mcp.json` (which is read as project-scope and
+  fires in the plugin's own dev repo), and invoke scoped packages by full package
+  spec (`npx -y @genvid/<pkg>@<version> …`) because `npx` resolves by package
+  name, not bin name. Linked from `docs/TOC.md`. Internal authoring guidance — no
+  consumer-facing or behavioral change.
 - **`triage-issues`: flat-label template variant (#34).** Repos using a simple
   category-label set (GitHub's defaults — `bug`, `enhancement`, `documentation`,
   `duplicate`, `question`, …) with no `type:`/`priority/`/`area:` scheme no longer
