@@ -7,6 +7,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **New `plan-next-issue` skill** — a small orchestrator that goes from a backlog
+  to a plan: it auto-detects untriaged open issues and offers to run
+  `triage-issues`, proposes a ranked shortlist of candidate issues for the user to
+  pick one or more, then hands each choice to `plan-task` (one combined plan, or
+  sequential per-issue runs). Pure orchestrator — no new agent or config; it reuses
+  the existing `bugTracker` block (read-only, `required: false`) and the
+  `issue-triage-analyst`. Interactive by default with the same
+  `--non-interactive` / `--force` flag set as `triage-issues`.
+
 ### Changed
 
 - **Renamed `triage-bugs` → `triage-issues`** (and its agent `bug-triage-analyst`
