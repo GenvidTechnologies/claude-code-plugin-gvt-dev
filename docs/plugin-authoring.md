@@ -39,6 +39,25 @@ Pinning `@<version>` in the `npx` invocation makes "update the MCP server" a
 one-line version bump and keeps consumers reproducible (no silent drift to a
 newer published version mid-session).
 
+## Inserting a step into a numbered `## Process` cascades references
+
+Most skill bodies number their `## Process` steps (`### 1.`, `### 2.`, … with
+`4a`/`4b` sub-steps). Inserting or removing a step renumbers every following
+step **and** silently invalidates any cross-reference to them — and those refs
+aren't only in the renumbered region. They hide *above* the insertion point
+(e.g. `create-pr`'s host-detection step 1 pointing at "Step 4a/4b"), in sibling
+skills, and in `docs/`.
+
+After any such edit, grep the whole file (and the skill's siblings) for stale
+step references before committing:
+
+```bash
+grep -rnE 'Step [0-9]+[a-z]?|### [0-9]+[a-z]?\.' plugin/skills/<name>/
+```
+
+Reconcile every hit against the new numbering. `claude plugin validate` will
+**not** catch a dangling "see Step 4a" — it's prose, not schema.
+
 ## Example
 
 A scoped MCP server, shipped via `plugin.json`, invoked by full package spec,
