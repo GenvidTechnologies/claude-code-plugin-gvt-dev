@@ -129,7 +129,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 
 A rename touches more than the file — work the whole cross-reference surface:
 
-1. **`git mv`** the file/directory (and any bundled sub-docs/templates) so history is preserved.
+1. **`git mv`** the file/directory (and any bundled sub-docs/templates) so history is preserved. *(Windows: `git mv` of a whole directory under an active file-watch — e.g. `plugin/skills/` — can fail with "Permission denied" while a node/editor process holds a watch handle; move its children individually into the new parent, then remove the emptied dir.)*
 2. **Frontmatter `name:`** in the moved `SKILL.md` / agent `.md`, plus the body title and self-references.
 3. **Dispatch references** — every `genvid-dev:<old-name>` (skills dispatching an agent) and `/genvid-dev:<old-name>` invocation mention.
 4. **`metadata.expects` paths** — a renamed scaffolded doc (e.g. `docs/<x>.md`) is declared in *both* the skill and its agent.
