@@ -20,6 +20,7 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../skills/*/SKILL.md` — one directory per skill
 - `../agents/*.md` — flat agent definitions (analyst, designer, planner, code-reviewer, ts-implementer, tech-writer, validator, issue-triage-analyst)
 - `../skills/triage-issues/SKILL.md` — interactive issue-backlog triage; reads project conventions from a consuming repo's `docs/issue-triage.md` + `bugTracker` block (see `skills/triage-issues/issue-triage.template.md` for the template)
+- `../skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 
 ## Scaffolding sources
 
