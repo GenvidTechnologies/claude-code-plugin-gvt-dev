@@ -49,7 +49,7 @@ Common files to check (vary by project — consult `docs/TOC.md`, or the glob ab
 - `docs/runbook.md` — operations procedures
 - `docs/lessons-learned.md` — accumulated insights (if the project uses one)
 
-**Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `CONVENTIONS.md`, `CLAUDE.md`, `docs/development-principles.md`, and the `skills/*/SKILL.md` / `agents/*.md` bodies. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
+**Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `plugin/CONVENTIONS.md`, `CLAUDE.md`, `plugin/docs/development-principles.md`, and the `plugin/skills/*/SKILL.md` / `plugin/agents/*.md` bodies. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
 
 ## 3. Claude Configuration Improvements
 

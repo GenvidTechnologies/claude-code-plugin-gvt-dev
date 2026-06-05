@@ -1,7 +1,7 @@
 # audit-conventions eval harness
 
 Skill-level evals for the `genvid-dev:audit-conventions` skill. Unlike the script
-unit tests under `plugins/genvid/skills/audit-conventions/scripts/test/` (which
+unit tests under `plugin/skills/audit-conventions/scripts/test/` (which
 test `audit.mjs` directly), these test **Claude's behavior wielding the skill**:
 does it run the validator instead of hand-rolling checks, identify repo state
 correctly, preview `--fix` as a dry-run, surface findings with their reasons,
