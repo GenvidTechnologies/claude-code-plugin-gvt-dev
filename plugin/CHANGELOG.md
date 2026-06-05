@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-06-05
+
 ### Added
 
 - **`docs/plugin-authoring.md`: cross-plugin authoring gotchas (#30).** A short
