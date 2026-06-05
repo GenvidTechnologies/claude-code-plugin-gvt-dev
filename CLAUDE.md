@@ -109,7 +109,7 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 
 - **Structured access mechanics** → a namespaced top-level block in `.genvid-agent.json` (e.g. `bugTracker`: queries, command templates, key names). Lean, machine-read. Declared in the skill's `metadata.expects` as `required: false` (skill-conditional — see `CONVENTIONS.md`).
 - **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/issue-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
-- **A bundled template** alongside the skill (e.g. `skills/triage-issues/issue-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
+- **A bundled template** alongside the skill (e.g. `skills/triage-issues/issue-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions. When one contract has materially different shapes across repos, ship **multiple template variants** (e.g. `issue-triage.template.md` for a structured taxonomy vs. `issue-triage.flat.template.md` for a flat label set) and have the scaffold step **auto-select by probing the repo** (e.g. `gh label list` for a `type:`/`priority/` prefix), confirming the detected default rather than asking blind.
 - **A read-only exploration agent** (e.g. `issue-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-issues` is the reference implementation.
 
 ## Adding a new agent
