@@ -37,6 +37,12 @@ and follows [semantic versioning](https://semver.org/).
   labels — no `docs/issue-triage.md` or `bugTracker` writes, no `triagedLabel`,
   bypassing §1–§5. Covers the common "just tidy these few issues" case without
   committing the repo to the full taxonomy.
+- `plan-task`: the stale-gitignored-`plan.md` continuation guard (#36) now
+  classifies *what kind* of stale before overwriting. An **already-shipped** plan
+  (merged branch, tasks in `origin`'s log, no memory reference) is overwritten as
+  before; an **unshipped / pending** plan (unmerged branch, tasks not yet in
+  `origin`, or referenced by a project auto-memory) is **preserved first** (renamed
+  to `plan-<topic>.md`) so a local-only artifact isn't silently destroyed.
 - `release-plugin`: note that a self-referential release (one that changes this
   skill in a way a later release depends on) must be shipped and installed before
   the dependent release — the installed skill runs the release, not the working
