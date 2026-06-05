@@ -1,8 +1,8 @@
 {
   "skill_name": "release-npm-package",
   "notes": "Eval harness for the genvid-dev:release-npm-package skill's Phase 1 state-classifier, OIDC gate, and tag-convention detection. Each eval runs against a fixture npm package repo (needs-bump / version-already-landed / first-release / already-published / no-publish-yml) in its own sandbox copy. Real git history, tags, and registry state can't be reconstructed in a static fixture, so each fixture supplies the package.json + package-lock.json + CHANGELOG.md (the 'local' working copy) and the eval PROMPT narrates the authoritative git/registry facts the skill would obtain via `git fetch` and `npm view`. Grading is behavioral and objective: did the agent classify the state correctly, fetch before judging, respect the OIDC gate, and gate (confirm) before any mutating/irreversible action. The already-published-refuse eval is the headline safety test for the 'REFUSE' state — npm versions are immutable, and a bad publish can't be undone.",
-  "plugin_root": "<absolute path to your local plugin repo root>",
-  "skill_path": "skills/release-npm-package/SKILL.md",
+  "plugin_root": "<absolute path to the plugin/ dir in your local repo (resolves ${CLAUDE_PLUGIN_ROOT})>",
+  "skill_path": "plugin/skills/release-npm-package/SKILL.md",
   "evals": [
     {
       "id": 0,

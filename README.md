@@ -19,7 +19,7 @@ After installing, run the audit:
 /genvid-dev:audit-conventions
 ```
 
-The audit reports whether the repo satisfies the plugin's [convention contract](CONVENTIONS.md) — what files and config keys the installed skills and agents expect.
+The audit reports whether the repo satisfies the plugin's [convention contract](plugin/CONVENTIONS.md) — what files and config keys the installed skills and agents expect.
 
 For a greenfield repo or a legacy setup migrating from the old template-rendered system, run with `--fix` (see [Migration](#migrating-from-the-legacy-template-rendered-setup) below).
 
@@ -55,7 +55,7 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 
 ## The convention contract
 
-The plugin reads project context from four files in the consuming repo, in a contract documented at [`CONVENTIONS.md`](CONVENTIONS.md):
+The plugin reads project context from four files in the consuming repo, in a contract documented at [`CONVENTIONS.md`](plugin/CONVENTIONS.md):
 
 | File | Purpose |
 |------|---------|
@@ -92,9 +92,9 @@ The plugin is intentionally generic — it carries workflows, not project-specif
 
 Development guide in [`CLAUDE.md`](CLAUDE.md). Highlights:
 
-- The plugin lives at the repo root; skills are directories with `SKILL.md`; agents are flat `.md` files in `agents/`.
+- The plugin lives under `plugin/`; skills are directories with `SKILL.md`; agents are flat `.md` files in `plugin/agents/`.
 - Top-level frontmatter is fixed (`name`, `description`, plus the Anthropic-supported fields); custom expectations go under `metadata`.
 - Verb-noun skill names avoid collisions with built-in Claude Code skills.
-- Validate with `claude plugin validate .`.
-- Test `audit-conventions` with `node --test skills/audit-conventions/scripts/test/*.test.mjs`.
+- Validate with `claude plugin validate plugin`.
+- Test `audit-conventions` with `node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs`.
 - Commits in this repo use scope-based freeform messages — no ticket prefix.

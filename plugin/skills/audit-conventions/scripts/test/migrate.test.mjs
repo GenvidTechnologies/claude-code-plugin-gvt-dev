@@ -15,10 +15,11 @@ import {
 } from '../lib/migrate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// scripts/test -> scripts -> audit-conventions -> skills -> repo root.
-// The plugin lives flat at the repo root, so REPO_ROOT and PLUGIN_ROOT coincide.
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
-const PLUGIN_ROOT = REPO_ROOT;
+// scripts/test -> scripts -> audit-conventions -> skills -> plugin -> repo root.
+// The plugin lives under plugin/, so PLUGIN_ROOT (4 up) holds skeleton/ while
+// REPO_ROOT (5 up) holds examples/ and the consuming-repo dogfood surfaces.
+const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..'); // 5 up = repo root
+const PLUGIN_ROOT = resolve(__dirname, '..', '..', '..', '..');     // 4 up = plugin/
 
 const SNAPSHOT = {
   templates: [
