@@ -9,6 +9,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **Renamed `triage-bugs` → `triage-issues`** (and its agent `bug-triage-analyst`
+  → `issue-triage-analyst`, conventions doc `docs/bug-triage.md` →
+  `docs/issue-triage.md`, bundled template `bug-triage.template.md` →
+  `issue-triage.template.md`). The skill was always tracker-agnostic and works for
+  bugs, tickets, or any backlog item; the name now reflects that. The
+  `.genvid-agent.json` `bugTracker` config block keeps its name to avoid a config
+  break. **Consumer migration:** invoke `/genvid-dev:triage-issues` instead of
+  `triage-bugs`, and rename your repo's `docs/bug-triage.md` to
+  `docs/issue-triage.md` (the skill will otherwise offer to re-scaffold it).
 - `release-plugin`: note that a self-referential release (one that changes this
   skill in a way a later release depends on) must be shipped and installed before
   the dependent release — the installed skill runs the release, not the working

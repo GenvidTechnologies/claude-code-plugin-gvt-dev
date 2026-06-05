@@ -81,10 +81,11 @@ Skills tolerate missing sections — they fall back to generic behavior — but 
 
 ### Skill-specific config blocks
 
-The keys above are the shared core, but the schema is **not closed**. A single skill that needs project-specific config for an external system may introduce its own **namespaced top-level block** — e.g. `triage-bugs` reads a `bugTracker` block (its fetch queries, command templates, and label names). Such a block:
+The keys above are the shared core, but the schema is **not closed**. A single skill that needs project-specific config for an external system may introduce its own **namespaced top-level block** — e.g. `triage-issues` reads a `bugTracker` block (its fetch queries, command templates, and label names). Such a block:
 
 - is declared by that skill's (or its agent's) `metadata.expects` with `required: false`, so the audit surfaces it as optional and never fails a repo that doesn't use the skill;
-- is owned by the skill, not the shared contract — only repos that use the skill need it.
+- is owned by the skill, not the shared contract — only repos that use the skill need it;
+- may keep its name across a skill rename — the block name is decoupled from the skill name, so renaming the skill need not break consumer configs (note the intentional decoupling when you do).
 
 This is expected extensibility, **not** schema drift. Keep these blocks lean (machine-read access mechanics); put prose conventions and command recipes in a `docs/<skill>.md` doc instead. (Reserve `features` for booleans the plugin can't infer; reserve a namespaced block for richer per-skill config.)
 

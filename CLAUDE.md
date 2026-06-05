@@ -103,15 +103,30 @@ See [`CONVENTIONS.md`](CONVENTIONS.md) for the full contract.
 **If the skill needs project-specific config for an external system** (a bug tracker, CI, a dashboard — anything the plugin can't infer), follow the **two-surface pattern** rather than hardcoding one tool or stuffing prose into JSON:
 
 - **Structured access mechanics** → a namespaced top-level block in `.genvid-agent.json` (e.g. `bugTracker`: queries, command templates, key names). Lean, machine-read. Declared in the skill's `metadata.expects` as `required: false` (skill-conditional — see `CONVENTIONS.md`).
-- **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/bug-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
-- **A bundled template** alongside the skill (e.g. `skills/triage-bugs/bug-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
-- **A read-only exploration agent** (e.g. `bug-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-bugs` is the reference implementation.
+- **Prose conventions + recipes** → a doc under `docs/` (e.g. `docs/issue-triage.md`): taxonomy, policies, and the tracker-specific command recipes. Located by fixed headings.
+- **A bundled template** alongside the skill (e.g. `skills/triage-issues/issue-triage.template.md`) that the skill offers to scaffold into the consuming repo when the doc is absent — never guess conventions.
+- **A read-only exploration agent** (e.g. `issue-triage-analyst`) that does the fetching/analysis off the main thread and returns a structured report, so the orchestrator skill keeps the main context for decisions and writes. `triage-issues` is the reference implementation.
 
 ## Adding a new agent
 
 1. Create `agents/<name>.md` — **flat file**, not a directory.
 2. Agent frontmatter supports `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, plus custom `metadata`.
 3. Skills dispatching the agent use `subagent_type: "genvid-dev:<name>"` — plugin agents are namespaced.
+
+## Renaming a skill or agent
+
+A rename touches more than the file — work the whole cross-reference surface:
+
+1. **`git mv`** the file/directory (and any bundled sub-docs/templates) so history is preserved.
+2. **Frontmatter `name:`** in the moved `SKILL.md` / agent `.md`, plus the body title and self-references.
+3. **Dispatch references** — every `genvid-dev:<old-name>` (skills dispatching an agent) and `/genvid-dev:<old-name>` invocation mention.
+4. **`metadata.expects` paths** — a renamed scaffolded doc (e.g. `docs/<x>.md`) is declared in *both* the skill and its agent.
+5. **Cross-doc references** — `CONVENTIONS.md`, `CLAUDE.md`, `docs/TOC.md`.
+6. **`CHANGELOG.md`** — add an `[Unreleased]` migration note; **leave shipped version entries intact** (they record what actually shipped).
+7. **Leave `docs/superpowers/specs|plans/` historical artifacts unchanged** — they're dated design records.
+8. **Decide config-schema scope** — a namespaced config block (e.g. `bugTracker`) can keep its name to avoid a consumer config break even when the skill is renamed; if so, note the intentional decoupling.
+9. **Consumer impact** — a renamed invocation name or scaffolded doc path is **breaking**: it needs a version bump and a CHANGELOG migration note.
+10. **Verify** — `claude plugin validate .` and `node skills/audit-conventions/scripts/audit.mjs` (exit 0).
 
 ## Adding shared reference content
 
