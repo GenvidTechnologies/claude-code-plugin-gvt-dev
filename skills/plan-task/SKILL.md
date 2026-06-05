@@ -130,7 +130,11 @@ For **continuation** of existing work:
 
 - Read the project's tracking doc (if any) and the prior plan
 - Check git log for completed tasks
-- **Guard against a stale gitignored `plan.md`.** A gitignored plan lingers on disk after its branch merges, so an existing `plan.md` may describe *already-shipped, unrelated* work. Before treating it as continuation, confirm it maps to the current task — its branch is unmerged and its tasks aren't already in `origin/<default-branch>`'s log. If it's stale, treat the new work as a fresh plan and overwrite it; don't resume it.
+- **Guard against a stale gitignored `plan.md`.** A gitignored plan lingers on disk after its branch merges, so an existing `plan.md` may describe *already-shipped, unrelated* work. Before treating it as continuation, confirm it maps to the current task — its branch is unmerged and its tasks aren't already in `origin/<default-branch>`'s log. If it's stale, treat the new work as a fresh plan — but **don't blindly overwrite a stale plan; first classify what kind of stale it is:**
+  - **Already-shipped** — its branch is merged, its tasks are in `origin/<default-branch>`'s log, and no auto-memory references it. Overwrite freely.
+  - **Unshipped / pending** — its branch is unmerged, its tasks aren't in `origin` yet, *or* a project auto-memory points at it as the live task list. This is an active artifact: **preserve it first** (rename to `plan-<topic>.md`) before writing the new plan, so you don't silently destroy pending work. (A gitignored `plan.md` is local-only, so an overwrite is unrecoverable — there's no git history to fall back on.)
+
+  Either way, don't *resume* the stale plan as if it were this task's plan.
 - If a `plan.md` exists with unexecuted tasks:
   1. Spot-check a few representative items from the plan against the current code to confirm they haven't drifted
   2. Present a brief summary: "Plan exists for X, Y tasks remaining. Ready to execute?"
