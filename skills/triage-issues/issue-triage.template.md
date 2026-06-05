@@ -5,6 +5,11 @@
 > **access mechanics** (fetch queries, label names) live in the `bugTracker`
 > block of `.genvid-agent.json` — see the skill's SKILL.md for that block.
 >
+> This is the **structured-taxonomy variant** (`type:*`/`priority/*`/`area:*`). If
+> your repo uses a simple flat category-label set (GitHub's defaults: `bug`,
+> `enhancement`, `documentation`, `duplicate`, `question`, …) with no such scheme,
+> copy `issue-triage.flat.template.md` instead.
+>
 > The example commands below assume **GitHub Issues via the `gh` CLI**. Replace
 > them with your tracker's equivalents (Jira `acli`, Linear API, …); the section
 > headings must stay the same — the skill and analyst locate guidance by heading.

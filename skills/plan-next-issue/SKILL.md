@@ -96,7 +96,9 @@ Route the selection into `genvid-dev:plan-task`:
 - **More than one selected** → ask whether to (a) fold them into **one combined
   plan** (when the work is related — one branch, one `plan.md`) or (b) run
   **sequential `plan-task` invocations**, one branch each. Then invoke plan-task
-  accordingly. In `--non-interactive`, default to **sequential**.
+  accordingly. In `--non-interactive`, default to **sequential**. On the sequential
+  path, after each `plan-task` returns control, resume here with the next selected
+  issue until the shortlist is exhausted — the queue lives on this thread.
 
 Hand off cleanly: once `plan-task` takes over, it owns the analysis → design →
 planning checkpoints and the plan/branch creation. This skill's job ends at the

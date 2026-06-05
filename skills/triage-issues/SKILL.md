@@ -48,13 +48,29 @@ block in `.genvid-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Read `docs/issue-triage.md`.** If it is **absent**, offer to scaffold it from
-   `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — do not
-   guess conventions. **If the user declines scaffolding, or a quick scan of the
-   open backlog shows no bugs** (a tiny enhancement/chore backlog where the full
-   taxonomy is overkill), offer a **light-touch groom** instead (→ §0a, which skips
-   the rest of §0). Otherwise proceed with the full workflow only once the contract
-   exists.
+1. **Read `docs/issue-triage.md`.** If it is **absent**, offer to scaffold it — do
+   not guess conventions. Two bundled templates exist; pick the one that matches the
+   repo's label scheme:
+   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
+     **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
+   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
+     **flat** variant for repos using a simple category-label set (e.g. GitHub's
+     defaults: `bug`, `enhancement`, `documentation`, `duplicate`, `question`,
+     `wontfix`) with no `type:`/`priority/`/`area:` scheme.
+
+   **Detect the default:** probe the repo's labels (`gh label list --json name -L 200`,
+   or the tracker equivalent). If any label name is prefixed `type:` or `priority/`,
+   default to **structured**; otherwise default to **flat**. Confirm the choice with
+   the user (`AskUserQuestion`, detected default first) before copying — the probe is
+   a heuristic, not a verdict. Once scaffolded, remind the user to set the
+   `bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
+   (the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
+   the detected default without asking.
+
+   **If the user declines scaffolding, or a quick scan of the open backlog shows no
+   bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
+   offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
+   Otherwise proceed with the full workflow only once the contract exists.
 2. **Read the `bugTracker` block** from `.genvid-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**,
    warn that fetching cannot proceed and offer to add one (show the example block
