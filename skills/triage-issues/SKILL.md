@@ -48,10 +48,15 @@ block in `.genvid-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Read `docs/issue-triage.md`.** If it is **absent**, stop and offer to scaffold
-   it from `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` —
-   do not guess conventions. Proceed only once it exists.
-2. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **absent**,
+1. **Read `docs/issue-triage.md`.** If it is **absent**, offer to scaffold it from
+   `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — do not
+   guess conventions. **If the user declines scaffolding, or a quick scan of the
+   open backlog shows no bugs** (a tiny enhancement/chore backlog where the full
+   taxonomy is overkill), offer a **light-touch groom** instead (→ §0a, which skips
+   the rest of §0). Otherwise proceed with the full workflow only once the contract
+   exists.
+2. **Read the `bugTracker` block** from `.genvid-agent.json` (full workflow only —
+   the §0a groom skips this). If it is **absent**,
    warn that fetching cannot proceed and offer to add one (show the example block
    at the bottom of this skill). Proceed only once it exists.
 3. **Resolve scope:**
@@ -59,6 +64,26 @@ block in `.genvid-agent.json` (access mechanics).
    - Override: an explicit query/label, or a list of issue IDs passed as args.
 4. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended.
+
+### 0a. Light-touch groom (no-contract path)
+
+A sanctioned path for small or bug-free backlogs that skips the full contract. It
+needs **neither `docs/issue-triage.md` nor the `bugTracker` block** (skip §0 step 2)
+and operates **directly via the tracker's native CLI** (e.g. `gh`), using only the
+tracker's **existing label vocabulary** — no analyst dispatch, no
+`docs/issue-triage.md` or `bugTracker` writes, and no `triagedLabel` stamp. It
+**bypasses §1–§5 entirely**:
+
+- **Scan** the open issues in scope with the tracker's native list command.
+- **Propose**, per issue, label / priority / clarity / cross-reference fixes drawn
+  **only from labels that already exist** — never invent a taxonomy.
+- **Apply** with per-item approval, holding the same §4 safety bar: never
+  batch-close or mass-create issues without per-item approval (or `--force`).
+- **Summarize** what changed.
+
+When the groom reveals a backlog large or bug-heavy enough to warrant the full
+taxonomy, stop and offer to scaffold `docs/issue-triage.md` (back to §0 step 1)
+rather than grooming on.
 
 ## 1. Dispatch exploration (Phase 1)
 
