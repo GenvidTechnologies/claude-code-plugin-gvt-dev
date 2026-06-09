@@ -7,6 +7,20 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`triage-issues`: structured template now accommodates non-defect issues.**
+  The structured `issue-triage.template.md` taxonomy was purely defect-shaped —
+  `type:bug`/`crash`/`regression` only, a bug-only "Required fields" list (repro,
+  expected-vs-actual, build/version), and a "Create split issue" recipe that
+  hardcoded `type:{type}`. Triaging an enhancement/docs/chore backlog (every
+  tooling, library, or plugin repo, including this one) therefore required ad-hoc
+  fallbacks and risked wrongly flagging an enhancement `needs-info` for lacking a
+  repro. The template now states that non-defect work is classified by its
+  category label (`enhancement`/`documentation`/`chore`) with `type:*` reserved
+  for defects, scopes the Required-fields bar to bugs (enhancements need a clear
+  proposed change instead), and notes the non-defect split-label form.
+
 ## [3.0.0] - 2026-06-05
 
 ### Added
