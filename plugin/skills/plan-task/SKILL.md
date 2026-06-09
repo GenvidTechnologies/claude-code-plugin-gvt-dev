@@ -122,7 +122,11 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 For an **issue that's already a full proposal** (rationale + proposed change + explicit open questions):
 
 - Treat the **issue as the requirements doc** — skip the analyst.
-- Resolve the open questions (if any) with a single `AskUserQuestion` call — one question per open question, recommended option first — instead of dispatching the designer.
+- **Classify each open question before resolving it** — don't assume every one is a preference choice:
+  - **Factual** (answerable from the code/repo — e.g. *"does the client read `result.success` for this handler?"*, *"does it re-query cache X after handler Y?"*) → resolve by dispatching the analyst (or an `Explore`/read-only investigation), folded into the current-state mapping. Do **not** ask the user — they usually don't know offhand, and only the code is authoritative. Asking can produce a worse plan (a factual question that resolves to a no-op once the code is read).
+  - **Preference / scope** (a genuine product or design choice) → carry into a single `AskUserQuestion` call, one question per open question, recommended option first.
+
+  Investigate the factual questions; only the preference questions go to `AskUserQuestion`. This replaces dispatching the designer.
 - Present a combined design + plan in **one checkpoint**, explicitly flagging any friction the chosen answers introduce.
 - Still produce `plan.md`, a prep commit, one-commit-each tasks, and the validator + code-reviewer gates.
 

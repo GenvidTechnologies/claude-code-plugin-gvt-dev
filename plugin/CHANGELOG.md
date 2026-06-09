@@ -20,6 +20,17 @@ and follows [semantic versioning](https://semver.org/).
   category label (`enhancement`/`documentation`/`chore`) with `type:*` reserved
   for defects, scopes the Required-fields bar to bugs (enhancements need a clear
   proposed change instead), and notes the non-defect split-label form.
+- **`plan-task`: full-proposal shortcut now classifies open questions before
+  resolving them (#45).** The "issue that's already a full proposal" shortcut
+  previously funnelled *every* open question into a single `AskUserQuestion`.
+  It now classifies each one first: **factual** questions (answerable from the
+  code/repo) are resolved by dispatching the analyst or an `Explore`
+  investigation — not asked of the user, who often doesn't know offhand and
+  whose answer isn't authoritative — while only genuine **preference/scope**
+  questions go to `AskUserQuestion`. Prevents the failure mode where a factual
+  question (e.g. *"does the client read `result.success` here?"*) is put to the
+  user and resolves to a no-op once the code is actually read, yielding a worse
+  plan.
 
 ## [3.0.0] - 2026-06-05
 
