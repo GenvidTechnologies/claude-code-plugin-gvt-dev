@@ -70,6 +70,12 @@ Detect whether the backlog needs grooming before planning:
 
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
+- **First, sanity-check the query's scope.** If `actionQuery` contains a label
+  filter (`--label`/`-l`, or a `label:` term in the query string), warn the user:
+  the triage-need check then only ever sees that label, so untriaged
+  enhancements / docs / tech-debt issues are invisible and the skill may wrongly
+  report "nothing to triage." Recommend an `actionQuery` that covers the **whole
+  open backlog**, and offer to proceed against the unfiltered backlog for this run.
 - **If untriaged open issues exist**, surface the count and **offer** to triage:
   *"N open issues are untriaged. Triage first so the shortlist is deduplicated and
   enriched?"* If the user accepts, **invoke `genvid-dev:triage-issues`** and keep

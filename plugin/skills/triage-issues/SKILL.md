@@ -181,3 +181,9 @@ and the CLI for your tracker):
   "needsInfoLabel": "needs-info"
 }
 ```
+
+Keep `actionQuery` scoped to the **whole open backlog** — do **not** narrow it to a
+single label (e.g. `--label bug`). The triage-need detection subtracts only
+`triagedLabel`, so a label-scoped `actionQuery` silently hides untriaged issues
+that don't match the label (enhancements, docs, tech-debt), making the backlog look
+groomed when it isn't.

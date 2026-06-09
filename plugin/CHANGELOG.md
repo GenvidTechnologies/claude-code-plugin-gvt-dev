@@ -18,6 +18,14 @@ and follows [semantic versioning](https://semver.org/).
   suggested `bugTracker` block for the user to add (it still performs no writes
   itself). `triage-issues` §0 step 2 now points at its existing §0a light-touch
   groom (already native-CLI) instead of treating the absent block as a hard stop.
+- **`plan-next-issue`: warn when a label-scoped `actionQuery` hides untriaged
+  issues (#47).** The triage-need check subtracts `triagedLabel` from
+  `actionQuery`; if a repo scopes `actionQuery` to one label (e.g. `--label bug`),
+  untriaged enhancements / docs / tech-debt are invisible and the skill wrongly
+  reports "nothing to triage." Step 1 now sanity-checks the query first and warns
+  when a label filter is present, recommending whole-backlog coverage; the
+  `bugTracker` schema note in `CONVENTIONS.md` and the `triage-issues` example
+  block now state the same scope requirement.
 - **`triage-issues`: structured template now accommodates non-defect issues.**
   The structured `issue-triage.template.md` taxonomy was purely defect-shaped —
   `type:bug`/`crash`/`regression` only, a bug-only "Required fields" list (repro,
