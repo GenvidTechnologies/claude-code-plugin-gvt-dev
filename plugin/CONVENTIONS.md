@@ -89,6 +89,8 @@ The keys above are the shared core, but the schema is **not closed**. A single s
 
 This is expected extensibility, **not** schema drift. Keep these blocks lean (machine-read access mechanics); put prose conventions and command recipes in a `docs/<skill>.md` doc instead. (Reserve `features` for booleans the plugin can't infer; reserve a namespaced block for richer per-skill config.)
 
+One scope caution for the `bugTracker` block: keep its `actionQuery` covering the **whole open backlog**, not narrowed to a single label (e.g. `--label bug`). `triage-issues` and `plan-next-issue` detect untriaged work by subtracting `triagedLabel` from `actionQuery`, so a label-scoped query silently hides untriaged issues that don't match the label and makes the backlog look groomed when it isn't.
+
 ## How `/genvid-dev:audit-conventions` works
 
 `audit-conventions` is the plugin's validator and migration tool.

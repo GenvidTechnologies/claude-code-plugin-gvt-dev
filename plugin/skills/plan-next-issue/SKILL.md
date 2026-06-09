@@ -12,6 +12,10 @@ metadata:
         in: .genvid-agent.json
         required: false
         reason: Subtracted from the action query to detect whether untriaged issues remain (and thus whether to offer triage)
+      - key: repo.host
+        in: .genvid-agent.json
+        required: false
+        reason: Read to choose the host-native issue CLI fallback when bugTracker is absent (github → gh); otherwise inferred from the git remote
     tools:
       - command: git
         required: false
@@ -44,10 +48,22 @@ re-implements their work.
 
 ## 0. Preconditions & mode
 
-1. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **absent**,
-   the auto-detect and proposal steps cannot fetch issues — warn the user and ask
-   them to either name the issue(s) to plan directly (skip to step 3) or add a
-   `bugTracker` block (see the example in `genvid-dev:triage-issues`).
+1. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **present**,
+   use it for the steps below. If it is **absent**, don't dead-end — fall back in
+   this order:
+   - **Host-derived native CLI (preferred).** If `repo.host` maps to a tracker
+     with a usable issue CLI, drive the backlog directly with it for this run:
+     `repo.host: github` → `gh issue list` / `gh issue view` (the same commands the
+     `bugTracker` example uses). Treat the host-native list as the action query and
+     `gh issue view {id}` as the read. *(Only `github` currently has a usable native
+     issue CLI; `bitbucket` has none — for it, use the options below.)* This skill
+     still performs **no writes**, so do not persist anything automatically; once a
+     run succeeds, **print a suggested `bugTracker` block** (the example from
+     `genvid-dev:triage-issues`, adjusted to the repo) and invite the user to add it
+     so the next run is fully configured.
+   - **Name the issue(s) directly** — the user supplies issue numbers and we skip
+     to step 3 (no fetch needed).
+   - **Add a `bugTracker` block** — see the example in `genvid-dev:triage-issues`.
 2. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally lets the delegated `triage-issues`
    perform destructive actions unattended (it is otherwise deferred).
@@ -58,6 +74,13 @@ Detect whether the backlog needs grooming before planning:
 
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
+- **First, sanity-check the query's scope.** If `actionQuery` contains a label
+  filter (GitHub `gh`: `--label`/`-l` or a `label:` term — adjust for your
+  tracker's equivalent), warn the user:
+  the triage-need check then only ever sees that label, so untriaged
+  enhancements / docs / tech-debt issues are invisible and the skill may wrongly
+  report "nothing to triage." Recommend an `actionQuery` that covers the **whole
+  open backlog**, and offer to proceed against the unfiltered backlog for this run.
 - **If untriaged open issues exist**, surface the count and **offer** to triage:
   *"N open issues are untriaged. Triage first so the shortlist is deduplicated and
   enriched?"* If the user accepts, **invoke `genvid-dev:triage-issues`** and keep
