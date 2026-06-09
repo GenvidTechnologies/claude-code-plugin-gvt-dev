@@ -9,6 +9,9 @@ metadata:
       - path: docs/TOC.md
         required: false
         reason: Consulted to scope analysis and discover relevant project docs
+      - path: docs/decisions/
+        required: false
+        reason: Home for decision records authored in Phase 4 when Phase 2 produced a non-trivial architecture/compromise decision; scaffolded on demand by tech-writer
     config:
       - key: repo.default_branch
         in: .genvid-agent.json
@@ -93,7 +96,10 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
    ```
    If behind, fast-forward (`git merge --ff-only origin/<default-branch>`) before starting. Stale-base execution produces a PR diff that mixes the plan's changes with upstream-merge noise.
 4. **Commit the plan and any companion design docs as a single prep commit** before kicking off the first implementation task. This keeps git history in logical order (`prep → task 1 → task 2 → ...`) and prevents retroactive plan commits from landing after tested code. **Exception:** some repos gitignore `plan.md` (or the planning location) so it stays a local-only working artifact — check `git check-ignore plan.md` first. If it's ignored, that's intentional; don't force-add it. Skip the prep commit (or commit only the tracked companion design docs), and keep `plan.md` local.
-5. The plan is now ready for execution.
+5. **Author a decision record when the ADR threshold is met.** Durable architecture and compromise rationale must survive the transient `plan.md` — capture it in a committed decision record (see `${CLAUDE_PLUGIN_ROOT}/docs/development-principles.md` principle #7).
+   - **ADR threshold — author one *only* when both hold:** (a) Phase 2 (Design) actually ran (not skipped by the simple-task or full-proposal shortcut), **and** (b) it produced a non-trivial decision — a rejected alternative was weighed, *or* a cross-module/architectural choice was made. **Skip** the record otherwise (trivial, purely additive, or cosmetic changes need none — this is what keeps the convention low-friction).
+   - **When the threshold is met:** dispatch `genvid-dev:tech-writer` to author `docs/decisions/NNNN-*.md`, handing it the design doc's architecture + compromise sections and the originating issue reference. tech-writer scaffolds `docs/decisions/` (and a `docs/TOC.md` entry) on first use, names the record, fills the template, and back-links the issue. Commit the record together with the prep commit (or as the first task's commit when `plan.md` is gitignored).
+6. The plan is now ready for execution.
 
 ### Dispatch resilience
 
