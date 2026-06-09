@@ -44,10 +44,22 @@ re-implements their work.
 
 ## 0. Preconditions & mode
 
-1. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **absent**,
-   the auto-detect and proposal steps cannot fetch issues — warn the user and ask
-   them to either name the issue(s) to plan directly (skip to step 3) or add a
-   `bugTracker` block (see the example in `genvid-dev:triage-issues`).
+1. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **present**,
+   use it for the steps below. If it is **absent**, don't dead-end — fall back in
+   this order:
+   - **Host-derived native CLI (preferred).** If `repo.host` maps to a tracker
+     with a usable issue CLI, drive the backlog directly with it for this run:
+     `repo.host: github` → `gh issue list` / `gh issue view` (the same commands the
+     `bugTracker` example uses). Treat the host-native list as the action query and
+     `gh issue view {id}` as the read. *(Only `github` currently has a usable native
+     issue CLI; `bitbucket` has none — for it, use the options below.)* This skill
+     still performs **no writes**, so do not persist anything automatically; once a
+     run succeeds, **print a suggested `bugTracker` block** (the example from
+     `genvid-dev:triage-issues`, adjusted to the repo) and invite the user to add it
+     so the next run is fully configured.
+   - **Name the issue(s) directly** — the user supplies issue numbers and we skip
+     to step 3 (no fetch needed).
+   - **Add a `bugTracker` block** — see the example in `genvid-dev:triage-issues`.
 2. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally lets the delegated `triage-issues`
    perform destructive actions unattended (it is otherwise deferred).

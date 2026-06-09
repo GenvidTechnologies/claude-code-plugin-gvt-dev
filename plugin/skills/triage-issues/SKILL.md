@@ -72,9 +72,12 @@ block in `.genvid-agent.json` (access mechanics).
    offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
    Otherwise proceed with the full workflow only once the contract exists.
 2. **Read the `bugTracker` block** from `.genvid-agent.json` (full workflow only —
-   the §0a groom skips this). If it is **absent**,
-   warn that fetching cannot proceed and offer to add one (show the example block
-   at the bottom of this skill). Proceed only once it exists.
+   the §0a groom skips this). If it is **absent**, this is not a hard stop: the
+   **§0a light-touch groom** already operates directly via the tracker's native CLI
+   (e.g. `gh`) with no `bugTracker` block, so offer that path for a quick groom.
+   For the full analyst-driven workflow, offer to add a `bugTracker` block (show the
+   example block at the bottom of this skill); proceed with §1 onward only once it
+   exists.
 3. **Resolve scope:**
    - Default: `actionQuery` minus `triagedLabel` (open issues not yet triaged).
    - Override: an explicit query/label, or a list of issue IDs passed as args.

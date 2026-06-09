@@ -9,6 +9,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`plan-next-issue` / `triage-issues`: fall back to the host-native issue CLI
+  when `bugTracker` is absent (#50).** Previously a missing `bugTracker` block was
+  a dead-end — both skills only warned and asked the user to name an issue or add
+  the block. `plan-next-issue` step 0 now leads with a host-derived fallback: when
+  `repo.host` maps to a tracker with a usable CLI (`github` → `gh issue list` /
+  `gh issue view`) it drives the backlog directly for that run, then prints a
+  suggested `bugTracker` block for the user to add (it still performs no writes
+  itself). `triage-issues` §0 step 2 now points at its existing §0a light-touch
+  groom (already native-CLI) instead of treating the absent block as a hard stop.
 - **`triage-issues`: structured template now accommodates non-defect issues.**
   The structured `issue-triage.template.md` taxonomy was purely defect-shaped —
   `type:bug`/`crash`/`regression` only, a bug-only "Required fields" list (repro,
