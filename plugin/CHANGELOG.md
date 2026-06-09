@@ -7,6 +7,25 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`plan-task`: five-dimension documentation enforcement + a decision-record
+  convention (#46).** Documentation freshness was enforced only by one reactive,
+  optional line at the end of execution. Now a new development principle (#7)
+  defines five doc dimensions — implementation, design, architecture, purpose,
+  compromise — as canonical vocabulary, and four surfaces enforce it: the
+  `plan-task` planning self-audit gains a mandatory doc-coverage item (each
+  dimension is covered or explicitly "N/A because …"), `code-reviewer` gains a
+  five-dimension coverage check (Warning-level, guarded against trivial-diff
+  false positives), and `tech-writer` gains the five-dimension criteria plus a
+  "link the originating issue, don't transcribe" principle. Durable architecture
+  and compromise rationale now lands in a committed **decision record**
+  (`docs/decisions/NNNN-*.md`, MADR-lite template bundled with `plan-task`),
+  authored by `tech-writer` and dispatched from `plan-task` Phase 4 only when a
+  non-trivial design decision was actually made. The `docs/decisions/`
+  expectation is declared `required: false`, so the audit treats it as optional
+  and no consuming repo's contract is widened.
+
 ### Changed
 
 - **`plan-next-issue` / `triage-issues`: fall back to the host-native issue CLI

@@ -82,6 +82,15 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
+### Five-Dimension Coverage Check
+
+For the concepts this diff introduces or changes, verify it doesn't leave a documentation dimension silently stale — **implementation, design, architecture, purpose, compromise** (defined in `${CLAUDE_PLUGIN_ROOT}/docs/development-principles.md` principle #7).
+
+- Walk each dimension and check whether a touched doc covers it, or the change is trivial enough that the dimension genuinely doesn't apply.
+- **Default severity: Warning, not Critical.** Apply the False-Positive Guardrails below before flagging — do **not** flag trivial changes (typo fixes, mechanical refactors) for "missing design/architecture docs." Only flag a dimension when the diff actually changed something that dimension should now describe.
+- **Architecture/compromise** rationale belongs in a committed decision record (`docs/decisions/`), not code comments or the transient `plan.md`. If this diff makes a non-trivial architectural or trade-off decision and no decision record accompanies it, flag it (Warning).
+- When a doc is updated, it should **link the originating issue** rather than paste the full bug/purpose narrative.
+
 ### Deletion Completeness
 
 When the diff **deletes** a tracked file, checking code imports for dangling references is not enough — documentation references break too, and the harder call is classifying which broken references actually need fixing. For each deleted file:

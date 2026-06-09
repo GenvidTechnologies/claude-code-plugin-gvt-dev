@@ -54,6 +54,8 @@ When planning a follow-up session, always:
 
 Some projects have their own multi-session tracking convention (initiative folders, ADRs, RFCs). Consult `CLAUDE.md` for any such convention — when present, the project's convention takes precedence over the generic structure above, and the plan should be saved to the project's tracking location rather than the repo root.
 
+For *decision* rationale specifically — architectural choices and rejected alternatives — the Documentation principle's `docs/decisions/` convention applies (see [`development-principles.md`](../../docs/development-principles.md) principle #7 and Phase 4 above). That governs where trade-off rationale lands, **distinct** from where plan/initiative tracking lives; if a consuming repo's `CLAUDE.md` names its own ADR location, that location takes precedence.
+
 ## Session Management
 
 For large plans (heavy codebase exploration or parallel subagent work), recommend splitting into separate sessions: plan in one session (commit `plan.md`), execute in the next (read `plan.md` and work through todos). This prevents context exhaustion before execution completes.
