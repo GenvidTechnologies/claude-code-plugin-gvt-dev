@@ -17,6 +17,11 @@
 
 Set the type via the matching `type:*` label; exactly one per issue.
 
+**Non-defect work** (a feature request, docs change, or chore) is *not* a
+`type:*` — `type:*` is reserved for defects. Classify it by its category label
+instead (`enhancement`, `documentation`, `chore`) and leave `type:*` unset. It
+still gets a `priority/*` and at least one `area:*`.
+
 ## Priorities
 
 - `P0` — blocks release or breaks the build; fix now.
@@ -39,9 +44,14 @@ The triager sets `type:*`, `area:*`, and `priority/*`. Reporters may set `area:*
 
 ## Required fields
 
-Every triaged issue must have: a reproduction (steps or a failing case), expected
-vs. actual behavior, the build/version, and at least one `area:*` label. Missing
-any of these → add `needs-info` and comment exactly what is missing.
+Every triaged **bug** must have: a reproduction (steps or a failing case),
+expected vs. actual behavior, the build/version, and at least one `area:*` label.
+Missing any of these → add `needs-info` and comment exactly what is missing.
+
+A **non-defect** issue (enhancement, docs, chore) has no repro or build/version;
+it instead needs a clear **proposed change** (or acceptance criteria) and at least
+one `area:*` label. Never `needs-info` an enhancement for lacking a repro — flag
+it only when the proposed change itself is too vague to act on.
 
 ## Splitting
 
@@ -80,6 +90,6 @@ by the skill.
 - Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
 - Close duplicate (only with approval): `gh issue close {id} --reason "not planned" --comment "Duplicate of #{canonical}"`
-- Create split issue: `gh issue create --title "{title}" --body "{body}" --label "type:{type},area:{a}"`
+- Create split issue: `gh issue create --title "{title}" --body "{body}" --label "type:{type},area:{a}"` — for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
 - Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
