@@ -53,6 +53,15 @@ and follows [semantic versioning](https://semver.org/).
   when a label filter is present, recommending whole-backlog coverage; the
   `bugTracker` schema note in `CONVENTIONS.md` and the `triage-issues` example
   block now state the same scope requirement.
+- **`plan-next-issue`: per-cluster routing for mixed multi-issue selections.**
+  Step 3 previously offered an all-or-nothing choice — fold *every* selected issue
+  into one combined plan, or run them *all* sequentially. A selection that mixes a
+  related group (same skill/area, or a relates-to link) with independent issues had
+  no clean route. Step 3 now checks whether the selection forms natural clusters and
+  routes accordingly: all-related → one combined plan; all-independent → sequential
+  runs; **mixed → per cluster** (each related group its own combined plan, each
+  independent issue its own sequential run), presenting the grouping for
+  confirmation first.
 - **`triage-issues`: structured template now accommodates non-defect issues.**
   The structured `issue-triage.template.md` taxonomy was purely defect-shaped —
   `type:bug`/`crash`/`regression` only, a bug-only "Required fields" list (repro,
