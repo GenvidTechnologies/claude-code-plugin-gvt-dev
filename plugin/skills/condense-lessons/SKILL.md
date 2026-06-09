@@ -53,7 +53,7 @@ Consider dispatching the `genvid-dev:tech-writer` agent for the actual doc edits
 
 ## 5. Condense fully-extracted sessions
 
-Once all reusable insights from a session are captured in structured docs, replace the verbose entry with the brief format:
+Once all reusable insights from a session are captured in a durable home, replace the verbose entry with the brief format:
 
 ```markdown
 ### Session-Name (YYYY-MM)
@@ -63,12 +63,14 @@ Once all reusable insights from a session are captured in structured docs, repla
 **Key insights extracted to:** [doc1](path) (topics), [doc2](path) (topics)
 ```
 
-If some insights are **not extractable** (too session-specific but still useful as reference), keep them under the condensed entry:
+**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the genvid-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
+
+If some insights aren't yet captured in any durable home — either **too session-specific** to generalize, or **reusable but with no home yet** — keep them under the condensed entry rather than dropping them:
 
 ```markdown
 Remaining session-specific insights:
 
-- Insight that doesn't belong in any structured doc
+- Insight that doesn't (yet) belong in any structured doc, skill, memory, or issue
 ```
 
 ## 6. Commit
