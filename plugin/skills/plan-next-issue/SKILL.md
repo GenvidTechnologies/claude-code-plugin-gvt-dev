@@ -116,12 +116,20 @@ Route the selection into `genvid-dev:plan-task`:
   triaged, enriched issue (rationale + proposed change) feeds plan-task's *"issue
   is already a full proposal"* shortcut directly — pass it as the requirements so
   plan-task can skip its analyst.
-- **More than one selected** → ask whether to (a) fold them into **one combined
-  plan** (when the work is related — one branch, one `plan.md`) or (b) run
-  **sequential `plan-task` invocations**, one branch each. Then invoke plan-task
-  accordingly. In `--non-interactive`, default to **sequential**. On the sequential
-  path, after each `plan-task` returns control, resume here with the next selected
-  issue until the shortlist is exhausted — the queue lives on this thread.
+- **More than one selected** → first check whether the selection forms natural
+  **clusters** — issues touching the same skill/area/files, or joined by an
+  explicit relates-to/dependency link — versus issues that are independent of each
+  other. Then route accordingly (don't force a single global combine-vs-sequential
+  choice):
+  - **All related** → fold into **one combined plan** (one branch, one `plan.md`).
+  - **All independent** → run **sequential `plan-task` invocations**, one branch each.
+  - **Mixed (some related, some not)** → route **per cluster**: each related group
+    becomes its own combined plan, and each independent issue gets its own
+    sequential run. Present the proposed grouping for confirmation before invoking.
+  Then invoke plan-task accordingly. In `--non-interactive`, default to
+  **sequential** (one run per issue, no combining). On any sequential path — and
+  between clusters — after each `plan-task` returns control, resume here with the
+  next cluster/issue until the shortlist is exhausted; the queue lives on this thread.
 
 Hand off cleanly: once `plan-task` takes over, it owns the analysis → design →
 planning checkpoints and the plan/branch creation. This skill's job ends at the
