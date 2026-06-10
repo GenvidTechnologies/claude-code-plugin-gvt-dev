@@ -59,9 +59,54 @@ existing package's release pipeline to the genvid-public-ci recipe. Signals:
 "publish to npmjs.com", "pnpm → npm", "CircleCI → GitHub Actions", "trusted
 publishing", "@genvid scope", "provenance".
 
-It is **not** for: publishing to a private/internal registry, packages that
-aren't built with `tsc`/a `build` script, or first-time repo creation. If the
-repo isn't a git repo with a working `npm run build`, fix that first.
+It is **not** for: publishing to a private/internal registry, packages that have
+**nothing to validate or publish**, or first-time repo creation. A package with
+no compilation step — a Cordova plugin, a vanilla-JS library — *is* in scope; the
+recipe works once its four gate scripts are satisfied (see
+[**No-build packages**](#no-build-packages) below). The repo must be a git repo
+whose gate scripts run; if not, fix that first.
+
+## No-build packages
+
+A package with no compilation step (a Cordova plugin, a vanilla-JS library that
+ships its sources as-is with a hand-maintained `types/index.d.ts`) still works
+with this recipe — the only wrinkle is the gate. The node-gate runs
+`lint → typecheck → test → build` **unconditionally**, so all four scripts must
+exist even when nothing compiles. Satisfy them **honestly**, not by cargo-culting
+a build:
+
+- **`typecheck` — make it real.** Point `tsc --noEmit` at the hand-maintained
+  declarations so the published types actually get checked:
+  ```json
+  // package.json
+  "scripts": { "typecheck": "tsc --noEmit" }
+  ```
+  ```json
+  // tsconfig.json — minimal, just enough to type-check the .d.ts
+  { "files": ["types/index.d.ts"] }
+  ```
+- **`test` / `build` — honest no-ops.** When there genuinely is nothing to run or
+  compile, say so in the script itself rather than faking work:
+  ```json
+  "scripts": {
+    "test": "echo \"no host-side tests\"",
+    "build": "echo \"ships sources as-is — no build step\""
+  }
+  ```
+  A documented no-op is self-explaining in CI logs; an empty or absent script
+  fails the gate.
+- **Skip the build-only guidance.** The `prepack`/`dist` entry-point setup
+  (Phase 3) and the `publishConfig`-override gotcha (Phase 4) **do not apply** —
+  there is no build output to ship or mis-resolve. Top-level `main`/`types` point
+  at the real source/declaration files, which are already in the tarball.
+- **Verify the tarball ships only what you mean.** Run `npm pack --dry-run` (or
+  `npm publish --dry-run`) and read the file list — a no-build package has no
+  `dist/` to gate on, so the risk shifts to *over*-shipping. Tighten `.npmignore`
+  (or `files`) to exclude dev/planning artifacts (tests, configs, `plan.md`,
+  scratch dirs) that a source-shipping package would otherwise include.
+
+Everything else in this skill (OIDC publishing, the `publish.yml` filename match,
+the Phase 5 bootstrap) is identical.
 
 ## The recipe is the source of truth — fetch it live
 
