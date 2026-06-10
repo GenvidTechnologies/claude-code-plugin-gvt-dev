@@ -9,6 +9,16 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`audit-conventions`: warn on `repo.host` drift vs the git remote (#54).** A
+  stale `.genvid-agent.json` `repo.host` (e.g. `bitbucket` after a repo moved to
+  GitHub) silently misleads host-specific skills (`create-pr`, `release-*`) at
+  the start of a session. Validate mode now infers the host from the `origin`
+  remote (`github.com` / `bitbucket.org`, https + ssh forms) and emits a new
+  non-fatal **Warnings** section on mismatch, naming the value to set. An absent
+  `repo.host` or an unresolvable/unrecognized remote stays silent, and warnings
+  never affect the exit code or the required-expectations tally. Warn-only — no
+  `--fix` auto-correct.
+
 - **`plan-task`: a feature-already-shipped gate (#51).** Phase 1 had a
   bug-symptom-observable gate but no feature equivalent, so a long-lived "feat:"
   tracking issue whose core work already shipped could be routed straight into

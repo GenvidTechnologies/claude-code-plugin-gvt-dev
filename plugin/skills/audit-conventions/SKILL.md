@@ -37,7 +37,7 @@ The script:
 2. **Walks the plugin's installed skills and agents** at `${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/agents/*.md`.
 3. **Parses each component's frontmatter** to collect `metadata.expects.{files,config,tools}`.
 4. **Evaluates each expectation** against the current working directory.
-5. **Prints a structured report** grouped by severity (errors for required-but-missing; info for optional-but-missing).
+5. **Prints a structured report** grouped by severity (errors for required-but-missing; warnings for non-fatal repo-health drift; info for optional-but-missing).
 6. **Exits non-zero** if any required expectation is unmet (so the skill can be wired into CI).
 
 ### 2. Read the report
@@ -108,6 +108,9 @@ State: migrated
 ### Errors (must fix)
 - **plan-task** expects `CLAUDE.md` — file not found. Reason: Read for project conventions, branching, commit format, and the inventory of project-specific implementer agents beyond ts-implementer.
 
+### Warnings
+- `repo.host` is `bitbucket` but the `origin` remote is a github URL — set `repo.host` to `github` in .genvid-agent.json (or update the remote).
+
 ### Info (optional)
 - **code-reviewer** expects `docs/code-review-context.md` — file not found (optional). Reason: Provides project-specific context (architecture, domain rules) for review.
 
@@ -115,7 +118,9 @@ State: migrated
 - 18 of 19 required expectations satisfied.
 ```
 
-Exit code: 0 if no errors; non-zero if any required expectation is unmet.
+The **Warnings** section holds non-fatal repo-health flags that aren't tied to a component expectation — currently `repo.host` drift (the configured host disagrees with the `origin` git remote). Warnings are excluded from the required-expectations tally and never affect the exit code; an absent `repo.host` or an unresolvable/unrecognized remote stays silent.
+
+Exit code: 0 if no errors (warnings alone keep it 0); non-zero if any required expectation is unmet.
 
 ## CI integration
 
