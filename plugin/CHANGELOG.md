@@ -55,6 +55,19 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`publish-npm-package`: cover no-build packages (#53).** The skill assumed a
+  buildable `tsc` package, and its "not for…" caveat implied a no-compilation
+  package (a Cordova plugin, a vanilla-JS library) was out of scope — yet the
+  node-gate runs `lint`/`typecheck`/`test`/`build` unconditionally and the recipe
+  works once those four scripts are satisfied. A new "No-build packages"
+  subsection documents the honest way to satisfy the gate (a real
+  `typecheck = tsc --noEmit` over the hand-maintained `.d.ts` plus a minimal
+  `tsconfig.json`; documented no-op `test`/`build`), notes that the `prepack`/
+  `dist` entry-point and `publishConfig`-override guidance don't apply without
+  build output, and shifts the `npm pack` check toward not *over*-shipping
+  sources (tighten `.npmignore`). The caveat now reads "nothing to validate or
+  publish," putting no-build packages explicitly in scope.
+
 - **`plan-next-issue`: `git fetch` + an "open issue may already be shipped" guard
   before ranking (#52).** The skill ranked candidates from fresh server-side issue
   state but never fetched, so downstream `plan-task` ran against possibly-stale
