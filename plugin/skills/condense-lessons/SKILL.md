@@ -17,6 +17,13 @@ Extract insights from verbose session entries in the project's lessons-learned d
 
 **Convention dependency:** this skill assumes the project keeps a lessons-learned doc that accumulates session-by-session insights (often at `docs/lessons-learned.md`). If the project doesn't use one, this skill doesn't apply.
 
+## Scaling to a large backlog
+
+The steps below read as a single sequential pass. That's fine for a handful of sessions, but a doc with **many** verbose entries (dozens or more) is slow and context-heavy done serially — parallelize, with two rules that keep writes safe (see `superpowers:dispatching-parallel-agents` for the fan-out pattern):
+
+- **Condensing (step 5): fan out, but keep one writer.** Dispatch agents that **return** the condensed text for a *slice* of sessions; the orchestrator assembles the results and **writes the lessons-learned file once**. Concurrent writers to the same file race and clobber each other — a single writer avoids it.
+- **Extraction (step 4): partition agents by target file — one owner per file.** When dispatching `genvid-dev:tech-writer` agents to edit structured docs, give each agent **exclusive ownership of its target doc(s)**. Two agents editing the same doc concurrently can lose edits. Avoid "use doc X if a topic fits" fallbacks that can silently point two agents at the same file.
+
 ## 1. Locate the lessons-learned doc
 
 Consult `docs/TOC.md` to find the project's lessons-learned doc. If `docs/TOC.md` doesn't list one, ask the user (or check obvious paths like `docs/lessons-learned.md`).
@@ -46,7 +53,7 @@ Consider dispatching the `genvid-dev:tech-writer` agent for the actual doc edits
 
 ## 5. Condense fully-extracted sessions
 
-Once all reusable insights from a session are captured in structured docs, replace the verbose entry with the brief format:
+Once all reusable insights from a session are captured in a durable home, replace the verbose entry with the brief format:
 
 ```markdown
 ### Session-Name (YYYY-MM)
@@ -56,12 +63,14 @@ Once all reusable insights from a session are captured in structured docs, repla
 **Key insights extracted to:** [doc1](path) (topics), [doc2](path) (topics)
 ```
 
-If some insights are **not extractable** (too session-specific but still useful as reference), keep them under the condensed entry:
+**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the genvid-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
+
+If some insights aren't yet captured in any durable home — either **too session-specific** to generalize, or **reusable but with no home yet** — keep them under the condensed entry rather than dropping them:
 
 ```markdown
 Remaining session-specific insights:
 
-- Insight that doesn't belong in any structured doc
+- Insight that doesn't (yet) belong in any structured doc, skill, memory, or issue
 ```
 
 ## 6. Commit

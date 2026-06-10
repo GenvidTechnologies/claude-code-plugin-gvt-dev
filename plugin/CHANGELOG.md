@@ -25,6 +25,14 @@ and follows [semantic versioning](https://semver.org/).
   non-trivial design decision was actually made. The `docs/decisions/`
   expectation is declared `required: false`, so the audit treats it as optional
   and no consuming repo's contract is widened.
+- **`condense-lessons`: scaling guidance + non-doc extraction homes (#44).** Adds a
+  "Scaling to a large backlog" section for docs with many verbose entries: condense
+  by fanning out agents that *return* text while the orchestrator writes the file
+  once (one writer, no races), and partition extraction agents by target file (one
+  owner per doc) so concurrent edits don't clobber. Also clarifies the brief format
+  — the `Key insights extracted to:` line may reference a skill, an auto-memory, or
+  an upstream issue (not only `docs/`), and reusable insights with no home yet are
+  kept under "Remaining session-specific insights" rather than dropped.
 
 ### Changed
 
