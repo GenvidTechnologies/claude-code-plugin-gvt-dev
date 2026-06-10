@@ -72,6 +72,14 @@ re-implements their work.
 
 Detect whether the backlog needs grooming before planning:
 
+- **First, `git fetch` the default branch** (`repo.default_branch` from
+  `.genvid-agent.json`, e.g. `main` — a read-only network call, consistent with
+  this skill's no-writes stance) so candidates are ranked and planned against
+  fresh `origin/<default-branch>`, not stale local state. **An open issue is not
+  proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
+  leaves its issue OPEN indefinitely, so already-shipped work can surface as
+  plannable. Fetching first lets the ranking step (§2) catch this before any branch
+  is created — rather than leaving it to `plan-task`'s late Phase 4 freshness check.
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
@@ -102,9 +110,17 @@ Build a **ranked shortlist** of candidate issues to address:
 
 Rank by readiness to plan: higher priority first, then issues that are already
 triaged/enriched and unblocked (no open dependency), de-prioritizing anything
-still `needsInfoLabel` or flagged a duplicate. Present the top candidates with a
-one-line rationale each and ask the user to pick **one or more** (an
-`AskUserQuestion` with `multiSelect: true`, recommended candidate first).
+still `needsInfoLabel` or flagged a duplicate. **Also flag/de-prioritize any
+candidate that may already be shipped:** when an issue names a concrete target
+(a file, doc, or section), run a cheap `git log origin/<default-branch> -- <target>`
+against the just-fetched default branch — if the proposed change already appears
+there, the issue is likely resolved by a merged PR that never auto-closed it.
+This is a soft signal, not a hard exclude (the file can exist while the specific
+change didn't land, and many issues name no concrete target); surface it in the
+candidate's one-line rationale so the user can skip it or confirm it's still
+needed. Present the top candidates with a one-line rationale each and ask the user
+to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
+recommended candidate first).
 
 In `--non-interactive`, auto-pick the single top-ranked candidate.
 
