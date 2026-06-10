@@ -9,6 +9,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`plan-task`: a feature-already-shipped gate (#51).** Phase 1 had a
+  bug-symptom-observable gate but no feature equivalent, so a long-lived "feat:"
+  tracking issue whose core work already shipped could be routed straight into
+  planning — risking re-implementing shipped code. Phase 1 now carries a symmetric
+  feature gate (grep for the named capability, read the issue *body* not just its
+  title/labels, scope to open checkboxes or propose closing), and the "issue is
+  already a full proposal" shortcut warns that it assumes *unbuilt* work. Pairs
+  with the `plan-next-issue` upstream guard (#52).
+
 - **`plan-task`: five-dimension documentation enforcement + a decision-record
   convention (#46).** Documentation freshness was enforced only by one reactive,
   optional line at the end of execution. Now a new development principle (#7)
@@ -35,6 +44,17 @@ and follows [semantic versioning](https://semver.org/).
   kept under "Remaining session-specific insights" rather than dropped.
 
 ### Changed
+
+- **`plan-next-issue`: `git fetch` + an "open issue may already be shipped" guard
+  before ranking (#52).** The skill ranked candidates from fresh server-side issue
+  state but never fetched, so downstream `plan-task` ran against possibly-stale
+  local `main` — and an open issue is not proof of pending work (a merged PR
+  lacking a `Closes #N` link stays open). §1 now leads with a read-only `git fetch`
+  of the default branch, and §2 ranking flags/de-prioritizes any candidate whose
+  named target already appears on the default branch (a soft `git log` signal
+  surfaced in the rationale, not a hard exclude). Pulls the staleness check before
+  branch creation instead of relying on `plan-task`'s late Phase 4 check. Pairs
+  with the `plan-task` planning-time gate (#51).
 
 - **`plan-next-issue` / `triage-issues`: fall back to the host-native issue CLI
   when `bugTracker` is absent (#50).** Previously a missing `bugTracker` block was
