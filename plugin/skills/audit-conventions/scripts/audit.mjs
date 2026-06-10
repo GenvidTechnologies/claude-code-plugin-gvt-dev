@@ -19,6 +19,7 @@ import { extractFrontmatter } from './lib/frontmatter.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
 import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
+import { detectHostDrift } from './lib/host-drift.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -51,6 +52,9 @@ async function main() {
       findings.push(evaluateTool(component, entry));
     }
   }
+
+  const hostDrift = await evaluateHostDrift();
+  if (hostDrift) findings.push(hostDrift);
 
   const report = formatReport(state, findings);
   console.log(report);
@@ -172,6 +176,43 @@ function evaluateTool(component, entry) {
   };
 }
 
+// Cross-checks .genvid-agent.json `repo.host` against the actual git remote and
+// returns a non-fatal warning finding on mismatch (or null when there's nothing
+// to flag). This is a repo-health check, not a per-component expectation — a
+// stale host misleads host-specific skills (create-pr, release-*) at the start
+// of a session, and repos do migrate hosts (Bitbucket → GitHub).
+async function evaluateHostDrift() {
+  let configuredHost;
+  try {
+    const raw = await fs.readFile(join(REPO_ROOT, '.genvid-agent.json'), 'utf8');
+    configuredHost = resolveKey(JSON.parse(raw), 'repo.host').value;
+  } catch {
+    return null; // no config / unreadable — other findings cover that
+  }
+
+  const drift = detectHostDrift({ configuredHost, remoteUrl: gitRemoteUrl() });
+  if (!drift) return null;
+
+  return {
+    kind: 'host-drift',
+    ok: false,
+    severity: 'warning',
+    detail:
+      `\`repo.host\` is \`${drift.configured}\` but the \`origin\` remote is a ` +
+      `${drift.inferred} URL — set \`repo.host\` to \`${drift.inferred}\` in ` +
+      `.genvid-agent.json (or update the remote).`,
+  };
+}
+
+function gitRemoteUrl() {
+  const result = spawnSync('git', ['remote', 'get-url', 'origin'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) return null; // no remote, or not a git repo
+  return result.stdout.trim();
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 async function fileExists(path) {
@@ -202,9 +243,12 @@ function commandExists(cmd) {
 
 function formatReport(state, findings) {
   const errors = findings.filter((f) => f.severity === 'error');
+  const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
   const oks = findings.filter((f) => f.ok);
-  const requiredCount = findings.filter((f) => f.severity !== 'info').length;
+  // Warnings are non-fatal repo-health flags, not contract expectations — keep
+  // them out of the "N of M required satisfied" tally.
+  const requiredCount = findings.filter((f) => f.severity !== 'info' && f.severity !== 'warning').length;
 
   const lines = [];
   lines.push('## Audit Results');
@@ -217,6 +261,11 @@ function formatReport(state, findings) {
     for (const f of errors) lines.push(formatFinding(f));
     lines.push('');
   }
+  if (warnings.length > 0) {
+    lines.push('### Warnings');
+    for (const f of warnings) lines.push(formatFinding(f));
+    lines.push('');
+  }
   if (infos.length > 0) {
     lines.push('### Info (optional)');
     for (const f of infos) lines.push(formatFinding(f));
@@ -227,6 +276,9 @@ function formatReport(state, findings) {
   lines.push(`- ${oks.length} of ${requiredCount} required expectations satisfied.`);
   if (errors.length > 0) {
     lines.push(`- ${errors.length} required expectation${errors.length === 1 ? '' : 's'} unmet.`);
+  }
+  if (warnings.length > 0) {
+    lines.push(`- ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (non-fatal).`);
   }
   if (infos.length > 0) {
     lines.push(`- ${infos.length} optional expectation${infos.length === 1 ? '' : 's'} unmet.`);
@@ -243,6 +295,8 @@ function formatReport(state, findings) {
 }
 
 function formatFinding(f) {
+  // Repo-health findings (e.g. host-drift) aren't tied to a component/expectation.
+  if (f.kind === 'host-drift') return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
 }
