@@ -58,6 +58,8 @@ Dispatch the **`genvid-dev:analyst`** agent with the task description. The analy
 
 **For bug tickets, confirm the reported symptom is observable before moving to design.** Reproduce it, or trace the *read/render* path end-to-end (who actually observes the suspect value), not just the *write* path. A defect can exist in the code yet never surface — a self-healing re-render, a `trigger-once` re-init, or every reader re-deriving the value from a correct source can mask it. If no reader observes the bad value, reclassify the task as tech-debt/cleanup (`chore`/`refactor`) rather than a fix, and say so explicitly to the user. (This is distinct from the "re-trace on didn't work" check during execution, which verifies a *fix* worked — this verifies the *bug is real* up front.)
 
+**For feature tickets, confirm the capability isn't already shipped before designing.** Grep the codebase for the named capability (function, flag, tool, doc) and read the issue *body*, not just its title/labels — a long-lived "feat:" issue is often a tracking issue whose core work already landed, carrying only residual follow-up checkboxes. If it's shipped, scope the plan to the open checkboxes and **verify each is still representable** (a follow-up can be moot — e.g. it targets a state that can't occur). If the whole thing is already shipped, say so explicitly and propose closing rather than planning. (Symmetric with the bug-symptom-observable gate above — both verify the work is *real and unbuilt* before design. An upstream `plan-next-issue` may already flag a candidate as possibly-shipped; this is the planning-time re-check.)
+
 **Checkpoint:** "Here are the requirements. Any additions or corrections?"
 
 Wait for user feedback. Iterate if needed.
@@ -127,7 +129,7 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 
 For an **issue that's already a full proposal** (rationale + proposed change + explicit open questions):
 
-- Treat the **issue as the requirements doc** — skip the analyst.
+- Treat the **issue as the requirements doc** — skip the analyst. **This shortcut assumes the work is *unbuilt* — verify that assumption first** (apply the Phase 1 feature-already-shipped / bug-symptom-observable gate above). A triaged "full proposal" can still be a tracking issue whose core work already shipped; if so, scope to the open checkboxes or propose closing rather than planning shipped code.
 - **Classify each open question before resolving it** — don't assume every one is a preference choice:
   - **Factual** (answerable from the code/repo — e.g. *"does the client read `result.success` for this handler?"*, *"does it re-query cache X after handler Y?"*) → resolve by dispatching the analyst (or an `Explore`/read-only investigation), folded into the current-state mapping. Do **not** ask the user — they usually don't know offhand, and only the code is authoritative. Asking can produce a worse plan (a factual question that resolves to a no-op once the code is read).
   - **Preference / scope** (a genuine product or design choice) → carry into a single `AskUserQuestion` call, one question per open question, recommended option first.
