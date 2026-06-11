@@ -4,6 +4,9 @@
   when dispatched from plan-task Phase 4. See development-principles.md principle #7.
   Naming: docs/decisions/NNNN-kebab-title.md  (NNNN = 4-digit zero-padded sequence,
   next number after the highest existing record).
+  Date = when the decision was accepted/finalized, not when the record was written.
+  For a retroactive record, use the original decision date (or, if diffuse, the date
+  it was finalized) — never a date before the problem existed.
 -->
 
 # NNNN. <Decision title>

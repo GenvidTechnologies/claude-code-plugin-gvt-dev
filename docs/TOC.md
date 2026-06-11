@@ -24,6 +24,13 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - [`../plugin/skills/plan-task/decision-record.template.md`](../plugin/skills/plan-task/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 (see development-principles principle #7)
 
+## Decision Records
+
+This repo dogfoods the ADR convention it ships (see `development-principles.md` principle #7). Records live in `docs/decisions/` using the MADR-lite template at `plugin/skills/plan-task/decision-record.template.md`.
+
+- [`decisions/0001-git-subdir-plugin-layout.md`](decisions/0001-git-subdir-plugin-layout.md) — why the plugin lives under `plugin/` and ships via git-subdir rather than at the repo root or as a separate mirror
+- [`decisions/0002-two-surface-external-system-pattern.md`](decisions/0002-two-surface-external-system-pattern.md) — why external-system config is split across a JSON block, a prose doc, a bundled template, and an exploration agent
+
 ## Scaffolding sources
 
 - [`../plugin/skeleton/`](../plugin/skeleton/) — pristine placeholder convention files that `audit-conventions --fix` writes to a greenfield repo
