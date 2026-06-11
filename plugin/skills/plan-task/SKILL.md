@@ -112,7 +112,7 @@ Every phase above (and every implementer dispatch during execution) is delegated
 
 ## Execution (Post-Approval)
 
-**plan-task owns the commit.** The validator gate is only meaningful *before* the commit, so implementer dispatches return their changes **staged but uncommitted**; the orchestrator runs the validator and commits only on pass. This blocks a failing task from landing committed and gives uniform commit authorship across the plan. Tell every implementer dispatch explicitly: *stage the specific files you change, but do not commit — I run the validator and own the commit.* (Implementer agents like `ts-implementer`/`tech-writer` already default to this when dispatched by an orchestrator; the explicit instruction makes it independent of that default.)
+**plan-task owns the commit.** The validator gate is only meaningful *before* the commit, so implementer dispatches return their changes **staged but uncommitted**; the orchestrator runs the validator and commits only on pass. This blocks a failing task from landing committed and gives uniform commit authorship across the plan. Tell every implementer dispatch explicitly: *stage the specific files you change, but do not commit — I run the validator and own the commit.* (Implementer agents like `ts-implementer`/`tech-writer` read their dispatch prompt to pick standalone vs. orchestrated mode; giving the instruction explicitly is what selects orchestrated mode, rather than relying on their default — which is standalone.)
 
 When the user says to execute:
 
