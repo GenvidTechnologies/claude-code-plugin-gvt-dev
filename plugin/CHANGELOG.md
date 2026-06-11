@@ -9,6 +9,19 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`designer`: validate filter/classify/dedup heuristics against real data (#64).**
+  A design could propose a set-partitioning heuristic (allowlist/noise filter,
+  dedup key, "skip if X" rule, auto-suppression) that reads as obviously-sufficient
+  but matches nothing against the real corpus — the gap then surfaces mid-execution
+  (the burbank-playfab case: a "pure-placeholder" suppressor auto-cleared 0 of 664
+  localization gaps because every string had a leading word). The designer's friction
+  audit (step 4) now carries a **Heuristic-vs-real-data validation** sub-bullet: run
+  or hand-trace the rule over a representative real sample and report the actual
+  reduction before recommending it, or flag the assumption as unvalidated when the
+  corpus can't be cheaply sampled. The empirical analogue of the existing structural
+  friction checks (recipe-vs-override, validation-pipeline duality, paired-array
+  ordering). No contract change.
+
 - **`audit-conventions`: warn on `repo.host` drift vs the git remote (#54).** A
   stale `.genvid-agent.json` `repo.host` (e.g. `bitbucket` after a repo moved to
   GitHub) silently misleads host-specific skills (`create-pr`, `release-*`) at
