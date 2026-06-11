@@ -129,6 +129,7 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 - Skip the analyst — state requirements inline
 - Skip the designer if the approach is obvious
 - The planner can produce a minimal plan directly
+- Run the validator gate inline (the project's `validate` command directly) instead of dispatching `genvid-dev:validator` when the change is trivial and deterministic (e.g. a single-line doc edit) and a full subagent per commit would cost more than it surfaces. Still gate before the commit — only the mechanism is lighter, not the gate.
 
 For an **issue that's already a full proposal** (rationale + proposed change + explicit open questions):
 
