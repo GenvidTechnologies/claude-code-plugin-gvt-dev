@@ -45,11 +45,13 @@ If `docs/TOC.md` is present, consult it to find other relevant project docs.
 3. **Implement** following existing patterns. Stay focused on the task; don't refactor outside its scope unless the plan calls for it.
 4. **Write tests** if the task specifies them.
 5. **Format with the project's formatter** before committing. Detect the package manager from lockfiles (`package-lock.json` → npm, `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn). If the project uses prettier, run `<pm> exec prettier --write <modified-files>` after the implementation. This avoids an incidental formatting commit at the validation gate when the project's lint script is ESLint-only.
-6. **Commit** using the project's commit format (see `CLAUDE.md`).
+6. **Stage your changes — commit only when running standalone.** Stage the specific files you changed (not `git add -A`). Then, depending on how you were invoked:
+   - **Standalone** (no orchestrator): commit using the project's commit format (see `CLAUDE.md`).
+   - **Dispatched by an orchestrator that owns the commit + validation gate** (e.g. `plan-task`): do **not** commit. Leave your changes staged and report what you changed — the orchestrator runs the validator and commits only on pass.
 
 ## Commit Protocol
 
-- Use `git commit -n` (skip hooks — the orchestrator runs validation separately).
-- One task = one commit.
-- Stage specific files, not `git add -A`.
-- If the task is a `[WIP]` step that intentionally breaks tests, mark the commit subject with `[WIP]` per the project's CLAUDE.md convention.
+- **Commit ownership depends on how you were invoked.** Standalone: you commit. Dispatched by an orchestrator that runs the validation gate (e.g. `plan-task`): the orchestrator owns the commit — stage your files, leave them uncommitted, and report what changed. Don't commit in that case. Your dispatch prompt tells you which mode you're in; default to standalone only when nothing says otherwise.
+- **Stage specific files, not `git add -A`** — in both modes, so the commit (yours or the orchestrator's) carries exactly this task's files.
+- When you do commit (standalone): use `git commit -n` (skip hooks — validation is run separately), one task = one commit.
+- If the task is a `[WIP]` step that intentionally breaks tests, mark the commit subject with `[WIP]` per the project's CLAUDE.md convention when committing standalone, or note the `[WIP]` intent in your report when the orchestrator commits.

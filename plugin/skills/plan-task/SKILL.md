@@ -112,12 +112,15 @@ Every phase above (and every implementer dispatch during execution) is delegated
 
 ## Execution (Post-Approval)
 
+**plan-task owns the commit.** The validator gate is only meaningful *before* the commit, so implementer dispatches return their changes **staged but uncommitted**; the orchestrator runs the validator and commits only on pass. This blocks a failing task from landing committed and gives uniform commit authorship across the plan. Tell every implementer dispatch explicitly: *stage the specific files you change, but do not commit — I run the validator and own the commit.* (Implementer agents like `ts-implementer`/`tech-writer` read their dispatch prompt to pick standalone vs. orchestrated mode; giving the instruction explicitly is what selects orchestrated mode, rather than relying on their default — which is standalone.)
+
 When the user says to execute:
 
 1. **Check git log** — compare commit messages to plan tasks. Don't re-implement already-committed work.
-2. **Delegate tasks** to the implementer agents per the plan's domain assignments. Use `genvid-dev:ts-implementer` for TypeScript work; the project may have additional domain-specific implementer agents listed in `CLAUDE.md`.
-3. **Run `genvid-dev:validator`** after each implementation task.
-4. **Run `genvid-dev:code-reviewer`** at the end. If it flags doc gaps, offer to dispatch `genvid-dev:tech-writer`.
+2. **Delegate tasks** to the implementer agents per the plan's domain assignments, **instructing each dispatch to stage its files but leave them uncommitted**. Use `genvid-dev:ts-implementer` for TypeScript work; the project may have additional domain-specific implementer agents listed in `CLAUDE.md`.
+3. **Run `genvid-dev:validator`** on the staged changes after each implementation task.
+4. **Commit on pass** — the orchestrator makes the commit (using the project's commit format) only after the validator passes. If it fails, fix forward (re-dispatch or correct) and re-validate before committing; nothing red gets committed.
+5. **Run `genvid-dev:code-reviewer`** at the end. If it flags doc gaps, offer to dispatch `genvid-dev:tech-writer` (same staged-but-uncommitted protocol — you commit its doc changes after review).
 
 ## Shortcuts
 
@@ -126,6 +129,7 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 - Skip the analyst — state requirements inline
 - Skip the designer if the approach is obvious
 - The planner can produce a minimal plan directly
+- Run the validator gate inline (the project's `validate` command directly) instead of dispatching `genvid-dev:validator` when the change is trivial and deterministic (e.g. a single-line doc edit) and a full subagent per commit would cost more than it surfaces. Still gate before the commit — only the mechanism is lighter, not the gate.
 
 For an **issue that's already a full proposal** (rationale + proposed change + explicit open questions):
 

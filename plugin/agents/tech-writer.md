@@ -78,6 +78,7 @@ When dispatched (typically by `plan-task` Phase 4) to record an architecture or 
 
 ## Commit Protocol
 
+- **Commit ownership depends on how you were invoked.** Standalone (doc-only maintenance): you commit. Dispatched by an orchestrator that owns the commit + validation gate (e.g. `plan-task`): stage your doc files, leave them uncommitted, and report what changed — the orchestrator commits after its gate. Your dispatch prompt tells you which mode you're in; default to standalone only when nothing says otherwise.
+- Stage only doc files (in both modes).
 - Commit message format follows the project's `CLAUDE.md` (typically a doc-specific scope or `docs:` prefix).
-- Stage only doc files.
-- `git commit -n` is acceptable — docs don't need lint hooks.
+- `git commit -n` is acceptable when you commit (standalone) — docs don't need lint hooks.
