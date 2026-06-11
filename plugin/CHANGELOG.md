@@ -128,6 +128,22 @@ and follows [semantic versioning](https://semver.org/).
   user and resolves to a no-op once the code is actually read, yielding a worse
   plan.
 
+### Fixed
+
+- **Commit ownership vs. the validator gate: `plan-task` now owns the commit
+  (#63).** `ts-implementer`/`tech-writer` instructed "commit each task with
+  `git commit -n`" while `plan-task` implied it validated *after* the implementer
+  returned — so the commit landed *before* the gate, producing inconsistent
+  commit authorship across a plan and letting a failing task land committed.
+  The two surfaces now agree on a single convention: **the orchestrator owns the
+  commit.** Implementer agents commit only when running standalone; when
+  dispatched by an orchestrator that owns the commit + validation gate they stage
+  their files, leave them uncommitted, and report what changed, and `plan-task`'s
+  Execution section now states it instructs every dispatch to stage-but-not-commit,
+  validates the staged changes, and commits only on pass. Consuming repos with
+  their own implementer agents that copy this Commit Protocol should mirror the
+  same standalone-vs-orchestrated conditional.
+
 ## [3.0.0] - 2026-06-05
 
 ### Added
