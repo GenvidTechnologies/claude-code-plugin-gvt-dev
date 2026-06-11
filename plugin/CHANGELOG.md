@@ -55,6 +55,12 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`plan-task`: allow an inline validator gate for trivial changes.** The
+  Shortcuts section now blesses running the project's `validate` command directly
+  instead of dispatching a full `genvid-dev:validator` subagent when the change is
+  trivial and deterministic (e.g. a single-line doc edit). The gate still runs
+  before the commit — only the mechanism is lighter.
+
 - **`publish-npm-package`: cover no-build packages (#53).** The skill assumed a
   buildable `tsc` package, and its "not for…" caveat implied a no-compilation
   package (a Cordova plugin, a vanilla-JS library) was out of scope — yet the
