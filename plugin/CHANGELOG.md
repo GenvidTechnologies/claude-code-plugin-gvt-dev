@@ -48,6 +48,19 @@ and follows [semantic versioning](https://semver.org/).
   friction checks (recipe-vs-override, validation-pipeline duality, paired-array
   ordering). No contract change.
 
+- **`designer`: re-derive a generalized runbook under its new parameter ranges (#68).**
+  A design that generalizes a proven procedure (runbook, manual recipe, one-off
+  script) into parameterized form can read as obviously-correct while a mechanical
+  step silently breaks under the parameter ranges the generalization newly admits —
+  the original's *fixed* inputs masked it. Surfaced authoring `reconcile-mcp-pin`:
+  the genvid-c3 runbook `npm pack`ed two *different* packages into a shared dir, but
+  the generalized "old vs new of the *same* package" case made both tarballs unpack
+  to `package/` and clobber (caught by the code-reviewer gate, not the design). The
+  designer's friction audit (step 4) now carries a **Generalize-a-runbook
+  re-derivation** sub-bullet: walk the concrete steps with the boundary values the
+  generalization opens up (same-name inputs, N=0/1, duplicates, collisions) and flag
+  any the original's constants protected. No contract change.
+
 - **`audit-conventions`: warn on `repo.host` drift vs the git remote (#54).** A
   stale `.genvid-agent.json` `repo.host` (e.g. `bitbucket` after a repo moved to
   GitHub) silently misleads host-specific skills (`create-pr`, `release-*`) at
