@@ -9,6 +9,16 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`tech-writer`: define decision-record `Date` semantics (#55).** The ADR
+  template shipped `Date: YYYY-MM-DD` with no meaning attached, and the
+  authoring step didn't mention the field — so a record (especially a
+  *retroactive* one) could get a date that predated the decision, caught only in
+  review. `tech-writer`'s ADR fill step and the template's guidance comment now
+  define **Date** as when the decision was *accepted/finalized* (not when the
+  record was written), with explicit handling for retroactive and diffuse
+  decisions. Surfaced dogfooding the `docs/decisions/` convention in this repo.
+  No contract change.
+
 - **`designer`: validate filter/classify/dedup heuristics against real data (#64).**
   A design could propose a set-partitioning heuristic (allowlist/noise filter,
   dedup key, "skip if X" rule, auto-suppression) that reads as obviously-sufficient
