@@ -9,6 +9,22 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`reconcile-mcp-pin`: new maintainer skill — reconcile agent tool inventories
+  after an MCP server pin bump (#68).** A plugin that pins MCP servers in
+  `plugin.json` `mcpServers` and ships agents enumerating those servers' tools by
+  hand must reconcile the inventories every bump — for an agent with a hard
+  `tools:` allow-list a missed read tool becomes *uncallable*, a functional
+  regression. The skill generalizes genvid-c3's proven
+  `tool-surface-reconciliation` runbook: pull the authoritative surface from the
+  pinned package (`npm pack` + `registerTool` grep with a count sanity-check), diff
+  old vs new, reconcile read-side and mutation-side agents respecting the
+  read/mutate split (two judgment calls kept as guided checkpoints), sweep stale
+  `@<old>` version prose, bump the pin, and add a CHANGELOG entry. It stops short of
+  the release and hands off to `release-plugin`. A new invocable skill is
+  consumer-visible surface → version bump. Contract unchanged: declares only `paths.plugin_root`
+  (`required: false`) and the `npm`/`git` tools, so the audit's aggregate
+  expectations don't widen — genvid-dev, which bundles no MCP servers, is unaffected.
+
 - **`tech-writer`: define decision-record `Date` semantics (#55).** The ADR
   template shipped `Date: YYYY-MM-DD` with no meaning attached, and the
   authoring step didn't mention the field — so a record (especially a
