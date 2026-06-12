@@ -20,6 +20,7 @@ import { resolveKey } from './lib/config-resolve.mjs';
 import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
 import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
+import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -316,7 +317,7 @@ async function runFix(state) {
     console.error(`State: ${state}\n`);
     console.error('Refusing to apply with a dirty working tree. Commit or stash your changes first,');
     console.error('so the migration lands as a reviewable diff with nothing else mixed in.');
-    console.error('(The --fix dry-run writes nothing and runs fine on a dirty tree — preview there first.)');
+    console.error('(The --fix dry-run writes nothing to your repo and runs fine on a dirty tree — preview there first.)');
     process.exit(1);
   }
 
@@ -332,12 +333,26 @@ async function runFix(state) {
 
   if (!APPLY_MODE) {
     console.log(formatPlanDryRun(plan));
+    savePreviewedPlan(REPO_ROOT, plan);
     process.exit(0);
   }
 
   console.log(`## --fix --apply (state: ${plan.state})\n`);
+  const previewed = loadPreviewedPlan(REPO_ROOT);
   const results = await applyPlan(plan, REPO_ROOT);
   console.log(formatApplyResults(results));
+
+  if (previewed !== null) {
+    const diff = diffPlans(previewed, plan);
+    const reconLine = formatReconciliation(
+      diff,
+      previewed.actions.length,
+      previewed.actions.length - diff.dropped.length,
+    );
+    if (reconLine) console.log('\n' + reconLine);
+  } else {
+    console.log('\nNo previewed plan found to reconcile against — run --fix first to preview, then --fix --apply.');
+  }
 
   // Surface anything the plan could not clean up automatically (stale doc/text
   // references, orphaned sidecars) so the user has an explicit follow-up list.
@@ -345,6 +360,8 @@ async function runFix(state) {
     const warnings = await scanDanglingReferences(REPO_ROOT);
     console.log('\n' + formatDanglingReport(warnings));
   }
+
+  clearPreviewedPlan(REPO_ROOT);
 
   const failed = results.filter((r) => !r.ok);
   process.exit(failed.length > 0 ? 1 : 0);
@@ -373,7 +390,7 @@ function formatPlanDryRun(plan) {
   }
   lines.push('');
   lines.push('Re-run with `--fix --apply` to actually apply these changes.');
-  lines.push('No files have been written.');
+  lines.push('No changes have been written to your repo.');
   return lines.join('\n');
 }
 
