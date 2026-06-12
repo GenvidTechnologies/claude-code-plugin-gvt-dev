@@ -305,6 +305,17 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
         args: ['rm', '-f', LEGACY_SUBMODULE_NAME],
         summary: `git rm -f ${LEGACY_SUBMODULE_NAME} (also strips the .gitmodules entry)`,
       });
+      // `git rm` removes the submodule's own [submodule] section but leaves an
+      // empty, staged-as-modified .gitmodules behind when it was the last entry
+      // (issue #71). Remove the now-empty file too.
+      const sectionCount = (gm.match(/^\[submodule /gm) || []).length;
+      if (sectionCount <= 1) {
+        actions.push({
+          type: 'git-cmd',
+          args: ['rm', '-f', '.gitmodules'],
+          summary: 'git rm -f .gitmodules (now empty — removed submodule was the last entry)',
+        });
+      }
     }
   }
 

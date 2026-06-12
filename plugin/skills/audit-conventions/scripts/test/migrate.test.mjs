@@ -366,6 +366,41 @@ test('planLegacy: removes package.json script referencing the removed submodule'
 });
 
 // ---------------------------------------------------------------------------
+// #71 — stale .gitmodules / .claudeignore after submodule removal
+// ---------------------------------------------------------------------------
+
+test('planLegacy: removes now-empty .gitmodules when the legacy submodule was the last entry', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.gitmodules',
+      '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = git@example.com:org/burbank-claude-config.git\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('rm -f burbank-claude-config'), 'submodule itself removed');
+    assert.ok(gitCmds.includes('rm -f .gitmodules'), 'now-empty .gitmodules removed');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: keeps .gitmodules when other submodules remain', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.gitmodules',
+      '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = u1\n' +
+      '[submodule "other"]\n\tpath = other\n\turl = u2\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('rm -f burbank-claude-config'), 'submodule itself removed');
+    assert.ok(!gitCmds.includes('rm -f .gitmodules'), '.gitmodules kept — other submodules remain');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // #7 — port agent sidecars + post-apply dangling-ref report
 // ---------------------------------------------------------------------------
 
