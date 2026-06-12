@@ -390,6 +390,22 @@ test('planLegacy: ports a legacy code-reviewer sidecar to docs/', async () => {
   }
 });
 
+test('scanDanglingReferences: flags settings.json still referencing the deleted pre-commit-lint hook', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'node .claude/hooks/pre-commit-lint.js' }] }] },
+    }, null, 2));
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const hit = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('.claude/settings.json'));
+    assert.ok(hit, 'should flag settings.json that still references the deleted hook');
+    assert.match(hit.hint, /pre-commit-lint/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanDanglingReferences: finds stale doc refs and orphaned sidecars', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'CLAUDE.md', 'Run `npm run sync-claude-config` to update burbank-claude-config.\n');

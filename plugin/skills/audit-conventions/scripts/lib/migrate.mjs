@@ -566,6 +566,22 @@ export async function scanDanglingReferences(repoRoot) {
     }
   }
 
+  // 3. settings.json still referencing the deleted pre-commit-lint hook
+  //    (issue #70). Belt-and-suspenders for any hook shape planSettingsCleanup
+  //    couldn't rewrite: a leftover reference points at a file the migration
+  //    deleted and breaks the PreToolUse hook on the next Bash call.
+  try {
+    const settingsRaw = await fs.readFile(join(repoRoot, SETTINGS_JSON), 'utf8');
+    if (settingsRaw.includes(LEGACY_HOOK_BASENAME)) {
+      warnings.push({
+        file: SETTINGS_JSON,
+        hint: `still references the deleted ${LEGACY_HOOK_BASENAME} hook — remove the entry by hand (it breaks the PreToolUse hook on the next Bash call)`,
+      });
+    }
+  } catch {
+    // no settings.json — nothing to check
+  }
+
   return warnings;
 }
 
