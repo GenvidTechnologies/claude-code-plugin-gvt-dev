@@ -118,6 +118,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`ts-implementer` / `plan-task`: name JavaScript explicitly as in-scope.** The
+  `ts-implementer` description and body said "pure-TypeScript tasks," and
+  `plan-task`'s execution step routed only "TypeScript work" to it — leaving plain
+  ESM JavaScript (e.g. this plugin's own `scripts/*.mjs` audit code) with no named
+  implementer, so dispatching it was a judgment call. Both now state the agent is
+  the default implementer for TypeScript **or** JavaScript (including `.mjs`).
+  Routing/description refinement; no contract change.
+
 - **`plan-task`: allow an inline validator gate for trivial changes.** The
   Shortcuts section now blesses running the project's `validate` command directly
   instead of dispatching a full `genvid-dev:validator` subagent when the change is
