@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-06-12
+
 ### Added
 
 - **`audit-conventions`: `--apply` reconciles against the previewed `--fix` plan
