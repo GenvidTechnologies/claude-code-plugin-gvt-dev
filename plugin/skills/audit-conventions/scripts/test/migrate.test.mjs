@@ -486,3 +486,53 @@ test('scanDanglingReferences: finds stale doc refs and orphaned sidecars', async
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// #72 — orphaned-sidecar follow-up names a candidate docs/ target / disposition
+// ---------------------------------------------------------------------------
+
+test('scanDanglingReferences: names a candidate doc for a knowledge-bearing orphan', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/analyst/project-knowledge.md', 'system overview\n');
+    await writeRepoFile(d, '.claude/agents/designer/project-knowledge.md', 'domain notes\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const analyst = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('agents/analyst/project-knowledge.md'));
+    const designer = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('agents/designer/project-knowledge.md'));
+    assert.match(analyst.hint, /docs\/architecture\.md/);
+    assert.match(designer.hint, /docs\/domain\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanDanglingReferences: marks obsolete sidecars for deletion with their successor', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/validator/project-commands.md', 'validate cmds\n');
+    await writeRepoFile(d, '.claude/skills/cleanup-initiative/project-docs-to-check.md', 'doc links\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const cmds = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-commands.md'));
+    const docs = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-docs-to-check.md'));
+    assert.match(cmds.hint, /obsolete.*\.genvid-agent\.json/);
+    assert.match(docs.hint, /obsolete.*docs\/TOC\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanDanglingReferences: unknown orphan falls back to the generic port-or-delete hint', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/whatever/project-mystery.md', 'unknown\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const hit = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-mystery.md'));
+    assert.ok(hit, 'unknown sidecar still flagged');
+    assert.match(hit.hint, /port the still-relevant parts into docs\//);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

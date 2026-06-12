@@ -580,6 +580,42 @@ async function planSidecarPorting(repoRoot) {
 
 const DANGLING_NEEDLES = ['sync-claude-config', LEGACY_SUBMODULE_NAME, 'AUTO-GENERATED'];
 
+// Disposition hints for orphaned context sidecars (issue #72). The generic
+// "port to docs/ or delete" under-specifies the action, so name a candidate
+// target and classify the orphan — but the knowledge rarely maps 1:1 onto one
+// new doc, so each hint hands the final call (reformat / split / discard) to
+// the reader. Rules are tried in order: a path-suffix match wins over a
+// basename match, which wins over the generic fallback.
+const ORPHAN_DISPOSITION = [
+  { suffix: 'agents/analyst/project-knowledge.md',
+    hint: 'likely belongs in docs/architecture.md (system overview, data flows, deps) — review and split across docs/ as needed before deleting' },
+  { suffix: 'agents/designer/project-knowledge.md',
+    hint: 'likely belongs in docs/domain.md (domain + constraints) — review/reformat before deleting' },
+  { suffix: 'agents/planner/project-knowledge.md',
+    hint: 'likely belongs in docs/architecture.md (architecture + task patterns) — review/split before deleting' },
+  { basename: 'project-commands.md',
+    hint: 'obsolete — delete; validation commands now live in .genvid-agent.json commands.*' },
+  { basename: 'project-docs-to-check.md',
+    hint: 'obsolete — delete; superseded by docs/TOC.md' },
+];
+
+const ORPHAN_FALLBACK =
+  'orphaned context sidecar — no plugin component reads it; review its content and '
+  + 'port the still-relevant parts into docs/ (reformat/split as needed), or delete if obsolete';
+
+// Pick the most specific disposition hint for an orphaned sidecar path.
+function dispositionFor(relPath) {
+  const normalized = relPath.replace(/\\/g, '/');
+  const basename = normalized.split('/').pop();
+  for (const rule of ORPHAN_DISPOSITION) {
+    if (rule.suffix && normalized.endsWith(rule.suffix)) return rule.hint;
+  }
+  for (const rule of ORPHAN_DISPOSITION) {
+    if (rule.basename && rule.basename === basename) return rule.hint;
+  }
+  return ORPHAN_FALLBACK;
+}
+
 // After applying the plan, surface anything the migration could not clean up
 // automatically: stale text references in docs/config, and orphaned per-agent
 // sidecars the plugin no longer reads. Returns [{ file, hint }].
@@ -605,7 +641,7 @@ export async function scanDanglingReferences(repoRoot) {
   // 2. Orphaned per-agent / per-skill context sidecars.
   for (const base of ['.claude/agents', '.claude/skills']) {
     for (const rel of await listSidecars(repoRoot, base)) {
-      warnings.push({ file: rel, hint: 'orphaned context sidecar — no longer read by any plugin component; port to docs/ or delete' });
+      warnings.push({ file: rel, hint: dispositionFor(rel) });
     }
   }
 
