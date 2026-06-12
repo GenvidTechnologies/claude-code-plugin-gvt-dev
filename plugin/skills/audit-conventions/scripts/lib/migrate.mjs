@@ -26,6 +26,7 @@ const CONVENTIONS_IMPORT_LINE = '@CONVENTIONS.md';
 const LEGACY_SUBMODULE_NAME = 'burbank-claude-config';
 const SETTINGS_JSON = '.claude/settings.json';
 const PACKAGE_JSON = 'package.json';
+const CLAUDEIGNORE = '.claudeignore';
 const LEGACY_HOOK_BASENAME = 'pre-commit-lint.js';
 const LOCAL_EDIT_MARKER = 'LOCAL EDIT';
 const SKELETON_DIR = 'skeleton';
@@ -289,6 +290,7 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
   //    settings.json and dead package.json scripts referencing the submodule.
   for (const action of await planSettingsCleanup(repoRoot)) actions.push(action);
   for (const action of await planPackageJsonCleanup(repoRoot)) actions.push(action);
+  for (const action of await planClaudeignoreCleanup(repoRoot)) actions.push(action);
 
   // 7. Remove the submodule.
   const gitmodulesPath = join(repoRoot, '.gitmodules');
@@ -512,6 +514,36 @@ async function planPackageJsonCleanup(repoRoot) {
     path,
     content: JSON.stringify(pkg, null, 2) + '\n',
     summary: `Remove dead ${PACKAGE_JSON} script${removed.length > 1 ? 's' : ''} referencing the removed submodule: ${removed.join(', ')}`,
+  }];
+}
+
+// Strip .claudeignore lines that ignore the removed submodule path; if that
+// empties the file, remove it instead of leaving a stale ignore (issue #71).
+async function planClaudeignoreCleanup(repoRoot) {
+  const path = join(repoRoot, CLAUDEIGNORE);
+  let content;
+  try {
+    content = await fs.readFile(path, 'utf8');
+  } catch {
+    return [];
+  }
+  const lines = content.split('\n');
+  const kept = lines.filter((line) => !line.includes(LEGACY_SUBMODULE_NAME));
+  if (kept.length === lines.length) return [];
+
+  // Only blank lines left -> the file existed solely to ignore the submodule.
+  if (kept.every((line) => line.trim() === '')) {
+    return [{
+      type: 'delete-file',
+      path,
+      summary: `Delete ${CLAUDEIGNORE} (only ignored the removed ${LEGACY_SUBMODULE_NAME} submodule)`,
+    }];
+  }
+  return [{
+    type: 'write-file',
+    path,
+    content: kept.join('\n'),
+    summary: `Strip ${LEGACY_SUBMODULE_NAME} line(s) from ${CLAUDEIGNORE}`,
   }];
 }
 

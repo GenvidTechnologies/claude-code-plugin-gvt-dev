@@ -400,6 +400,35 @@ test('planLegacy: keeps .gitmodules when other submodules remain', async () => {
   }
 });
 
+test('planLegacy: deletes .claudeignore when it only ignored the removed submodule', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claudeignore', 'burbank-claude-config/\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const del = plan.actions.find((a) => a.type === 'delete-file' && a.path.endsWith('.claudeignore'));
+    assert.ok(del, '.claudeignore should be deleted when it only ignored the submodule');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: strips only the submodule line from a .claudeignore with other entries', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claudeignore', 'node_modules/\nburbank-claude-config/\ndist/\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const write = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('.claudeignore'));
+    assert.ok(write, 'expected a .claudeignore write-file action');
+    assert.ok(!write.content.includes('burbank-claude-config'), 'submodule line stripped');
+    assert.ok(write.content.includes('node_modules/'), 'unrelated ignores preserved');
+    assert.ok(write.content.includes('dist/'), 'unrelated ignores preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // #7 — port agent sidecars + post-apply dangling-ref report
 // ---------------------------------------------------------------------------
