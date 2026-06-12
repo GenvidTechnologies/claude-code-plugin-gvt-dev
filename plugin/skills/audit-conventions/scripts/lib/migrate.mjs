@@ -413,9 +413,32 @@ function referencesLegacy(command) {
     && (command.includes(LEGACY_HOOK_BASENAME) || command.includes(LEGACY_SUBMODULE_NAME));
 }
 
+// Filter a flat array of hook groups, dropping any hook whose command points at
+// the dangling legacy pre-commit-lint.js and removing a group entirely once that
+// empties it. Returns the kept groups plus whether anything was removed.
+function filterHookGroups(groups) {
+  let changed = false;
+  const kept = [];
+  for (const group of groups) {
+    const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
+    const filtered = hooks.filter((h) => !referencesLegacy(h?.command));
+    if (filtered.length !== hooks.length) changed = true;
+    // Drop a group only if removing the dangling hook emptied it; leave
+    // groups that never had hooks (or still have some) untouched.
+    if (hooks.length > 0 && filtered.length === 0) continue;
+    kept.push(filtered.length === hooks.length ? group : { ...group, hooks: filtered });
+  }
+  return { kept, changed };
+}
+
 // Strip any PreToolUse-style hook entry whose command points at the
 // now-deleted pre-commit-lint.js (the plugin ships its own copy via
 // hooks/hooks.json, so the project entry is both redundant and dangling).
+//
+// Handles both settings.json hook shapes (issue #70): the legacy ARRAY form
+// (`hooks: [ {matcher:{event,tool}, hooks:[…]} ]`, the format legacy repos
+// being migrated actually carry) and the newer OBJECT form keyed by event
+// (`hooks: { PreToolUse: [ {matcher, hooks:[…]} ] }`).
 async function planSettingsCleanup(repoRoot) {
   const path = join(repoRoot, SETTINGS_JSON);
   let settings;
@@ -427,24 +450,25 @@ async function planSettingsCleanup(repoRoot) {
   if (!settings.hooks || typeof settings.hooks !== 'object') return [];
 
   let changed = false;
-  for (const event of Object.keys(settings.hooks)) {
-    const groups = settings.hooks[event];
-    if (!Array.isArray(groups)) continue;
-    const keptGroups = [];
-    for (const group of groups) {
-      const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
-      const filtered = hooks.filter((h) => !referencesLegacy(h?.command));
-      if (filtered.length !== hooks.length) changed = true;
-      // Drop a group only if removing the dangling hook emptied it; leave
-      // groups that never had hooks (or still have some) untouched.
-      if (hooks.length > 0 && filtered.length === 0) continue;
-      keptGroups.push(filtered.length === hooks.length ? group : { ...group, hooks: filtered });
+  if (Array.isArray(settings.hooks)) {
+    // Legacy array shape: a flat list of { matcher, hooks } groups.
+    const { kept, changed: c } = filterHookGroups(settings.hooks);
+    changed = c;
+    if (kept.length > 0) settings.hooks = kept;
+    else delete settings.hooks;
+  } else {
+    // Newer object shape: keyed by event name -> array of groups.
+    for (const event of Object.keys(settings.hooks)) {
+      const groups = settings.hooks[event];
+      if (!Array.isArray(groups)) continue;
+      const { kept, changed: c } = filterHookGroups(groups);
+      if (c) changed = true;
+      if (kept.length > 0) settings.hooks[event] = kept;
+      else delete settings.hooks[event];
     }
-    if (keptGroups.length > 0) settings.hooks[event] = keptGroups;
-    else delete settings.hooks[event];
+    if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
   }
   if (!changed) return [];
-  if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
 
   return [{
     type: 'write-file',

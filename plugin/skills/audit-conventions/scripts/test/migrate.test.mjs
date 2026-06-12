@@ -300,6 +300,50 @@ test('planLegacy: removes dangling pre-commit-lint hook from .claude/settings.js
   }
 });
 
+test('planLegacy: removes dangling pre-commit-lint hook from legacy ARRAY-shaped .claude/settings.json', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      hooks: [
+        { matcher: { event: 'PreToolUse', tool: 'Bash' },
+          hooks: [{ type: 'shell', command: 'node .claude/hooks/pre-commit-lint.js' }] },
+        { matcher: { event: 'PreToolUse', tool: 'Write' },
+          hooks: [{ type: 'shell', command: 'node other.js' }] },
+      ],
+    }, null, 2));
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const action = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('settings.json'));
+    assert.ok(action, 'expected a settings.json write-file action for the legacy array shape');
+    assert.ok(!action.content.includes('pre-commit-lint.js'), 'dangling hook command must be removed (array shape)');
+    assert.ok(action.content.includes('other.js'), 'unrelated hooks must be preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: array-shaped settings whose only hook is dangling drops the hooks key', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      otherSetting: true,
+      hooks: [
+        { matcher: { event: 'PreToolUse', tool: 'Bash' },
+          hooks: [{ type: 'shell', command: 'node .claude/hooks/pre-commit-lint.js' }] },
+      ],
+    }, null, 2));
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const action = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('settings.json'));
+    assert.ok(action, 'expected a settings.json write-file action');
+    const parsed = JSON.parse(action.content);
+    assert.ok(!('hooks' in parsed), 'emptied hooks key should be removed entirely');
+    assert.equal(parsed.otherSetting, true, 'unrelated settings preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('planLegacy: removes package.json script referencing the removed submodule', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'package.json', JSON.stringify({
