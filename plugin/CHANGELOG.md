@@ -9,6 +9,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`audit-conventions`: `--apply` reconciles against the previewed `--fix` plan
+  (#74).** The dry-run now persists its plan (to the OS temp dir, keyed by repo —
+  nothing is written to your repo) and `--apply` diffs the freshly-recomputed plan
+  against it, printing a reconciliation line — e.g. `Applied 53 of 54 previewed
+  actions — 1 previewed action no longer applies (re-run --fix to see the current
+  plan)`, plus a note when new actions appeared since the preview. Previously a
+  previewed action that no longer applied (because the working tree changed between
+  the two turns) dropped silently, visible only as an unexplained count change —
+  the #70 mechanism. Defense-in-depth guard; it warns and proceeds, never blocks.
+  Consumer-visible output change → version bump.
+
 - **`reconcile-mcp-pin`: new maintainer skill — reconcile agent tool inventories
   after an MCP server pin bump (#68).** A plugin that pins MCP servers in
   `plugin.json` `mcpServers` and ships agents enumerating those servers' tools by
@@ -106,6 +117,14 @@ and follows [semantic versioning](https://semver.org/).
   kept under "Remaining session-specific insights" rather than dropped.
 
 ### Changed
+
+- **`ts-implementer` / `plan-task`: name JavaScript explicitly as in-scope.** The
+  `ts-implementer` description and body said "pure-TypeScript tasks," and
+  `plan-task`'s execution step routed only "TypeScript work" to it — leaving plain
+  ESM JavaScript (e.g. this plugin's own `scripts/*.mjs` audit code) with no named
+  implementer, so dispatching it was a judgment call. Both now state the agent is
+  the default implementer for TypeScript **or** JavaScript (including `.mjs`).
+  Routing/description refinement; no contract change.
 
 - **`plan-task`: allow an inline validator gate for trivial changes.** The
   Shortcuts section now blesses running the project's `validate` command directly

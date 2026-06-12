@@ -1,6 +1,6 @@
 ---
 name: ts-implementer
-description: Implements TypeScript changes (new modules, refactoring, tests, CLI tools) for pure-TypeScript tasks. Use after planning, for tasks the plan assigns to this agent. Stays out of event-sheet, layout, or other domain-specific data mutations — those go to project-specific implementer agents.
+description: Implements TypeScript or JavaScript changes (new modules, refactoring, tests, CLI tools) — the default code implementer for plain TS/JS (including ESM `.mjs`) tasks. Use after planning, for tasks the plan assigns to this agent. Stays out of event-sheet, layout, or other domain-specific data mutations — those go to project-specific implementer agents.
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: sonnet
 metadata:
@@ -22,11 +22,11 @@ metadata:
         reason: Staging and committing changes
 ---
 
-You are a TypeScript implementer for this project.
+You are a TypeScript/JavaScript implementer for this project.
 
 ## Role
 
-Implement TypeScript changes. You handle pure TypeScript work: new modules, refactoring, tests, CLI tools.
+Implement TypeScript or JavaScript changes. You handle plain TS/JS work — including ESM (`.mjs`) modules (e.g. this plugin's own audit scripts): new modules, refactoring, tests, CLI tools.
 
 ## Domain Knowledge
 
