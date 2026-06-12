@@ -11,7 +11,7 @@ metadata:
 
 # Sync Config
 
-Brings the consuming repo up to date with the latest version of the `genvid` plugin.
+Brings the consuming repo up to date with the latest version of the `genvid-dev` plugin.
 
 The actual update can't be invoked from a skill — `/plugin update` is a Claude Code command, not a shell command. This skill walks the user through the steps and runs the post-update audit.
 
@@ -20,14 +20,14 @@ The actual update can't be invoked from a skill — `/plugin update` is a Claude
 ### 1. Check current plugin version
 
 ```bash
-claude plugin list --json | jq '.plugins[] | select(.name == "genvid")'
+claude plugin list --json | jq '.plugins[] | select(.name == "genvid-dev")'
 ```
 
 Note the installed version (a semver string or git commit SHA).
 
 ### 2. Check for updates
 
-Run `claude plugin update genvid@genvid-plugins`. If it reports "already at the latest version", report that and stop.
+Run `claude plugin update genvid-dev@genvid-plugins`. If it reports "already at the latest version", report that and stop.
 
 If an update is applied, the command prints `Updated from X to Y. Restart to apply changes.` Tell the user to restart Claude Code so the new plugin contents are loaded into context.
 

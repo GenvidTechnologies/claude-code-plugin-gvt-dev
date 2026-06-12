@@ -26,6 +26,7 @@ const CONVENTIONS_IMPORT_LINE = '@CONVENTIONS.md';
 const LEGACY_SUBMODULE_NAME = 'burbank-claude-config';
 const SETTINGS_JSON = '.claude/settings.json';
 const PACKAGE_JSON = 'package.json';
+const CLAUDEIGNORE = '.claudeignore';
 const LEGACY_HOOK_BASENAME = 'pre-commit-lint.js';
 const LOCAL_EDIT_MARKER = 'LOCAL EDIT';
 const SKELETON_DIR = 'skeleton';
@@ -289,6 +290,7 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
   //    settings.json and dead package.json scripts referencing the submodule.
   for (const action of await planSettingsCleanup(repoRoot)) actions.push(action);
   for (const action of await planPackageJsonCleanup(repoRoot)) actions.push(action);
+  for (const action of await planClaudeignoreCleanup(repoRoot)) actions.push(action);
 
   // 7. Remove the submodule.
   const gitmodulesPath = join(repoRoot, '.gitmodules');
@@ -305,6 +307,17 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
         args: ['rm', '-f', LEGACY_SUBMODULE_NAME],
         summary: `git rm -f ${LEGACY_SUBMODULE_NAME} (also strips the .gitmodules entry)`,
       });
+      // `git rm` removes the submodule's own [submodule] section but leaves an
+      // empty, staged-as-modified .gitmodules behind when it was the last entry
+      // (issue #71). Remove the now-empty file too.
+      const sectionCount = (gm.match(/^\[submodule /gm) || []).length;
+      if (sectionCount <= 1) {
+        actions.push({
+          type: 'git-cmd',
+          args: ['rm', '-f', '.gitmodules'],
+          summary: 'git rm -f .gitmodules (now empty — removed submodule was the last entry)',
+        });
+      }
     }
   }
 
@@ -413,9 +426,32 @@ function referencesLegacy(command) {
     && (command.includes(LEGACY_HOOK_BASENAME) || command.includes(LEGACY_SUBMODULE_NAME));
 }
 
+// Filter a flat array of hook groups, dropping any hook whose command points at
+// the dangling legacy pre-commit-lint.js and removing a group entirely once that
+// empties it. Returns the kept groups plus whether anything was removed.
+function filterHookGroups(groups) {
+  let changed = false;
+  const kept = [];
+  for (const group of groups) {
+    const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
+    const filtered = hooks.filter((h) => !referencesLegacy(h?.command));
+    if (filtered.length !== hooks.length) changed = true;
+    // Drop a group only if removing the dangling hook emptied it; leave
+    // groups that never had hooks (or still have some) untouched.
+    if (hooks.length > 0 && filtered.length === 0) continue;
+    kept.push(filtered.length === hooks.length ? group : { ...group, hooks: filtered });
+  }
+  return { kept, changed };
+}
+
 // Strip any PreToolUse-style hook entry whose command points at the
 // now-deleted pre-commit-lint.js (the plugin ships its own copy via
 // hooks/hooks.json, so the project entry is both redundant and dangling).
+//
+// Handles both settings.json hook shapes (issue #70): the legacy ARRAY form
+// (`hooks: [ {matcher:{event,tool}, hooks:[…]} ]`, the format legacy repos
+// being migrated actually carry) and the newer OBJECT form keyed by event
+// (`hooks: { PreToolUse: [ {matcher, hooks:[…]} ] }`).
 async function planSettingsCleanup(repoRoot) {
   const path = join(repoRoot, SETTINGS_JSON);
   let settings;
@@ -427,24 +463,25 @@ async function planSettingsCleanup(repoRoot) {
   if (!settings.hooks || typeof settings.hooks !== 'object') return [];
 
   let changed = false;
-  for (const event of Object.keys(settings.hooks)) {
-    const groups = settings.hooks[event];
-    if (!Array.isArray(groups)) continue;
-    const keptGroups = [];
-    for (const group of groups) {
-      const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
-      const filtered = hooks.filter((h) => !referencesLegacy(h?.command));
-      if (filtered.length !== hooks.length) changed = true;
-      // Drop a group only if removing the dangling hook emptied it; leave
-      // groups that never had hooks (or still have some) untouched.
-      if (hooks.length > 0 && filtered.length === 0) continue;
-      keptGroups.push(filtered.length === hooks.length ? group : { ...group, hooks: filtered });
+  if (Array.isArray(settings.hooks)) {
+    // Legacy array shape: a flat list of { matcher, hooks } groups.
+    const { kept, changed: c } = filterHookGroups(settings.hooks);
+    changed = c;
+    if (kept.length > 0) settings.hooks = kept;
+    else delete settings.hooks;
+  } else {
+    // Newer object shape: keyed by event name -> array of groups.
+    for (const event of Object.keys(settings.hooks)) {
+      const groups = settings.hooks[event];
+      if (!Array.isArray(groups)) continue;
+      const { kept, changed: c } = filterHookGroups(groups);
+      if (c) changed = true;
+      if (kept.length > 0) settings.hooks[event] = kept;
+      else delete settings.hooks[event];
     }
-    if (keptGroups.length > 0) settings.hooks[event] = keptGroups;
-    else delete settings.hooks[event];
+    if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
   }
   if (!changed) return [];
-  if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
 
   return [{
     type: 'write-file',
@@ -477,6 +514,36 @@ async function planPackageJsonCleanup(repoRoot) {
     path,
     content: JSON.stringify(pkg, null, 2) + '\n',
     summary: `Remove dead ${PACKAGE_JSON} script${removed.length > 1 ? 's' : ''} referencing the removed submodule: ${removed.join(', ')}`,
+  }];
+}
+
+// Strip .claudeignore lines that ignore the removed submodule path; if that
+// empties the file, remove it instead of leaving a stale ignore (issue #71).
+async function planClaudeignoreCleanup(repoRoot) {
+  const path = join(repoRoot, CLAUDEIGNORE);
+  let content;
+  try {
+    content = await fs.readFile(path, 'utf8');
+  } catch {
+    return [];
+  }
+  const lines = content.split('\n');
+  const kept = lines.filter((line) => !line.includes(LEGACY_SUBMODULE_NAME));
+  if (kept.length === lines.length) return [];
+
+  // Only blank lines left -> the file existed solely to ignore the submodule.
+  if (kept.every((line) => line.trim() === '')) {
+    return [{
+      type: 'delete-file',
+      path,
+      summary: `Delete ${CLAUDEIGNORE} (only ignored the removed ${LEGACY_SUBMODULE_NAME} submodule)`,
+    }];
+  }
+  return [{
+    type: 'write-file',
+    path,
+    content: kept.join('\n'),
+    summary: `Strip ${LEGACY_SUBMODULE_NAME} line(s) from ${CLAUDEIGNORE}`,
   }];
 }
 
@@ -513,6 +580,42 @@ async function planSidecarPorting(repoRoot) {
 
 const DANGLING_NEEDLES = ['sync-claude-config', LEGACY_SUBMODULE_NAME, 'AUTO-GENERATED'];
 
+// Disposition hints for orphaned context sidecars (issue #72). The generic
+// "port to docs/ or delete" under-specifies the action, so name a candidate
+// target and classify the orphan — but the knowledge rarely maps 1:1 onto one
+// new doc, so each hint hands the final call (reformat / split / discard) to
+// the reader. Rules are tried in order: a path-suffix match wins over a
+// basename match, which wins over the generic fallback.
+const ORPHAN_DISPOSITION = [
+  { suffix: 'agents/analyst/project-knowledge.md',
+    hint: 'likely belongs in docs/architecture.md (system overview, data flows, deps) — review and split across docs/ as needed before deleting' },
+  { suffix: 'agents/designer/project-knowledge.md',
+    hint: 'likely belongs in docs/domain.md (domain + constraints) — review/reformat before deleting' },
+  { suffix: 'agents/planner/project-knowledge.md',
+    hint: 'likely belongs in docs/architecture.md (architecture + task patterns) — review/split before deleting' },
+  { basename: 'project-commands.md',
+    hint: 'obsolete — delete; validation commands now live in .genvid-agent.json commands.*' },
+  { basename: 'project-docs-to-check.md',
+    hint: 'obsolete — delete; superseded by docs/TOC.md' },
+];
+
+const ORPHAN_FALLBACK =
+  'orphaned context sidecar — no plugin component reads it; review its content and '
+  + 'port the still-relevant parts into docs/ (reformat/split as needed), or delete if obsolete';
+
+// Pick the most specific disposition hint for an orphaned sidecar path.
+function dispositionFor(relPath) {
+  const normalized = relPath.replace(/\\/g, '/');
+  const basename = normalized.split('/').pop();
+  for (const rule of ORPHAN_DISPOSITION) {
+    if (rule.suffix && normalized.endsWith(rule.suffix)) return rule.hint;
+  }
+  for (const rule of ORPHAN_DISPOSITION) {
+    if (rule.basename && rule.basename === basename) return rule.hint;
+  }
+  return ORPHAN_FALLBACK;
+}
+
 // After applying the plan, surface anything the migration could not clean up
 // automatically: stale text references in docs/config, and orphaned per-agent
 // sidecars the plugin no longer reads. Returns [{ file, hint }].
@@ -538,8 +641,24 @@ export async function scanDanglingReferences(repoRoot) {
   // 2. Orphaned per-agent / per-skill context sidecars.
   for (const base of ['.claude/agents', '.claude/skills']) {
     for (const rel of await listSidecars(repoRoot, base)) {
-      warnings.push({ file: rel, hint: 'orphaned context sidecar — no longer read by any plugin component; port to docs/ or delete' });
+      warnings.push({ file: rel, hint: dispositionFor(rel) });
     }
+  }
+
+  // 3. settings.json still referencing the deleted pre-commit-lint hook
+  //    (issue #70). Belt-and-suspenders for any hook shape planSettingsCleanup
+  //    couldn't rewrite: a leftover reference points at a file the migration
+  //    deleted and breaks the PreToolUse hook on the next Bash call.
+  try {
+    const settingsRaw = await fs.readFile(join(repoRoot, SETTINGS_JSON), 'utf8');
+    if (settingsRaw.includes(LEGACY_HOOK_BASENAME)) {
+      warnings.push({
+        file: SETTINGS_JSON,
+        hint: `still references the deleted ${LEGACY_HOOK_BASENAME} hook — remove the entry by hand (it breaks the PreToolUse hook on the next Bash call)`,
+      });
+    }
+  } catch {
+    // no settings.json — nothing to check
   }
 
   return warnings;

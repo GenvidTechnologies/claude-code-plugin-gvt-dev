@@ -300,6 +300,50 @@ test('planLegacy: removes dangling pre-commit-lint hook from .claude/settings.js
   }
 });
 
+test('planLegacy: removes dangling pre-commit-lint hook from legacy ARRAY-shaped .claude/settings.json', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      hooks: [
+        { matcher: { event: 'PreToolUse', tool: 'Bash' },
+          hooks: [{ type: 'shell', command: 'node .claude/hooks/pre-commit-lint.js' }] },
+        { matcher: { event: 'PreToolUse', tool: 'Write' },
+          hooks: [{ type: 'shell', command: 'node other.js' }] },
+      ],
+    }, null, 2));
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const action = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('settings.json'));
+    assert.ok(action, 'expected a settings.json write-file action for the legacy array shape');
+    assert.ok(!action.content.includes('pre-commit-lint.js'), 'dangling hook command must be removed (array shape)');
+    assert.ok(action.content.includes('other.js'), 'unrelated hooks must be preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: array-shaped settings whose only hook is dangling drops the hooks key', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      otherSetting: true,
+      hooks: [
+        { matcher: { event: 'PreToolUse', tool: 'Bash' },
+          hooks: [{ type: 'shell', command: 'node .claude/hooks/pre-commit-lint.js' }] },
+      ],
+    }, null, 2));
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const action = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('settings.json'));
+    assert.ok(action, 'expected a settings.json write-file action');
+    const parsed = JSON.parse(action.content);
+    assert.ok(!('hooks' in parsed), 'emptied hooks key should be removed entirely');
+    assert.equal(parsed.otherSetting, true, 'unrelated settings preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('planLegacy: removes package.json script referencing the removed submodule', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'package.json', JSON.stringify({
@@ -316,6 +360,70 @@ test('planLegacy: removes package.json script referencing the removed submodule'
     const pkg = JSON.parse(action.content);
     assert.ok(!('sync-claude-config' in pkg.scripts), 'dead sync script must be removed');
     assert.equal(pkg.scripts.test, 'jest', 'unrelated scripts preserved');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #71 — stale .gitmodules / .claudeignore after submodule removal
+// ---------------------------------------------------------------------------
+
+test('planLegacy: removes now-empty .gitmodules when the legacy submodule was the last entry', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.gitmodules',
+      '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = git@example.com:org/burbank-claude-config.git\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('rm -f burbank-claude-config'), 'submodule itself removed');
+    assert.ok(gitCmds.includes('rm -f .gitmodules'), 'now-empty .gitmodules removed');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: keeps .gitmodules when other submodules remain', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.gitmodules',
+      '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = u1\n' +
+      '[submodule "other"]\n\tpath = other\n\turl = u2\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('rm -f burbank-claude-config'), 'submodule itself removed');
+    assert.ok(!gitCmds.includes('rm -f .gitmodules'), '.gitmodules kept — other submodules remain');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: deletes .claudeignore when it only ignored the removed submodule', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claudeignore', 'burbank-claude-config/\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const del = plan.actions.find((a) => a.type === 'delete-file' && a.path.endsWith('.claudeignore'));
+    assert.ok(del, '.claudeignore should be deleted when it only ignored the submodule');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planLegacy: strips only the submodule line from a .claudeignore with other entries', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claudeignore', 'node_modules/\nburbank-claude-config/\ndist/\n');
+  });
+  try {
+    const plan = await planLegacy(dir, PLUGIN_ROOT, SNAPSHOT);
+    const write = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('.claudeignore'));
+    assert.ok(write, 'expected a .claudeignore write-file action');
+    assert.ok(!write.content.includes('burbank-claude-config'), 'submodule line stripped');
+    assert.ok(write.content.includes('node_modules/'), 'unrelated ignores preserved');
+    assert.ok(write.content.includes('dist/'), 'unrelated ignores preserved');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -346,6 +454,22 @@ test('planLegacy: ports a legacy code-reviewer sidecar to docs/', async () => {
   }
 });
 
+test('scanDanglingReferences: flags settings.json still referencing the deleted pre-commit-lint hook', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/settings.json', JSON.stringify({
+      hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'node .claude/hooks/pre-commit-lint.js' }] }] },
+    }, null, 2));
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const hit = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('.claude/settings.json'));
+    assert.ok(hit, 'should flag settings.json that still references the deleted hook');
+    assert.match(hit.hint, /pre-commit-lint/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanDanglingReferences: finds stale doc refs and orphaned sidecars', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'CLAUDE.md', 'Run `npm run sync-claude-config` to update burbank-claude-config.\n');
@@ -358,6 +482,56 @@ test('scanDanglingReferences: finds stale doc refs and orphaned sidecars', async
     assert.ok(files.some((f) => f.endsWith('CLAUDE.md')), 'should flag CLAUDE.md');
     assert.ok(files.some((f) => f.endsWith('docs/claude-config.md')), 'should flag docs/claude-config.md');
     assert.ok(files.some((f) => f.endsWith('project-architecture.md')), 'should flag orphaned sidecar');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #72 — orphaned-sidecar follow-up names a candidate docs/ target / disposition
+// ---------------------------------------------------------------------------
+
+test('scanDanglingReferences: names a candidate doc for a knowledge-bearing orphan', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/analyst/project-knowledge.md', 'system overview\n');
+    await writeRepoFile(d, '.claude/agents/designer/project-knowledge.md', 'domain notes\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const analyst = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('agents/analyst/project-knowledge.md'));
+    const designer = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('agents/designer/project-knowledge.md'));
+    assert.match(analyst.hint, /docs\/architecture\.md/);
+    assert.match(designer.hint, /docs\/domain\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanDanglingReferences: marks obsolete sidecars for deletion with their successor', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/validator/project-commands.md', 'validate cmds\n');
+    await writeRepoFile(d, '.claude/skills/cleanup-initiative/project-docs-to-check.md', 'doc links\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const cmds = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-commands.md'));
+    const docs = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-docs-to-check.md'));
+    assert.match(cmds.hint, /obsolete.*\.genvid-agent\.json/);
+    assert.match(docs.hint, /obsolete.*docs\/TOC\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanDanglingReferences: unknown orphan falls back to the generic port-or-delete hint', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.claude/agents/whatever/project-mystery.md', 'unknown\n');
+  });
+  try {
+    const warnings = await scanDanglingReferences(dir);
+    const hit = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-mystery.md'));
+    assert.ok(hit, 'unknown sidecar still flagged');
+    assert.match(hit.hint, /port the still-relevant parts into docs\//);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

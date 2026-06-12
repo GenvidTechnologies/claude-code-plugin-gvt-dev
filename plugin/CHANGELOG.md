@@ -202,6 +202,54 @@ and follows [semantic versioning](https://semver.org/).
   their own implementer agents that copy this Commit Protocol should mirror the
   same standalone-vs-orchestrated conditional.
 
+### Changed
+
+- **`audit-conventions`: caution to re-preview `--fix` after cleaning a dirty
+  tree (#70 follow-up).** The dry-run recomputes its plan from the current
+  working tree while `--apply` requires a clean one, so a file changed between
+  the two turns can silently alter which actions fire (a previewed cleanup
+  becoming a no-op is the root-cause workflow hazard behind #70). The skill's
+  safety rails now tell you to re-run the dry-run on the now-clean tree and
+  confirm the plan still matches before applying. Skill-body guidance; no
+  contract change.
+
+- **`audit-conventions`: orphaned-sidecar follow-up now names a candidate
+  `docs/` target and disposition (#72).** The migration's Manual-follow-up
+  report flagged orphaned context sidecars with a generic "port to `docs/` or
+  delete" that left the user to reverse-engineer which doc the knowledge
+  belonged in. It now classifies each orphan: knowledge-bearing sidecars
+  (`project-knowledge.md`) name a candidate doc (`docs/architecture.md`,
+  `docs/domain.md`) and flag that the content may need splitting/reformatting;
+  obsolete ones (`project-commands.md`, `project-docs-to-check.md`) say
+  "delete — superseded by X". The judgment (reformat/split/discard) still
+  rests with the reader. Report-only; no contract change.
+
+### Fixed
+
+- **`sync-config`: use the correct plugin name `genvid-dev` (#69).** The skill
+  hardcoded `genvid` in its version-check `jq` filter and the
+  `plugin update` command, but the published plugin is named `genvid-dev`, so
+  the first documented step returned nothing / errored *"Plugin 'genvid' not
+  found"*. Corrected the filter, the update command, and the body prose.
+
+- **`audit-conventions`: migration cleans legacy array-shaped `settings.json`
+  hooks (#70).** `planSettingsCleanup` only matched the newer object-shaped
+  `hooks` block, so on a repo whose committed `settings.json` used the legacy
+  array shape — the common case for repos being migrated — the
+  `pre-commit-lint.js` hook entry was left behind pointing at the file the same
+  migration had just deleted, breaking the `PreToolUse` hook on every later
+  Bash call. The cleanup now handles both shapes, and `scanDanglingReferences`
+  additionally warns if any leftover `settings.json` reference to the deleted
+  hook slips through.
+
+- **`audit-conventions`: migration removes stale `.gitmodules` / `.claudeignore`
+  after submodule removal (#71).** `git rm` of the last submodule left an empty
+  `.gitmodules` staged as modified, and a `.claudeignore` that existed only to
+  ignore the submodule dir was left referencing a path that no longer exists.
+  The migration now `git rm`s the now-empty `.gitmodules` (only when the removed
+  submodule was the last entry) and strips submodule lines from `.claudeignore`,
+  deleting that file if it empties.
+
 ## [3.0.0] - 2026-06-05
 
 ### Added
