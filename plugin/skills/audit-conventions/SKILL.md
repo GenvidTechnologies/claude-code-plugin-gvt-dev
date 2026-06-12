@@ -90,6 +90,7 @@ Executes the same plan against the filesystem and prints per-action results.
 ### Safety rails
 
 - Refuses to **apply** on a dirty working tree (commit or stash first, so the migration lands as a clean reviewable diff). The dry-run writes nothing and previews fine on a dirty tree.
+- **Preview and apply against the same tree.** The plan is recomputed from the *current* working tree on every run, so a file that changes between the dry-run and `--apply` can change which actions fire — silently (a previewed cleanup can become a no-op with no warning). Since apply requires a clean tree, if you previewed on a *dirty* tree and then committed or stashed to clean it, **re-run the dry-run on the now-clean tree and confirm the plan still matches** before applying.
 - Doesn't auto-commit. The user reviews `git status` / `git diff` and commits manually.
 - User-edited rendered files (no `AUTO-GENERATED` marker) are preserved — the plan reports them as SKIPPED so the user knows what was kept.
 - Rendered files that keep the `AUTO-GENERATED` marker but add a `LOCAL EDIT` block are also preserved (never silently deleted) — the plan flags them as SKIPPED so their local content can be ported before the file is removed by hand.

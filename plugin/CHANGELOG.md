@@ -204,6 +204,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **`audit-conventions`: caution to re-preview `--fix` after cleaning a dirty
+  tree (#70 follow-up).** The dry-run recomputes its plan from the current
+  working tree while `--apply` requires a clean one, so a file changed between
+  the two turns can silently alter which actions fire (a previewed cleanup
+  becoming a no-op is the root-cause workflow hazard behind #70). The skill's
+  safety rails now tell you to re-run the dry-run on the now-clean tree and
+  confirm the plan still matches before applying. Skill-body guidance; no
+  contract change.
+
 - **`audit-conventions`: orphaned-sidecar follow-up now names a candidate
   `docs/` target and disposition (#72).** The migration's Manual-follow-up
   report flagged orphaned context sidecars with a generic "port to `docs/` or
