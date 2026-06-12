@@ -425,6 +425,10 @@ function formatDanglingReport(warnings) {
 }
 
 main().catch((err) => {
+  // Apply can throw after the dry-run persisted a plan (e.g. applyPlan or
+  // scanDanglingReferences fails) — drop the snapshot so it never lingers in
+  // tmpdir or gets reconciled against by a later --apply. No-op when absent.
+  clearPreviewedPlan(REPO_ROOT);
   console.error('audit failed:', err);
   process.exit(2);
 });
