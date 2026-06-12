@@ -9,6 +9,22 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`reconcile-mcp-pin`: new maintainer skill — reconcile agent tool inventories
+  after an MCP server pin bump (#68).** A plugin that pins MCP servers in
+  `plugin.json` `mcpServers` and ships agents enumerating those servers' tools by
+  hand must reconcile the inventories every bump — for an agent with a hard
+  `tools:` allow-list a missed read tool becomes *uncallable*, a functional
+  regression. The skill generalizes genvid-c3's proven
+  `tool-surface-reconciliation` runbook: pull the authoritative surface from the
+  pinned package (`npm pack` + `registerTool` grep with a count sanity-check), diff
+  old vs new, reconcile read-side and mutation-side agents respecting the
+  read/mutate split (two judgment calls kept as guided checkpoints), sweep stale
+  `@<old>` version prose, bump the pin, and add a CHANGELOG entry. It stops short of
+  the release and hands off to `release-plugin`. A new invocable skill is
+  consumer-visible surface → version bump. Contract unchanged: declares only `paths.plugin_root`
+  (`required: false`) and the `npm`/`git` tools, so the audit's aggregate
+  expectations don't widen — genvid-dev, which bundles no MCP servers, is unaffected.
+
 - **`tech-writer`: define decision-record `Date` semantics (#55).** The ADR
   template shipped `Date: YYYY-MM-DD` with no meaning attached, and the
   authoring step didn't mention the field — so a record (especially a
@@ -31,6 +47,19 @@ and follows [semantic versioning](https://semver.org/).
   corpus can't be cheaply sampled. The empirical analogue of the existing structural
   friction checks (recipe-vs-override, validation-pipeline duality, paired-array
   ordering). No contract change.
+
+- **`designer`: re-derive a generalized runbook under its new parameter ranges (#68).**
+  A design that generalizes a proven procedure (runbook, manual recipe, one-off
+  script) into parameterized form can read as obviously-correct while a mechanical
+  step silently breaks under the parameter ranges the generalization newly admits —
+  the original's *fixed* inputs masked it. Surfaced authoring `reconcile-mcp-pin`:
+  the genvid-c3 runbook `npm pack`ed two *different* packages into a shared dir, but
+  the generalized "old vs new of the *same* package" case made both tarballs unpack
+  to `package/` and clobber (caught by the code-reviewer gate, not the design). The
+  designer's friction audit (step 4) now carries a **Generalize-a-runbook
+  re-derivation** sub-bullet: walk the concrete steps with the boundary values the
+  generalization opens up (same-name inputs, N=0/1, duplicates, collisions) and flag
+  any the original's constants protected. No contract change.
 
 - **`audit-conventions`: warn on `repo.host` drift vs the git remote (#54).** A
   stale `.genvid-agent.json` `repo.host` (e.g. `bitbucket` after a repo moved to
