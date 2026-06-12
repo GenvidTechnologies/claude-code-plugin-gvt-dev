@@ -9,6 +9,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Added
 
+- **`audit-conventions`: `--apply` reconciles against the previewed `--fix` plan
+  (#74).** The dry-run now persists its plan (to the OS temp dir, keyed by repo —
+  nothing is written to your repo) and `--apply` diffs the freshly-recomputed plan
+  against it, printing a reconciliation line — e.g. `Applied 53 of 54 previewed
+  actions — 1 previewed action no longer applies (re-run --fix to see the current
+  plan)`, plus a note when new actions appeared since the preview. Previously a
+  previewed action that no longer applied (because the working tree changed between
+  the two turns) dropped silently, visible only as an unexplained count change —
+  the #70 mechanism. Defense-in-depth guard; it warns and proceeds, never blocks.
+  Consumer-visible output change → version bump.
+
 - **`reconcile-mcp-pin`: new maintainer skill — reconcile agent tool inventories
   after an MCP server pin bump (#68).** A plugin that pins MCP servers in
   `plugin.json` `mcpServers` and ships agents enumerating those servers' tools by
