@@ -92,7 +92,10 @@ Detect whether the backlog needs grooming before planning:
 - **If untriaged open issues exist**, surface the count and **offer** to triage:
   *"N open issues are untriaged. Triage first so the shortlist is deduplicated and
   enriched?"* If the user accepts, **invoke `genvid-dev:triage-issues`** and keep
-  its analyst report (priorities, enrichment) in hand for step 2.
+  its analyst report (priorities, enrichment) in hand for step 2. **With only one
+  (or very few) untriaged issues, triage's dedup/linking value is nil — note that
+  and skip straight to ranking (§2) rather than offering; a lone issue's enrichment,
+  if any, folds into the §2 metadata fetch.**
 - **If none are untriaged** (or the user declines), skip to step 2.
 
 In `--non-interactive`, triage automatically when untriaged issues exist; pass

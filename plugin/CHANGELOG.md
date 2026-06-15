@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`plan-next-issue`: skip the triage offer when only one (or very few) untriaged
+  issues exist.** Triage's value is dedup/linking, which needs ≥2 issues — for a lone
+  untriaged issue the offer is pure friction. The skill now notes that and goes
+  straight to ranking (§2), folding any single-issue enrichment into the §2 metadata
+  fetch. Guidance refinement, no contract change.
+
 ### Fixed
 
 - **`reconcile-mcp-pin`: Phase 2 tool-surface grep now scans every compiled module
