@@ -1,0 +1,33 @@
+<!-- Template lifted from genvid-holdings/cordova-plugin-marketplace@9b6721bba942b10f95c5ca0ab02f5728b9b1c308 (demo/config.xml). Diff against @main before use; see SKILL.md. -->
+<!-- SNIPPET: per-repo-relevant lines from demo/config.xml only. Copy into your full config.xml. -->
+<!--
+  Replace each <PLACEHOLDER> before use:
+    DEMO_BUNDLE_ID      - e.g. com.genvidtech.marketplacedemo (marketplace original)
+    PLUGIN_TGZ_STEM     - e.g. genvid-cordova-plugin-marketplace- (marketplace original)
+    TESTS_TGZ_STEM      - e.g. cordova-plugin-marketplace-tests- (marketplace original)
+    IOS_DEPLOYMENT_TARGET - e.g. 14.0 (marketplace original; minimum for os.Logger)
+    VERSION             - your current package version (must match package.json / tests/package.json)
+-->
+
+<widget id="<DEMO_BUNDLE_ID>" version="<VERSION>" xmlns="http://www.w3.org/ns/widgets"
+    xmlns:cdv="http://cordova.apache.org/ns/1.0">
+
+    <!-- ... your existing <name>, <description>, <author>, <content>, <allow-intent> lines ... -->
+
+    <plugin name="file://../<PLUGIN_TGZ_STEM><VERSION>.tgz" />
+    <!-- marketplace original: file://../genvid-cordova-plugin-marketplace-1.1.1.tgz -->
+    <plugin name="file://../<TESTS_TGZ_STEM><VERSION>.tgz" />
+    <!-- marketplace original: file://../cordova-plugin-marketplace-tests-1.1.1.tgz -->
+    <plugin name="cordova-plugin-test-framework" />
+
+    <platform name="ios">
+        <preference name="scheme" value="app" />
+        <preference name="hostname" value="localhost" />
+        <!-- The plugin's Marketplace.swift uses os.Logger (iOS 14+); the
+             MarketplaceKit path is #available-guarded for 17.4. cordova-ios
+             defaults to a lower target, which fails to compile, so pin >=14. -->
+        <preference name="deployment-target" value="<IOS_DEPLOYMENT_TARGET>" />
+        <!-- marketplace original: 14.0 -->
+    </platform>
+
+</widget>

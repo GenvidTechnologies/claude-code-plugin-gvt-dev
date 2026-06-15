@@ -1,0 +1,184 @@
+# Template lifted from genvid-holdings/cordova-plugin-marketplace@9b6721bba942b10f95c5ca0ab02f5728b9b1c308 (.github/workflows/ios.yml). Diff against @main before use; see SKILL.md.
+name: iOS
+
+# Two tiers:
+#   smoke      - compile/link the demo app with the plugin for the SIMULATOR on
+#                every PR and push to main. No signing, no build.json, no secrets.
+#   distribute - on-demand (workflow_dispatch) or on a vX.Y.Z tag, build a
+#                Development-signed .ipa (manual signing with the Burbank cert +
+#                iOS Development profile from 1Password) and upload it as a
+#                downloadable artifact for ad-hoc sideloading.
+#
+# NOTE: sideloading installs only on devices whose UDID is registered in the iOS
+# Development profile. Register tester devices before running the distribute tier.
+#
+# The signing block (keychain import, profile UUID extraction, manual build.json,
+# .ipa export path) is the part that can only be proven on a live macOS runner;
+# expect to iterate on it during the first workflow_dispatch run.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke build (simulator)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # Use the runner's latest stable Xcode: any current Xcode carries the iOS
+      # 17.4+ SDK MarketplaceKit needs, and latest-stable always has a matching
+      # simulator runtime installed. Pinning a specific Xcode (e.g. 16.2) can
+      # select an SDK whose simulator runtime isn't on the image, which fails
+      # asset-catalog compilation with "No simulator runtime version available".
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Version lockstep guard
+        run: npm run version-guard
+      - run: npm ci
+      - name: Pack plugin + tests
+        run: npm run package
+      - name: Set up demo project (no signing config)
+        run: npm run setup:demo:sim
+      - name: Add iOS platform
+        run: npm run setup:demo:sim:ios
+      - name: Build demo for simulator (compile/link smoke)
+        run: npm run build:demo:ios:sim
+
+  distribute:
+    name: Signed .ipa (sideload artifact)
+    # RECONCILED: was `if: false` in the reference repo (pending a signing identity).
+    # Re-enabled here to match android.yml's distribute trigger. See SKILL.md for
+    # the prerequisite that must be satisfied before this job will succeed.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      # RECONCILED: was pinned to '16.2' in the disabled reference job; changed to
+      # latest-stable to match the smoke job and avoid selecting an SDK whose
+      # simulator runtime isn't installed on the macOS runner image.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install 1Password CLI
+        uses: 1Password/install-cli-action@v1
+      - name: Version lockstep guard
+        run: npm run version-guard
+      - run: npm ci
+      - name: Pack plugin + tests
+        run: npm run package
+      # PREREQUISITE: the signing .p12 stored in 1Password must contain the private
+      # key for the certificate, not just the certificate. If xcodebuild fails with
+      # "No signing certificate ... with a private key was found", the .p12 in
+      # Project-Burbank is missing the private key — export a new one from Keychain
+      # Access that includes the private key and update the vault item.
+      - name: Load signing coordinates from 1Password
+        uses: 1Password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          APPLE_DEVELOPMENT_TEAM: op://Project-Burbank/<OP_IOS_TEAM_ITEM>/team_id               # marketplace: "Apple Distribution Certificate" (DISTINCT item from the dev cert below)
+          DEVELOPMENT_CERTIFICATE_ID: op://Project-Burbank/<OP_IOS_CERT_ITEM>/id                # marketplace: "AppStore Development Certificate"
+          DEVELOPMENT_CERTIFICATE_PASSWORD: op://Project-Burbank/<OP_IOS_CERT_ITEM>/password    # marketplace: "AppStore Development Certificate"
+          DEVELOPER_AUTHORITY_ID: op://Project-Burbank/<OP_IOS_AUTHORITY_ITEM>/id               # marketplace: "Developer ID Certification Authority"
+      - name: Fetch cert + profile files
+        run: |
+          set -euo pipefail
+          op read "op://Project-Burbank/<OP_IOS_CERT_ITEM>/${DEVELOPMENT_CERTIFICATE_ID}.p12" -o "$RUNNER_TEMP/dev.p12"
+          # marketplace item: "AppStore Development Certificate"
+          # Provisioning profile for the demo's bundle id (<DEMO_BUNDLE_ID>),
+          # stored as a static file attachment in the Project-Burbank vault.
+          # RECONCILED: reference had "Employee vault" in comment; corrected to
+          # Project-Burbank (service accounts can't read personal/Employee vaults).
+          op read "op://Project-Burbank/<OP_IOS_PROFILE_ITEM>/<OP_IOS_PROFILE_FILENAME>" -o "$RUNNER_TEMP/profile.mobileprovision"
+          # marketplace: "Cordova Marketplace Demo iOS Profile/Cordova_Marketplace_Demo_Profile.mobileprovision"
+          # Intermediate CA: GitHub runners already carry Apple's WWDR cert, so this
+          # is best-effort and must not fail the build if the item has no .cer.
+          op read "op://Project-Burbank/<OP_IOS_AUTHORITY_ITEM>/${DEVELOPER_AUTHORITY_ID}.cer" -o "$RUNNER_TEMP/authority.cer" || echo "authority cert not fetched (optional)"
+          # marketplace item: "Developer ID Certification Authority"
+      - name: Import signing cert into a temporary keychain
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/ios-build.keychain-db"
+          KP="tempPassword"
+          security create-keychain -p "$KP" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KP" "$KEYCHAIN"
+          # Make the temp keychain searchable alongside the login keychain.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/["]//g')
+          [ -f "$RUNNER_TEMP/authority.cer" ] && security import "$RUNNER_TEMP/authority.cer" -k "$KEYCHAIN" -T /usr/bin/codesign -t cert || true
+          security import "$RUNNER_TEMP/dev.p12" -k "$KEYCHAIN" -P "$DEVELOPMENT_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t agg
+          # Required on modern macOS so codesign can use the key non-interactively.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KP" "$KEYCHAIN"
+      - name: Install provisioning profile and capture its UUID
+        run: |
+          set -euo pipefail
+          PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES"
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$PROFILES/"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" -o "$RUNNER_TEMP/profile.plist"
+          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$RUNNER_TEMP/profile.plist")
+          PP_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" "$RUNNER_TEMP/profile.plist")
+          echo "PP_UUID=$PP_UUID" >> "$GITHUB_ENV"
+          echo "Provisioning profile: $PP_NAME ($PP_UUID)"
+          echo "Profile app id: $(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist" 2>/dev/null || echo unknown)"
+      - name: Set up demo project + iOS platform
+        run: |
+          npm run setup:demo:sim
+          npm run setup:demo:sim:ios
+      - name: Write manual-signing build.json
+        run: |
+          cat > demo/build.json <<JSON
+          {
+            "ios": {
+              "release": {
+                "codeSignIdentity": "Apple Development",
+                "developmentTeam": "${APPLE_DEVELOPMENT_TEAM}",
+                "provisioningProfile": "${PP_UUID}",
+                "packageType": "development",
+                "automaticProvisioning": false
+              }
+            }
+          }
+          JSON
+          echo "--- demo/build.json ---"; cat demo/build.json
+      - name: Build Development-signed .ipa
+        working-directory: demo
+        run: npx --prefix . cordova build ios --device --release
+      - name: Locate the produced .ipa
+        run: |
+          set -euo pipefail
+          IPA=$(find demo/platforms/ios -name '*.ipa' -print -quit)
+          if [ -z "$IPA" ]; then
+            echo "No .ipa produced; listing build output for diagnosis:"; find demo/platforms/ios/build -maxdepth 3 -print
+            exit 1
+          fi
+          echo "IPA_PATH=$IPA" >> "$GITHUB_ENV"
+          echo "Found IPA: $IPA"
+      - name: Compute artifact label (ref_name may contain '/')
+        id: meta
+        run: echo "label=${GITHUB_REF_NAME//\//-}" >> "$GITHUB_OUTPUT"
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: <ARTIFACT_PREFIX>-ios-${{ steps.meta.outputs.label }}  # marketplace: "marketplace-ios"
+          path: ${{ env.IPA_PATH }}
+          if-no-files-found: error
+          retention-days: 30
