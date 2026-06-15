@@ -7,6 +7,19 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`reconcile-mcp-pin`: Phase 2 tool-surface grep now scans every compiled module
+  under `dist/mcp/`, not just `server.js` (#77).** A server that registers tools from a
+  secondary module (e.g. a dynamic `opsRegistry.js`) would otherwise diff *empty* even
+  though the surface grew — the counts stay plausible (non-zero, unchanged), so the
+  existing silent-zero count check never trips, and a newly-added read tool silently
+  never reaches a hard `tools:` allow-list (an uncallable tool — the exact regression the
+  skill exists to prevent). The `surface()` grep is now recursive (`grep -r
+  --include='*.js'` over `dist/mcp/`), `sort -u` de-dupes names across modules, and a new
+  guard note covers the residual case (release notes mention new tools but the diff is
+  empty → grep wider before trusting it). Skill-content fix → version bump.
+
 ## [3.1.0] - 2026-06-12
 
 ### Added

@@ -105,8 +105,12 @@ for t in *.tgz; do d="${t%.tgz}"; mkdir -p "$d"; tar -xzf "$t" -C "$d"; done
 
 # Tool name = first arg to registerTool(...) — or to a one-arg wrapper that calls it.
 # Match both so the grep survives a wrapper refactor (chef 0.8.0 moved to `reg("name", …)`).
+# Scan EVERY compiled module under dist/mcp/ (recursive, *.js), not just server.js — a
+# server can register tools from a secondary module (e.g. a dynamic `opsRegistry.js`), and
+# a server.js-only grep would diff empty even though the surface grew. `sort -u` de-dupes
+# names that appear in more than one module.
 surface() {  # surface <extracted-dir> → one tool name per line, sorted
-  grep -ohE '(registerTool|reg)\(\s*"[a-z0-9-]+"' "$1"/package/dist/mcp/server.js \
+  grep -rohE '(registerTool|reg)\(\s*"[a-z0-9-]+"' --include='*.js' "$1"/package/dist/mcp/ \
     | sed -E 's/.*"([a-z0-9-]+)"/\1/' | sort -u
 }
 surface genvid-construct3-chef-<old> > old.txt
@@ -115,21 +119,30 @@ diff old.txt new.txt   # '<' = removed in new, '>' = added in new
 ```
 
 (For a different package, swap the `@genvid/<pkg>` names and the `genvid-<pkg>-<ver>`
-dir names; the server path is `package/dist/mcp/server.js` in each tarball. Reconcile
+dir names; the compiled server lives under `package/dist/mcp/` in each tarball. Reconcile
 one server per run.)
 
 **Sanity-check each count before trusting the diff.** Know the rough surface size
 (chef ≈ 28+ tools; c3-domain-manager ≈ 13) — `wc -l old.txt new.txt`. If a list is
 **0** or implausibly small, the registration pattern moved — behind a differently-named
-wrapper, or into another module under `dist/` — *not* "every tool was removed," which is
-exactly the wrong conclusion. Open the offending `package/dist/mcp/server.js`, search
-for `registerTool` to see how it's actually invoked (you may find a wrapper like `reg(`,
-or the registrations split into another `dist/` module), update the grep pattern to
-match, and re-run. A silent zero that you trust will strip every tool from the allow-lists.
+wrapper, or into a module outside `dist/mcp/` — *not* "every tool was removed," which is
+exactly the wrong conclusion. Open the package's `package/dist/mcp/` modules (start with
+`server.js`), search for `registerTool` to see how it's actually invoked (you may find a
+wrapper like `reg(`, or the registrations split into a module outside `dist/mcp/`), update
+the grep pattern or scope to match, and re-run. A silent zero that you trust will strip every tool from the allow-lists.
+
+**A plausible but *unchanged* diff can also lie.** The recursive `dist/mcp/` scan above
+catches tools in secondary modules, but a registration *outside* that path — or a surface
+the release notes describe that the grep still can't see — diffs empty with counts that
+look fine (non-zero and unchanged), so nothing trips the count check. If the bump's
+**release notes mention new tools but `diff old.txt new.txt` is empty**, do not conclude
+"no surface change": grep wider (all of `package/dist/`) or read the release notes' named
+tools against `new.txt` by hand before trusting the empty diff.
 
 To classify each tool READ_ONLY vs MUTATE, also read its `description` /
 `readOnlyHint` from the `registerTool("name", { … },` block (a small Node walk over
-`server.js`, or just open the blocks for the changed tools).
+the module that registers it under `dist/mcp/`, or just open the blocks for the changed
+tools).
 
 ## Phase 3: Diff old vs new
 
