@@ -23,6 +23,7 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../plugin/skills/triage-issues/SKILL.md` — interactive issue-backlog triage; reads project conventions from a consuming repo's `docs/issue-triage.md` + `bugTracker` block (scaffolds from `issue-triage.template.md` or the flat-label `issue-triage.flat.template.md`, auto-selected per the repo's label scheme — see SKILL.md §0)
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - `../plugin/skills/reconcile-mcp-pin/SKILL.md` — maintainer skill: after a bundled MCP server pin is bumped in `plugin.json`, reconcile the agents' hand-enumerated tool inventories (read/mutate split, count-sanity-checked `npm pack` surface, stale-version sweep) and hand off to `release-plugin`
+- `../plugin/skills/migrate-cordova-ci/SKILL.md` — migrate a Cordova plugin's CI/CD from CircleCI to GitHub Actions; bundles parameterized `android.yml`/`ios.yml` (smoke + distribute tiers) + `version-guard.js` templates (lifted from `cordova-plugin-marketplace`), encodes the 8 known CI gotchas, and runs a manual live-CI gate
 - [`../plugin/skills/plan-task/decision-record.template.md`](../plugin/skills/plan-task/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 (see development-principles principle #7)
 
 ## Decision Records

@@ -7,6 +7,23 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`migrate-cordova-ci`: new skill — port a Cordova plugin's CI/CD from CircleCI
+  to GitHub Actions (#79).** Ships the proven post-migration
+  `cordova-plugin-marketplace` setup as bundled, parameterized templates
+  (`android.yml`/`ios.yml` with a smoke + distribute tier, `version-guard.js`, and
+  two config snippets) plus a 6-step one-commit-per-step runbook. The runbook
+  encodes the 8 non-obvious CI traps that each cost a live round-trip (Xcode pin →
+  simulator-runtime mismatch, AAB ≠ sideloadable, `op` CLI vs `load-secrets-action`
+  for dynamic-named signing files, service-accounts-can't-read-personal-vaults, the
+  `.p12`-must-contain-the-private-key gate, `os.Logger`/deployment-target floor, the
+  `v*.*.*`-tag-also-fires-`publish.yml` hazard, and `/`-in-artifact-name
+  sanitization), a per-repo parameter table, and a manual live-CI gate. iOS
+  distribute ships enabled. All `metadata.expects` are `required: false`
+  (skill-conditional). A new invocable skill is consumer-visible surface → version
+  bump at release.
+
 ## [3.1.1] - 2026-06-15
 
 ### Changed
