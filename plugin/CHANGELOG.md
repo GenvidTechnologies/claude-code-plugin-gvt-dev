@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-06-15
+
 ### Changed
 
 - **`plan-next-issue`: skip the triage offer when only one (or very few) untriaged
