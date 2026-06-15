@@ -70,6 +70,7 @@ copy-paste from the bundled files.
 | `<TESTS_TGZ_STEM>` | Tests tarball name stem (e.g. `cordova-plugin-marketplace-tests-`) | `version-guard.js`, `config.xml.snippet` |
 | `<ARTIFACT_PREFIX>` | Uploaded-artifact name prefix (e.g. `marketplace`) | `android.yml`, `ios.yml` |
 | `<IOS_DEPLOYMENT_TARGET>` | iOS deployment-target floor (e.g. `14.0`; raise if the plugin uses `os.Logger` or other newer APIs) | `config.xml.snippet` |
+| `<VERSION>` | Current package version (e.g. `1.2.3`); must equal `package.json` / `tests/package.json` / `demo/config.xml` widget version | `config.xml.snippet` |
 | `<OP_KEYSTORE_ITEM>` | 1Password item name holding the Android keystore (`op://Project-Burbank/...`) | `android.yml` |
 | `<OP_IOS_CERT_ITEM>` | 1Password item holding the iOS dev signing cert id, password, and `.p12` | `ios.yml` |
 | `<OP_IOS_TEAM_ITEM>` | 1Password item holding the Apple development `team_id` (DISTINCT from the cert item) | `ios.yml` |
