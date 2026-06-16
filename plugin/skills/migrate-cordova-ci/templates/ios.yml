@@ -5,7 +5,7 @@ name: iOS
 #   smoke      - compile/link the demo app with the plugin for the SIMULATOR on
 #                every PR and push to main. No signing, no build.json, no secrets.
 #   distribute - on-demand (workflow_dispatch) or on a vX.Y.Z tag, build a
-#                Development-signed .ipa (manual signing with the Burbank cert +
+#                Development-signed .ipa (manual signing with the signing cert +
 #                iOS Development profile from 1Password) and upload it as a
 #                downloadable artifact for ad-hoc sideloading.
 #
@@ -87,31 +87,31 @@ jobs:
       # PREREQUISITE: the signing .p12 stored in 1Password must contain the private
       # key for the certificate, not just the certificate. If xcodebuild fails with
       # "No signing certificate ... with a private key was found", the .p12 in
-      # Project-Burbank is missing the private key — export a new one from Keychain
+      # the signing vault is missing the private key — export a new one from Keychain
       # Access that includes the private key and update the vault item.
       - name: Load signing coordinates from 1Password
         uses: 1Password/load-secrets-action@v2
         with:
           export-env: true
         env:
-          APPLE_DEVELOPMENT_TEAM: op://Project-Burbank/<OP_IOS_TEAM_ITEM>/team_id               # marketplace: "Apple Distribution Certificate" (DISTINCT item from the dev cert below)
-          DEVELOPMENT_CERTIFICATE_ID: op://Project-Burbank/<OP_IOS_CERT_ITEM>/id                # marketplace: "AppStore Development Certificate"
-          DEVELOPMENT_CERTIFICATE_PASSWORD: op://Project-Burbank/<OP_IOS_CERT_ITEM>/password    # marketplace: "AppStore Development Certificate"
-          DEVELOPER_AUTHORITY_ID: op://Project-Burbank/<OP_IOS_AUTHORITY_ITEM>/id               # marketplace: "Developer ID Certification Authority"
+          APPLE_DEVELOPMENT_TEAM: op://<OP_VAULT>/<OP_IOS_TEAM_ITEM>/team_id               # marketplace: "Apple Distribution Certificate" (DISTINCT item from the dev cert below)
+          DEVELOPMENT_CERTIFICATE_ID: op://<OP_VAULT>/<OP_IOS_CERT_ITEM>/id                # marketplace: "AppStore Development Certificate"
+          DEVELOPMENT_CERTIFICATE_PASSWORD: op://<OP_VAULT>/<OP_IOS_CERT_ITEM>/password    # marketplace: "AppStore Development Certificate"
+          DEVELOPER_AUTHORITY_ID: op://<OP_VAULT>/<OP_IOS_AUTHORITY_ITEM>/id               # marketplace: "Developer ID Certification Authority"
       - name: Fetch cert + profile files
         run: |
           set -euo pipefail
-          op read "op://Project-Burbank/<OP_IOS_CERT_ITEM>/${DEVELOPMENT_CERTIFICATE_ID}.p12" -o "$RUNNER_TEMP/dev.p12"
+          op read "op://<OP_VAULT>/<OP_IOS_CERT_ITEM>/${DEVELOPMENT_CERTIFICATE_ID}.p12" -o "$RUNNER_TEMP/dev.p12"
           # marketplace item: "AppStore Development Certificate"
           # Provisioning profile for the demo's bundle id (<DEMO_BUNDLE_ID>),
-          # stored as a static file attachment in the Project-Burbank vault.
-          # RECONCILED: reference had "Employee vault" in comment; corrected to
-          # Project-Burbank (service accounts can't read personal/Employee vaults).
-          op read "op://Project-Burbank/<OP_IOS_PROFILE_ITEM>/<OP_IOS_PROFILE_FILENAME>" -o "$RUNNER_TEMP/profile.mobileprovision"
+          # stored as a static file attachment in the configured signing vault.
+          # RECONCILED: reference had "Employee vault" in comment; corrected to the
+          # shared signing vault (service accounts can't read personal/Employee vaults).
+          op read "op://<OP_VAULT>/<OP_IOS_PROFILE_ITEM>/<OP_IOS_PROFILE_FILENAME>" -o "$RUNNER_TEMP/profile.mobileprovision"
           # marketplace: "Cordova Marketplace Demo iOS Profile/Cordova_Marketplace_Demo_Profile.mobileprovision"
           # Intermediate CA: GitHub runners already carry Apple's WWDR cert, so this
           # is best-effort and must not fail the build if the item has no .cer.
-          op read "op://Project-Burbank/<OP_IOS_AUTHORITY_ITEM>/${DEVELOPER_AUTHORITY_ID}.cer" -o "$RUNNER_TEMP/authority.cer" || echo "authority cert not fetched (optional)"
+          op read "op://<OP_VAULT>/<OP_IOS_AUTHORITY_ITEM>/${DEVELOPER_AUTHORITY_ID}.cer" -o "$RUNNER_TEMP/authority.cer" || echo "authority cert not fetched (optional)"
           # marketplace item: "Developer ID Certification Authority"
       - name: Import signing cert into a temporary keychain
         run: |

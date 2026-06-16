@@ -17,6 +17,11 @@ metadata:
       - path: .circleci/config.yml
         required: false
         reason: The CircleCI config being replaced and removed — present only in not-yet-migrated repos
+    config:
+      - key: cordovaCi.opVault
+        in: .genvid-agent.json
+        required: false
+        reason: The 1Password vault holding this plugin's signing material (Android keystore, iOS cert/profile) — project-shared and scoped to the OP_SERVICE_ACCOUNT_TOKEN service account; the migration substitutes it for <OP_VAULT> in the distribute workflows. Only this skill needs it, so it is not a universal contract requirement
     tools:
       - command: gh
         required: false
@@ -58,6 +63,28 @@ gh api repos/genvid-holdings/cordova-plugin-marketplace/contents/.github/workflo
 Work in small, reviewable commits — one logical change per commit — so the diff
 reads as a clear migration sequence.
 
+## Configuration: the signing vault
+
+The 1Password vault that holds the plugin's signing material (Android keystore,
+iOS cert/profile) is **project-specific**, so it lives in the target repo's
+`.genvid-agent.json` rather than being baked into the templates:
+
+```json
+{
+  "cordovaCi": {
+    "opVault": "Project-Burbank"
+  }
+}
+```
+
+`opVault` is the vault the repo's `OP_SERVICE_ACCOUNT_TOKEN` service account is
+scoped to. The migration substitutes its value for the `<OP_VAULT>` placeholder
+throughout `android.yml`/`ios.yml`. **If the block is absent, don't guess** — ask
+the operator which vault holds the signing assets and offer to add the
+`cordovaCi.opVault` key to `.genvid-agent.json` before substituting. The signing
+**item** names within that vault still vary per plugin and stay as the per-repo
+placeholders in the table below.
+
 ## Per-repo parameter table
 
 These are the ONLY values you change in the templates. Everything else is
@@ -71,17 +98,18 @@ copy-paste from the bundled files.
 | `<ARTIFACT_PREFIX>` | Uploaded-artifact name prefix (e.g. `marketplace`) | `android.yml`, `ios.yml` |
 | `<IOS_DEPLOYMENT_TARGET>` | iOS deployment-target floor (e.g. `14.0`; raise if the plugin uses `os.Logger` or other newer APIs) | `config.xml.snippet` |
 | `<VERSION>` | Current package version (e.g. `1.2.3`); must equal `package.json` / `tests/package.json` / `demo/config.xml` widget version | `config.xml.snippet` |
-| `<OP_KEYSTORE_ITEM>` | 1Password item name holding the Android keystore (`op://Project-Burbank/...`) | `android.yml` |
+| `<OP_VAULT>` | 1Password signing vault — **sourced from `cordovaCi.opVault` in `.genvid-agent.json`**, not hand-picked (see Configuration above) | `android.yml`, `ios.yml` |
+| `<OP_KEYSTORE_ITEM>` | 1Password item name holding the Android keystore (within `<OP_VAULT>`) | `android.yml` |
 | `<OP_IOS_CERT_ITEM>` | 1Password item holding the iOS dev signing cert id, password, and `.p12` | `ios.yml` |
 | `<OP_IOS_TEAM_ITEM>` | 1Password item holding the Apple development `team_id` (DISTINCT from the cert item) | `ios.yml` |
 | `<OP_IOS_AUTHORITY_ITEM>` | 1Password item holding the WWDR / authority cert | `ios.yml` |
 | `<OP_IOS_PROFILE_ITEM>` | 1Password item holding the provisioning profile | `ios.yml` |
 | `<OP_IOS_PROFILE_FILENAME>` | Filename of the provisioning profile attachment within that item | `ios.yml` |
 
-> All `op://` references assume signing assets live in the **Project-Burbank
-> shared vault** — the vault the `OP_SERVICE_ACCOUNT_TOKEN` service account is
-> scoped to. Assets in personal or Employee vaults are unreadable by service
-> accounts (see the vault gotcha in Step 3).
+> All `op://` references resolve under the **configured shared vault**
+> (`<OP_VAULT>` = `cordovaCi.opVault`) — the vault the `OP_SERVICE_ACCOUNT_TOKEN`
+> service account is scoped to. Assets in personal or Employee vaults are
+> unreadable by service accounts (see the vault gotcha in Step 3).
 
 ## Pre-flight: iOS distribute gate
 
@@ -133,8 +161,9 @@ Commit: `ci: add sim setup scripts and version-guard`
 
 Copy `templates/android.yml` to `.github/workflows/android.yml`. Substitute:
 - `<ARTIFACT_PREFIX>` in the Upload APK artifact step's `name:` field
-- `<OP_KEYSTORE_ITEM>` in all three `op://Project-Burbank/...` references and the
-  `op read` command
+- `<OP_VAULT>` (from `cordovaCi.opVault`) and `<OP_KEYSTORE_ITEM>` in all four
+  `op://<OP_VAULT>/<OP_KEYSTORE_ITEM>/...` references (the three `load-secrets`
+  fields and the `op read` command)
 
 **Smoke job** — runs on `ubuntu-latest` with `android-actions/setup-android`.
 Builds the debug APK (compile/link). No emulator is started: the smoke tier runs
@@ -171,9 +200,9 @@ Commit: `ci: add android.yml (smoke + distribute)`
 Copy `templates/ios.yml` to `.github/workflows/ios.yml`. Substitute:
 - `<ARTIFACT_PREFIX>` in the Upload .ipa artifact step
 - `<DEMO_BUNDLE_ID>` in the profile fetch comment
-- `<OP_IOS_CERT_ITEM>`, `<OP_IOS_TEAM_ITEM>`, `<OP_IOS_AUTHORITY_ITEM>`,
-  `<OP_IOS_PROFILE_ITEM>`, `<OP_IOS_PROFILE_FILENAME>` throughout the
-  distribute job
+- `<OP_VAULT>` (from `cordovaCi.opVault`), then `<OP_IOS_CERT_ITEM>`,
+  `<OP_IOS_TEAM_ITEM>`, `<OP_IOS_AUTHORITY_ITEM>`, `<OP_IOS_PROFILE_ITEM>`,
+  `<OP_IOS_PROFILE_FILENAME>` throughout the distribute job
 
 **Smoke job** — runs on `macos-15`. Uses `maxim-lobanov/setup-xcode` with
 `xcode-version: latest-stable`. Builds the simulator target; no secrets or signing
@@ -193,9 +222,10 @@ conditions (not `on:`) because `on:` is workflow-level and both jobs share the
 same triggers.
 
 > **🔴 Service accounts cannot read personal or Employee vaults.** All signing
-> assets must live in the Project-Burbank shared vault. The `ios.yml` template's
-> `op://Project-Burbank/...` paths reflect this. If a 1Password item is currently
-> in an Employee vault, move it to Project-Burbank before the distribute run.
+> assets must live in the shared vault configured as `cordovaCi.opVault` — the one
+> the `OP_SERVICE_ACCOUNT_TOKEN` is scoped to. The `ios.yml` template's
+> `op://<OP_VAULT>/...` paths resolve there. If a 1Password item is currently in a
+> personal or Employee vault, move it into the shared vault before the distribute run.
 
 Remind the user: the signing block (keychain import, profile UUID extraction,
 manual `build.json`, `.ipa` export path) can only be fully validated on a live

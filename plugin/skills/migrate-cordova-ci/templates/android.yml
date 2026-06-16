@@ -6,11 +6,11 @@ name: Android
 #                main. No emulator (we run no on-device tests, so booting one would
 #                add flakiness for zero signal) and no secrets.
 #   distribute - on-demand (workflow_dispatch) or on a vX.Y.Z tag, build a SIGNED
-#                release APK using the Burbank signing keystore from 1Password and
-#                upload it as a downloadable artifact for sideloading (adb install).
+#                release APK using the signing keystore from 1Password and upload
+#                it as a downloadable artifact for sideloading (adb install).
 #
 # The single secret OP_SERVICE_ACCOUNT_TOKEN (a 1Password service account scoped to
-# the Project-Burbank vault) gates the distribute tier only.
+# the configured signing vault, <OP_VAULT>) gates the distribute tier only.
 
 on:
   pull_request:
@@ -78,11 +78,11 @@ jobs:
         with:
           export-env: true
         env:
-          KEYSTORE_ALIAS: op://Project-Burbank/<OP_KEYSTORE_ITEM>/alias      # marketplace: "Burbank App Signing Keystore"
-          KEYSTORE_PASSWORD: op://Project-Burbank/<OP_KEYSTORE_ITEM>/password # marketplace: "Burbank App Signing Keystore"
-          KEYSTORE_FILENAME: op://Project-Burbank/<OP_KEYSTORE_ITEM>/filename  # marketplace: "Burbank App Signing Keystore"
+          KEYSTORE_ALIAS: op://<OP_VAULT>/<OP_KEYSTORE_ITEM>/alias      # marketplace: "Burbank App Signing Keystore"
+          KEYSTORE_PASSWORD: op://<OP_VAULT>/<OP_KEYSTORE_ITEM>/password # marketplace: "Burbank App Signing Keystore"
+          KEYSTORE_FILENAME: op://<OP_VAULT>/<OP_KEYSTORE_ITEM>/filename  # marketplace: "Burbank App Signing Keystore"
       - name: Fetch keystore file (dynamic filename)
-        run: op read "op://Project-Burbank/<OP_KEYSTORE_ITEM>/${KEYSTORE_FILENAME}" -o "$RUNNER_TEMP/release.keystore"
+        run: op read "op://<OP_VAULT>/<OP_KEYSTORE_ITEM>/${KEYSTORE_FILENAME}" -o "$RUNNER_TEMP/release.keystore"
         # marketplace item name: "Burbank App Signing Keystore"
       - name: Set up demo project
         run: npm run setup:demo:sim

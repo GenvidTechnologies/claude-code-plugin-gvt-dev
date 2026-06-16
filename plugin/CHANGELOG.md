@@ -20,7 +20,10 @@ and follows [semantic versioning](https://semver.org/).
   `.p12`-must-contain-the-private-key gate, `os.Logger`/deployment-target floor, the
   `v*.*.*`-tag-also-fires-`publish.yml` hazard, and `/`-in-artifact-name
   sanitization), a per-repo parameter table, and a manual live-CI gate. iOS
-  distribute ships enabled. All `metadata.expects` are `required: false`
+  distribute ships enabled. The project-specific 1Password signing vault is **not**
+  baked into the templates — it's read from a `cordovaCi.opVault` key in the
+  consuming repo's `.genvid-agent.json` (two-surface pattern) and substituted for
+  the `<OP_VAULT>` placeholder. All `metadata.expects` are `required: false`
   (skill-conditional). A new invocable skill is consumer-visible surface → version
   bump at release.
 
