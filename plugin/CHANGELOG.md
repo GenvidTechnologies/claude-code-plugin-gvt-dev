@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-06-16
+
 ### Added
 
 - **`migrate-cordova-ci`: new skill — port a Cordova plugin's CI/CD from CircleCI
