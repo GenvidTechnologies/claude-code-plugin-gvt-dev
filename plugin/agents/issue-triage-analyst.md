@@ -51,7 +51,7 @@ If the conventions doc is missing, say so in the report and fall back to generic
    - **Overlaps** — related-but-distinct (subset/superset/shared-cause), not duplicates.
    - **Dependencies** — blocked-by / blocks / relates-to links between issues.
    - **Split candidates** — one issue bundling multiple unrelated concerns, per the Splitting policy.
-   - **Per-issue enrichment** — proposed type, priority, label add/remove, body language cleanup, and any missing required fields (→ `needsInfoLabel`).
+   - **Per-issue enrichment** — proposed type, priority, label add/remove, body language cleanup, any missing required fields (→ `needsInfoLabel`), and mechanism-prescription detection: flag issues whose body prescribes a specific implementation mechanism (named functions, a concrete structure, a step-by-step "how") rather than recording an outcome + acceptance criteria, and propose rewriting to outcome+AC. See `development-principles.md` principle #8 (stale-mechanism corollary).
 
 ## Hard rule: read-only
 
@@ -75,8 +75,8 @@ Run ONLY read commands (`list`, `view`, `get`, equivalents). Never run a command
 - #61 — bundles 3 unrelated concerns → propose 3 issues / sub-issues per Splitting policy.
 
 ### Per-issue enrichment (one entry per action-set issue)
-- #12: type bug→crash · priority ∅→P1 · labels +area:netcode · body: language cleanup · missing: repro steps → needs-info · deps: none
-- #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none
+- #12: type bug→crash · priority ∅→P1 · labels +area:netcode · body: language cleanup · missing: repro steps → needs-info · deps: none · mechanism: prescribes Init_* fns → suggest rewrite to outcome+AC
+- #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none · mechanism: ok
 
 ### Notes
 - Conventions doc present: yes/no. Fallbacks applied: <list or none>.
