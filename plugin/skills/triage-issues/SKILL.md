@@ -140,6 +140,9 @@ approved changes using the **Mutation recipes** in `docs/issue-triage.md`:
 - duplicate handling per the project's **Duplicates** policy (link-only, or
   close-as-duplicate to the canonical — closing needs approval, see §4);
 - split-issue / sub-issue creation per the **Splitting** policy;
+- when the analyst flagged a mechanism prescription, offer to rewrite the issue
+  body to outcome + acceptance criteria, dropping the prescribed mechanism — per
+  `development-principles.md` principle #8 (stale-mechanism corollary);
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed. This keeps the skill idempotent: an aborted run leaves the issue
   un-triaged, so re-running picks it up again.

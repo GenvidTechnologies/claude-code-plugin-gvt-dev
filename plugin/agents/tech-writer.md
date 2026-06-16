@@ -69,7 +69,7 @@ When dispatched (typically by `plan-task` Phase 4) to record an architecture or 
 ## Key Principles
 
 - **Docs describe current state**, not history. Remove references to "old" or "previous" approaches unless the comparison is actively useful.
-- **Link, don't duplicate.** If content exists in `docs/`, `CLAUDE.md` should link to it, not repeat it.
+- **Link, don't duplicate — point to canonical content, never copy it.** If content exists in `docs/`, `CLAUDE.md` links to it rather than repeating it. The same holds for *any* canonical source: when referencing a numbered `development-principles.md` principle, a shared doc, or its enumeration from a skill/agent body, cite it — don't restate its lists or examples. Copied enumerations drift (a singular/plural slip, a dropped member) and defeat the "documented once" intent the reference exists to serve. (Line 29 above models this for principle #7; apply it everywhere.)
 - **Write for the reader's task**, not for completeness. A doc should help someone do something, not catalog everything.
 - **Lessons-learned entries (if the project uses one) are dated** and include what happened, what was learned, and how to apply it.
 - **500-line limit per file.** When a doc exceeds 500 lines, split it into focused sub-documents. The original file becomes a hub with brief summaries and links to the extracted docs. Update `CLAUDE.md`'s Documentation Map and all cross-references after splitting. Splitting is a refactoring task — no content should be lost or rewritten during the split.

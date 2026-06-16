@@ -41,6 +41,7 @@ From a design document (produced by the designer), produce a concrete implementa
    - **P-steps (Prepare)**: Pure additions with zero behavioral change — new types, new functions, new constants, none wired up. Each independently committable.
    - **F-steps (Feature)**: Wire the primitives together. Should be short and confident because every building block exists.
    - **Tests**: Write failing tests in P-steps (TDD red), make them pass in F-steps (TDD green).
+   - **Classify every deferral before deferring it.** When the plan carves something out, decide: is it *additional scope* (a genuinely separate capability — its own slice is fine) or *finish-quality of the code this plan touches* (the inconsistencies #8 enumerates, made visible in this change's own diff)? Finish-quality is part of the slice's definition of done; fold it in rather than emitting a separate cleanup task or follow-up issue. See `development-principles.md` principle #8 ("Finish-quality vs. additional scope").
 
 6. **Order by dependency** — earlier tasks create seams that later tasks compose. Not a flat list of independent work.
 
@@ -65,6 +66,7 @@ Read these at runtime if present:
 - **Each task = one commit.** If a task can't be described in one commit message, split it.
 - **Cross-domain tasks are two tasks.** Changes in different domains (per the project's CLAUDE.md domain split) are always separate commits, even if they're logically one feature.
 - **Refactoring before feature.** If existing code needs to change before the feature can slot in, that's a separate task (P-step) committed first. This includes building validation tools.
+- **Deferrals must be classified.** Every deferred or carved-out item is either *additional scope* (its own slice is fine) or *finish-quality of the code this plan touches* (folds into the motivating task — never a separate cleanup task or follow-up issue). See `development-principles.md` principle #8.
 - **WIP commits are fine.** Branches are squash-merged, so `[WIP]` tags in intermediate commits are acceptable when a multi-step change intentionally breaks tests temporarily.
 
 ## Output Format

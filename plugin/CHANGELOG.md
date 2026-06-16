@@ -7,6 +7,20 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`development-principles`: new principle #8 — "consistency before features" (#81).** Makes the discipline of bringing touched code fully to its target convention a first-class, numbered principle — the single source of truth referenced by skills rather than restated in each. Principle #8 covers: the core rule (make all code do it right, then add the missing feature); a **finish-quality vs. additional-scope corollary** (finish-quality of the code a change touches is part of that change's definition of done and must not be carved into a deferred follow-up where the "make it consistent" ticket drifts or never lands — classify every deferral before deferring it); and a **stale-mechanism corollary** (a tracking item should record outcome + acceptance criteria, not a prescribed implementation mechanism — a prescribed mechanism drifts when a later change ships a different one, leaving the next planner to inherit a dead, never-adopted convention as if it were spec; re-verify any prescribed mechanism against live code before adopting it). `analyst.md`'s existing parenthetical is repointed to the canonical principle number. `plan-task` now gates deferrals against the finish-quality corollary and extends its already-shipped gate to superseded mechanisms; `triage-issues` flags mechanism-prescribing issues and suggests outcome+AC rewrites. All reference principle #8 rather than restating it. Behavioral and reference-surface change → version bump at release.
+- **`tech-writer`: generalize "Link, don't duplicate" beyond docs↔CLAUDE.md to any
+  canonical source.** The key-principle was scoped to "if content exists in `docs/`,
+  `CLAUDE.md` links to it" — but the recurring failure is broader: when dispatched to
+  add a *reference* to a canonical principle (a numbered `development-principles.md`
+  entry) or a shared doc's enumeration, the agent copies the list/examples verbatim
+  instead of pointing to it, then the copies drift (singular/plural, dropped members)
+  and defeat the "documented once" intent — caught only at the code-review gate. The
+  principle now covers any canonical source and cites the agent's own principle-#7
+  reference (line 29) as the model to apply everywhere. Surfaced dogfooding the new
+  `development-principles.md` principle #8. No contract change.
+
 ## [3.2.0] - 2026-06-16
 
 ### Added
