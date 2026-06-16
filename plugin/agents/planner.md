@@ -41,7 +41,7 @@ From a design document (produced by the designer), produce a concrete implementa
    - **P-steps (Prepare)**: Pure additions with zero behavioral change — new types, new functions, new constants, none wired up. Each independently committable.
    - **F-steps (Feature)**: Wire the primitives together. Should be short and confident because every building block exists.
    - **Tests**: Write failing tests in P-steps (TDD red), make them pass in F-steps (TDD green).
-   - **Classify every deferral before deferring it.** When the plan carves something out, decide: is it *additional scope* (a genuinely separate capability — its own slice is fine) or *finish-quality of the code this plan touches* (a clobbered global, now-dead block, half-adopted convention visible in this change's own diff)? Finish-quality is part of the slice's definition of done; fold it in rather than emitting a separate cleanup task or follow-up issue. See `development-principles.md` principle #8 ("Finish-quality vs. additional scope").
+   - **Classify every deferral before deferring it.** When the plan carves something out, decide: is it *additional scope* (a genuinely separate capability — its own slice is fine) or *finish-quality of the code this plan touches* (the inconsistencies #8 enumerates, made visible in this change's own diff)? Finish-quality is part of the slice's definition of done; fold it in rather than emitting a separate cleanup task or follow-up issue. See `development-principles.md` principle #8 ("Finish-quality vs. additional scope").
 
 6. **Order by dependency** — earlier tasks create seams that later tasks compose. Not a flat list of independent work.
 
