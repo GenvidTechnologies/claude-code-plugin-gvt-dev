@@ -67,6 +67,8 @@ node plugin/skills/audit-conventions/scripts/audit.mjs --fix     # dry-run a mig
 node plugin/skills/audit-conventions/scripts/audit.mjs --fix --apply  # apply
 ```
 
+**On Windows, run the audit via the Bash tool, not PowerShell.** The audit checks each skill's declared tools against `PATH`; `cleanup-initiative` expects `grep`, which isn't on the PowerShell `PATH`, so a pwsh run falsely reports `1 required expectation unmet: cleanup-initiative expects grep — not found on PATH` (exit 1). git-bash has `grep`, so the same audit exits 0 there. If you see only that `grep` line as "unmet", it's an environment artifact, not a widened contract — re-run under bash to confirm.
+
 ## Self-declaring skill / agent metadata
 
 Every skill and agent in the plugin uses YAML frontmatter with custom `metadata.expects` declaring its prerequisites. The `audit-conventions` skill reads these declarations and validates them against the consuming repo.
