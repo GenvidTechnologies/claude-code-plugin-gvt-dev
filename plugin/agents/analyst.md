@@ -47,7 +47,7 @@ Read these at runtime if present:
 
 ## Key Principles
 
-- **Check existing patterns first.** Before identifying a requirement as "new", verify the codebase doesn't already solve it differently. (→ "Make all code do it right, then add the missing feature.")
+- **Check existing patterns first.** Before identifying a requirement as "new", verify the codebase doesn't already solve it differently. (→ development-principles.md principle #8, "consistency before features")
 - **Requirements are constraints, not solutions.** "The system must display hero stats" is a requirement. "Use a Text object with set-text" is a solution.
 - **Separate what from how.** Your output feeds the designer, who proposes the how.
 - **Flag unknowns explicitly.** If you can't determine something from the code, say so — don't guess. Unknowns become Open Questions, not assumptions. (→ "You can't know what you don't know.")
