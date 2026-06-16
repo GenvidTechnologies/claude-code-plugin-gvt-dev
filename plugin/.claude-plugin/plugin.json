@@ -1,6 +1,6 @@
 {
   "name": "genvid-dev",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Shared Claude Code skills, agents, and hooks for Genvid game projects. Provides commit, PR, planning, validation, rebase, and code-review workflows that read project context from a small convention contract (CLAUDE.md, CONVENTIONS.md, docs/TOC.md, .genvid-agent.json).",
   "author": {
     "name": "Genvid"
