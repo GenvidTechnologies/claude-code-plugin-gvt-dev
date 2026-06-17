@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-06-17
+
 ### Changed
 
 - **`plan-next-issue`: skip the shortlist `AskUserQuestion` for a single candidate.** §2 told the skill to present candidates via an `AskUserQuestion` with `multiSelect: true`; with exactly one ranked candidate a one-option multiSelect is pure friction. The skill now presents a lone candidate inline with its rationale and routes straight to planning, where `plan-task`'s own checkpoint is the gate — mirroring the existing lone-issue triage-skip in §1. Surfaced dogfooding (`plan-next-issue` run with a single open issue).
