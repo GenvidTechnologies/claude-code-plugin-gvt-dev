@@ -15,6 +15,7 @@ and follows [semantic versioning](https://semver.org/).
   - **`rebase-stack` — recover when merging the parent CLOSED the child PR.** Squash-merging the parent with branch deletion auto-CLOSES the stacked child, and a closed PR whose base branch was deleted cannot be reopened or retargeted. Documents the rebuild-only recovery (`--onto` rebase + fresh `gh pr create`) and the prevention: retarget the child to the default branch before merging the parent.
 
   Companion to #81 (defer-scope discipline). Behavioral/reference-surface change → version bump at release.
+- **`CONVENTIONS.md`: document the optional `Agent Dispatch Guide` CLAUDE.md section (#83).** Backs the new `plan-task` Phase 1 domain-explorer preference with a documented convention — a consuming repo names its domain-specific recon agent(s) (e.g. `genvid-c3:c3-explorer`) under this heading, and planning dispatches them instead of the generic analyst; omit it and planning falls back to the analyst. Optional like the other expected sections (skills tolerate its absence), so the aggregated contract isn't widened.
 
 ## [3.3.0] - 2026-06-16
 

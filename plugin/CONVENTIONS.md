@@ -26,6 +26,7 @@ The plugin's skills look for these sections by heading. Wording can vary; the he
 | `Commit Format` | `/genvid-dev:commit-changes` | The exact commit message format your team uses (subject line shape, body, trailers). |
 | `Pull Request Format` | `/genvid-dev:create-pr` | PR title and body conventions; whether you use Bitbucket or GitHub if non-obvious from the git remote. |
 | `Branching` | `/genvid-dev:rebase-branch`, `/genvid-dev:split-branch` | Branch naming, base branch, when to rebase vs. merge. |
+| `Agent Dispatch Guide` | `/genvid-dev:plan-task` (Phase 1) | The project's domain-specific recon/explorer agent(s) (e.g. `genvid-c3:c3-explorer`) so planning dispatches domain-aware recon instead of the generic `genvid-dev:analyst`. Omit it and planning falls back to the analyst. |
 
 Skills tolerate missing sections — they fall back to generic behavior — but warn the user that project-specific guidance was unavailable.
 
