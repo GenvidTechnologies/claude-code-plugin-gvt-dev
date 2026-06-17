@@ -120,7 +120,7 @@ When the user says to execute:
 1. **Check git log** — compare commit messages to plan tasks. Don't re-implement already-committed work.
 2. **Delegate tasks** to the implementer agents per the plan's domain assignments, **instructing each dispatch to stage its files but leave them uncommitted**. Use `genvid-dev:ts-implementer` for TypeScript or JavaScript work (including plain ESM `.mjs`, e.g. this plugin's own audit scripts); the project may have additional domain-specific implementer agents listed in `CLAUDE.md`.
 3. **Run `genvid-dev:validator`** on the staged changes after each implementation task.
-4. **Commit on pass** — the orchestrator makes the commit (using the project's commit format) only after the validator passes. If it fails, fix forward (re-dispatch or correct) and re-validate before committing; nothing red gets committed.
+4. **Commit on pass** — the orchestrator makes the commit (using the project's commit format) only after the validator passes. If it fails, fix forward (re-dispatch or correct) and re-validate before committing; nothing red gets committed. **One-commit-per-task is the default, not a rule against batching:** when several tasks refine the *same* file (common for doc/skill edits), committing them together as one logical commit is cleaner than patch-staging to force a commit each — the goal is a readable history of logical changes, not a 1:1 task-to-commit mapping.
 5. **Run `genvid-dev:code-reviewer`** at the end. If it flags doc gaps, offer to dispatch `genvid-dev:tech-writer` (same staged-but-uncommitted protocol — you commit its doc changes after review).
 
 ## Shortcuts
