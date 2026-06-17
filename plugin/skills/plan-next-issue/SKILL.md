@@ -123,7 +123,11 @@ change didn't land, and many issues name no concrete target); surface it in the
 candidate's one-line rationale so the user can skip it or confirm it's still
 needed. Present the top candidates with a one-line rationale each and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
-recommended candidate first).
+recommended candidate first). **With a single ranked candidate, skip the
+`AskUserQuestion` shortlist ceremony** — a one-option multiSelect is just
+friction; present it inline with its rationale and route straight to §3, where
+`plan-task`'s own checkpoint is the gate. (Mirrors the lone-issue triage-skip in
+§1.)
 
 In `--non-interactive`, auto-pick the single top-ranked candidate.
 
