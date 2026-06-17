@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`plan-task`: name the reference-fix-divergence sub-case in the bug-observable gate (#85).** The Phase 1 bug-observable gate told the planner to trace who *reads/renders* a suspect value, but didn't name a second failure mode: a candidate can look like a genuine bug *purely because it diverges from a "reference fix"/established pattern* — when the reference fix's own patch was itself defensive (targeting no observable reader on that path), the divergence is harmless yet reads as "this site was missed." The gate now prescribes verifying the reference itself targeted an observable reader on the path in question, rather than inferring observability transitively from "the pattern patches this." Mirrored as a pointer into the "issue that's already a full proposal" shortcut, where pattern-divergence claims most often arrive. Surfaced dogfooding on `genvid-holdings/burbank` (#56 follow-up, shipped as burbank PR #100). Behavioral/reference-surface change → version bump at release.
+
 ## [3.4.0] - 2026-06-17
 
 ### Changed
