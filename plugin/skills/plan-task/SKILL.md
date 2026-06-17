@@ -50,7 +50,7 @@ If no related context exists, proceed normally.
 
 ### Phase 1: Analysis
 
-Dispatch the **`genvid-dev:analyst`** agent with the task description. The analyst explores the problem space, identifies requirements, and documents constraints.
+Dispatch a recon agent with the task description to explore the problem space, identify requirements, and document constraints. **Prefer the project's domain explorer** when the task is domain-specific: a domain task (e.g. a Construct 3 event-sheet migration) needs the domain's MCP tools, which the generic analyst lacks — check `CLAUDE.md` for any agent-dispatch guidance naming a better-fit recon agent (e.g. `genvid-c3:c3-explorer`) and dispatch that instead. **Fall back to `genvid-dev:analyst`** for general tasks, or when `CLAUDE.md` names no domain explorer.
 
 **Input:** the user's task description plus any relevant prior context (initiative docs, prior work).
 
@@ -101,6 +101,7 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
 5. **Author a decision record when the ADR threshold is met.** Durable architecture and compromise rationale must survive the transient `plan.md` — capture it in a committed decision record (see `${CLAUDE_PLUGIN_ROOT}/docs/development-principles.md` principle #7).
    - **ADR threshold — author one *only* when both hold:** (a) Phase 2 (Design) actually ran (not skipped by the simple-task or full-proposal shortcut), **and** (b) it produced a non-trivial decision — a rejected alternative was weighed, *or* a cross-module/architectural choice was made. **Skip** the record otherwise (trivial, purely additive, or cosmetic changes need none — this is what keeps the convention low-friction).
    - **When the threshold is met:** dispatch `genvid-dev:tech-writer` to author `docs/decisions/NNNN-*.md`, handing it the design doc's architecture + compromise sections and the originating issue reference. tech-writer scaffolds `docs/decisions/` (and a `docs/TOC.md` entry) on first use, names the record, fills the template, and back-links the issue. Commit the record together with the prep commit (or as the first task's commit when `plan.md` is gitignored).
+   - **Never fabricate a backfilled record's date.** When the decision was actually made *earlier* than this PR (a backfill, or a decision predating the ADR convention), instruct tech-writer **not to invent a `Date:`** — fabricated dates (e.g. placeholder `2024-01-01`/`2025-01-01`) are worse than none. Derive the date from the git history of *the code the decision is about* — **not** the new ADR file, whose first commit is this PR: `git log --diff-filter=A -- <decision-file>` for when the relevant file first appeared, or `git log -S'<symbol>'` for when the decision's symbol/pattern was introduced. If it can't be pinned to a day, **hedge to month/year — never guess a day.** Distinguish **Originally decided** (the real decision date, from git history) from **Recorded** (when the ADR file was written — i.e. this PR's date) so a backfill is honest about both.
 6. The plan is now ready for execution.
 
 ### Dispatch resilience
@@ -119,7 +120,7 @@ When the user says to execute:
 1. **Check git log** — compare commit messages to plan tasks. Don't re-implement already-committed work.
 2. **Delegate tasks** to the implementer agents per the plan's domain assignments, **instructing each dispatch to stage its files but leave them uncommitted**. Use `genvid-dev:ts-implementer` for TypeScript or JavaScript work (including plain ESM `.mjs`, e.g. this plugin's own audit scripts); the project may have additional domain-specific implementer agents listed in `CLAUDE.md`.
 3. **Run `genvid-dev:validator`** on the staged changes after each implementation task.
-4. **Commit on pass** — the orchestrator makes the commit (using the project's commit format) only after the validator passes. If it fails, fix forward (re-dispatch or correct) and re-validate before committing; nothing red gets committed.
+4. **Commit on pass** — the orchestrator makes the commit (using the project's commit format) only after the validator passes. If it fails, fix forward (re-dispatch or correct) and re-validate before committing; nothing red gets committed. **One-commit-per-task is the default, not a rule against batching:** when several tasks refine the *same* file (common for doc/skill edits), committing them together as one logical commit is cleaner than patch-staging to force a commit each — the goal is a readable history of logical changes, not a 1:1 task-to-commit mapping.
 5. **Run `genvid-dev:code-reviewer`** at the end. If it flags doc gaps, offer to dispatch `genvid-dev:tech-writer` (same staged-but-uncommitted protocol — you commit its doc changes after review).
 
 ## Shortcuts

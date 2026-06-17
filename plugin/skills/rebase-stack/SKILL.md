@@ -134,6 +134,20 @@ Verify all refs were updated:
 git log --oneline --decorate origin/<default-branch>..HEAD
 ```
 
+## When merging the parent CLOSED the child PR
+
+Squash-merging the parent **with branch deletion** doesn't just orphan the child's commits — GitHub auto-**CLOSES** the child PR (not "MERGED-but-commits-lost", an outright *closed* state). And a closed PR **whose base branch was deleted cannot be reopened or retargeted**: both `gh pr edit <child> --base <default-branch>` and `gh pr reopen <child>` error out. There is no in-place recovery — you must rebuild the PR.
+
+Recovery is the same `--onto` rebase followed by a **fresh** PR:
+
+```bash
+git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git push --force-with-lease
+gh pr create --base <default-branch> ...    # the closed PR cannot be reused
+```
+
+**Prevent it:** before merging the parent, **retarget the child to `<default-branch>`** (`gh pr edit <child> --base <default-branch>`) while the child's base branch still exists. Once retargeted, merging (and deleting) the parent leaves the child a normal open PR against the default branch — no close, no rebuild.
+
 ## Troubleshooting
 
 **`invalid upstream` error.** The branch ref was likely deleted. Find the commit hash via `git reflog | grep <branch-name>` or `git log --oneline origin/<default-branch>..HEAD`.
