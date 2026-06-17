@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-06-17
+
 ### Changed
 
 - **`plan-task` + `rebase-stack`: three skill refinements surfaced dogfooding (#83).**
