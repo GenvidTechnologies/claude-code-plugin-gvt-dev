@@ -1,4 +1,4 @@
-# 0002. Two-surface pattern for external-system config
+# 0006. Two-surface pattern for external-system config
 
 - **Status:** accepted
 - **Date:** 2026-06-09

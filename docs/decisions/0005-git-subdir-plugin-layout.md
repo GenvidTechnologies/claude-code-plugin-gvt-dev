@@ -1,4 +1,4 @@
-# 0001. Publish the plugin from a `plugin/` subdir via git-subdir
+# 0005. Publish the plugin from a `plugin/` subdir via git-subdir
 
 - **Status:** accepted
 - **Date:** 2026-06-05

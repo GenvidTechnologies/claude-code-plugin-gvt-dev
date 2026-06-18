@@ -28,10 +28,18 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 
 ## Decision Records
 
-This repo dogfoods the ADR convention it ships (see `development-principles.md` principle #7). Records live in `docs/decisions/` using the MADR-lite template at `plugin/skills/plan-task/decision-record.template.md`.
+This repo dogfoods the ADR convention it ships (see `development-principles.md` principle #7). Records live in `docs/decisions/` using the MADR-lite template at `plugin/skills/plan-task/decision-record.template.md`, numbered in chronological decision order.
 
-- [`decisions/0001-git-subdir-plugin-layout.md`](decisions/0001-git-subdir-plugin-layout.md) — why the plugin lives under `plugin/` and ships via git-subdir rather than at the repo root or as a separate mirror
-- [`decisions/0002-two-surface-external-system-pattern.md`](decisions/0002-two-surface-external-system-pattern.md) — why external-system config is split across a JSON block, a prose doc, a bundled template, and an exploration agent
+- [`decisions/0001-skills-as-directories-agents-as-flat-files.md`](decisions/0001-skills-as-directories-agents-as-flat-files.md) — why skills are directories (carrying supporting files) while agents are flat, stateless files
+- [`decisions/0002-self-declaring-skill-contract.md`](decisions/0002-self-declaring-skill-contract.md) — why each component declares its prerequisites in `metadata.expects` and the audit aggregates them (with the `required: false` lever)
+- [`decisions/0003-plugin-root-path-substitution.md`](decisions/0003-plugin-root-path-substitution.md) — why shared reference docs are cited via `${CLAUDE_PLUGIN_ROOT}/docs/…` rather than absolute or relative paths
+- [`decisions/0004-agent-pipeline-with-user-checkpoints.md`](decisions/0004-agent-pipeline-with-user-checkpoints.md) — why `plan-task` runs analyst → designer → planner as separate agents with a user checkpoint between phases
+- [`decisions/0005-git-subdir-plugin-layout.md`](decisions/0005-git-subdir-plugin-layout.md) — why the plugin lives under `plugin/` and ships via git-subdir rather than at the repo root or as a separate mirror
+- [`decisions/0006-two-surface-external-system-pattern.md`](decisions/0006-two-surface-external-system-pattern.md) — why external-system config is split across a JSON block, a prose doc, a bundled template, and an exploration agent
+- [`decisions/0007-five-dimension-doc-and-adr-convention.md`](decisions/0007-five-dimension-doc-and-adr-convention.md) — why durable architecture + compromise rationale lands in a committed decision record instead of the transient plan
+- [`decisions/0008-orchestrator-owns-commit.md`](decisions/0008-orchestrator-owns-commit.md) — why dispatched implementers stage but don't commit, and the validator gate runs before the orchestrator's commit
+- [`decisions/0009-finish-quality-over-additional-scope.md`](decisions/0009-finish-quality-over-additional-scope.md) — why finish-quality of touched code is part of a change's definition of done (principle #8) and can't be deferred
+- [`decisions/0010-agent-dispatch-guide-domain-explorers.md`](decisions/0010-agent-dispatch-guide-domain-explorers.md) — why `plan-task` Phase 1 prefers a repo's named domain explorer over the generic analyst when one is declared
 
 ## Scaffolding sources
 
