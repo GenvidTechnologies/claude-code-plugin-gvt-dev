@@ -136,9 +136,13 @@ In `--non-interactive`, auto-pick the single top-ranked candidate.
 Route the selection into `genvid-dev:plan-task`:
 
 - **One issue selected** → invoke `genvid-dev:plan-task` with that issue. A
-  triaged, enriched issue (rationale + proposed change) feeds plan-task's *"issue
-  is already a full proposal"* shortcut directly — pass it as the requirements so
-  plan-task can skip its analyst.
+  triaged, enriched issue feeds plan-task's *"issue is already a full proposal"*
+  shortcut **only if it proposes a concrete change/mechanism** (not just a problem
+  + goal) — then pass it as the requirements so plan-task can skip its analyst. **A
+  triaged issue that states only a problem + goal is *not* shortcut-eligible**: hand
+  it over normally and let plan-task run the full analyst → designer → planner
+  pipeline, where the design space is explored. (`triaged`/enriched ≠ contains a
+  mechanism — don't conflate the label with shortcut-eligibility.)
 - **More than one selected** → first check whether the selection forms natural
   **clusters** — issues touching the same skill/area/files, or joined by an
   explicit relates-to/dependency link — versus issues that are independent of each

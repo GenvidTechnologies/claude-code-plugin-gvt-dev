@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`plan-next-issue` + `plan-task`: a `triaged` label is not full-proposal shortcut-eligibility (#87).** Both the `plan-next-issue` §3 handoff prose and the `plan-task` "issue that's already a full proposal" shortcut could nudge a planner past the analysis phase on the strength of an issue's `triaged` label — but triaged/enriched ≠ contains a proposed mechanism. `plan-next-issue` §3 now qualifies the "feeds the full-proposal shortcut directly" sentence: a triaged/enriched issue is shortcut-eligible only if it proposes a concrete change/mechanism (not just a problem + goal), otherwise it routes through the full analyst → designer → planner pipeline. `plan-task`'s shortcut gains an explicit mechanism-presence gate alongside the existing "verify the work is unbuilt" gate — verify the issue contains a proposed change/mechanism, not only a problem statement / goal / acceptance criteria, before skipping the analyst. Surfaced dogfooding on `genvid-holdings/burbank` (#59, which `plan-task` self-corrected by re-reading the precondition). Doc refinement, no control-flow change → version bump at release.
+
 ## [3.5.0] - 2026-06-17
 
 ### Changed
