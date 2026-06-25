@@ -7,6 +7,9 @@ metadata:
       - path: docs/issue-triage.md
         required: false
         reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; the skill offers to scaffold it from the bundled template if absent
+      - path: docs/TOC.md
+        required: false
+        reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/issue-triage.md when docs/TOC.md is present
     config:
       - key: bugTracker.actionQuery
         in: .genvid-agent.json
@@ -66,6 +69,14 @@ block in `.genvid-agent.json` (access mechanics).
    `bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
    (the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
    the detected default without asking.
+
+   **Index the scaffolded doc in `docs/TOC.md`.** After copying the template, add a
+   one-line entry for `docs/issue-triage.md` to `docs/TOC.md` under a **Process**
+   heading (create the heading if absent) — mirroring how `plan-task` indexes a
+   scaffolded `docs/decisions/` record. An unindexed contract doc is invisible to
+   the planning/triage skills that discover docs via the index. Interactively,
+   **offer** it; in `--non-interactive`, add it **automatically**. Make it idempotent
+   (skip if the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
 
    **If the user declines scaffolding, or a quick scan of the open backlog shows no
    bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
