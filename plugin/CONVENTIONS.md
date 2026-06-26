@@ -15,6 +15,8 @@ If you're forking or adapting the plugin for your own org, this file is what you
 
 Anything else (architecture docs, runbooks, design patterns) is your own; the plugin doesn't depend on it.
 
+Some skills scaffold a doc into `docs/` and **self-index it in `docs/TOC.md`** under a conventional section heading — `Decision Records` for ADRs (`/genvid-dev:plan-task`), `Process` for workflow/convention docs like `docs/issue-triage.md` (`/genvid-dev:triage-issues`). These sections are optional and created on demand. The index is the discovery surface, so a scaffolded doc that isn't indexed is invisible to the planning and triage skills.
+
 > **Scope note:** genvid carries project-aware workflows, not generic tooling. It deliberately does not reimplement standalone PR review or code simplification — use Anthropic's official `code-review` (`/code-review`) and `code-simplifier` plugins for those. The `genvid-dev:code-reviewer` agent exists only as the `plan-task` review gate.
 
 ## Expected sections in `CLAUDE.md`
