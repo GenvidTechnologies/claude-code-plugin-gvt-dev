@@ -26,7 +26,7 @@ metadata:
   expects:
     config:
       - key: paths.plugin_root
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Path from the repo root to the directory containing .claude-plugin/plugin.json (and skills/, agents/); defaults to "." (plugin at repo root). Set to e.g. "plugin" for a subfolder layout.
     tools:
@@ -69,7 +69,7 @@ docs).
 
 ## Resolve the plugin root first
 
-Read `paths.plugin_root` from `.genvid-agent.json`; if absent, default to `.`
+Read `paths.plugin_root` from `.gvt-agent.json`; if absent, default to `.`
 (plugin at the repo root). Below, `<plugin_root>` is that value — `.claude-plugin/plugin.json`,
 `skills/`, `agents/`, and `docs/` all live under it.
 
@@ -227,7 +227,7 @@ deliberate floor decisions, not the pin. A pin bump is not a floor bump.
 
 - **Applies** when a plugin pins MCP servers in `plugin.json` `mcpServers` AND ships
   agents that enumerate those servers' tools by hand. genvid-c3 is the reference.
-- **Does not apply** to a plugin with no bundled MCP servers (e.g. genvid-dev itself),
+- **Does not apply** to a plugin with no bundled MCP servers (e.g. gvt-dev itself),
   or to one whose agents don't enumerate server tools — there is nothing to drift.
 - **Not a release.** Use `release-plugin` to tag and ship; this is its precursor.
 - **Not a floor bump.** A skill's `minVersion` is a separate, deliberate decision —

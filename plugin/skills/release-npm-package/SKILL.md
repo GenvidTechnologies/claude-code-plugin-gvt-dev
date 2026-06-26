@@ -2,7 +2,7 @@
 name: release-npm-package
 description: >-
   Cut a ROUTINE release of a package that ALREADY publishes to npmjs.com via the
-  shared genvid-public-ci publish.yml OIDC recipe — bump, commit, tag, and
+  shared public-github-actions publish.yml OIDC recipe — bump, commit, tag, and
   trigger the publish workflow. The TAG push is what triggers publishing; there
   is no manual npm publish step. Reach for it whenever someone wants to ship a
   new version of an npm package that is already wired for OIDC publishing. Trigger
@@ -22,7 +22,7 @@ metadata:
       - command: git
         reason: Reads remote state, creates the release commit and version tag, and pushes branch and tag to origin
       - command: gh
-        reason: Checks CI status on the release commit, fetches the live publish.yml shape from genvid-public-ci, and lists workflow runs after the tag push
+        reason: Checks CI status on the release commit, fetches the live publish.yml shape from public-github-actions, and lists workflow runs after the tag push
       - command: npm
         reason: Reads published versions, bumps package.json version (npm version --no-git-tag-version), and verifies the release with npm view
     files:
@@ -34,15 +34,15 @@ metadata:
         reason: The OIDC publish workflow that fires on the tag push — only this skill needs it, so it is not a universal contract requirement
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Full validation suite run before the release commit — only invoked when present; not a universal requirement
 ---
 
-# Release an npm package (genvid-public-ci OIDC recipe)
+# Release an npm package (public-github-actions OIDC recipe)
 
 This skill cuts a **routine** release of a package that already publishes to
-npmjs.com via the shared `genvid-holdings/genvid-public-ci` GitHub Actions
+npmjs.com via the shared `GenvidTechnologies/public-github-actions` GitHub Actions
 `publish.yml` recipe. "Routine" means the OIDC wiring is already in place — the
 package has a `.github/workflows/publish.yml` triggered on `v*.*.*` tags with
 `id-token: write` and no stored npm token.
@@ -70,7 +70,7 @@ It is **not** for:
 ## Confirm the repo is on the OIDC recipe (hard gate)
 
 Before doing anything else, assert that `.github/workflows/publish.yml` exists
-**and** matches the genvid-public-ci OIDC shape: triggered on `push: tags:
+**and** matches the public-github-actions OIDC shape: triggered on `push: tags:
 v*.*.*`, has `id-token: write`, and has **no** step that reads an npm token
 secret.
 
@@ -78,7 +78,7 @@ Fetch the canonical template to compare shape (trigger + OIDC block only — not
 a byte diff):
 
 ```bash
-gh api repos/genvid-holdings/genvid-public-ci/contents/templates/publish.yml \
+gh api repos/GenvidTechnologies/public-github-actions/contents/templates/publish.yml \
   --jq .content | base64 -d
 ```
 
@@ -199,7 +199,7 @@ Steps:
    section, move its content into a new dated `## [X.Y.Z] - <today>` section
    (Keep a Changelog format), leaving an empty `## [Unreleased]` above it.
 
-3. **Validate.** If `commands.validate` is present in `.genvid-agent.json`, run
+3. **Validate.** If `commands.validate` is present in `.gvt-agent.json`, run
    it now.
 
 4. **Release commit.** Show the diff; collect a single review confirmation. Read

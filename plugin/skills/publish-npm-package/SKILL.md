@@ -2,7 +2,8 @@
 name: publish-npm-package
 description: >-
   Set up a TypeScript package to publish publicly on npmjs.com via the shared
-  genvid-public-ci GitHub Actions recipe with OIDC trusted publishing (automatic
+  public-github-actions GitHub Actions recipe (the GenvidTechnologies/public-github-actions
+  repo) with OIDC trusted publishing (automatic
   provenance, no stored npm token). This is the rare, once-per-package setup
   nobody remembers the steps for, so reach for it WHENEVER someone wants a
   package onto npm or made publicly installable — even when they don't say
@@ -25,7 +26,7 @@ metadata:
   expects:
     tools:
       - command: gh
-        reason: Fetches the live genvid-public-ci recipe and checks repo visibility for provenance
+        reason: Fetches the live public-github-actions recipe and checks repo visibility for provenance
       - command: npm
         reason: Generates package-lock.json and runs the publish dry-run / pack manifest checks
       - command: git
@@ -36,11 +37,11 @@ metadata:
         reason: The package manifest being prepared for npm publishing — only this skill needs it, so it's not a universal contract requirement
 ---
 
-# Publish a package to npm (genvid-public-ci recipe)
+# Publish a package to npm (public-github-actions recipe)
 
 This skill converts a buildable TypeScript package into one that publishes to
 npmjs.com automatically on a version tag, using **OIDC trusted publishing** (no
-long-lived npm token) and the shared **`genvid-holdings/genvid-public-ci`**
+long-lived npm token) and the shared **`GenvidTechnologies/public-github-actions`**
 GitHub Actions workflows.
 
 It executes the migration directly, with verification gates, and then hands off
@@ -55,7 +56,7 @@ before wiring the automation that publishes it.
 ## When this applies / when it doesn't
 
 Use it when a package needs to start publishing to npm, or when migrating an
-existing package's release pipeline to the genvid-public-ci recipe. Signals:
+existing package's release pipeline to the public-github-actions recipe. Signals:
 "publish to npmjs.com", "pnpm → npm", "CircleCI → GitHub Actions", "trusted
 publishing", "@genvid scope", "provenance".
 
@@ -110,26 +111,26 @@ the Phase 5 bootstrap) is identical.
 
 ## The recipe is the source of truth — fetch it live
 
-`genvid-public-ci` owns the canonical workflows and the onboarding runbook.
+`public-github-actions` owns the canonical workflows and the onboarding runbook.
 **Do not embed or guess its contents** — fetch the current versions so you never
 act on a stale copy:
 
 ```bash
 # Runbook + templates (decode base64 from the contents API):
-gh api repos/genvid-holdings/genvid-public-ci/contents/README.md --jq .content | base64 -d
-gh api repos/genvid-holdings/genvid-public-ci/contents/templates/ci.yml --jq .content | base64 -d
-gh api repos/genvid-holdings/genvid-public-ci/contents/templates/publish.yml --jq .content | base64 -d
+gh api repos/GenvidTechnologies/public-github-actions/contents/README.md --jq .content | base64 -d
+gh api repos/GenvidTechnologies/public-github-actions/contents/templates/ci.yml --jq .content | base64 -d
+gh api repos/GenvidTechnologies/public-github-actions/contents/templates/publish.yml --jq .content | base64 -d
 ```
 
 Read the README's "Onboarding" and "Cutting a release" sections — they are
 authoritative. If the file layout has changed, list the tree first:
-`gh api repos/genvid-holdings/genvid-public-ci/git/trees/HEAD?recursive=1 --jq '.tree[].path'`.
+`gh api repos/GenvidTechnologies/public-github-actions/git/trees/HEAD?recursive=1 --jq '.tree[].path'`.
 
 The templates are designed to be **drop-in with zero per-package edits**. Copy
 them verbatim. In particular, `publish.yml` **must keep that exact filename** —
 the npm trusted-publisher registration matches against it.
 
-> **Non-genvid package?** There's no genvid-public-ci to fetch. Reuse the same
+> **Non-genvid package?** There's no public-github-actions to fetch. Reuse the same
 > shape: a `ci.yml` that runs lint/typecheck/test/build on PRs and pushes, and a
 > `publish.yml` triggered on `v*.*.*` tags with `permissions: id-token: write`
 > that runs `npm publish --provenance --access public`. The Phase 2–4 readiness
@@ -178,7 +179,7 @@ These genuinely change the outcome — present them, don't pick silently:
 3. **Release scope.** Wire up CI only, or also cut the first release? The first
    release depends on the manual bootstrap (Phase 5), which only the user can do.
 
-If a `genvid-public-ci` setup already exists for the chosen name and the user
+If a `public-github-actions` setup already exists for the chosen name and the user
 says trusted publishing is configured, confirm *which exact name* it was
 configured for — a scope change invalidates that assumption.
 
@@ -205,7 +206,7 @@ Make the package publishable first, then wire the automation.
    runner-agnostic (`tsc`/`mocha`/`eslint`); only change them if they hardcode
    `pnpm`.
 
-3. **Capability/config files.** If the repo has a `.genvid-agent.json` (or
+3. **Capability/config files.** If the repo has a `.gvt-agent.json` (or
    similar) with `pnpm run …` commands or the old name, update them to npm and
    the new name.
 

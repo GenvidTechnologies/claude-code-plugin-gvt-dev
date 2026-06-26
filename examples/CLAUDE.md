@@ -51,7 +51,7 @@ PRs target `development`, not `main`.
 ## Branching
 
 - Branch name format: `BUN-XXXX-lowercase-description` (use `BUN-0000` when no ticket)
-- Base branch: `development` (also configured as `repo.default_branch` in `.genvid-agent.json`)
+- Base branch: `development` (also configured as `repo.default_branch` in `.gvt-agent.json`)
 - Rebase, don't merge, when picking up upstream changes
 
 ## Project layout quick reference

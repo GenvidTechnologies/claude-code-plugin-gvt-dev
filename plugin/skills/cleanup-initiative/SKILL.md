@@ -47,7 +47,7 @@ If the initiative has any **genuinely** unshipped phases (Planned, Design-pendin
 
 1. **Do NOT delete the directory.** The folder is a long-lived working space; deleting it strands the next phase's plan.
 2. **Do NOT create a successor initiative.** The "successor" is the next phase, which lives in the same folder.
-3. **Update the Phases table in `initiative.md`.** Flip the just-shipped phase's Status from **Planned** (or **In progress**) to **Shipped**, and set the PR column to the merge commit's PR number. A stale Phases table is a recurring issue — the next `/genvid-dev:plan-task` invocation sees "Planned" on an already-shipped phase and has to discover the truth from `git log`. Fixing it here is the cheapest point in the cycle.
+3. **Update the Phases table in `initiative.md`.** Flip the just-shipped phase's Status from **Planned** (or **In progress**) to **Shipped**, and set the PR column to the merge commit's PR number. A stale Phases table is a recurring issue — the next `/gvt-dev:plan-task` invocation sees "Planned" on an already-shipped phase and has to discover the truth from `git log`. Fixing it here is the cheapest point in the cycle.
 4. Run only steps 1–3 (inventory + knowledge transfer for the *shipped* phase).
 5. Skip steps 4–6 (no successor, no memory migration, no directory deletion).
 6. Step 7 summary: report which phase was closed; remind the user that phases M+ remain. Suggest extending the initiative with a phase-specific plan doc when ready (`initiatives/<name>/phase-N-plan.md`) rather than spawning a sibling folder.
@@ -83,7 +83,7 @@ Report each insight as FOUND (with location) or MISSING.
 grep -rn "initiatives/<name>" . --include='*.ts' --include='*.js' --include='*.md' --exclude-dir=node_modules 2>/dev/null
 ```
 
-Adjust the include globs for the project's languages (consult `.genvid-agent.json` `project.languages`). For each hit, either:
+Adjust the include globs for the project's languages (consult `.gvt-agent.json` `project.languages`). For each hit, either:
 
 - Redirect the reference to surviving documentation (the relevant test-file JSDoc, a `docs/` page, an entry in the project's lessons-learned doc).
 - Strip the dead-link line as part of the same close-out commit.
@@ -93,7 +93,7 @@ The doc-only check above does **not** catch this — it looks at outbound knowle
 
 ### 3. Transfer missing knowledge
 
-For any MISSING items, delegate to the `genvid-dev:tech-writer` agent to add them to the appropriate doc. Follow the "document at point of discovery" principle — the right doc is the one a future developer would look in when encountering the same situation.
+For any MISSING items, delegate to the `gvt-dev:tech-writer` agent to add them to the appropriate doc. Follow the "document at point of discovery" principle — the right doc is the one a future developer would look in when encountering the same situation.
 
 ### 4. Create successor initiative
 

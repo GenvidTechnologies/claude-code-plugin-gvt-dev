@@ -19,7 +19,7 @@ metadata:
         reason: The CircleCI config being replaced and removed — present only in not-yet-migrated repos
     config:
       - key: cordovaCi.opVault
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: The 1Password vault holding this plugin's signing material (Android keystore, iOS cert/profile) — project-shared and scoped to the OP_SERVICE_ACCOUNT_TOKEN service account; the migration substitutes it for <OP_VAULT> in the distribute workflows. Only this skill needs it, so it is not a universal contract requirement
     tools:
@@ -48,15 +48,15 @@ a `vX.Y.Z` tag, signing material fetched from 1Password via a single
 
 The workflows are bundled as parameterized templates under this skill's
 `templates/` directory, lifted from
-`genvid-holdings/cordova-plugin-marketplace@9b6721b`. Copy them into the target
+`GenvidTechnologies/cordova-plugin-marketplace@9b6721b`. Copy them into the target
 repo, substitute the per-repo placeholders listed below, and — if significant time
 has passed since that commit — diff against `cordova-plugin-marketplace@main`
 before use:
 
 ```bash
-gh api repos/genvid-holdings/cordova-plugin-marketplace/contents/.github/workflows/android.yml \
+gh api repos/GenvidTechnologies/cordova-plugin-marketplace/contents/.github/workflows/android.yml \
   --jq .content | base64 -d
-gh api repos/genvid-holdings/cordova-plugin-marketplace/contents/.github/workflows/ios.yml \
+gh api repos/GenvidTechnologies/cordova-plugin-marketplace/contents/.github/workflows/ios.yml \
   --jq .content | base64 -d
 ```
 
@@ -67,7 +67,7 @@ reads as a clear migration sequence.
 
 The 1Password vault that holds the plugin's signing material (Android keystore,
 iOS cert/profile) is **project-specific**, so it lives in the target repo's
-`.genvid-agent.json` rather than being baked into the templates:
+`.gvt-agent.json` rather than being baked into the templates:
 
 ```json
 {
@@ -81,7 +81,7 @@ iOS cert/profile) is **project-specific**, so it lives in the target repo's
 scoped to. The migration substitutes its value for the `<OP_VAULT>` placeholder
 throughout `android.yml`/`ios.yml`. **If the block is absent, don't guess** — ask
 the operator which vault holds the signing assets and offer to add the
-`cordovaCi.opVault` key to `.genvid-agent.json` before substituting. The signing
+`cordovaCi.opVault` key to `.gvt-agent.json` before substituting. The signing
 **item** names within that vault still vary per plugin and stay as the per-repo
 placeholders in the table below.
 
@@ -98,7 +98,7 @@ copy-paste from the bundled files.
 | `<ARTIFACT_PREFIX>` | Uploaded-artifact name prefix (e.g. `marketplace`) | `android.yml`, `ios.yml` |
 | `<IOS_DEPLOYMENT_TARGET>` | iOS deployment-target floor (e.g. `14.0`; raise if the plugin uses `os.Logger` or other newer APIs) | `config.xml.snippet` |
 | `<VERSION>` | Current package version (e.g. `1.2.3`); must equal `package.json` / `tests/package.json` / `demo/config.xml` widget version | `config.xml.snippet` |
-| `<OP_VAULT>` | 1Password signing vault — **sourced from `cordovaCi.opVault` in `.genvid-agent.json`**, not hand-picked (see Configuration above) | `android.yml`, `ios.yml` |
+| `<OP_VAULT>` | 1Password signing vault — **sourced from `cordovaCi.opVault` in `.gvt-agent.json`**, not hand-picked (see Configuration above) | `android.yml`, `ios.yml` |
 | `<OP_KEYSTORE_ITEM>` | 1Password item name holding the Android keystore (within `<OP_VAULT>`) | `android.yml` |
 | `<OP_IOS_CERT_ITEM>` | 1Password item holding the iOS dev signing cert id, password, and `.p12` | `ios.yml` |
 | `<OP_IOS_TEAM_ITEM>` | 1Password item holding the Apple development `team_id` (DISTINCT from the cert item) | `ios.yml` |

@@ -3,7 +3,7 @@
  * Pre-commit hook for the genvid plugin.
  *
  * Runs the project's lint command before any `git commit` invocation in the
- * Bash tool. The lint command is read from .genvid-agent.json commands.lint.
+ * Bash tool. The lint command is read from .gvt-agent.json commands.lint.
  * Exits with code 2 to block the commit if lint fails.
  *
  * Wired in hooks/hooks.json as a PreToolUse hook matching the Bash tool.
@@ -28,14 +28,14 @@ process.stdin.on("end", () => {
   }
 
   const repoRoot = input.cwd || process.cwd();
-  const configPath = path.join(repoRoot, ".genvid-agent.json");
+  const configPath = path.join(repoRoot, ".gvt-agent.json");
   let lintCommand;
   try {
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
     lintCommand = config?.commands?.lint;
   } catch {
-    // No .genvid-agent.json — project may not be on the convention contract
-    // yet. Don't block; the user can run /genvid-dev:audit-conventions to migrate.
+    // No .gvt-agent.json — project may not be on the convention contract
+    // yet. Don't block; the user can run /gvt-dev:audit-conventions to migrate.
     process.exit(0);
   }
 

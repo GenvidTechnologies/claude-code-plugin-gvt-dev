@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 
-const NEW_CONFIG = '.genvid-agent.json';
+const NEW_CONFIG = '.gvt-agent.json';
 const LEGACY_CONFIG = 'claude-config.json';
 const GITMODULES = '.gitmodules';
 const LEGACY_SUBMODULE_NAME = 'burbank-claude-config';

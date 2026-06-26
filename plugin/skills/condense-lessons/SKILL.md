@@ -22,7 +22,7 @@ Extract insights from verbose session entries in the project's lessons-learned d
 The steps below read as a single sequential pass. That's fine for a handful of sessions, but a doc with **many** verbose entries (dozens or more) is slow and context-heavy done serially — parallelize, with two rules that keep writes safe (see `superpowers:dispatching-parallel-agents` for the fan-out pattern):
 
 - **Condensing (step 5): fan out, but keep one writer.** Dispatch agents that **return** the condensed text for a *slice* of sessions; the orchestrator assembles the results and **writes the lessons-learned file once**. Concurrent writers to the same file race and clobber each other — a single writer avoids it.
-- **Extraction (step 4): partition agents by target file — one owner per file.** When dispatching `genvid-dev:tech-writer` agents to edit structured docs, give each agent **exclusive ownership of its target doc(s)**. Two agents editing the same doc concurrently can lose edits. Avoid "use doc X if a topic fits" fallbacks that can silently point two agents at the same file.
+- **Extraction (step 4): partition agents by target file — one owner per file.** When dispatching `gvt-dev:tech-writer` agents to edit structured docs, give each agent **exclusive ownership of its target doc(s)**. Two agents editing the same doc concurrently can lose edits. Avoid "use doc X if a topic fits" fallbacks that can silently point two agents at the same file.
 
 ## 1. Locate the lessons-learned doc
 
@@ -49,7 +49,7 @@ For each insight **not yet captured** in a structured doc:
 3. Write the insight in the style and format of the surrounding content — match existing conventions.
 4. Note which doc and section received the insight.
 
-Consider dispatching the `genvid-dev:tech-writer` agent for the actual doc edits, especially when the extraction touches multiple structured docs.
+Consider dispatching the `gvt-dev:tech-writer` agent for the actual doc edits, especially when the extraction touches multiple structured docs.
 
 ## 5. Condense fully-extracted sessions
 
@@ -63,7 +63,7 @@ Once all reusable insights from a session are captured in a durable home, replac
 **Key insights extracted to:** [doc1](path) (topics), [doc2](path) (topics)
 ```
 
-**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the genvid-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
+**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the gvt-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
 
 If some insights aren't yet captured in any durable home — either **too session-specific** to generalize, or **reusable but with no home yet** — keep them under the condensed entry rather than dropping them:
 

@@ -1,9 +1,9 @@
 # Issue Triage Conventions
 
-> Project conventions consumed by `/genvid-dev:triage-issues`. Copy this file to
+> Project conventions consumed by `/gvt-dev:triage-issues`. Copy this file to
 > `docs/issue-triage.md` and edit it for your tracker and taxonomy. The companion
 > **access mechanics** (fetch queries, label names) live in the `bugTracker`
-> block of `.genvid-agent.json` — see the skill's SKILL.md for that block.
+> block of `.gvt-agent.json` — see the skill's SKILL.md for that block.
 >
 > The example commands below assume **GitHub Issues via the `gh` CLI**. Replace
 > them with your tracker's equivalents (Jira `acli`, Linear API, …); the section

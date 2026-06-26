@@ -233,9 +233,9 @@ test('planGreenfield: scaffold content is sourced verbatim from skeleton/', asyn
     const plan = await planGreenfield(dir, PLUGIN_ROOT);
     const writeFor = (suffix) => plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith(suffix));
 
-    const agentCfg = writeFor('.genvid-agent.json');
-    assert.equal(agentCfg.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/.genvid-agent.json'), 'utf8'));
-    assert.doesNotThrow(() => JSON.parse(agentCfg.content), 'skeleton .genvid-agent.json must be valid JSON');
+    const agentCfg = writeFor('.gvt-agent.json');
+    assert.equal(agentCfg.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/.gvt-agent.json'), 'utf8'));
+    assert.doesNotThrow(() => JSON.parse(agentCfg.content), 'skeleton .gvt-agent.json must be valid JSON');
 
     const claudeMd = writeFor('CLAUDE.md');
     assert.equal(claudeMd.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/CLAUDE.md'), 'utf8'));
@@ -516,7 +516,7 @@ test('scanDanglingReferences: marks obsolete sidecars for deletion with their su
     const warnings = await scanDanglingReferences(dir);
     const cmds = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-commands.md'));
     const docs = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-docs-to-check.md'));
-    assert.match(cmds.hint, /obsolete.*\.genvid-agent\.json/);
+    assert.match(cmds.hint, /obsolete.*\.gvt-agent\.json/);
     assert.match(docs.hint, /obsolete.*docs\/TOC\.md/);
   } finally {
     await rm(dir, { recursive: true, force: true });

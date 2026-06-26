@@ -1,4 +1,4 @@
-# Template lifted from genvid-holdings/cordova-plugin-marketplace@9b6721bba942b10f95c5ca0ab02f5728b9b1c308 (.github/workflows/ios.yml). Diff against @main before use; see SKILL.md.
+# Template lifted from GenvidTechnologies/cordova-plugin-marketplace@9b6721bba942b10f95c5ca0ab02f5728b9b1c308 (.github/workflows/ios.yml). Diff against @main before use; see SKILL.md.
 name: iOS
 
 # Two tiers:

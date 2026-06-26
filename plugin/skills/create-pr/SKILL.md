@@ -8,11 +8,11 @@ metadata:
         reason: Read for the project's PR title format and test plan template
     config:
       - key: repo.default_branch
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Default base branch; falls back to git symbolic-ref refs/remotes/origin/HEAD
       - key: repo.host
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Override when the git remote is ambiguous (mirrored across hosts); otherwise inferred from the remote URL
     tools:
@@ -24,7 +24,7 @@ metadata:
 
 Creates a pull request by preparing details and either invoking `gh` (GitHub) or providing a copy-paste link (Bitbucket).
 
-**Default branch:** read `repo.default_branch` from `.genvid-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<base>` refers to this value.
+**Default branch:** read `repo.default_branch` from `.gvt-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<base>` refers to this value.
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ Inspect `git remote get-url origin` and pick the flow:
 
 - Contains `github.com` → **GitHub** flow (Step 5a, uses `gh pr create`)
 - Contains `bitbucket.org` → **Bitbucket** flow (Step 5b, copy-paste link)
-- Anything else → check `.genvid-agent.json` `repo.host`, or ask the user
+- Anything else → check `.gvt-agent.json` `repo.host`, or ask the user
 
 ### 2. Gather information
 

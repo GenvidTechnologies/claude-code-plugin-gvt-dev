@@ -1,9 +1,9 @@
 # Issue Triage Conventions
 
-> Project conventions consumed by `/genvid-dev:triage-issues`. Copy this file to
+> Project conventions consumed by `/gvt-dev:triage-issues`. Copy this file to
 > `docs/issue-triage.md` and edit it for your tracker. The companion **access
 > mechanics** (fetch queries, label names) live in the `bugTracker` block of
-> `.genvid-agent.json` — see the skill's SKILL.md for that block.
+> `.gvt-agent.json` — see the skill's SKILL.md for that block.
 >
 > This is the **flat-label variant** — for repos using a simple category-label set
 > (e.g. GitHub's defaults: `bug`, `enhancement`, `documentation`, `duplicate`,

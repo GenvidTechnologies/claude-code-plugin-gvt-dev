@@ -1,6 +1,6 @@
 # release-npm-package eval harness
 
-Skill-level evals for the `genvid-dev:release-npm-package` skill. They test **Claude's
+Skill-level evals for the `gvt-dev:release-npm-package` skill. They test **Claude's
 behavior wielding the skill** — specifically the Phase 1 *state-classifier*, the OIDC
 gate, and the tag-convention detection: does it `git fetch` before judging, classify the
 repo into the right state, refuse to re-publish an already-published version, and gate

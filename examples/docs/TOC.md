@@ -1,6 +1,6 @@
 # Documentation Index
 
-Table of contents for project documentation. Skills like `/genvid-dev:plan-task` read this to scope their work — keep each entry to one line so the index stays scannable.
+Table of contents for project documentation. Skills like `/gvt-dev:plan-task` read this to scope their work — keep each entry to one line so the index stays scannable.
 
 ## Project context
 

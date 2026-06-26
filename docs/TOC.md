@@ -1,6 +1,6 @@
 # Documentation Index
 
-This repo is the `genvid-dev` **plugin itself**, not a consuming game project — so
+This repo is the `gvt-dev` **plugin itself**, not a consuming game project — so
 its "documentation" is the convention contract and the plugin components, not the
 `docs/architecture.md` / `docs/runbook.md` set a consumer would have. Genvid skills
 (`plan-task`, `run-retro`, `tech-writer`, …) consult this index to find what to

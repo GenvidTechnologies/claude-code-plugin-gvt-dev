@@ -13,7 +13,7 @@ metadata:
         reason: Consulted to discover relevant project docs
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Plan references the validate command in the validation step
     tools:
@@ -97,7 +97,7 @@ Prerequisite branches or PRs (if any).
 
 ### Validation
 N. Run validator + code-reviewer
-   **Validate command:** from .genvid-agent.json commands.validate
+   **Validate command:** from .gvt-agent.json commands.validate
 
 ## Risks
 | Risk | Mitigation |

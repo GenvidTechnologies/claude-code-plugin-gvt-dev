@@ -24,8 +24,8 @@ Before committing:
 1. **Stage specific files** — avoid `git add -A` or `git add .`. Explicit staging prevents accidental inclusion of `.env`, credentials, or unrelated work.
 2. **Review staged changes** — run `git diff --staged` to see exactly what's about to be committed.
 3. **No sensitive files** — verify nothing under `.env*`, `credentials*`, or similar is staged.
-4. **Lint passes** — most projects enforce this via pre-commit hook; verify the hook is in place or run the project's lint command (consult `.genvid-agent.json` `commands.lint`).
-5. **Tests pass for code changes** — run the project's test command (`.genvid-agent.json` `commands.test`) when committing code.
+4. **Lint passes** — most projects enforce this via pre-commit hook; verify the hook is in place or run the project's lint command (consult `.gvt-agent.json` `commands.lint`).
+5. **Tests pass for code changes** — run the project's test command (`.gvt-agent.json` `commands.test`) when committing code.
 
 ## Commit Command Template
 

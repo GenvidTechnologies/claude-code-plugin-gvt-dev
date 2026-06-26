@@ -5,7 +5,7 @@ metadata:
   expects:
     config:
       - key: repo.default_branch
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Used to compare worktree branch against the project's default; falls back to git symbolic-ref refs/remotes/origin/HEAD
     tools:
@@ -20,14 +20,14 @@ metadata:
 
 Tears down a git worktree safely after recovering anything worth keeping: in-progress changes, unpushed commits, stashes, open PRs, and worktree-keyed auto-memory entries.
 
-**Default branch resolution:** read `repo.default_branch` from `.genvid-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
+**Default branch resolution:** read `repo.default_branch` from `.gvt-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
 
 **Argument:** the worktree to clear (path or branch name). If omitted, list `git worktree list` and ask the user which one.
 
 ## When NOT to use
 
 - The current shell is **inside** the target worktree — `cd` back to the main checkout first; `git worktree remove` cannot remove a worktree that contains the active CWD.
-- The branch is still in active use — finish the work (see `/genvid-dev:rebase-branch`, `/genvid-dev:create-pr`) before removing the worktree.
+- The branch is still in active use — finish the work (see `/gvt-dev:rebase-branch`, `/gvt-dev:create-pr`) before removing the worktree.
 
 ## Step 1: Identify the worktree
 
