@@ -1,5 +1,5 @@
 {
-  "_comment": "Sample legacy claude-config.json (the old template-engine schema) used as a fixture by migrate.test.mjs to lock in the translateLegacyConfig mapping. Mirrors a realistic pnpm game repo: project name, BASE_BRANCH, PACKAGE_MANAGER/TEST_COMMAND variables, HAS_* feature flags, and the VALIDATION/REVIEW command blocks that map onto commands.* in .genvid-agent.json.",
+  "_comment": "Sample legacy claude-config.json (the old template-engine schema) used as a fixture by migrate.test.mjs to lock in the translateLegacyConfig mapping. Mirrors a realistic pnpm game repo: project name, BASE_BRANCH, PACKAGE_MANAGER/TEST_COMMAND variables, HAS_* feature flags, and the VALIDATION/REVIEW command blocks that map onto commands.* in .gvt-agent.json.",
   "project": "bunny",
   "variables": {
     "BASE_BRANCH": "development",

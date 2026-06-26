@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 import { inferHostFromRemote, detectHostDrift } from '../lib/host-drift.mjs';
 
 test('inferHostFromRemote: https GitHub', () => {
-  assert.equal(inferHostFromRemote('https://github.com/genvid-holdings/repo.git'), 'github');
+  assert.equal(inferHostFromRemote('https://github.com/GenvidTechnologies/repo.git'), 'github');
 });
 
 test('inferHostFromRemote: ssh GitHub', () => {
-  assert.equal(inferHostFromRemote('git@github.com:genvid-holdings/repo.git'), 'github');
+  assert.equal(inferHostFromRemote('git@github.com:GenvidTechnologies/repo.git'), 'github');
 });
 
 test('inferHostFromRemote: https Bitbucket', () => {

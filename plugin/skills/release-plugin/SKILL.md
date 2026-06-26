@@ -2,13 +2,13 @@
 name: release-plugin
 description: >-
   Cut a versioned release of a single Genvid marketplace plugin (a Claude Code
-  plugin published through the genvid-holdings/claude-code-marketplace catalog),
+  plugin published through the GenvidTechnologies/claude-code-marketplace catalog),
   end to end across both repos: bump .claude-plugin/plugin.json, move the
   CHANGELOG Unreleased section, commit, push an annotated vX.Y.Z tag, and bump
   the plugin's marketplace source.ref. This is the rare, nobody-remembers-the-
   steps maintainer workflow, so reach for it WHENEVER someone wants a plugin
   release shipped — even when they don't name the steps. Trigger on requests
-  like "release the plugin", "cut a new genvid-dev / genvid-c3 version", "bump
+  like "release the plugin", "cut a new gvt-dev / genvid-c3 version", "bump
   the plugin version and ship it", "tag and publish the plugin", "push this to
   the marketplace", "make the new skill available to consumers", "publish the
   first version of this plugin", or "the tag / plugin.json version / marketplace
@@ -22,7 +22,7 @@ metadata:
   expects:
     config:
       - key: paths.plugin_root
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Path from the repo root to the directory containing .claude-plugin/plugin.json; defaults to "." (plugin at repo root). Set to e.g. "plugin" for a subfolder layout, which also selects the git-subdir marketplace source shape.
     tools:
@@ -36,7 +36,7 @@ metadata:
 
 This skill cuts a release of a single Genvid Claude Code plugin and points the
 shared marketplace catalog at it. A plugin release is **git-tag-pinned, not
-npm-published**: the catalog `genvid-holdings/claude-code-marketplace` pins each
+npm-published**: the catalog `GenvidTechnologies/claude-code-marketplace` pins each
 plugin to a plain annotated `vX.Y.Z` tag via a `source.ref`, and consumers
 resolve that ref on `/plugin update`. There is **no `npm publish`** — do not
 confuse this with `publish-npm-package`.
@@ -59,7 +59,7 @@ failure never points the catalog at a tag that doesn't exist yet.
 Most plugins live flat at the repo root — for them `<plugin_root>` is `.` and
 every command below is exactly the historical command. A plugin MAY instead live
 in a **subfolder** (so one repo can hold several plugins, or a plugin plus a
-dev/consumer workspace). Read `paths.plugin_root` from `.genvid-agent.json` once,
+dev/consumer workspace). Read `paths.plugin_root` from `.gvt-agent.json` once,
 up front; use `.` when the key is absent or empty.
 
 Everywhere below, `<plugin_root>/` prefixes the shipped paths —
@@ -108,11 +108,11 @@ believe anything is wrong (Phase 1).
 ## The marketplace is the source of truth — read it live
 
 The catalog file is `.claude-plugin/marketplace.json` in
-`genvid-holdings/claude-code-marketplace` (catalog `name: genvid-plugins`).
+`GenvidTechnologies/claude-code-marketplace` (catalog `name: gvt-plugins`).
 **Read it live; never assume its contents** — entries and refs change:
 
 ```bash
-gh api repos/genvid-holdings/claude-code-marketplace/contents/.claude-plugin/marketplace.json \
+gh api repos/GenvidTechnologies/claude-code-marketplace/contents/.claude-plugin/marketplace.json \
   --jq .content | base64 -d
 ```
 
@@ -122,14 +122,14 @@ Each plugin entry has one of two source shapes, chosen by `<plugin_root>`:
 // plugin at repo root (<plugin_root> = ".") — whole-repo "url" source
 {
   "name": "<plugin>",
-  "source": { "source": "url", "url": "https://github.com/genvid-holdings/<repo>.git", "ref": "vX.Y.Z" },
+  "source": { "source": "url", "url": "https://github.com/GenvidTechnologies/<repo>.git", "ref": "vX.Y.Z" },
   "description": "..."
 }
 
 // plugin in a subfolder (<plugin_root> = "plugin") — "git-subdir" source with a path
 {
   "name": "<plugin>",
-  "source": { "source": "git-subdir", "url": "https://github.com/genvid-holdings/<repo>.git", "path": "<plugin_root>", "ref": "vX.Y.Z" },
+  "source": { "source": "git-subdir", "url": "https://github.com/GenvidTechnologies/<repo>.git", "path": "<plugin_root>", "ref": "vX.Y.Z" },
   "description": "..."
 }
 ```
@@ -296,7 +296,7 @@ exist and be pushed **before** the marketplace points at it, or every consumer's
    dir, edit only the one ref value, review the diff, commit, push:
 
    ```bash
-   git clone --depth 1 https://github.com/genvid-holdings/claude-code-marketplace.git <tmp>
+   git clone --depth 1 https://github.com/GenvidTechnologies/claude-code-marketplace.git <tmp>
    ```
 
    In `<tmp>/.claude-plugin/marketplace.json`, the edit depends on the case —
@@ -335,7 +335,7 @@ exist and be pushed **before** the marketplace points at it, or every consumer's
    user to run, in their Claude Code session:
 
    ```
-   /plugin update <plugin>@genvid-plugins
+   /plugin update <plugin>@gvt-plugins
    ```
 
    and then restart / reload so the new contents load. Optionally verify with

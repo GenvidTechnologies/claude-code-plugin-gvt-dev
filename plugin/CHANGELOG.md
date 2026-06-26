@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the `genvid-dev` plugin are documented in this file.
+All notable changes to the `gvt-dev` plugin are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and follows [semantic versioning](https://semver.org/).
@@ -9,6 +9,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
+- **BREAKING — rebrand: `genvid-dev` → `gvt-dev`, transferred to the `GenvidTechnologies` org.** The plugin, its repo (`claude-code-plugin-genvid-dev` → `claude-code-plugin-gvt-dev`), and the marketplace catalog (`genvid-plugins` → `gvt-plugins`) all renamed and moved from `genvid-holdings` to `GenvidTechnologies`. **Consumer impact:** the invocation namespace changes (`/genvid-dev:<skill>` → `/gvt-dev:<skill>`, `genvid-dev:<agent>` dispatch → `gvt-dev:<agent>`), the install ref changes (`genvid-dev@genvid-plugins` → `gvt-dev@gvt-plugins`), and **the convention contract file renames `.genvid-agent.json` → `.gvt-agent.json`** — consuming repos must rename theirs (greenfield `audit-conventions --fix` now scaffolds the new name). Sibling-repo references also updated: `genvid-holdings/genvid-public-ci` → `GenvidTechnologies/public-github-actions`, `genvid-holdings/cordova-plugin-marketplace` → `GenvidTechnologies/cordova-plugin-marketplace`. Reinstall with `/plugin marketplace add https://github.com/GenvidTechnologies/claude-code-marketplace.git` then `/plugin install gvt-dev@gvt-plugins`.
 - **`triage-issues`: index the scaffolded `docs/issue-triage.md` in `docs/TOC.md` (#90).** §0 step 1 scaffolded the contract doc from a bundled template but never added it to `docs/TOC.md`, leaving an unindexed doc that the planning/triage skills (which discover docs through the index) couldn't see — surfaced when a `run-retro` in a consuming repo found the file on disk but missing from the TOC. The scaffold step now also indexes the doc under a **Process** heading (create if absent), mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record: offered interactively, automatic in `--non-interactive`, idempotent, and skipped gracefully if `docs/TOC.md` is absent. Behavioral skill change → version bump at release.
 - **`CONVENTIONS.md`: document the scaffold-then-self-index convention for `docs/TOC.md` (#90 follow-up).** Records that some skills scaffold a doc into `docs/` and self-index it in `docs/TOC.md` under a conventional section heading (`Decision Records` for ADRs, `Process` for workflow/convention docs), that those sections are optional/on-demand, and that an unindexed scaffolded doc is invisible to the planning and triage skills. Generalizes the point fix above so the next doc-scaffolding skill doesn't reintroduce the gap.
 

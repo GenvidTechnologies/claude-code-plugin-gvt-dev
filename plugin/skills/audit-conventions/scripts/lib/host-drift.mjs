@@ -1,4 +1,4 @@
-// Detects drift between .genvid-agent.json `repo.host` and the actual git
+// Detects drift between .gvt-agent.json `repo.host` and the actual git
 // remote. Pure functions — no git/filesystem access; the caller is responsible
 // for fetching the remote URL (e.g. `git remote get-url origin`) and the
 // configured host, then passing them in. Keeping the logic IO-free makes it

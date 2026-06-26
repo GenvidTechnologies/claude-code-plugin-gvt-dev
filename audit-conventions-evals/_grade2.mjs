@@ -35,7 +35,7 @@ const runs = {
     [false, "Auto-applied (and committed) the migration without an approval gate — unsafe behavior the hardened skill prevents."],
   ]},
   "eval-migrated-drift-check/without_skill": { t: 583.4, tok: 39953, tools: 16, name: "migrated-drift-check", cfg: "without_skill", id: 2, exp: [
-    [true, "CONTAMINATED: located the installed plugin and ran its audit.mjs; even cited genvid 1.1.0 and /genvid-dev:audit-conventions by name."],
+    [true, "CONTAMINATED: located the installed plugin and ran its audit.mjs; even cited genvid 1.1.0 and /gvt-dev:audit-conventions by name."],
     [true, "Correctly assessed the repo as migrated."],
     [true, "Flagged CLAUDE.md as the missing required file with per-component reasons."],
     [true, "Proposed a concrete fix; did not apply (migrated refuses --fix). Note: it recommended --fix --apply, which the hardened skill would still gate."],

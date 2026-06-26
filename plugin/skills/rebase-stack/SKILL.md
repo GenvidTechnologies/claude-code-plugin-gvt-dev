@@ -9,11 +9,11 @@ metadata:
         reason: Read for the project's branching conventions
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Run for post-rebase verification if defined
       - key: repo.default_branch
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Used as the rebase target; falls back to git symbolic-ref refs/remotes/origin/HEAD
     tools:
@@ -25,7 +25,7 @@ metadata:
 
 Rebases a feature branch onto the default branch after an earlier branch in its stack was squash-merged.
 
-**Default branch resolution:** read `repo.default_branch` from `.genvid-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
+**Default branch resolution:** read `repo.default_branch` from `.gvt-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
 
 ## The Problem
 
@@ -109,7 +109,7 @@ git rebase --continue
 git log --oneline origin/<default-branch>..HEAD       # commit history looks right
 ```
 
-Run the project's validate command (from `.genvid-agent.json` `commands.validate`) if defined.
+Run the project's validate command (from `.gvt-agent.json` `commands.validate`) if defined.
 
 ### 7. Clean up
 

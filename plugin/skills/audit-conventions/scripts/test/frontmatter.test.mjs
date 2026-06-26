@@ -62,7 +62,7 @@ metadata:
         reason: project context
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: optional config
     tools:
@@ -73,7 +73,7 @@ metadata:
   assert.ok(out.description.startsWith('A multi-paragraph'));
   assert.deepEqual(out.metadata.expects.files, [{ path: 'CLAUDE.md', reason: 'project context' }]);
   assert.deepEqual(out.metadata.expects.config, [
-    { key: 'commands.validate', in: '.genvid-agent.json', required: false, reason: 'optional config' },
+    { key: 'commands.validate', in: '.gvt-agent.json', required: false, reason: 'optional config' },
   ]);
   assert.deepEqual(out.metadata.expects.tools, [{ command: 'git', reason: 'branch operations' }]);
 });

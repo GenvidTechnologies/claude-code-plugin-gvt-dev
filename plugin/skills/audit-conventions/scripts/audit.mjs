@@ -125,7 +125,7 @@ async function evaluateFile(component, entry) {
 
 async function evaluateConfig(component, entry) {
   const required = entry.required !== false;
-  const inFile = entry.in ?? '.genvid-agent.json';
+  const inFile = entry.in ?? '.gvt-agent.json';
   const filePath = join(REPO_ROOT, inFile);
 
   let parsed;
@@ -177,7 +177,7 @@ function evaluateTool(component, entry) {
   };
 }
 
-// Cross-checks .genvid-agent.json `repo.host` against the actual git remote and
+// Cross-checks .gvt-agent.json `repo.host` against the actual git remote and
 // returns a non-fatal warning finding on mismatch (or null when there's nothing
 // to flag). This is a repo-health check, not a per-component expectation — a
 // stale host misleads host-specific skills (create-pr, release-*) at the start
@@ -185,7 +185,7 @@ function evaluateTool(component, entry) {
 async function evaluateHostDrift() {
   let configuredHost;
   try {
-    const raw = await fs.readFile(join(REPO_ROOT, '.genvid-agent.json'), 'utf8');
+    const raw = await fs.readFile(join(REPO_ROOT, '.gvt-agent.json'), 'utf8');
     configuredHost = resolveKey(JSON.parse(raw), 'repo.host').value;
   } catch {
     return null; // no config / unreadable — other findings cover that
@@ -201,7 +201,7 @@ async function evaluateHostDrift() {
     detail:
       `\`repo.host\` is \`${drift.configured}\` but the \`origin\` remote is a ` +
       `${drift.inferred} URL — set \`repo.host\` to \`${drift.inferred}\` in ` +
-      `.genvid-agent.json (or update the remote).`,
+      `.gvt-agent.json (or update the remote).`,
   };
 }
 

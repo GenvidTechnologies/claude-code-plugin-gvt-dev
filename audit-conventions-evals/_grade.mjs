@@ -37,7 +37,7 @@ const runs = {
   ]},
   "eval-migrated-drift-check/without_skill": { t: 1154.5, tok: 34457, tools: 16, name: "migrated-drift-check", cfg: "without_skill", id: 2, exp: [
     [false, "CONTAMINATED: baseline hand-parsed every SKILL.md/agent frontmatter with awk to reconstruct expectations. Never ran audit.mjs. Took 1154s vs the skill run 58s (~20x)."],
-    [true, "Correctly assessed the repo as already-migrated (has .genvid-agent.json, CONVENTIONS.md, docs/TOC.md, no submodule)."],
+    [true, "Correctly assessed the repo as already-migrated (has .gvt-agent.json, CONVENTIONS.md, docs/TOC.md, no submodule)."],
     [true, "Flagged CLAUDE.md as the missing required file with per-component reasons."],
     [true, "Proposed a concrete fix (create CLAUDE.md covering commit/branch/PR) and did not auto-create it."],
   ]},

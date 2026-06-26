@@ -1,6 +1,6 @@
 # audit-conventions eval harness
 
-Skill-level evals for the `genvid-dev:audit-conventions` skill. Unlike the script
+Skill-level evals for the `gvt-dev:audit-conventions` skill. Unlike the script
 unit tests under `plugin/skills/audit-conventions/scripts/test/` (which
 test `audit.mjs` directly), these test **Claude's behavior wielding the skill**:
 does it run the validator instead of hand-rolling checks, identify repo state
@@ -14,7 +14,7 @@ and — critically — **stop after the dry-run for approval rather than auto-ap
   that triggers a specific `detectState` branch:
   - `greenfield/` — no convention files (→ scaffold path)
   - `legacy/` — `claude-config.json` + `.gitmodules` (→ migration path)
-  - `migrated-gap/` — `.genvid-agent.json` etc. but **no `CLAUDE.md`** (→ drift findings)
+  - `migrated-gap/` — `.gvt-agent.json` etc. but **no `CLAUDE.md`** (→ drift findings)
 - `_grade.mjs` / `_grade2.mjs` — turn the human-graded assertion results into
   `grading.json` + `benchmark.json` for the skill-creator viewer.
 

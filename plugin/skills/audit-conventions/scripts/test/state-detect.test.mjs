@@ -32,9 +32,9 @@ test('detectState: empty directory -> greenfield', async () => {
   }
 });
 
-test('detectState: .genvid-agent.json present, no submodule -> migrated', async () => {
+test('detectState: .gvt-agent.json present, no submodule -> migrated', async () => {
   const dir = await withTempRepo(async (d) => {
-    await fs.writeFile(join(d, '.genvid-agent.json'), '{}');
+    await fs.writeFile(join(d, '.gvt-agent.json'), '{}');
   });
   try {
     assert.equal(await detectState(dir), STATE_MIGRATED);
@@ -70,7 +70,7 @@ test('detectState: burbank-claude-config submodule -> legacy', async () => {
 
 test('detectState: legacy submodule + new config -> still legacy (partial migration)', async () => {
   const dir = await withTempRepo(async (d) => {
-    await fs.writeFile(join(d, '.genvid-agent.json'), '{}');
+    await fs.writeFile(join(d, '.gvt-agent.json'), '{}');
     await fs.writeFile(
       join(d, '.gitmodules'),
       '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = https://...\n',

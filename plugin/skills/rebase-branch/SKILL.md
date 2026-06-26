@@ -9,11 +9,11 @@ metadata:
         reason: Read for the project's commit format and branching conventions when squashing
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Run for post-rebase verification if defined
       - key: repo.default_branch
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Used as the rebase target when the user doesn't specify; falls back to git symbolic-ref refs/remotes/origin/HEAD
     tools:
@@ -25,11 +25,11 @@ metadata:
 
 Guides safe rebasing of feature branches with proper conflict resolution and post-rebase verification.
 
-**Default branch resolution:** when the user doesn't name a target branch, read `repo.default_branch` from `.genvid-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`.
+**Default branch resolution:** when the user doesn't name a target branch, read `repo.default_branch` from `.gvt-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`.
 
 ## When NOT to Use
 
-**Stacked branches after a parent was squash-merged** — use `/genvid-dev:rebase-stack` instead. If the user says "branch X was merged", that's a stacked-branch scenario requiring `git rebase --onto`, not a simple rebase or squash. Using this skill's squash approach re-introduces already-merged commits and causes conflicts.
+**Stacked branches after a parent was squash-merged** — use `/gvt-dev:rebase-stack` instead. If the user says "branch X was merged", that's a stacked-branch scenario requiring `git rebase --onto`, not a simple rebase or squash. Using this skill's squash approach re-introduces already-merged commits and causes conflicts.
 
 ## Pre-Rebase Checklist
 
@@ -104,7 +104,7 @@ After the rebase completes, check for stale references:
    ```
 2. **Check ignore files** — `.gitignore`, `.claudeignore`, etc. — for entries pointing at files that no longer exist.
 3. **Check documentation** — does it still reference removed scripts or commands?
-4. **Run the project's validate command** (from `.genvid-agent.json` `commands.validate`) if defined. If not, run the project's test/lint commands directly.
+4. **Run the project's validate command** (from `.gvt-agent.json` `commands.validate`) if defined. If not, run the project's test/lint commands directly.
 5. **Fix stale references and amend:**
    ```bash
    git add <fixed-files>

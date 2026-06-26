@@ -1,6 +1,6 @@
 # release-plugin eval harness
 
-Skill-level evals for the `genvid-dev:release-plugin` skill. They test **Claude's
+Skill-level evals for the `gvt-dev:release-plugin` skill. They test **Claude's
 behavior wielding the skill** — specifically the Phase 1 *state-classifier*: does
 it `git fetch` before judging, classify the repo into the right state, and gate
 (confirm) before any mutating or irreversible action?

@@ -9,11 +9,11 @@ metadata:
         reason: Read for the project's commit format and branching conventions
     config:
       - key: commands.validate
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Run on each split branch to verify it independently passes
       - key: repo.default_branch
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: All split branches are compared against and rebased from the default branch; falls back to git symbolic-ref refs/remotes/origin/HEAD
     tools:
@@ -25,7 +25,7 @@ metadata:
 
 Splits a large feature branch into multiple stacked branches for easier code review.
 
-**Default branch resolution:** read `repo.default_branch` from `.genvid-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
+**Default branch resolution:** read `repo.default_branch` from `.gvt-agent.json`; if absent, fall back to `git symbolic-ref --short refs/remotes/origin/HEAD`. Below, `<default-branch>` refers to this value.
 
 ## Prerequisites
 
@@ -137,7 +137,7 @@ This technique has a sharp edge — `git checkout <branch> -- <path>` adds and u
 
 ### 5. Verify each branch
 
-Each branch must independently pass the project's validate command (from `.genvid-agent.json` `commands.validate`).
+Each branch must independently pass the project's validate command (from `.gvt-agent.json` `commands.validate`).
 
 ### 6. Push all branches
 
@@ -147,7 +147,7 @@ git push -u origin branch1 branch2 branch3 ...
 
 ### 7. Create PRs
 
-Use `/genvid-dev:create-pr` for each branch. Set targets to create a stack:
+Use `/gvt-dev:create-pr` for each branch. Set targets to create a stack:
 
 | Branch | Target |
 |--------|--------|
@@ -187,7 +187,7 @@ After each PR merges (squash-merge recommended):
 1. The PR host (Bitbucket / GitHub) typically auto-updates the next PR's target to `<default-branch>` after the parent merges. If not, manually update the destination branch.
 2. Delete merged branches.
 3. The original feature branch can be deleted after all PRs merge.
-4. Stacked branches whose parent was just merged need a `--onto` rebase — see `/genvid-dev:rebase-stack`.
+4. Stacked branches whose parent was just merged need a `--onto` rebase — see `/gvt-dev:rebase-stack`.
 
 ## References
 
@@ -195,7 +195,7 @@ After each PR merges (squash-merge recommended):
 
 ## Related Skills
 
-- `/genvid-dev:plan-task` — create multi-session plans (keep process improvements in separate commits)
-- `/genvid-dev:create-pr` — create pull requests for each stacked branch
-- `/genvid-dev:rebase-stack` — rebase remaining stack branches after a parent is squash-merged
-- `/genvid-dev:run-retro` — analyze the session and suggest improvements
+- `/gvt-dev:plan-task` — create multi-session plans (keep process improvements in separate commits)
+- `/gvt-dev:create-pr` — create pull requests for each stacked branch
+- `/gvt-dev:rebase-stack` — rebase remaining stack branches after a parent is squash-merged
+- `/gvt-dev:run-retro` — analyze the session and suggest improvements

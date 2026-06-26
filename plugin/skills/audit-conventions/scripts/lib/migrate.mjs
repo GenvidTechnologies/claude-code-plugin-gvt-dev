@@ -18,7 +18,7 @@ import { join, dirname, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
-const NEW_CONFIG_FILENAME = '.genvid-agent.json';
+const NEW_CONFIG_FILENAME = '.gvt-agent.json';
 const LEGACY_CONFIG_FILENAME = 'claude-config.json';
 const CLAUDE_MD = 'CLAUDE.md';
 const TOC = 'docs/TOC.md';
@@ -130,7 +130,7 @@ export async function planGreenfield(repoRoot, pluginRoot) {
   const conventionsSource = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
 
   // Scaffold each convention file only when it doesn't already exist. A repo can
-  // be classified greenfield (no .genvid-agent.json) while still owning a
+  // be classified greenfield (no .gvt-agent.json) while still owning a
   // hand-written CONVENTIONS.md or CLAUDE.md — overwriting those would silently
   // destroy authored content (issue #25). Skip-if-exists, and surface the skip
   // as a note so the dry-run plan shows what's being preserved.
@@ -594,7 +594,7 @@ const ORPHAN_DISPOSITION = [
   { suffix: 'agents/planner/project-knowledge.md',
     hint: 'likely belongs in docs/architecture.md (architecture + task patterns) — review/split before deleting' },
   { basename: 'project-commands.md',
-    hint: 'obsolete — delete; validation commands now live in .genvid-agent.json commands.*' },
+    hint: 'obsolete — delete; validation commands now live in .gvt-agent.json commands.*' },
   { basename: 'project-docs-to-check.md',
     hint: 'obsolete — delete; superseded by docs/TOC.md' },
 ];

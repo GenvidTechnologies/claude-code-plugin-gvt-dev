@@ -20,7 +20,7 @@ Validates the consuming repo against the `genvid` plugin's convention contract a
 
 - After installing or updating the `genvid` plugin (the plugin may have added new expectations).
 - Before opening a PR, to verify the repo still satisfies the contract.
-- When `/genvid-dev:validate-changes` or another skill reports that an expectation isn't met.
+- When `/gvt-dev:validate-changes` or another skill reports that an expectation isn't met.
 - As the first step in a migration from the legacy template-rendered setup (see `--fix` mode below).
 
 ## Process
@@ -33,7 +33,7 @@ node "${CLAUDE_PLUGIN_ROOT}/skills/audit-conventions/scripts/audit.mjs"
 
 The script:
 
-1. **Detects state** — greenfield (no `.genvid-agent.json` and no legacy submodule), legacy (has the `burbank-claude-config` submodule + old `claude-config.json`), or migrated (has `.genvid-agent.json` and no submodule).
+1. **Detects state** — greenfield (no `.gvt-agent.json` and no legacy submodule), legacy (has the `burbank-claude-config` submodule + old `claude-config.json`), or migrated (has `.gvt-agent.json` and no submodule).
 2. **Walks the plugin's installed skills and agents** at `${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/agents/*.md`.
 3. **Parses each component's frontmatter** to collect `metadata.expects.{files,config,tools}`.
 4. **Evaluates each expectation** against the current working directory.
@@ -54,10 +54,10 @@ When a required check is missing, take the reason seriously — it's what the sk
 ### 3. Act on findings
 
 - **Missing required file** — create it with project-appropriate content. The plugin's `CONVENTIONS.md` describes the expected shape of each convention file.
-- **Missing required config key** — add the key to the named file (typically `.genvid-agent.json`) per the schema in `CONVENTIONS.md`.
+- **Missing required config key** — add the key to the named file (typically `.gvt-agent.json`) per the schema in `CONVENTIONS.md`.
 - **Missing tool** — install the tool, or document in `CLAUDE.md` why the skill in question isn't usable in this repo. **Windows caveat:** the tool check probes the PATH of the *shell that launched the audit*, so a POSIX tool like `grep` (the `cleanup-initiative` requirement) reports **missing** from PowerShell but **present** from Git Bash, which puts `usr/bin` on PATH. That's an environmental difference, not a false positive — if a skill you actually use needs `grep`, run it from a shell that has the tool (or install it on the system PATH) rather than treating the finding as a bug.
-- **State = greenfield** — run `/genvid-dev:audit-conventions --fix` to scaffold the four convention files.
-- **State = legacy** — run `/genvid-dev:audit-conventions --fix` to migrate from the old template-rendered setup.
+- **State = greenfield** — run `/gvt-dev:audit-conventions --fix` to scaffold the four convention files.
+- **State = legacy** — run `/gvt-dev:audit-conventions --fix` to migrate from the old template-rendered setup.
 
 ## `--fix` mode
 
@@ -83,8 +83,8 @@ Executes the same plan against the filesystem and prints per-action results.
 
 ### Behavior by state
 
-- **Greenfield** — scaffolds `CLAUDE.md`, `CONVENTIONS.md` (copy of the plugin's canonical), `docs/TOC.md`, `.genvid-agent.json`. The scaffolded files have placeholders the user fills in. Any of these that **already exist** are left untouched and reported as SKIPPED — a repo can own a hand-written `CONVENTIONS.md` or `CLAUDE.md` while still classifying greenfield (no `.genvid-agent.json`), and the scaffold never overwrites existing content.
-- **Legacy** — translates the old `claude-config.json` into `.genvid-agent.json` (mapping the project's real `PACKAGE_MANAGER` / `TEST_COMMAND` / validation commands into `commands.*`, not generic `npm` placeholders), adds the `@CONVENTIONS.md` import to `CLAUDE.md`, copies `CONVENTIONS.md` to the repo root, deletes the rendered `.claude/` files that came from the legacy templates (only files carrying the `AUTO-GENERATED` marker — and no `LOCAL EDIT` block — are deleted; user-edited and locally-extended files are kept and surfaced in the SKIPPED notes), ports legacy per-agent context sidecars (`.claude/agents/*/project-*.md`) to their new `docs/` homes, removes dangling references to the deleted files (the `pre-commit-lint.js` hook entry in `.claude/settings.json`, submodule-referencing `package.json` scripts), and removes the `burbank-claude-config` submodule via `git submodule deinit` + `git rm`. After applying, it prints a **Manual follow-up** report listing any stale text references (in `CLAUDE.md`, `docs/`) or orphaned sidecars it could not clean up automatically.
+- **Greenfield** — scaffolds `CLAUDE.md`, `CONVENTIONS.md` (copy of the plugin's canonical), `docs/TOC.md`, `.gvt-agent.json`. The scaffolded files have placeholders the user fills in. Any of these that **already exist** are left untouched and reported as SKIPPED — a repo can own a hand-written `CONVENTIONS.md` or `CLAUDE.md` while still classifying greenfield (no `.gvt-agent.json`), and the scaffold never overwrites existing content.
+- **Legacy** — translates the old `claude-config.json` into `.gvt-agent.json` (mapping the project's real `PACKAGE_MANAGER` / `TEST_COMMAND` / validation commands into `commands.*`, not generic `npm` placeholders), adds the `@CONVENTIONS.md` import to `CLAUDE.md`, copies `CONVENTIONS.md` to the repo root, deletes the rendered `.claude/` files that came from the legacy templates (only files carrying the `AUTO-GENERATED` marker — and no `LOCAL EDIT` block — are deleted; user-edited and locally-extended files are kept and surfaced in the SKIPPED notes), ports legacy per-agent context sidecars (`.claude/agents/*/project-*.md`) to their new `docs/` homes, removes dangling references to the deleted files (the `pre-commit-lint.js` hook entry in `.claude/settings.json`, submodule-referencing `package.json` scripts), and removes the `burbank-claude-config` submodule via `git submodule deinit` + `git rm`. After applying, it prints a **Manual follow-up** report listing any stale text references (in `CLAUDE.md`, `docs/`) or orphaned sidecars it could not clean up automatically.
 - **Migrated** — refuses to "fix" anything (validation only). Tell the user the repo is already migrated.
 
 ### Safety rails
@@ -110,7 +110,7 @@ State: migrated
 - **plan-task** expects `CLAUDE.md` — file not found. Reason: Read for project conventions, branching, commit format, and the inventory of project-specific implementer agents beyond ts-implementer.
 
 ### Warnings
-- `repo.host` is `bitbucket` but the `origin` remote is a github URL — set `repo.host` to `github` in .genvid-agent.json (or update the remote).
+- `repo.host` is `bitbucket` but the `origin` remote is a github URL — set `repo.host` to `github` in .gvt-agent.json (or update the remote).
 
 ### Info (optional)
 - **code-reviewer** expects `docs/code-review-context.md` — file not found (optional). Reason: Provides project-specific context (architecture, domain rules) for review.

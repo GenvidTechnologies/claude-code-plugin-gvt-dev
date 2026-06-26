@@ -1,6 +1,6 @@
 ---
 name: triage-issues
-description: Triages a project's issue backlog interactively — deduplicates, enriches, links dependencies, splits overstuffed issues, and stamps a 'triaged' label. Works for bugs, tickets, or any tracker item. Tracker-agnostic; project specifics come from docs/issue-triage.md and the bugTracker block in .genvid-agent.json. Use when triaging or grooming an issue backlog, or cleaning up duplicates and priorities.
+description: Triages a project's issue backlog interactively — deduplicates, enriches, links dependencies, splits overstuffed issues, and stamps a 'triaged' label. Works for bugs, tickets, or any tracker item. Tracker-agnostic; project specifics come from docs/issue-triage.md and the bugTracker block in .gvt-agent.json. Use when triaging or grooming an issue backlog, or cleaning up duplicates and priorities.
 metadata:
   expects:
     files:
@@ -12,19 +12,19 @@ metadata:
         reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/issue-triage.md when docs/TOC.md is present
     config:
       - key: bugTracker.actionQuery
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Command template the analyst runs to fetch the issues to triage
       - key: bugTracker.comparisonQuery
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Wider read-only query used to detect duplicates against already-triaged or closed issues
       - key: bugTracker.triagedLabel
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: The label the skill stamps when an issue's triage is complete (and excludes from the default action set for idempotent re-runs)
       - key: bugTracker.needsInfoLabel
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: The label the skill applies when a triaged issue is missing required fields
     tools:
@@ -39,12 +39,12 @@ Interactively triage a project's issue backlog (bugs, tickets, or any tracker
 item): deduplicate, split, enrich, link dependencies, and stamp a `triaged`
 label. The workflow is **tracker-agnostic** — every project specific comes from
 `docs/issue-triage.md` (conventions + mutation recipes) and the `bugTracker`
-block in `.genvid-agent.json` (access mechanics).
+block in `.gvt-agent.json` (access mechanics).
 
 ## How the work splits
 
 - **Exploration → subagent.** All fetching and cross-issue analysis runs in the
-  `genvid-dev:issue-triage-analyst` agent, off this thread, so this conversation
+  `gvt-dev:issue-triage-analyst` agent, off this thread, so this conversation
   stays focused on prioritization and adjustment.
 - **Decisions → here.** This thread reviews the report, takes your adjustments,
   and performs every write. The analyst never writes.
@@ -82,7 +82,7 @@ block in `.genvid-agent.json` (access mechanics).
    bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
    offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
    Otherwise proceed with the full workflow only once the contract exists.
-2. **Read the `bugTracker` block** from `.genvid-agent.json` (full workflow only —
+2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
    (e.g. `gh`) with no `bugTracker` block, so offer that path for a quick groom.
@@ -117,7 +117,7 @@ rather than grooming on.
 
 ## 1. Dispatch exploration (Phase 1)
 
-Dispatch the `genvid-dev:issue-triage-analyst` agent with: the resolved scope, the
+Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
 `bugTracker` block verbatim, and the path `docs/issue-triage.md`. It returns one
 structured triage report. **Do not fetch issue bodies yourself** — keeping them
 off this thread is the point of the split. Mode flags (`--non-interactive`,
@@ -182,7 +182,7 @@ closed; issues split or created; dependencies linked; and anything left
 
 ## Example `bugTracker` block
 
-Add this to `.genvid-agent.json` (GitHub / `gh` example — adjust queries, labels,
+Add this to `.gvt-agent.json` (GitHub / `gh` example — adjust queries, labels,
 and the CLI for your tracker):
 
 ```json

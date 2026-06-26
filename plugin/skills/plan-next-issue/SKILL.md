@@ -1,19 +1,19 @@
 ---
 name: plan-next-issue
-description: Orchestrates picking the next backlog issue to work on and planning it — optionally triages the backlog first (genvid-dev:triage-issues), proposes a ranked shortlist of candidate issues for the user to choose from (one or more), then hands each chosen issue to genvid-dev:plan-task. Interactive by default. Use when the user asks "what should I work on next", wants to go from a groomed backlog straight into a plan, or says "triage and plan", "pick an issue and plan it", or "plan the next bug".
+description: Orchestrates picking the next backlog issue to work on and planning it — optionally triages the backlog first (gvt-dev:triage-issues), proposes a ranked shortlist of candidate issues for the user to choose from (one or more), then hands each chosen issue to gvt-dev:plan-task. Interactive by default. Use when the user asks "what should I work on next", wants to go from a groomed backlog straight into a plan, or says "triage and plan", "pick an issue and plan it", or "plan the next bug".
 metadata:
   expects:
     config:
       - key: bugTracker.actionQuery
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Read on the auto-detect and light-fetch paths to list open issues and rank candidates when triage was skipped
       - key: bugTracker.triagedLabel
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Subtracted from the action query to detect whether untriaged issues remain (and thus whether to offer triage)
       - key: repo.host
-        in: .genvid-agent.json
+        in: .gvt-agent.json
         required: false
         reason: Read to choose the host-native issue CLI fallback when bugTracker is absent (github → gh); otherwise inferred from the git remote
     tools:
@@ -29,9 +29,9 @@ necessary → propose an issue (or several) → plan it**. This skill owns no
 exploration and no writes of its own. It sequences two existing skills and makes
 the *selection* decision in between:
 
-- **Triage** is delegated to `genvid-dev:triage-issues` (which runs the
-  `genvid-dev:issue-triage-analyst` off-thread).
-- **Planning** is delegated to `genvid-dev:plan-task`.
+- **Triage** is delegated to `gvt-dev:triage-issues` (which runs the
+  `gvt-dev:issue-triage-analyst` off-thread).
+- **Planning** is delegated to `gvt-dev:plan-task`.
 - **This thread** decides whether triage is needed, ranks and presents the
   candidates, and routes the choice into planning.
 
@@ -48,7 +48,7 @@ re-implements their work.
 
 ## 0. Preconditions & mode
 
-1. **Read the `bugTracker` block** from `.genvid-agent.json`. If it is **present**,
+1. **Read the `bugTracker` block** from `.gvt-agent.json`. If it is **present**,
    use it for the steps below. If it is **absent**, don't dead-end — fall back in
    this order:
    - **Host-derived native CLI (preferred).** If `repo.host` maps to a tracker
@@ -59,11 +59,11 @@ re-implements their work.
      issue CLI; `bitbucket` has none — for it, use the options below.)* This skill
      still performs **no writes**, so do not persist anything automatically; once a
      run succeeds, **print a suggested `bugTracker` block** (the example from
-     `genvid-dev:triage-issues`, adjusted to the repo) and invite the user to add it
+     `gvt-dev:triage-issues`, adjusted to the repo) and invite the user to add it
      so the next run is fully configured.
    - **Name the issue(s) directly** — the user supplies issue numbers and we skip
      to step 3 (no fetch needed).
-   - **Add a `bugTracker` block** — see the example in `genvid-dev:triage-issues`.
+   - **Add a `bugTracker` block** — see the example in `gvt-dev:triage-issues`.
 2. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally lets the delegated `triage-issues`
    perform destructive actions unattended (it is otherwise deferred).
@@ -73,7 +73,7 @@ re-implements their work.
 Detect whether the backlog needs grooming before planning:
 
 - **First, `git fetch` the default branch** (`repo.default_branch` from
-  `.genvid-agent.json`, e.g. `main` — a read-only network call, consistent with
+  `.gvt-agent.json`, e.g. `main` — a read-only network call, consistent with
   this skill's no-writes stance) so candidates are ranked and planned against
   fresh `origin/<default-branch>`, not stale local state. **An open issue is not
   proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
@@ -91,7 +91,7 @@ Detect whether the backlog needs grooming before planning:
   open backlog**, and offer to proceed against the unfiltered backlog for this run.
 - **If untriaged open issues exist**, surface the count and **offer** to triage:
   *"N open issues are untriaged. Triage first so the shortlist is deduplicated and
-  enriched?"* If the user accepts, **invoke `genvid-dev:triage-issues`** and keep
+  enriched?"* If the user accepts, **invoke `gvt-dev:triage-issues`** and keep
   its analyst report (priorities, enrichment) in hand for step 2. **With only one
   (or very few) untriaged issues, triage's dedup/linking value is nil — note that
   and skip straight to ranking (§2) rather than offering; a lone issue's enrichment,
@@ -133,9 +133,9 @@ In `--non-interactive`, auto-pick the single top-ranked candidate.
 
 ## 3. Plan
 
-Route the selection into `genvid-dev:plan-task`:
+Route the selection into `gvt-dev:plan-task`:
 
-- **One issue selected** → invoke `genvid-dev:plan-task` with that issue. A
+- **One issue selected** → invoke `gvt-dev:plan-task` with that issue. A
   triaged, enriched issue feeds plan-task's *"issue is already a full proposal"*
   shortcut **only if it proposes a concrete change/mechanism** (not just a problem
   + goal) — then pass it as the requirements so plan-task can skip its analyst. **A

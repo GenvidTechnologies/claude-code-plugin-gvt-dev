@@ -1,7 +1,7 @@
 {
   "project": {
-    "name": "genvid-dev",
-    "description": "The genvid-dev Claude Code plugin: shared skills, agents, hooks, and conventions for Genvid game projects.",
+    "name": "gvt-dev",
+    "description": "The gvt-dev Claude Code plugin: shared skills, agents, hooks, and conventions for Genvid game projects.",
     "languages": ["javascript"]
   },
   "commands": {
