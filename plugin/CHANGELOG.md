@@ -7,6 +7,11 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`triage-issues`: index the scaffolded `docs/issue-triage.md` in `docs/TOC.md` (#90).** §0 step 1 scaffolded the contract doc from a bundled template but never added it to `docs/TOC.md`, leaving an unindexed doc that the planning/triage skills (which discover docs through the index) couldn't see — surfaced when a `run-retro` in a consuming repo found the file on disk but missing from the TOC. The scaffold step now also indexes the doc under a **Process** heading (create if absent), mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record: offered interactively, automatic in `--non-interactive`, idempotent, and skipped gracefully if `docs/TOC.md` is absent. Behavioral skill change → version bump at release.
+- **`CONVENTIONS.md`: document the scaffold-then-self-index convention for `docs/TOC.md` (#90 follow-up).** Records that some skills scaffold a doc into `docs/` and self-index it in `docs/TOC.md` under a conventional section heading (`Decision Records` for ADRs, `Process` for workflow/convention docs), that those sections are optional/on-demand, and that an unindexed scaffolded doc is invisible to the planning and triage skills. Generalizes the point fix above so the next doc-scaffolding skill doesn't reintroduce the gap.
+
 ## [3.5.1] - 2026-06-18
 
 ### Changed
