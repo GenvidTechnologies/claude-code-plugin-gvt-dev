@@ -58,6 +58,8 @@ Also check:
 - Untracked files that aren't ignored — `git -C <worktree-path> ls-files --others --exclude-standard`.
 - Open PRs against the branch — `gh pr list --head <branch> --state all` (GitHub).
 
+  **Squash-merge caveat:** a squash-merged branch shows N commits "ahead of base" (the `git log origin/<default-branch>..` check above) and `git branch -r --contains <HEAD>` returns empty (once the merged branch is deleted, GitHub's default) *even though the work landed* — the squash collapses the branch's commits into one new commit on the base. Confirm merge status from the **PR state** (`MERGED`), not from commit reachability or the ahead-count. If the PR is merged, those "ahead" commits are safe to drop.
+
 **Report findings to the user. If anything looks salvageable, stop and ask.** Do not auto-stash, auto-commit, or pass `--force` on the user's behalf.
 
 ## Step 3: Recover memory from the worktree slug
