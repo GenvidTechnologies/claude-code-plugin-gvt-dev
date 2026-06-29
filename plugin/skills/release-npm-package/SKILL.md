@@ -86,6 +86,44 @@ If `publish.yml` is absent or does not match this shape → **STOP**. Tell the
 user this is a setup task, not a routine release, and redirect to
 `publish-npm-package`.
 
+### Verify `uses:` references resolve to canonical paths (post-rename redirect guard)
+
+`gh api repos/<owner>/<repo>` silently follows repo-rename and org-transfer
+redirects — but GitHub Actions `uses:` does **not**. A `uses:` line pointing
+at a renamed or moved shared-CI repo's old path passes every `gh api`-based
+check yet fails the Actions run instantly (0 seconds, "This run likely failed
+because of a workflow file issue", no jobs started).
+
+Extract the repo-slug references — only `<owner>/<repo>/...@<ref>` forms count;
+local (`./`) and `docker://` `uses:` values name no repo and are correctly
+skipped:
+
+```bash
+grep -rhoE 'uses:\s+[^./][^ ]+/[^ ]+/[^ ]+@' .github/workflows/ci.yml .github/workflows/publish.yml
+```
+
+For each `<owner>/<repo>` found, assert that the API returns the same path as
+written:
+
+```bash
+gh api repos/<owner>/<repo> --jq .full_name
+```
+
+The returned `full_name` **must equal** the `<owner>/<repo>` written in the
+`uses:` line, **compared case-insensitively** (GitHub slugs are
+case-insensitive, and so is Actions' lookup — so a casing-only difference is
+*not* a stale ref, just non-canonical casing). A genuine mismatch means the
+reference points at a redirect alias — the repo was renamed or moved — **STOP**
+and update the `uses:` line to the canonical `full_name` before releasing.
+
+A **failed** `gh api` call is a different condition, not a mismatch: a `404`
+means the path is wrong or the repo is gone entirely (a rename with no
+redirect, or a typo), a `403` means it's private/inaccessible. Resolve the
+access/path problem first rather than reading it as a clean rename.
+
+Example: `uses: genvid-holdings/genvid-public-ci/...` returning `full_name`
+`GenvidTechnologies/public-github-actions` → stale ref, fix it.
+
 ## Invariants this skill protects (the npm release triangle)
 
 A correct release keeps these facts consistent — the **npm release triangle**:
@@ -227,6 +265,11 @@ The tag push gets its own separate hard confirm.
   "no checks reported" as pass-with-warning, not failure. **Tag only after the
   release commit's checks are green.**
 
+A **0-second "workflow file issue" failure with no jobs started** — especially
+right after a repo move or rename — almost always means a stale `uses:`
+reference, not a code problem. Do not bump the version chasing it; run the
+canonical-path check from the hard gate above and fix the workflow ref first.
+
 A red default branch is a stop sign; absence of CI is not.
 
 ## Phase 5 — Tag-convention detection and release runbook (ordered)
@@ -317,3 +360,7 @@ convention to the user.
 - **Keep entry points top-level.** `publishConfig` overrides for `main`/`types`/
   `exports` are not applied by npm 11.x; packaging verification catches this
   before it reaches consumers.
+- **`uses:` redirect guard at the hard gate.** `gh api` follows repo-rename
+  redirects silently; Actions `uses:` does not. Checking that each `uses:`
+  path's `full_name` matches what's written catches a stale shared-CI reference
+  before it causes a 0-second run failure that looks like a code problem.
