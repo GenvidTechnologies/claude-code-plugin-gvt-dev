@@ -90,7 +90,7 @@ Wait for explicit approval before saving. See [`approval-and-audit.md`](approval
 
 ### Phase 4: Save and Branch
 
-1. Save the plan to the repo root as `plan.md` (or to the project's planning location if `CLAUDE.md` specifies one).
+1. Save the plan to the repo root as `plan.md` (or to the project's planning location if `CLAUDE.md` specifies one). **If a `plan.md` already exists, classify it before overwriting** — a gitignored plan lingers on disk after its branch merges, so an existing file may describe earlier, *unrelated* work, and a gitignored plan's overwrite is unrecoverable (local-only, no git history to fall back on). Apply the same **already-shipped vs. unshipped/pending** classification the *continuation* shortcut spells out below: overwrite freely only when it's shipped (its branch is merged, its tasks are in `origin/<default-branch>`'s log, and no auto-memory references it); otherwise **preserve it first** by renaming to `plan-<topic>.md`. This guard applies on **every** path into Phase 4 — the full-proposal and simple-task shortcuts overwrite `plan.md` too, not just continuation.
 2. Create the branch named in the plan. When the current branch is only a few commits ahead of `origin/<default-branch>` and those commits naturally batch with the new work, prefer `git rebase origin/<default-branch> && git branch -m <new-name>` over spawning a fresh worktree. Spinning up a new worktree for one or two carry-forward commits trades one mechanical step for several.
 3. **If continuing on the current branch**, verify it's up to date with the base branch:
    ```bash
