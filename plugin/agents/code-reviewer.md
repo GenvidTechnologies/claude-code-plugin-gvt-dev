@@ -60,6 +60,14 @@ Read `docs/code-review-context.md` at runtime if it exists. The plugin assumes a
 
 Read `docs/code-review-patterns.md` at runtime if it exists. Apply the project-specific patterns checklist alongside the generic items above.
 
+### Shared Mutable State (CI vs. runtime writers)
+
+When a change splits ownership of a field between a **build/upload-time** writer (CI deploy) and a **runtime** writer (scheduler, request handler) on a **shared mutable store**:
+
+- [ ] Identify the write **granularity**. A *whole-value* write (replaces the entire key/blob) by CI blanks any runtime-owned field in that blob on every deploy.
+- [ ] Verify the upload path can't blank or stale a runtime-owned value — confirm CI either doesn't touch the runtime-owned field, or writes the **computed-current value** derived from the same source the runtime uses.
+- [ ] Treat "CI strips the field so runtime owns it" on a whole-value store uploaded every merge as a red flag — flag it (Warning; Critical if you can trace a blanked read).
+
 ### Security (OWASP Top 10)
 
 - [ ] No hardcoded secrets or API keys
