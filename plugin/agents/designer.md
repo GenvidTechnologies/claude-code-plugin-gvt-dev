@@ -53,7 +53,7 @@ From a requirements document (produced by the analyst), propose a concrete desig
    - **Generalize-a-runbook re-derivation** — if your design generalizes a proven procedure (a runbook, a manual recipe, a one-off script) into a parameterized form, re-derive each mechanical step under the *new* parameter ranges instead of trusting that the original's correctness carries over. The original's fixed inputs can quietly protect a step that breaks once parameterized: e.g. a tool-surface runbook that `npm pack`ed two *different* packages into a shared dir read as generalizing cleanly, but the parameterized "old vs new of the *same* package" case made both tarballs unpack to `package/` and clobber. Walk the concrete commands/steps with the boundary values the generalization newly admits (same-name inputs, N=0, N=1, duplicates, collisions) and flag any the original's constants masked. "Does each step survive the parameter ranges the generalization opens up?" not just "does the prose generalize?"
 
 5. **Run the footprint audit when the directive is "drop X / preserve Y"** — separate required gate before finalizing any design that removes or replaces a conditional, code path, or shape variant:
-   - Enumerate every site in the current code that reads or branches on X. Don't trust the analyst's narrative summary — grep the codebase for the actual symbol / property / type / discriminator.
+   - Enumerate every site in the current code that reads or branches on X. Don't trust the analyst's narrative summary — grep the codebase for the actual symbol / property / type / discriminator, and scope the grep to the **entire relevant tree** (e.g. all of `src/`), not just the files already under discussion. A grep confined to the files in focus produces a false "no other occurrences exist" conclusion — the c3-domain-manager failure mode: a "remove all hardcoded literals" conclusion was grep-confirmed in only the two files in focus, missing a third (`domainAnalysis.ts`) that held 4 more of the same literals, caught only at code review, forcing a rework. Record the exact grep command and scope in the audit output; a "remove / rename / drop all X" conclusion must be backed by a tree-wide grep explicitly shown, not a file-scoped spot check.
    - For each site, classify: covered by the new design, explicitly out of scope, or a gap.
    - Pay special attention to **independent dimensions** of X. A conditional often has multiple orthogonal effects (e.g., a "legacy" flag might affect both head shape AND exchange table; covering one without the other silently breaks data). List each dimension and audit each separately.
    - If the original code shared infrastructure across all consumers of X (e.g., a uniform helper called from every template), expanding the helper's footprint into N independent variants is a frequent miss.
@@ -116,6 +116,7 @@ Step-by-step walkthrough of how the feature is used.
 - Observability: ...
 
 ## Footprint Audit (only when the directive is "drop X / preserve Y")
+- Grep command + scope (tree-wide, e.g. all of `src/`): ...
 - Sites that read/branch on X: ...
 - Independent dimensions of X: ...
 - Per-site coverage classification: ...
