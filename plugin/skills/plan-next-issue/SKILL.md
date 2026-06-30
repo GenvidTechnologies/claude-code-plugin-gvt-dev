@@ -80,6 +80,18 @@ Detect whether the backlog needs grooming before planning:
   leaves its issue OPEN indefinitely, so already-shipped work can surface as
   plannable. Fetching first lets the ranking step (§2) catch this before any branch
   is created — rather than leaving it to `plan-task`'s late Phase 4 freshness check.
+  **If `git fetch` fails because the remote needs interactive auth** (e.g. a
+  1Password SSH agent prompting to approve a signature while the user is away,
+  failing `Permission denied (publickey)`), don't stall or interrupt them — this
+  check is purely read-only, so satisfy it over the host API instead. Stay
+  host-aware (`repo.host`): for `github`, the cached `origin/<default-branch>` is
+  fresh iff `git rev-parse origin/<default-branch>` equals `gh api
+  repos/:owner/:repo/commits/<default-branch> --jq .sha` (HTTPS, no SSH); other
+  hosts have their own read-only commit API. Equal SHAs ⇒ the local tracking ref
+  already matches the remote, so proceed. (Compare the **tracking ref**, not
+  `HEAD` — a failed fetch leaves `origin/<default-branch>` at its last-fetched
+  value, and you may be on any branch.) The signing/push path still legitimately
+  needs the user — this fallback is only for the read.
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
