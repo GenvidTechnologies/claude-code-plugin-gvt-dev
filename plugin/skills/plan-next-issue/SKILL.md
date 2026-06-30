@@ -169,6 +169,11 @@ Route the selection into `gvt-dev:plan-task`:
   **sequential** (one run per issue, no combining). On any sequential path — and
   between clusters — after each `plan-task` returns control, resume here with the
   next cluster/issue until the shortlist is exhausted; the queue lives on this thread.
+  Across these sequential runs `plan.md` is a **per-issue transient**: it's
+  gitignored, so the prior issue's plan survives the `git checkout` onto the next
+  issue's branch. That lingering plan is **spent** (its tasks were just committed),
+  not pending — `plan-task`'s Phase 4 guard classifies it as such and overwrites it,
+  so don't pre-rename or preserve it between issues.
 
 Hand off cleanly: once `plan-task` takes over, it owns the analysis → design →
 planning checkpoints and the plan/branch creation. This skill's job ends at the
