@@ -255,6 +255,14 @@ Confirm: the tarball contains `dist/`, `LICENSE`, and `README.md`; and the
 If a CI-driven release won't run a build before `npm publish`, the `prepack`
 script (Phase 3) is what guarantees `dist/` exists in the tarball.
 
+Also verify that each `uses:` reference in the newly-written ci.yml and
+publish.yml resolves to its canonical path — run `gh api repos/<owner>/<repo>
+--jq .full_name` and confirm the returned `full_name` matches the path written
+in `uses:`. A template that itself shipped a stale ref (e.g. after a shared-CI
+repo rename) would otherwise pass every API check and fail the Actions run at
+0 seconds. See `release-npm-package`'s hard-gate check for the full detection
+rationale.
+
 ## Phase 5 — Release runbook (hand off the human-only parts)
 
 The remaining steps are outward-facing. Do the in-repo/git parts only with the
@@ -276,7 +284,10 @@ user's go-ahead, and clearly mark the npm-account step as theirs.
    - (Defer to the live README — it is authoritative if these steps changed.)
 3. **Tag and push.** `git tag v<X.Y.Z> && git push origin v<X.Y.Z>` →
    `publish.yml` re-runs the gate, enforces tag↔`package.json` version equality,
-   and publishes with `--provenance`.
+   and publishes with `--provenance`. If the publish run fails instantly (0
+   seconds, "workflow file issue", no jobs started), suspect a stale `uses:`
+   reference (a shared-CI repo was renamed or moved), not the package — see
+   `release-npm-package`'s hard-gate redirect check.
 4. **Verify the provenance badge** on the npmjs.com package page.
 
 If the name was changed in Phase 2, note that any previously-published versions

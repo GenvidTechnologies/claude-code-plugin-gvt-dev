@@ -17,11 +17,24 @@ jobs:
       - name: Org-specific leak grep
         run: |
           set -euo pipefail
-          patterns='C:/repos/|C:/Users/|@genvidtech|fninoles|genvidtech/'
+          # Always blocked, everywhere: local filesystem paths and usernames
+          # are never legitimate in a committed file.
+          always='C:/repos/|C:/Users/|fninoles'
+          # Blocked in code/config only: the `@genvidtech` npm scope is a public
+          # org, so naming a `@genvidtech/...` package in prose docs (CHANGELOG,
+          # *.md) is fine — but it should not be hardcoded in code/config/CI.
+          code_only='@genvidtech|genvidtech/'
           # Exclude this workflow file itself: it necessarily contains the
           # patterns above as its own definition, which would self-match.
-          if git ls-files -- ':!.github/workflows/leak-guard.yml' | xargs grep -nE "$patterns"; then
-            echo "::error::org-specific leak pattern found"
-            exit 1
+          guard=':!.github/workflows/leak-guard.yml'
+          found=0
+          if git ls-files -- "$guard" | xargs grep -nE "$always"; then
+            echo "::error::leak pattern found (local path / username — blocked everywhere)"
+            found=1
           fi
-          echo "no org-specific leak patterns found"
+          if git ls-files -- "$guard" ':!*.md' | xargs grep -nE "$code_only"; then
+            echo "::error::internal npm-scope reference found in a non-doc file"
+            found=1
+          fi
+          if [ "$found" -ne 0 ]; then exit 1; fi
+          echo "no leak patterns found"
