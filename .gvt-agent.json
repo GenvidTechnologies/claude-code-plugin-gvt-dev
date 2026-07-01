@@ -5,10 +5,10 @@
     "languages": ["javascript"]
   },
   "commands": {
-    "test": "node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs",
+    "test": "node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs",
     "lint": "",
     "build": "",
-    "validate": "claude plugin validate plugin && node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node plugin/skills/audit-conventions/scripts/audit.mjs"
+    "validate": "claude plugin validate plugin && node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs && node plugin/skills/audit-conventions/scripts/audit.mjs"
   },
   "repo": {
     "default_branch": "main",
