@@ -47,6 +47,6 @@ explicit ADR-dating guidance — derive from git history, hedge when diffuse, ne
 ## Consequences
 
 This repo dogfoods the convention it ships — `docs/decisions/` holds these records, and the
-template lives at `plugin/skills/plan-task/decision-record.template.md`. The whole backfill
+template lives at `plugin/docs/decision-record.template.md`. The whole backfill
 this record is part of exists *because* of this decision. The `required: false` declaration
 keeps the audit's aggregated contract from widening for repos that don't keep ADRs.

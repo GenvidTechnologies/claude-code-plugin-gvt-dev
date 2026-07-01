@@ -24,11 +24,11 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - `../plugin/skills/reconcile-mcp-pin/SKILL.md` — maintainer skill: after a bundled MCP server pin is bumped in `plugin.json`, reconcile the agents' hand-enumerated tool inventories (read/mutate split, count-sanity-checked `npm pack` surface, stale-version sweep) and hand off to `release-plugin`
 - `../plugin/skills/migrate-cordova-ci/SKILL.md` — migrate a Cordova plugin's CI/CD from CircleCI to GitHub Actions; bundles parameterized `android.yml`/`ios.yml` (smoke + distribute tiers) + `version-guard.js` templates (lifted from `cordova-plugin-marketplace`), encodes the 8 known CI gotchas, and runs a manual live-CI gate
-- [`../plugin/skills/plan-task/decision-record.template.md`](../plugin/skills/plan-task/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 (see development-principles principle #7)
+- [`../plugin/docs/decision-record.template.md`](../plugin/docs/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 or the `create-adr` skill (see development-principles principle #7)
 
 ## Decision Records
 
-This repo dogfoods the ADR convention it ships (see `development-principles.md` principle #7). Records live in `docs/decisions/` using the MADR-lite template at `plugin/skills/plan-task/decision-record.template.md`, numbered in chronological decision order.
+This repo dogfoods the ADR convention it ships (see `development-principles.md` principle #7). Records live in `docs/decisions/` using the MADR-lite template at `plugin/docs/decision-record.template.md`, numbered in chronological decision order.
 
 - [`decisions/0001-skills-as-directories-agents-as-flat-files.md`](decisions/0001-skills-as-directories-agents-as-flat-files.md) — why skills are directories (carrying supporting files) while agents are flat, stateless files
 - [`decisions/0002-self-declaring-skill-contract.md`](decisions/0002-self-declaring-skill-contract.md) — why each component declares its prerequisites in `metadata.expects` and the audit aggregates them (with the `required: false` lever)
