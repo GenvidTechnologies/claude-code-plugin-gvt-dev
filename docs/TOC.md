@@ -40,6 +40,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0008-orchestrator-owns-commit.md`](decisions/0008-orchestrator-owns-commit.md) — why dispatched implementers stage but don't commit, and the validator gate runs before the orchestrator's commit
 - [`decisions/0009-finish-quality-over-additional-scope.md`](decisions/0009-finish-quality-over-additional-scope.md) — why finish-quality of touched code is part of a change's definition of done (principle #8) and can't be deferred
 - [`decisions/0010-agent-dispatch-guide-domain-explorers.md`](decisions/0010-agent-dispatch-guide-domain-explorers.md) — why `plan-task` Phase 1 prefers a repo's named domain explorer over the generic analyst when one is declared
+- [`decisions/0011-create-adr-skill-dispatch-design.md`](decisions/0011-create-adr-skill-dispatch-design.md) — why `create-adr` delegates all writes to `tech-writer` (not reimplementing), moves the MADR-lite template to `plugin/docs/`, and gates renumber blast radius with clean-tree + dry-run
 
 ## Scaffolding sources
 
