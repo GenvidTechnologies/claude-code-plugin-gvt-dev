@@ -2,9 +2,9 @@
 name: publish-npm-package
 description: >-
   Set up a TypeScript package to publish publicly on npmjs.com via the shared
-  public-github-actions GitHub Actions recipe (the GenvidTechnologies/public-github-actions
-  repo) with OIDC trusted publishing (automatic
-  provenance, no stored npm token). This is the rare, once-per-package setup
+  GenvidTechnologies/public-github-actions GitHub Actions recipe with OIDC
+  trusted publishing (automatic provenance, no stored npm token). This is the
+  rare, once-per-package setup
   nobody remembers the steps for, so reach for it WHENEVER someone wants a
   package onto npm or made publicly installable — even when they don't say
   "npm", "publish", or name the recipe. Trigger on requests like "open-sourcing
