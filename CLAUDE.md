@@ -107,6 +107,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 ## Adding a new skill
 
 1. Create `plugin/skills/<verb-noun-name>/SKILL.md` with frontmatter (name, description, optional metadata.expects).
+   - **Keep the `description` ≤ 1536 chars** (`skillListingMaxDescChars`). Over that, it's silently truncated in the session skill listing — degrading the routing signal the description exists for — and nothing in `claude plugin validate` flags it. The audit now warns (author-time only, on a maintainer/dogfood run against the plugin source) when a skill or agent description exceeds the cap; keep the audit's desc-length warnings at zero. Descriptions regress over the cap easily, so re-check after any description edit.
 2. Avoid skill names containing `claude` or `anthropic` (reserved by Anthropic's validator).
 3. Prefer verb-noun names that read alone (`commit-changes`, not `commit`) — avoids collisions with built-in Claude Code skills.
 4. Verify with `claude plugin validate plugin`.

@@ -11,11 +11,12 @@
 // succeeded); 1 otherwise.
 
 import { promises as fs } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { extractFrontmatter } from './lib/frontmatter.mjs';
+import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
 import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
@@ -28,6 +29,14 @@ const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/au
 const REPO_ROOT = process.cwd();
 const FIX_MODE = process.argv.includes('--fix');
 const APPLY_MODE = process.argv.includes('--apply');
+
+// True only when the plugin source being walked *is* inside the repo under
+// audit — i.e. a maintainer/dogfood run on the plugin repo itself, not a
+// consumer running the installed cache. Author-time lints (e.g. the
+// description-length cap) are actionable only in that case; emitting them in a
+// consumer's audit would be un-fixable noise about the plugin's own files.
+const rel = relative(REPO_ROOT, PLUGIN_ROOT);
+const AUDITING_PLUGIN_SOURCE = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 
 async function main() {
   const state = await detectState(REPO_ROOT);
@@ -56,6 +65,8 @@ async function main() {
 
   const hostDrift = await evaluateHostDrift();
   if (hostDrift) findings.push(hostDrift);
+
+  for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
 
   const report = formatReport(state, findings);
   console.log(report);
@@ -97,9 +108,10 @@ async function walkComponents(pluginRoot) {
 
 async function loadComponent(type, name, filePath) {
   const content = await fs.readFile(filePath, 'utf8');
+  const descLen = descriptionLength(content);
   const fm = extractFrontmatter(content);
-  if (!fm) return { type, name, expects: null };
-  return { type, name, expects: fm.metadata?.expects ?? null };
+  if (!fm) return { type, name, expects: null, descLen };
+  return { type, name, expects: fm.metadata?.expects ?? null, descLen };
 }
 
 // ---- evaluate --------------------------------------------------------------
@@ -205,6 +217,30 @@ async function evaluateHostDrift() {
   };
 }
 
+// Author-time lint: flag any skill/agent whose rendered description exceeds the
+// session listing's `skillListingMaxDescChars` cap, since over-cap descriptions
+// are silently truncated in the listing. Non-fatal warnings (repo-health, not a
+// contract expectation), and only in a maintainer run against the plugin source
+// — a consumer can't fix the plugin's own descriptions.
+function evaluateDescriptionLengths(components) {
+  if (!AUDITING_PLUGIN_SOURCE) return [];
+  const findings = [];
+  for (const c of components) {
+    if (c.descLen > MAX_DESCRIPTION_CHARS) {
+      findings.push({
+        kind: 'desc-length',
+        ok: false,
+        severity: 'warning',
+        detail:
+          `${c.type} \`${c.name}\` description is ${c.descLen} chars, over the ` +
+          `${MAX_DESCRIPTION_CHARS}-char \`skillListingMaxDescChars\` cap — it is ` +
+          `silently truncated in the skill listing. Trim it.`,
+      });
+    }
+  }
+  return findings;
+}
+
 function gitRemoteUrl() {
   const result = spawnSync('git', ['remote', 'get-url', 'origin'], {
     cwd: REPO_ROOT,
@@ -296,8 +332,9 @@ function formatReport(state, findings) {
 }
 
 function formatFinding(f) {
-  // Repo-health findings (e.g. host-drift) aren't tied to a component/expectation.
-  if (f.kind === 'host-drift') return `- ${f.detail}`;
+  // Repo-health / author-lint findings (host-drift, desc-length) aren't tied to
+  // a component/expectation — they carry a self-contained detail string.
+  if (f.kind === 'host-drift' || f.kind === 'desc-length') return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
 }
