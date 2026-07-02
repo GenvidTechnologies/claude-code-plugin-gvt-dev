@@ -2,26 +2,26 @@
 name: reconcile-mcp-pin
 description: >-
   Reconcile a Genvid Claude Code plugin's hand-enumerated agent tool inventories
-  after a pinned MCP server version is bumped. A server pin bump can add, rename,
-  or remove MCP tools, and agents that enumerate those tools by hand drift
-  silently otherwise — and for an agent with a hard `tools:` allow-list a missed
-  read tool becomes *uncallable*, a functional regression rather than a doc gap.
-  This skill generalizes the proven tool-surface-reconciliation runbook: pull the
-  authoritative tool surface straight from the pinned package (npm pack +
-  registerTool grep, with a count sanity-check), diff old vs new, reconcile the
-  read-side and mutation-side agents respecting the read/mutate split, sweep stale
-  @<old> version prose, bump the plugin.json pin, and add a CHANGELOG entry. It is
-  the recurring, nobody-remembers-the-steps precursor to a plugin release, so
-  reach for it WHENEVER someone bumps a bundled MCP server pin or notices agent
-  tool lists drifting after a server update — even when they don't name the steps.
-  Trigger on requests like "bump the construct3-chef / c3-domain-manager pin", "a
-  new chef version shipped, reconcile the agents", "the agent tool lists drifted
-  after the server bump", "reconcile the tool surface before tagging", or "update
-  the mcpServers pin and fix the allow-lists". It stops short of the release —
-  hand off to release-plugin to tag and ship. Do NOT use it for: cutting the
-  plugin release itself (use release-plugin); publishing an npm / TypeScript
+  after a pinned MCP server version is bumped — including a **scope rename**
+  (the package name changing, not just its version). A pin bump can add, rename,
+  or remove MCP tools, and hand-maintained tool lists drift silently — for an
+  agent with a hard `tools:` allow-list a missed read tool becomes *uncallable*,
+  a functional regression, not just a doc gap. This skill generalizes the proven
+  tool-surface-reconciliation runbook: pull the authoritative surface straight
+  from the pinned package (npm pack + registerTool grep, count-checked), diff old
+  vs new, reconcile the read-side and mutation-side agents respecting the
+  read/mutate split, sweep stale @<old> version prose, bump the plugin.json pin,
+  and add a CHANGELOG entry. It is the precursor to a plugin release, so reach
+  for it WHENEVER someone bumps a bundled MCP server pin,
+  renames its npm scope, or notices agent tool lists drifting after a server
+  update. Trigger on requests like "bump the construct3-chef / c3-domain-manager
+  pin", "the tool lists drifted after the server bump", or "rename the package
+  scope / @genvid → @genvidtech". It stops short of the
+  release — hand off to release-plugin to tag and ship. Do NOT use it for: cutting
+  the plugin release itself (use release-plugin); publishing an npm / TypeScript
   package to npmjs.com (use publish-npm-package / release-npm-package); or bumping
-  a skill's minVersion floor (a pin bump is not a floor bump).
+  a skill's minVersion floor on a plain pin bump (a scope rename is the one
+  guarded exception).
 metadata:
   expects:
     config:
@@ -78,6 +78,10 @@ Read `paths.plugin_root` from `.gvt-agent.json`; if absent, default to `.`
 1. Read `<plugin_root>/.claude-plugin/plugin.json` `mcpServers`. Each entry pins a
    package via its `args` (e.g. `["-y", "@genvid/construct3-chef@0.7.0", "mcp"]`).
    Record each server's package name and its **current (old) pin**.
+   - If the package **name** itself is changing, not only its version (e.g.
+     `@genvid/construct3-chef` → `@genvidtech/construct3-chef`), this is a
+     **scope rename** — see "## Scope rename (a broader pin bump)" below for the
+     additional work it layers onto Phases 2–7.
 2. Determine the **new** pin per server being bumped:
    - If the maintainer passed an explicit target version, use it.
    - Otherwise detect the latest published version and **confirm before bumping**:
@@ -199,7 +203,9 @@ grep -rn '@0\.7\.0' <plugin_root>/agents <plugin_root>/docs
 ```
 
 **Do not** sweep `minVersion` floors in `<plugin_root>/skills/*/SKILL.md` — those are
-deliberate floor decisions, not the pin. A pin bump is not a floor bump.
+deliberate floor decisions, not the pin. A pin bump is not a floor bump. The one
+exception is a **scope rename**, where the floor becomes a prompted keep-vs-raise
+call — see "## Scope rename (a broader pin bump)" below.
 
 ## Phase 6: Bump the pin, record, validate
 
@@ -223,6 +229,68 @@ deliberate floor decisions, not the pin. A pin bump is not a floor bump.
    `release-plugin` to cut the version and ship — the reconciliation commit is its
    precondition (a plugin whose agent allow-lists match the pin it's about to ship).
 
+## Scope rename (a broader pin bump)
+
+Sometimes a bump changes the package's **name**, not only its version — the
+maintainer moved the npm scope (e.g. `@genvid/construct3-chef` →
+`@genvidtech/construct3-chef`). gvt-construct3 did exactly this for both of its
+bundled servers: `construct3-chef@0.10.2` → `@genvidtech/construct3-chef@0.11.2`,
+and `c3-domain-manager@0.5.0` → `@genvidtech/c3-domain-manager@0.6.1`.
+
+Everything in Phases 1–7 still applies. This section layers the **additional**
+work a name change requires on top of them — it does not replace or duplicate them.
+
+1. **Detect it in Phase 1.** The trigger for this branch is the package name
+   itself changing, not only its version (see the note at Phase 1 step 1).
+
+2. **Migrate functional package-name fields, not just version prose (spans
+   Phases 5–6 and the plugin's skills).** Phase 5 sweeps stale *version* prose
+   written from the old pin. A rename additionally requires migrating every
+   functional occurrence of the package **name**: the `mcpServers` `args` pin in
+   `plugin.json` (the name, not only the version — the pin bump itself is
+   Phase 6 step 1), and — critically — the consuming plugin's
+   `metadata.expects.mcp.package` fields in its `skills/*/SKILL.md` (the
+   consuming plugin's own audited contract, not gvt-dev's). Those name fields
+   drive the consuming plugin's audit `npx -y <package> --version` probe and its
+   `node_modules` version walk — leave them on the old scope and the audit keeps
+   validating a **deprecated** package while the plugin actually launches the
+   new one: a silent contract mismatch a version-prose sweep alone won't catch.
+
+3. **`minVersion` floor — a prompted keep-vs-raise decision.** This is the one
+   guarded exception to Phase 5's "never touch `minVersion`" rule. Under the new
+   scope, nothing is published below the new scope's first-published version, so
+   the old floor may be unreachable. This exception applies **only** on a scope
+   rename; a plain version-bump run still leaves `minVersion` alone (Phase 5 /
+   "When this applies").
+
+   > **Guided checkpoint — keep or raise `minVersion`.** State the old floor,
+   > the new scope's first-published version, and whether the old floor is
+   > still reachable under the new scope. Ask the maintainer to keep the floor
+   > (if still reachable) or raise it to the new scope's earliest safe version
+   > — this is a deliberate call each time, never an automatic copy and never
+   > an automatic bump.
+
+4. **Preserve the historical record.** Never rewrite a shipped CHANGELOG entry
+   or ADR when sweeping name references — they record the scope that actually
+   shipped at the time, and a blanket `@old → @new` sweep would falsify them.
+   Only the new `[Unreleased]` CHANGELOG entry (Phase 6 step 2) names the new
+   scope.
+
+5. **Verify the tool surface by packing OLD and NEW — and sweep transitive
+   renames (extends Phase 2).** The old scope typically stays installable, so
+   `npx @old-scope/pkg --version` still "works" against a stale package — don't
+   trust a bump issue's "no tool changes" claim on that basis alone. Extend
+   Phase 2's pack-and-diff to pack **both** `@old-scope/pkg@<oldver>` and
+   `@new-scope/pkg@<newver>` — now different package names, not just different
+   versions of the same name — and diff their `registerTool(…)`/`reg(…)`
+   surfaces to prove no tool change. A scope rename also often carries
+   **transitive** dependency renames (e.g. `@genvidtech/c3source`,
+   `@genvidtech/mcp-utils`) — sweep their *live* references too, leaving
+   historical mentions intact per element 4 above.
+
+gvt-construct3 captured the C3-specific version of this as a "Scope rename (a
+broader pin bump)" section in its own `docs/tool-surface-reconciliation.md`.
+
 ## When this applies / when it doesn't
 
 - **Applies** when a plugin pins MCP servers in `plugin.json` `mcpServers` AND ships
@@ -231,4 +299,6 @@ deliberate floor decisions, not the pin. A pin bump is not a floor bump.
   or to one whose agents don't enumerate server tools — there is nothing to drift.
 - **Not a release.** Use `release-plugin` to tag and ship; this is its precursor.
 - **Not a floor bump.** A skill's `minVersion` is a separate, deliberate decision —
-  leave it alone (Phase 5).
+  leave it alone (Phase 5). The one guarded exception is a **scope rename**, where
+  the floor becomes a prompted keep-vs-raise call (see "## Scope rename (a broader
+  pin bump)").
