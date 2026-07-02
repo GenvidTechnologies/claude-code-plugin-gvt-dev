@@ -4,12 +4,12 @@ The **`gvt-dev` plugin** for Claude Code — shared skills, agents, and hooks us
 
 The plugin provides workflows for git (`commit-changes`, `create-pr`, `rebase-branch`, `rebase-stack`, `split-branch`), planning (`plan-task` with an analyst → designer → planner pipeline), validation, code review, session retrospectives, convention auditing, plugin releasing (`release-plugin`), and npm package releasing (`release-npm-package`).
 
-It is distributed through the [`claude-code-marketplace`](https://github.com/GenvidTechnologies/claude-code-marketplace) catalog (marketplace name `gvt-plugins`).
+It is distributed through the [`claude-code-gvt-marketplace`](https://github.com/GenvidTechnologies/claude-code-gvt-marketplace) catalog (marketplace name `gvt-plugins`).
 
 ## Install
 
 ```text
-/plugin marketplace add https://github.com/GenvidTechnologies/claude-code-marketplace.git
+/plugin marketplace add https://github.com/GenvidTechnologies/claude-code-gvt-marketplace.git
 /plugin install gvt-dev@gvt-plugins
 ```
 

@@ -2,7 +2,7 @@
 name: release-plugin
 description: >-
   Cut a versioned release of a single Genvid marketplace plugin (a Claude Code
-  plugin published through the GenvidTechnologies/claude-code-marketplace catalog),
+  plugin published through the GenvidTechnologies/claude-code-gvt-marketplace catalog),
   end to end across both repos: bump .claude-plugin/plugin.json, move the
   CHANGELOG Unreleased section, commit, push an annotated vX.Y.Z tag, and bump
   the plugin's marketplace source.ref. This is the rare, nobody-remembers-the-
@@ -36,7 +36,7 @@ metadata:
 
 This skill cuts a release of a single Genvid Claude Code plugin and points the
 shared marketplace catalog at it. A plugin release is **git-tag-pinned, not
-npm-published**: the catalog `GenvidTechnologies/claude-code-marketplace` pins each
+npm-published**: the catalog `GenvidTechnologies/claude-code-gvt-marketplace` pins each
 plugin to a plain annotated `vX.Y.Z` tag via a `source.ref`, and consumers
 resolve that ref on `/plugin update`. There is **no `npm publish`** — do not
 confuse this with `publish-npm-package`.
@@ -108,11 +108,11 @@ believe anything is wrong (Phase 1).
 ## The marketplace is the source of truth — read it live
 
 The catalog file is `.claude-plugin/marketplace.json` in
-`GenvidTechnologies/claude-code-marketplace` (catalog `name: gvt-plugins`).
+`GenvidTechnologies/claude-code-gvt-marketplace` (catalog `name: gvt-plugins`).
 **Read it live; never assume its contents** — entries and refs change:
 
 ```bash
-gh api repos/GenvidTechnologies/claude-code-marketplace/contents/.claude-plugin/marketplace.json \
+gh api repos/GenvidTechnologies/claude-code-gvt-marketplace/contents/.claude-plugin/marketplace.json \
   --jq .content | base64 -d
 ```
 
@@ -296,7 +296,7 @@ exist and be pushed **before** the marketplace points at it, or every consumer's
    dir, edit only the one ref value, review the diff, commit, push:
 
    ```bash
-   git clone --depth 1 https://github.com/GenvidTechnologies/claude-code-marketplace.git <tmp>
+   git clone --depth 1 https://github.com/GenvidTechnologies/claude-code-gvt-marketplace.git <tmp>
    ```
 
    In `<tmp>/.claude-plugin/marketplace.json`, the edit depends on the case —

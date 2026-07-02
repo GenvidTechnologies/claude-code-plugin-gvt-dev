@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this repo is
 
-This repo is the **`gvt-dev` plugin** for Claude Code: shared skills, agents, hooks, and conventions used across Genvid game projects. It is published through a separate marketplace repo, [`GenvidTechnologies/claude-code-marketplace`](https://github.com/GenvidTechnologies/claude-code-marketplace) (catalog name `gvt-plugins`).
+This repo is the **`gvt-dev` plugin** for Claude Code: shared skills, agents, hooks, and conventions used across Genvid game projects. It is published through a separate marketplace repo, [`GenvidTechnologies/claude-code-gvt-marketplace`](https://github.com/GenvidTechnologies/claude-code-gvt-marketplace) (catalog name `gvt-plugins`, shared with `gvt-construct3`).
 
 Consuming repos install the plugin via Claude Code's `/plugin install` flow — there is **no submodule, no template engine, no render step**. Skills and agents are flat files that read project context at runtime from a small convention contract (`CLAUDE.md`, `CONVENTIONS.md`, `docs/TOC.md`, `.gvt-agent.json`) in the consuming repo.
 
@@ -53,7 +53,7 @@ claude-code-plugin-gvt-dev/
 claude plugin validate plugin
 
 # Re-install / update the local plugin from the marketplace
-claude plugin marketplace add https://github.com/GenvidTechnologies/claude-code-marketplace.git
+claude plugin marketplace add https://github.com/GenvidTechnologies/claude-code-gvt-marketplace.git
 claude plugin install gvt-dev@gvt-plugins
 claude plugin update gvt-dev@gvt-plugins
 claude plugin details gvt-dev
@@ -161,7 +161,7 @@ When adding a **new** doc: add it to `docs/TOC.md` and an `[Unreleased]` `plugin
 
 Use `/gvt-dev:release-plugin` — it owns the full release runbook: assessing repo state (and distinguishing a stale local checkout from a genuine inconsistency), bumping `plugin/.claude-plugin/plugin.json` `version`, moving the `plugin/CHANGELOG.md` `[Unreleased]` section, authoring the `release: vX.Y.Z` commit, pushing the annotated `vX.Y.Z` tag, bumping the plugin's `source.ref` in the marketplace catalog, and handing off the consumer-facing `/plugin update` step. The skill reads `paths.plugin_root` (`"plugin"`) from `.gvt-agent.json` to resolve those paths.
 
-The marketplace catalog ([`claude-code-marketplace`](https://github.com/GenvidTechnologies/claude-code-marketplace)) pins this plugin by a **plain annotated `vX.Y.Z` tag** via the `source.ref` field in its `.claude-plugin/marketplace.json`, using a `git-subdir` source with `"path": "plugin"` — the tag string (minus `v`) must equal `plugin/.claude-plugin/plugin.json` `version`. Consumers pick up a release with `/plugin update gvt-dev@gvt-plugins`.
+The marketplace catalog ([`claude-code-gvt-marketplace`](https://github.com/GenvidTechnologies/claude-code-gvt-marketplace)) pins this plugin by a **plain annotated `vX.Y.Z` tag** via the `source.ref` field in its `.claude-plugin/marketplace.json`, using a `git-subdir` source with `"path": "plugin"` — the tag string (minus `v`) must equal `plugin/.claude-plugin/plugin.json` `version`. Consumers pick up a release with `/plugin update gvt-dev@gvt-plugins`.
 
 ## Conventions in this repo
 
