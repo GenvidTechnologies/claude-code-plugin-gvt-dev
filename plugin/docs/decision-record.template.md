@@ -1,7 +1,8 @@
 <!--
   Decision record (ADR) template — MADR-lite.
   tech-writer scaffolds a copy of this into the consuming repo's docs/decisions/
-  when dispatched from plan-task Phase 4. See development-principles.md principle #7.
+  when dispatched from plan-task Phase 4 (ADR authoring) or from the create-adr skill
+  (on-demand ADR creation). See development-principles.md principle #7.
   Naming: docs/decisions/NNNN-kebab-title.md  (NNNN = 4-digit zero-padded sequence,
   next number after the highest existing record).
   Date = when the decision was accepted/finalized, not when the record was written.

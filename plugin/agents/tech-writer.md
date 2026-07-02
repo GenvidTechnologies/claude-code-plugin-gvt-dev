@@ -60,8 +60,8 @@ If a doc isn't in `docs/TOC.md` but exists in the repo, that's itself a finding 
 
 When dispatched (typically by `plan-task` Phase 4) to record an architecture or compromise decision:
 
-1. **Scaffold on first use** — if `docs/decisions/` is absent, offer to create it from the bundled template `${CLAUDE_PLUGIN_ROOT}/skills/plan-task/decision-record.template.md`, and add a "Decision Records" entry to `docs/TOC.md`. Do not guess the convention — confirm before writing. If the consuming repo's `CLAUDE.md` already names an ADR location, that takes precedence over `docs/decisions/`.
-2. **Name** the file `NNNN-kebab-title.md` — a 4-digit zero-padded sequence, the next number after the highest existing record.
+1. **Scaffold on first use** — if `docs/decisions/` is absent, offer to create it from the bundled template `${CLAUDE_PLUGIN_ROOT}/docs/decision-record.template.md`, and add a "Decision Records" entry to `docs/TOC.md`. Do not guess the convention — confirm before writing. If the consuming repo's `CLAUDE.md` already names an ADR location, that takes precedence over `docs/decisions/`.
+2. **Name** the file `NNNN-kebab-title.md` — a 4-digit zero-padded sequence, the next number after the highest existing record — **unless the dispatching skill specifies an explicit target number (e.g. a chronological insertion), in which case use that number.**
 3. **Fill** the template: status, date, context, the decision (including how it fits the architecture), the compromise (alternatives rejected and why), and consequences. **Date** is when the decision was accepted/finalized — not when the record was typed up. For a **retroactive** record (one written after the fact to document an existing decision), use the date the decision was originally made; if the decision was diffuse (it crystallized across several changes), use the date it was finalized — never a date before the problem existed.
 4. **Back-link** the originating issue in the `Issue:` field rather than transcribing it.
 5. **Index** the new record under `docs/TOC.md`'s Decision Records section.
