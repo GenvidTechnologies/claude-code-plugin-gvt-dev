@@ -7,6 +7,19 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`audit-conventions`: pre-fill inferable `.gvt-agent.json` fields on the greenfield scaffold (#116).** Greenfield `--fix` previously copied the all-blank skeleton verbatim, leaving every field a placeholder. It now pre-fills the inferable ones: `commands.*` from `package.json` scripts — but **only when a lockfile pins the package manager** (`package-lock.json`→npm, `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn); with no lockfile the command fields stay blank rather than emitting a wrong `npm` placeholder that would break a pnpm/yarn consumer's pre-commit hook (the #8 lesson). Also `repo.host` from the git remote, `repo.default_branch` from `origin/HEAD`, and `project.name` from the remote slug. Every inference graceful-degrades and never throws; existing values and the skip-if-exists guard are never overridden. Behavioral skill change → version bump at release.
+
+### Changed
+
+- **`code-reviewer`: add a markup-validity guardrail (#119).** Guardrail #4 already covers computed-transform *outputs* (heading-anchor slugs, regex, arithmetic). A new guardrail #5 covers a distinct axis — markup *validity/rendering* claims ("is this Markdown/HTML/JSON/YAML malformed / does it render wrong") — whose verification move is render-through-a-parser or cite-the-spec, not run-the-transform; absent that, downgrade to Warning/Suggestion. Prevents over-escalating plausibly-valid markup (double-backtick spans, inline HTML) to 🔴 Critical. Extends the #100/#103 calibration to the rendering-severity axis. Behavioral agent change → version bump at release.
+- **`migrate-cordova-ci`: disambiguate `-eos` in the skill description (#120).** The description's `-eos` example matched both `cordova-plugin-eos` (the correct target) and `c3addon-genvid-epic-online-services` (a Construct3 addon on a different CI toolchain), so the skill was mis-recommended for the C3 addon on a bare string match. The description now spells out `cordova-plugin-eos` / `cordova-plugin-*` and adds a NOT-clause excluding `c3addon-*` repos. Description-only routing-signal fix (~662 chars, well under the 1536 cap). Version bump at release.
+
+### Fixed
+
+- **`audit-conventions`: stop misclassifying a legacy `.genvid-agent.json` repo as greenfield (#117, #118).** A consuming repo carrying only the pre-rebrand filename `.genvid-agent.json` (the former name of `.gvt-agent.json`, identical schema — a genvid→gvt rename artifact) fell through to `greenfield`, so the audit recommended `--fix`, which scaffolded an *empty shadow* `.gvt-agent.json` beside the real config and silently orphaned it. A new distinct `stale-config` state (precedence `legacy > migrated > stale-config > greenfield`) fixes this: `--fix` reads the legacy file and branches — a pure stale-name repo gets a history-preserving `git mv` rename (plus scaffold-if-absent for the other three convention files, **never** a shadow `.gvt-agent.json`); a repo whose `.genvid-agent.json` still carries live Construct3 markers (`features.c3`/`paths.c3project`) gets note-only port-and-keep guidance and zero filesystem mutation, since the separate genvid-construct3 plugin may still read the old filename. The report resolves keys from `.genvid-agent.json` for this state, showing the config as valid and isolating the filename as the sole problem. Decision recorded in ADR 0012 (which also flags the C3-marker discriminator as unvalidated against a live genvid-construct3 consumer — a recommended non-blocking follow-up smoke-test). Behavioral skill/bug fix → version bump at release.
+
 ## [4.0.0] - 2026-07-02
 
 ### Added
