@@ -10,6 +10,8 @@ import {
   translateLegacyConfig,
   planGreenfield,
   planLegacy,
+  planStaleConfig,
+  hasC3Markers,
   applyPlan,
   scanDanglingReferences,
 } from '../lib/migrate.mjs';
@@ -269,6 +271,66 @@ test('planGreenfield: pre-existing CONVENTIONS.md / CLAUDE.md are SKIPPED, not o
     await applyPlan(plan, dir);
     assert.equal(await fs.readFile(join(dir, 'CONVENTIONS.md'), 'utf8'), 'hand-written c3 contract\n');
     assert.equal(await fs.readFile(join(dir, 'CLAUDE.md'), 'utf8'), 'detailed hand-written project context\n');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #117/#118 — planStaleConfig: rename .genvid-agent.json -> .gvt-agent.json,
+// or port-and-keep when C3 markers are present
+// ---------------------------------------------------------------------------
+
+test('hasC3Markers: no features/paths -> false', () => {
+  assert.equal(hasC3Markers({}), false);
+  assert.equal(hasC3Markers({ project: { name: 'x' } }), false);
+});
+
+test('hasC3Markers: features.c3 present -> true', () => {
+  assert.equal(hasC3Markers({ features: { c3: true } }), true);
+});
+
+test('hasC3Markers: paths.c3project present -> true', () => {
+  assert.equal(hasC3Markers({ paths: { c3project: 'C3Project' } }), true);
+});
+
+test('planStaleConfig: pure stale-name (no C3 markers) -> git mv, no .gvt-agent.json write', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({ project: { name: 'foo' } }, null, 2));
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('mv .genvid-agent.json .gvt-agent.json'), 'expected a git mv rename action');
+
+    const writes = plan.actions.filter((a) => a.type === 'write-file');
+    assert.ok(
+      !writes.some((a) => a.path.replace(/\\/g, '/').endsWith('.gvt-agent.json')),
+      'must NOT scaffold a shadow .gvt-agent.json',
+    );
+    // The other three convention files are still offered.
+    assert.ok(writes.some((a) => a.path.endsWith('CONVENTIONS.md')));
+    assert.ok(writes.some((a) => a.path.endsWith('CLAUDE.md')));
+    assert.ok(writes.some((a) => a.path.replace(/\\/g, '/').endsWith('docs/TOC.md')));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planStaleConfig: C3 markers present -> note-only plan (no git-cmd, no write)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({
+      project: { name: 'foo' },
+      features: { c3: true },
+    }, null, 2));
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+    assert.ok(plan.actions.length > 0, 'expected at least one note action');
+    assert.ok(plan.actions.every((a) => a.type === 'note'), 'every action must be a note (no fs effect)');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

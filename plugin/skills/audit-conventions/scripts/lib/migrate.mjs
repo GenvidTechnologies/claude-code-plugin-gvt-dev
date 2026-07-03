@@ -20,6 +20,7 @@ import { spawnSync } from 'node:child_process';
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
 const LEGACY_CONFIG_FILENAME = 'claude-config.json';
+const STALE_CONFIG_FILENAME = '.genvid-agent.json';
 const CLAUDE_MD = 'CLAUDE.md';
 const TOC = 'docs/TOC.md';
 const CONVENTIONS_IMPORT_LINE = '@CONVENTIONS.md';
@@ -176,6 +177,65 @@ async function pushScaffold(actions, repoRoot, rel, content, writeSummary) {
     return;
   }
   actions.push({ type: 'write-file', path, content, summary: writeSummary });
+}
+
+// -----------------------------------------------------------------------------
+// planStaleConfig — rename .genvid-agent.json -> .gvt-agent.json (issue #117/#118)
+// -----------------------------------------------------------------------------
+
+// A stale config carries genvid-construct3 (C3) markers when it declares the
+// `features.c3` or `paths.c3project` keys — signals that genvid-construct3
+// tooling may still read this file by its legacy name. Renaming it out from
+// under that tooling would break it, so those repos get a port-and-keep note
+// instead of an automatic `git mv`.
+export function hasC3Markers(cfg) {
+  return cfg?.features?.c3 !== undefined || cfg?.paths?.c3project !== undefined;
+}
+
+export async function planStaleConfig(repoRoot, pluginRoot) {
+  const staleConfigPath = join(repoRoot, STALE_CONFIG_FILENAME);
+  const cfg = JSON.parse(await fs.readFile(staleConfigPath, 'utf8'));
+
+  if (hasC3Markers(cfg)) {
+    return {
+      state: 'stale-config',
+      actions: [
+        {
+          type: 'note',
+          summary: `${STALE_CONFIG_FILENAME} has C3 markers (features.c3 / paths.c3project) — NOT auto-renaming; `
+            + 'genvid-construct3 tooling may still read this file by its legacy name',
+        },
+        {
+          type: 'note',
+          summary: `Port-and-keep: copy commands/repo/features/paths from ${STALE_CONFIG_FILENAME} into a new `
+            + `${NEW_CONFIG_FILENAME}, reconcile the C3 fields by hand, and KEEP ${STALE_CONFIG_FILENAME} in place`,
+        },
+      ],
+    };
+  }
+
+  const actions = [];
+  actions.push({
+    type: 'git-cmd',
+    args: ['mv', STALE_CONFIG_FILENAME, NEW_CONFIG_FILENAME],
+    summary: `git mv ${STALE_CONFIG_FILENAME} -> ${NEW_CONFIG_FILENAME} (preserve history)`,
+  });
+
+  // Scaffold the other three convention files (skip-if-exists) — never
+  // .gvt-agent.json itself, which the git mv above just produced. Scaffolding
+  // it here would race the mv and orphan the real config behind an empty
+  // shadow file (the bug this state fixes).
+  const conventionsSource = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
+  await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
+    `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
+
+  await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
+    `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
+
+  await pushScaffold(actions, repoRoot, TOC, await readSkeleton(pluginRoot, TOC),
+    `Scaffold ${TOC} with placeholder doc map`);
+
+  return { state: 'stale-config', actions };
 }
 
 // -----------------------------------------------------------------------------

@@ -105,3 +105,56 @@ test('audit --fix --apply without prior --fix prints no-previewed-plan message',
     assert.ok(!existsSync(planFile), 'plan file should remain absent after apply without prior --fix');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #117/#118 — stale-named .genvid-agent.json is a distinct state, not greenfield
+// ---------------------------------------------------------------------------
+
+test('audit: repo with only .genvid-agent.json reports stale-config + rename recommendation', async () => {
+  await withTempDir(async (tmpDir) => {
+    await writeFile(join(tmpDir, '.genvid-agent.json'), JSON.stringify({ project: { name: 'foo' } }, null, 2));
+
+    const result = spawnAudit([], tmpDir);
+    assert.match(result.stdout, /State: stale-config/, 'report should show the stale-config state');
+    assert.match(
+      result.stdout,
+      /Legacy `\.genvid-agent\.json` detected .*Run `--fix` to rename it/,
+      'report should recommend renaming to .gvt-agent.json',
+    );
+  });
+});
+
+test('audit: repo with C3-marked .genvid-agent.json reports the port-and-keep note', async () => {
+  await withTempDir(async (tmpDir) => {
+    await writeFile(join(tmpDir, '.genvid-agent.json'), JSON.stringify({
+      project: { name: 'foo' },
+      features: { c3: true },
+    }, null, 2));
+
+    const result = spawnAudit([], tmpDir);
+    assert.match(result.stdout, /State: stale-config/, 'report should show the stale-config state');
+    assert.match(
+      result.stdout,
+      /C3 markers detected.*NOT auto-rename/,
+      'report should surface the port-and-keep note for C3-marked configs',
+    );
+  });
+});
+
+test('audit --fix (dry-run) on pure-stale repo lists the git mv and writes no .gvt-agent.json', async () => {
+  await withTempDir(async (tmpDir) => {
+    await writeFile(join(tmpDir, '.genvid-agent.json'), JSON.stringify({ project: { name: 'foo' } }, null, 2));
+
+    const dryRun = spawnAudit(['--fix'], tmpDir);
+    assert.equal(dryRun.status, 0, `--fix failed:\n${dryRun.stderr}`);
+    assert.match(dryRun.stdout, /State: stale-config/);
+    assert.match(
+      dryRun.stdout,
+      /git mv \.genvid-agent\.json -> \.gvt-agent\.json/,
+      '--fix dry-run should list the rename action',
+    );
+
+    const { existsSync } = await import('node:fs');
+    assert.ok(!existsSync(join(tmpDir, '.gvt-agent.json')), 'dry-run must not write anything to disk');
+  });
+});

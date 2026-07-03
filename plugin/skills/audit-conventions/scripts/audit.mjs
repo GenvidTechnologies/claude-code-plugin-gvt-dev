@@ -19,8 +19,14 @@ import { extractFrontmatter } from './lib/frontmatter.mjs';
 import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
-import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
-import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
+import {
+  detectState,
+  STATE_GREENFIELD,
+  STATE_LEGACY,
+  STATE_MIGRATED,
+  STATE_STALE_CONFIG,
+} from './lib/state-detect.mjs';
+import { planGreenfield, planLegacy, planStaleConfig, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 
@@ -47,6 +53,23 @@ async function main() {
     return;
   }
 
+  // A stale-named legacy config (.genvid-agent.json) carries the same schema
+  // as .gvt-agent.json (issue #117/#118) — evaluate expectations against it
+  // under its actual filename so the report shows its keys as satisfied
+  // instead of flooding on a config file that (correctly) doesn't exist yet.
+  let configFilename = '.gvt-agent.json';
+  let cfgHasC3 = false;
+  if (state === STATE_STALE_CONFIG) {
+    configFilename = '.genvid-agent.json';
+    try {
+      const cfg = JSON.parse(await fs.readFile(join(REPO_ROOT, configFilename), 'utf8'));
+      cfgHasC3 = hasC3Markers(cfg);
+    } catch {
+      // unreadable/invalid JSON — leave cfgHasC3 false; evaluateConfig below
+      // will surface the read failure per-expectation.
+    }
+  }
+
   const components = await walkComponents(PLUGIN_ROOT);
   const findings = [];
   for (const component of components) {
@@ -57,19 +80,19 @@ async function main() {
       findings.push(await evaluateFile(component, entry));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry));
+      findings.push(await evaluateConfig(component, entry, configFilename));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
     }
   }
 
-  const hostDrift = await evaluateHostDrift();
+  const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
 
-  const report = formatReport(state, findings);
+  const report = formatReport(state, findings, { cfgHasC3 });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
@@ -270,7 +293,7 @@ function commandExists(cmd) {
 
 // ---- report ----------------------------------------------------------------
 
-function formatReport(state, findings) {
+function formatReport(state, findings, { cfgHasC3 = false } = {}) {
   const errors = findings.filter((f) => f.severity === 'error');
   const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
@@ -318,6 +341,16 @@ function formatReport(state, findings) {
   } else if (state === STATE_GREENFIELD) {
     lines.push('');
     lines.push('> Run `--fix` to scaffold the four convention files.');
+  } else if (state === STATE_STALE_CONFIG) {
+    lines.push('');
+    if (cfgHasC3) {
+      lines.push(
+        '> Legacy `.genvid-agent.json` with C3 markers detected. Run `--fix` to see the '
+        + 'port-and-keep steps (it will NOT auto-rename).',
+      );
+    } else {
+      lines.push('> Legacy `.genvid-agent.json` detected (pre-`gvt` name). Run `--fix` to rename it to `.gvt-agent.json`.');
+    }
   }
 
   return lines.join('\n');
@@ -353,6 +386,8 @@ async function runFix(state) {
   let plan;
   if (state === STATE_GREENFIELD) {
     plan = await planGreenfield(REPO_ROOT, PLUGIN_ROOT);
+  } else if (state === STATE_STALE_CONFIG) {
+    plan = await planStaleConfig(REPO_ROOT, PLUGIN_ROOT);
   } else {
     // STATE_LEGACY
     const snapshotPath = join(SCRIPT_DIR, 'legacy-manifest-snapshot.json');

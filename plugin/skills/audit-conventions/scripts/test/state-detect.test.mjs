@@ -10,6 +10,7 @@ import {
   STATE_GREENFIELD,
   STATE_LEGACY,
   STATE_MIGRATED,
+  STATE_STALE_CONFIG,
 } from '../lib/state-detect.mjs';
 
 async function withTempRepo(setup) {
@@ -71,6 +72,48 @@ test('detectState: burbank-claude-config submodule -> legacy', async () => {
 test('detectState: legacy submodule + new config -> still legacy (partial migration)', async () => {
   const dir = await withTempRepo(async (d) => {
     await fs.writeFile(join(d, '.gvt-agent.json'), '{}');
+    await fs.writeFile(
+      join(d, '.gitmodules'),
+      '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = https://...\n',
+    );
+  });
+  try {
+    assert.equal(await detectState(dir), STATE_LEGACY);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #117/#118 — stale-named .genvid-agent.json (pre-rename schema, same shape)
+// ---------------------------------------------------------------------------
+
+test('detectState: .genvid-agent.json only -> stale-config', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await fs.writeFile(join(d, '.genvid-agent.json'), '{}');
+  });
+  try {
+    assert.equal(await detectState(dir), STATE_STALE_CONFIG);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectState: .gvt-agent.json + .genvid-agent.json both present -> migrated', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await fs.writeFile(join(d, '.gvt-agent.json'), '{}');
+    await fs.writeFile(join(d, '.genvid-agent.json'), '{}');
+  });
+  try {
+    assert.equal(await detectState(dir), STATE_MIGRATED);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectState: legacy submodule + .genvid-agent.json -> legacy (legacy signal wins)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await fs.writeFile(join(d, '.genvid-agent.json'), '{}');
     await fs.writeFile(
       join(d, '.gitmodules'),
       '[submodule "burbank-claude-config"]\n\tpath = burbank-claude-config\n\turl = https://...\n',
