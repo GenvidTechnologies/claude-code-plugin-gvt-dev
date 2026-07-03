@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { extractFrontmatter } from './lib/frontmatter.mjs';
 import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
+import { gitRemoteUrl } from './lib/git-info.mjs';
 import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
 import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
@@ -135,9 +136,9 @@ async function evaluateFile(component, entry) {
   };
 }
 
-async function evaluateConfig(component, entry) {
+async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json') {
   const required = entry.required !== false;
-  const inFile = entry.in ?? '.gvt-agent.json';
+  const inFile = entry.in ?? configFilename;
   const filePath = join(REPO_ROOT, inFile);
 
   let parsed;
@@ -194,16 +195,16 @@ function evaluateTool(component, entry) {
 // to flag). This is a repo-health check, not a per-component expectation — a
 // stale host misleads host-specific skills (create-pr, release-*) at the start
 // of a session, and repos do migrate hosts (Bitbucket → GitHub).
-async function evaluateHostDrift() {
+async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
   let configuredHost;
   try {
-    const raw = await fs.readFile(join(REPO_ROOT, '.gvt-agent.json'), 'utf8');
+    const raw = await fs.readFile(join(REPO_ROOT, configFilename), 'utf8');
     configuredHost = resolveKey(JSON.parse(raw), 'repo.host').value;
   } catch {
     return null; // no config / unreadable — other findings cover that
   }
 
-  const drift = detectHostDrift({ configuredHost, remoteUrl: gitRemoteUrl() });
+  const drift = detectHostDrift({ configuredHost, remoteUrl: gitRemoteUrl(REPO_ROOT) });
   if (!drift) return null;
 
   return {
@@ -239,15 +240,6 @@ function evaluateDescriptionLengths(components) {
     }
   }
   return findings;
-}
-
-function gitRemoteUrl() {
-  const result = spawnSync('git', ['remote', 'get-url', 'origin'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0) return null; // no remote, or not a git repo
-  return result.stdout.trim();
 }
 
 // ---- helpers ---------------------------------------------------------------
