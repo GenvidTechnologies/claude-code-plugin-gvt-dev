@@ -8,7 +8,7 @@ description: >-
   the plugin's marketplace source.ref. This is the rare, nobody-remembers-the-
   steps maintainer workflow, so reach for it WHENEVER someone wants a plugin
   release shipped — even when they don't name the steps. Trigger on requests
-  like "release the plugin", "cut a new gvt-dev / genvid-c3 version", "bump
+  like "release the plugin", "cut a new gvt-dev version", "bump
   the plugin version and ship it", "tag and publish the plugin", "push this to
   the marketplace", "make the new skill available to consumers", "publish the
   first version of this plugin", or "the tag / plugin.json version / marketplace

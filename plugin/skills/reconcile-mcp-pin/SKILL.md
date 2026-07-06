@@ -41,7 +41,7 @@ metadata:
 This skill keeps a plugin's **agent tool inventories** honest after a bundled MCP
 server's pinned version is bumped. It applies to a plugin that (a) pins one or
 more MCP servers in `.claude-plugin/plugin.json` `mcpServers` and (b) ships agents
-that **enumerate those servers' tools by hand**. genvid-c3 is the reference
+that **enumerate those servers' tools by hand**. gvt-construct3 is the reference
 consumer; the procedure generalizes its `docs/tool-surface-reconciliation.md`
 runbook to any such plugin.
 
@@ -177,7 +177,7 @@ respecting the read / mutate split:
 > **Guided checkpoint — which agent gets a newly-added tool.** The read/mutate split
 > is the default, but the call is the maintainer's. A new non-mutating helper goes to
 > the read-only explorer; a tool may *also* warrant a documentation-only mention on the
-> mutation-side agent (genvid-c3 put `validate-editor` on the explorer's allow-list and,
+> mutation-side agent (gvt-construct3 put `validate-editor` on the explorer's allow-list and,
 > by maintainer call, a doc-only mention on the implementer). Surface added tools with
 > their classification and confirm the placement rather than auto-routing.
 
@@ -294,7 +294,7 @@ broader pin bump)" section in its own `docs/tool-surface-reconciliation.md`.
 ## When this applies / when it doesn't
 
 - **Applies** when a plugin pins MCP servers in `plugin.json` `mcpServers` AND ships
-  agents that enumerate those servers' tools by hand. genvid-c3 is the reference.
+  agents that enumerate those servers' tools by hand. gvt-construct3 is the reference.
 - **Does not apply** to a plugin with no bundled MCP servers (e.g. gvt-dev itself),
   or to one whose agents don't enumerate server tools — there is nothing to drift.
 - **Not a release.** Use `release-plugin` to tag and ship; this is its precursor.
