@@ -21,13 +21,13 @@ placement.
 `npx` resolves **package names** from the registry, not installed bin names.
 `npx <name>` looks up a *package* named `<name>` — it does not search for a bin
 named `<name>`. For a scoped package whose bin is unscoped
-(package `@genvid/construct3-chef`, bin `construct3-chef`), `npx construct3-chef`
+(package `@genvidtech/construct3-chef`, bin `construct3-chef`), `npx construct3-chef`
 looks for a *package* called `construct3-chef` and 404s.
 
 Always invoke the full package spec, then the subcommand:
 
 ```
-npx -y @genvid/<pkg>@<version> <subcommand>
+npx -y @genvidtech/<pkg>@<version> <subcommand>
 ```
 
 This bites in two places — the `mcpServers` command and any version-probe or
@@ -89,12 +89,12 @@ version-pinned — all three points at once:
 
 ```json
 {
-  "name": "genvid-c3",
+  "name": "gvt-construct3",
   "version": "0.1.0",
   "mcpServers": {
     "construct3-chef": {
       "command": "npx",
-      "args": ["-y", "@genvid/construct3-chef@1.4.0", "mcp"]
+      "args": ["-y", "@genvidtech/construct3-chef@1.4.0", "mcp"]
     }
   }
 }

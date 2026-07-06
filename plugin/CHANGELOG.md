@@ -13,7 +13,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ### Changed
 
-- **`docs/plugin-authoring.md`: record the "don't name another plugin's components in illustrative examples" convention.** An illustrative `namespace:component` example in a shipped skill/agent body or `CONVENTIONS.md` must use a fake/descriptive placeholder or one of `gvt-dev`'s own components, never a sibling plugin's real name — cross-plugin example names go stale on rename (the #122 root cause) and privilege one plugin. Factual "X is the reference implementation" prose may name a real plugin but must be kept current. Maintainer-facing authoring note (repo-root `docs/`, not shipped) → CHANGELOG entry for traceability, no bump on its own.
+- **`docs/plugin-authoring.md`: record the "don't name another plugin's components in illustrative examples" convention.** An illustrative `namespace:component` example in a shipped skill/agent body or `CONVENTIONS.md` must use a fake/descriptive placeholder or one of `gvt-dev`'s own components, never a sibling plugin's real name — cross-plugin example names go stale on rename (the #122 root cause) and privilege one plugin. Factual "X is the reference implementation" prose may name a real plugin but must be kept current — and in the same pass the doc's own stale factual references were made current: the worked `plugin.json` manifest example (`"name": "genvid-c3"` → `gvt-construct3`) and the `@genvid/construct3-chef` package references (→ `@genvidtech/construct3-chef`, the current npm scope after `gvt-construct3`'s `@genvid → @genvidtech` move). Maintainer-facing authoring note (repo-root `docs/`, not shipped) → CHANGELOG entry for traceability, no bump on its own.
 
 ## [4.1.0] - 2026-07-06
 
