@@ -7,7 +7,9 @@ description: >
   workflow_dispatch + vX.Y.Z tags, signing material from 1Password via a single
   OP_SERVICE_ACCOUNT_TOKEN). Removes .circleci/config.yml and updates docs. Use
   when porting a Cordova plugin off CircleCI, or replicating the
-  cordova-plugin-marketplace CI setup onto a sibling plugin (e.g. -eos).
+  cordova-plugin-marketplace CI setup onto a sibling cordova-plugin-* repo (e.g.
+  cordova-plugin-eos). Not for C3 addons (c3addon-* repos, e.g.
+  c3addon-genvid-epic-online-services), which use a different CI toolchain.
 metadata:
   expects:
     files:

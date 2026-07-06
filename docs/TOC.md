@@ -42,6 +42,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0009-finish-quality-over-additional-scope.md`](decisions/0009-finish-quality-over-additional-scope.md) — why finish-quality of touched code is part of a change's definition of done (principle #8) and can't be deferred
 - [`decisions/0010-agent-dispatch-guide-domain-explorers.md`](decisions/0010-agent-dispatch-guide-domain-explorers.md) — why `plan-task` Phase 1 prefers a repo's named domain explorer over the generic analyst when one is declared
 - [`decisions/0011-create-adr-skill-dispatch-design.md`](decisions/0011-create-adr-skill-dispatch-design.md) — why `create-adr` delegates all writes to `tech-writer` (not reimplementing), moves the MADR-lite template to `plugin/docs/`, and gates renumber blast radius with clean-tree + dry-run
+- [`decisions/0012-stale-config-migration-state.md`](decisions/0012-stale-config-migration-state.md) — why the audit-conventions state detector gets a distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename instead of falling through to `greenfield` or reusing `legacy`
 
 ## Scaffolding sources
 

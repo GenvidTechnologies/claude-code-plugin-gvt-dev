@@ -3,22 +3,26 @@ import { join } from 'node:path';
 
 const NEW_CONFIG = '.gvt-agent.json';
 const LEGACY_CONFIG = 'claude-config.json';
+const STALE_CONFIG = '.genvid-agent.json';
 const GITMODULES = '.gitmodules';
 const LEGACY_SUBMODULE_NAME = 'burbank-claude-config';
 
 export const STATE_GREENFIELD = 'greenfield';
 export const STATE_LEGACY = 'legacy';
 export const STATE_MIGRATED = 'migrated';
+export const STATE_STALE_CONFIG = 'stale-config';
 
 export async function detectState(repoRoot) {
-  const [legacySubmodule, legacyConfig, newConfig] = await Promise.all([
+  const [legacySubmodule, legacyConfig, newConfig, staleConfig] = await Promise.all([
     hasLegacySubmodule(repoRoot),
     fileExists(join(repoRoot, LEGACY_CONFIG)),
     fileExists(join(repoRoot, NEW_CONFIG)),
+    fileExists(join(repoRoot, STALE_CONFIG)),
   ]);
 
   if (legacySubmodule || legacyConfig) return STATE_LEGACY;
   if (newConfig) return STATE_MIGRATED;
+  if (staleConfig) return STATE_STALE_CONFIG;
   return STATE_GREENFIELD;
 }
 

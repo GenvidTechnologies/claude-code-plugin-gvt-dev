@@ -17,9 +17,13 @@ import { promises as fs } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
+import { inferHostFromRemote } from './host-drift.mjs';
+
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
 const LEGACY_CONFIG_FILENAME = 'claude-config.json';
+const STALE_CONFIG_FILENAME = '.genvid-agent.json';
 const CLAUDE_MD = 'CLAUDE.md';
 const TOC = 'docs/TOC.md';
 const CONVENTIONS_IMPORT_LINE = '@CONVENTIONS.md';
@@ -141,9 +145,11 @@ export async function planGreenfield(repoRoot, pluginRoot) {
   await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
     `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
 
+  const skeletonConfig = JSON.parse(await readSkeleton(pluginRoot, NEW_CONFIG_FILENAME));
+  const filledConfig = await prefillConfig(skeletonConfig, repoRoot);
   await pushScaffold(actions, repoRoot, NEW_CONFIG_FILENAME,
-    await readSkeleton(pluginRoot, NEW_CONFIG_FILENAME),
-    `Scaffold ${NEW_CONFIG_FILENAME} with empty schema (fill in your project values)`);
+    JSON.stringify(filledConfig, null, 2) + '\n',
+    `Scaffold ${NEW_CONFIG_FILENAME}, pre-filled where inferable from package.json/git remote (fill in the rest)`);
 
   await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
@@ -176,6 +182,164 @@ async function pushScaffold(actions, repoRoot, rel, content, writeSummary) {
     return;
   }
   actions.push({ type: 'write-file', path, content, summary: writeSummary });
+}
+
+// -----------------------------------------------------------------------------
+// prefillConfig — infer greenfield .gvt-agent.json fields (issue #116)
+// -----------------------------------------------------------------------------
+
+// Lockfile -> package manager, checked in this priority order. Only one is
+// expected in a well-formed repo; the first match wins if more than one is
+// present.
+const LOCKFILE_MANAGERS = [
+  { file: 'package-lock.json', pm: 'npm' },
+  { file: 'pnpm-lock.yaml', pm: 'pnpm' },
+  { file: 'yarn.lock', pm: 'yarn' },
+];
+
+// Detect the package manager from lockfile presence alone (no package.json
+// content read). Returns null when no known lockfile is present — callers
+// must treat that as "unknown", never default to npm (issue #116: a wrong
+// npm placeholder on a pnpm/yarn repo breaks the plugin's pre-commit hook).
+export async function detectPackageManager(repoRoot) {
+  for (const { file, pm } of LOCKFILE_MANAGERS) {
+    if (await fileExists(join(repoRoot, file))) return pm;
+  }
+  return null;
+}
+
+// True when a commands.* field is still the skeleton's blank placeholder.
+function isBlankCommand(value) {
+  return value === undefined || value === '';
+}
+
+// Extract a project-name slug from a git remote URL, e.g.
+//   git@github.com:org/repo.git       -> 'repo'
+//   https://github.com/org/repo.git   -> 'repo'
+//   https://bitbucket.org/org/repo    -> 'repo'
+// Returns null when no slug can be extracted.
+function projectNameFromRemote(url) {
+  if (!url || typeof url !== 'string') return null;
+  const stripped = url.replace(/\.git$/, '');
+  const match = stripped.match(/[/:]([^/:]+)$/);
+  return match ? match[1] : null;
+}
+
+// Overlay inferable fields onto a parsed .gvt-agent.json skeleton, never
+// clobbering a field that's already non-blank. Every inference degrades
+// gracefully (the underlying git-info/host-drift/readPackageScripts helpers
+// already null-guard rather than throw) so this function never throws.
+export async function prefillConfig(skeleton, repoRoot) {
+  const out = JSON.parse(JSON.stringify(skeleton));
+  out.commands = out.commands ?? {};
+  out.repo = out.repo ?? {};
+  out.project = out.project ?? {};
+
+  // commands.* — only when a lockfile pins the package manager; a repo with
+  // package.json scripts but no lockfile stays blank rather than guessing npm.
+  try {
+    const pm = await detectPackageManager(repoRoot);
+    if (pm) {
+      const scripts = await readPackageScripts(repoRoot, pm);
+      for (const key of ['test', 'lint', 'build', 'validate']) {
+        if (isBlankCommand(out.commands[key]) && scripts[key]) {
+          out.commands[key] = scripts[key];
+        }
+      }
+    }
+  } catch {
+    // leave commands.* as-is
+  }
+
+  // repo.host / repo.default_branch / project.name — all derived from the
+  // origin remote (and, for default_branch, the remote's HEAD symref).
+  let remoteUrl = null;
+  try {
+    remoteUrl = gitRemoteUrl(repoRoot);
+  } catch {
+    remoteUrl = null;
+  }
+
+  if (remoteUrl) {
+    if (!out.repo.host) {
+      const host = inferHostFromRemote(remoteUrl);
+      if (host) out.repo.host = host;
+    }
+    if (!out.project.name || out.project.name === '<your-project-name>') {
+      const slug = projectNameFromRemote(remoteUrl);
+      if (slug) out.project.name = slug;
+    }
+  }
+
+  if (!out.repo.default_branch) {
+    try {
+      const branch = gitDefaultBranch(repoRoot);
+      if (branch) out.repo.default_branch = branch;
+    } catch {
+      // leave repo.default_branch unset
+    }
+  }
+
+  return out;
+}
+
+// -----------------------------------------------------------------------------
+// planStaleConfig — rename .genvid-agent.json -> .gvt-agent.json (issue #117/#118)
+// -----------------------------------------------------------------------------
+
+// A stale config carries genvid-construct3 (C3) markers when it declares the
+// `features.c3` or `paths.c3project` keys — signals that genvid-construct3
+// tooling may still read this file by its legacy name. Renaming it out from
+// under that tooling would break it, so those repos get a port-and-keep note
+// instead of an automatic `git mv`.
+export function hasC3Markers(cfg) {
+  return cfg?.features?.c3 !== undefined || cfg?.paths?.c3project !== undefined;
+}
+
+export async function planStaleConfig(repoRoot, pluginRoot) {
+  const staleConfigPath = join(repoRoot, STALE_CONFIG_FILENAME);
+  const cfg = JSON.parse(await fs.readFile(staleConfigPath, 'utf8'));
+
+  if (hasC3Markers(cfg)) {
+    return {
+      state: 'stale-config',
+      actions: [
+        {
+          type: 'note',
+          summary: `${STALE_CONFIG_FILENAME} has C3 markers (features.c3 / paths.c3project) — NOT auto-renaming; `
+            + 'genvid-construct3 tooling may still read this file by its legacy name',
+        },
+        {
+          type: 'note',
+          summary: `Port-and-keep: copy commands/repo/features/paths from ${STALE_CONFIG_FILENAME} into a new `
+            + `${NEW_CONFIG_FILENAME}, reconcile the C3 fields by hand, and KEEP ${STALE_CONFIG_FILENAME} in place`,
+        },
+      ],
+    };
+  }
+
+  const actions = [];
+  actions.push({
+    type: 'git-cmd',
+    args: ['mv', STALE_CONFIG_FILENAME, NEW_CONFIG_FILENAME],
+    summary: `git mv ${STALE_CONFIG_FILENAME} -> ${NEW_CONFIG_FILENAME} (preserve history)`,
+  });
+
+  // Scaffold the other three convention files (skip-if-exists) — never
+  // .gvt-agent.json itself, which the git mv above just produced. Scaffolding
+  // it here would race the mv and orphan the real config behind an empty
+  // shadow file (the bug this state fixes).
+  const conventionsSource = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
+  await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
+    `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
+
+  await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
+    `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
+
+  await pushScaffold(actions, repoRoot, TOC, await readSkeleton(pluginRoot, TOC),
+    `Scaffold ${TOC} with placeholder doc map`);
+
+  return { state: 'stale-config', actions };
 }
 
 // -----------------------------------------------------------------------------

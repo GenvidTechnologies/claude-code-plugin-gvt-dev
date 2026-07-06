@@ -5,13 +5,18 @@ import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 import {
   translateLegacyConfig,
   planGreenfield,
   planLegacy,
+  planStaleConfig,
+  hasC3Markers,
   applyPlan,
   scanDanglingReferences,
+  detectPackageManager,
+  prefillConfig,
 } from '../lib/migrate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,6 +51,14 @@ async function writeRepoFile(dir, rel, content) {
   const path = join(dir, rel);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content);
+}
+
+function git(dir, args) {
+  const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  }
+  return result.stdout;
 }
 
 test('translateLegacyConfig: minimal legacy -> defaults', () => {
@@ -227,15 +240,16 @@ test('planGreenfield: empty repo scaffolds all four files', async () => {
   }
 });
 
-test('planGreenfield: scaffold content is sourced verbatim from skeleton/', async () => {
+test('planGreenfield: scaffold content matches the skeleton shape (no git remote, no lockfile -> all-blank overlay is a no-op)', async () => {
   const dir = await withTempRepo(async () => {});
   try {
     const plan = await planGreenfield(dir, PLUGIN_ROOT);
     const writeFor = (suffix) => plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith(suffix));
 
     const agentCfg = writeFor('.gvt-agent.json');
-    assert.equal(agentCfg.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/.gvt-agent.json'), 'utf8'));
-    assert.doesNotThrow(() => JSON.parse(agentCfg.content), 'skeleton .gvt-agent.json must be valid JSON');
+    const skeleton = JSON.parse(await fs.readFile(join(PLUGIN_ROOT, 'skeleton/.gvt-agent.json'), 'utf8'));
+    const parsed = JSON.parse(agentCfg.content);
+    assert.deepEqual(parsed, skeleton, 'with no git remote and no lockfile, prefill must be a structural no-op');
 
     const claudeMd = writeFor('CLAUDE.md');
     assert.equal(claudeMd.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/CLAUDE.md'), 'utf8'));
@@ -269,6 +283,246 @@ test('planGreenfield: pre-existing CONVENTIONS.md / CLAUDE.md are SKIPPED, not o
     await applyPlan(plan, dir);
     assert.equal(await fs.readFile(join(dir, 'CONVENTIONS.md'), 'utf8'), 'hand-written c3 contract\n');
     assert.equal(await fs.readFile(join(dir, 'CLAUDE.md'), 'utf8'), 'detailed hand-written project context\n');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #116 — greenfield .gvt-agent.json field prefill
+// ---------------------------------------------------------------------------
+
+test('detectPackageManager: package-lock.json -> npm', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'package-lock.json', '{}');
+  });
+  try {
+    assert.equal(await detectPackageManager(dir), 'npm');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectPackageManager: pnpm-lock.yaml -> pnpm', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'pnpm-lock.yaml', 'lockfileVersion: 6.0\n');
+  });
+  try {
+    assert.equal(await detectPackageManager(dir), 'pnpm');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectPackageManager: yarn.lock -> yarn', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'yarn.lock', '# yarn lockfile v1\n');
+  });
+  try {
+    assert.equal(await detectPackageManager(dir), 'yarn');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('detectPackageManager: no lockfile -> null', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    assert.equal(await detectPackageManager(dir), null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+const BLANK_SKELETON = {
+  project: { name: '<your-project-name>', description: '', languages: [] },
+  commands: { test: '', lint: '', build: '', validate: '' },
+  repo: {},
+  features: {},
+  paths: {},
+};
+
+test('prefillConfig: pnpm-lock.yaml + package.json with a lint script -> commands.lint uses pnpm', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'pnpm-lock.yaml', 'lockfileVersion: 6.0\n');
+    await writeRepoFile(d, 'package.json', JSON.stringify({ scripts: { lint: 'eslint .' } }));
+  });
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.equal(out.commands.lint, 'pnpm run lint');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: package-lock.json + package.json with test/lint scripts -> npm-style commands', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'package-lock.json', '{}');
+    await writeRepoFile(d, 'package.json', JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .' } }));
+  });
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.equal(out.commands.test, 'npm test');
+    assert.equal(out.commands.lint, 'npm run lint');
+    assert.equal(out.commands.validate, 'npm run lint && npm test');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: package.json present but NO lockfile -> commands stay blank (never default to npm)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'package.json', JSON.stringify({ scripts: { test: 'jest', lint: 'eslint .' } }));
+  });
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.deepEqual(out.commands, { test: '', lint: '', build: '', validate: '' });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: no git repo -> repo.host / repo.default_branch stay absent (no throw)', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.equal(out.repo.host, undefined);
+    assert.equal(out.repo.default_branch, undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: git repo with a github origin remote -> repo.host + project.name filled', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    git(d, ['remote', 'add', 'origin', 'https://github.com/org/my-repo.git']);
+  });
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.equal(out.repo.host, 'github');
+    assert.equal(out.project.name, 'my-repo');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: origin/HEAD symref resolves repo.default_branch', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    git(d, ['remote', 'add', 'origin', 'https://github.com/org/my-repo.git']);
+    git(d, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/develop']);
+  });
+  try {
+    const out = await prefillConfig(BLANK_SKELETON, dir);
+    assert.equal(out.repo.default_branch, 'develop');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('prefillConfig: never overwrites an already non-blank field', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'package-lock.json', '{}');
+    await writeRepoFile(d, 'package.json', JSON.stringify({ scripts: { lint: 'eslint .' } }));
+    git(d, ['init', '-q', '.']);
+    git(d, ['remote', 'add', 'origin', 'https://github.com/org/my-repo.git']);
+  });
+  try {
+    const preFilled = {
+      project: { name: 'already-named', description: '', languages: [] },
+      commands: { test: '', lint: 'custom lint command', build: '', validate: '' },
+      repo: { host: 'bitbucket' },
+      features: {},
+      paths: {},
+    };
+    const out = await prefillConfig(preFilled, dir);
+    assert.equal(out.project.name, 'already-named', 'non-placeholder project.name must be kept');
+    assert.equal(out.commands.lint, 'custom lint command', 'non-blank commands.lint must be kept');
+    assert.equal(out.repo.host, 'bitbucket', 'non-blank repo.host must be kept');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planGreenfield: pre-existing .gvt-agent.json is SKIPPED, never clobbered by prefill', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.gvt-agent.json', JSON.stringify({ project: { name: 'hand-configured' } }, null, 2));
+    git(d, ['init', '-q', '.']);
+    git(d, ['remote', 'add', 'origin', 'https://github.com/org/my-repo.git']);
+  });
+  try {
+    const plan = await planGreenfield(dir, PLUGIN_ROOT);
+    const writes = plan.actions.filter((a) => a.type === 'write-file').map((a) => a.path);
+    const notes = plan.actions.filter((a) => a.type === 'note').map((a) => a.summary);
+
+    assert.ok(!writes.some((p) => p.endsWith('.gvt-agent.json')), '.gvt-agent.json must NOT be overwritten');
+    assert.ok(notes.some((s) => s.includes('.gvt-agent.json') && /SKIPPED/.test(s)),
+      'a SKIPPED note must flag the pre-existing .gvt-agent.json');
+
+    await applyPlan(plan, dir);
+    const stillThere = JSON.parse(await fs.readFile(join(dir, '.gvt-agent.json'), 'utf8'));
+    assert.equal(stillThere.project.name, 'hand-configured');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #117/#118 — planStaleConfig: rename .genvid-agent.json -> .gvt-agent.json,
+// or port-and-keep when C3 markers are present
+// ---------------------------------------------------------------------------
+
+test('hasC3Markers: no features/paths -> false', () => {
+  assert.equal(hasC3Markers({}), false);
+  assert.equal(hasC3Markers({ project: { name: 'x' } }), false);
+});
+
+test('hasC3Markers: features.c3 present -> true', () => {
+  assert.equal(hasC3Markers({ features: { c3: true } }), true);
+});
+
+test('hasC3Markers: paths.c3project present -> true', () => {
+  assert.equal(hasC3Markers({ paths: { c3project: 'C3Project' } }), true);
+});
+
+test('planStaleConfig: pure stale-name (no C3 markers) -> git mv, no .gvt-agent.json write', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({ project: { name: 'foo' } }, null, 2));
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+
+    const gitCmds = plan.actions.filter((a) => a.type === 'git-cmd').map((a) => a.args.join(' '));
+    assert.ok(gitCmds.includes('mv .genvid-agent.json .gvt-agent.json'), 'expected a git mv rename action');
+
+    const writes = plan.actions.filter((a) => a.type === 'write-file');
+    assert.ok(
+      !writes.some((a) => a.path.replace(/\\/g, '/').endsWith('.gvt-agent.json')),
+      'must NOT scaffold a shadow .gvt-agent.json',
+    );
+    // The other three convention files are still offered.
+    assert.ok(writes.some((a) => a.path.endsWith('CONVENTIONS.md')));
+    assert.ok(writes.some((a) => a.path.endsWith('CLAUDE.md')));
+    assert.ok(writes.some((a) => a.path.replace(/\\/g, '/').endsWith('docs/TOC.md')));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planStaleConfig: C3 markers present -> note-only plan (no git-cmd, no write)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({
+      project: { name: 'foo' },
+      features: { c3: true },
+    }, null, 2));
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+    assert.ok(plan.actions.length > 0, 'expected at least one note action');
+    assert.ok(plan.actions.every((a) => a.type === 'note'), 'every action must be a note (no fs effect)');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

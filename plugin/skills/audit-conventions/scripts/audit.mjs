@@ -18,8 +18,15 @@ import { spawnSync } from 'node:child_process';
 import { extractFrontmatter } from './lib/frontmatter.mjs';
 import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
-import { detectState, STATE_GREENFIELD, STATE_LEGACY, STATE_MIGRATED } from './lib/state-detect.mjs';
-import { planGreenfield, planLegacy, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
+import { gitRemoteUrl } from './lib/git-info.mjs';
+import {
+  detectState,
+  STATE_GREENFIELD,
+  STATE_LEGACY,
+  STATE_MIGRATED,
+  STATE_STALE_CONFIG,
+} from './lib/state-detect.mjs';
+import { planGreenfield, planLegacy, planStaleConfig, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 
@@ -46,6 +53,23 @@ async function main() {
     return;
   }
 
+  // A stale-named legacy config (.genvid-agent.json) carries the same schema
+  // as .gvt-agent.json (issue #117/#118) — evaluate expectations against it
+  // under its actual filename so the report shows its keys as satisfied
+  // instead of flooding on a config file that (correctly) doesn't exist yet.
+  let configFilename = '.gvt-agent.json';
+  let cfgHasC3 = false;
+  if (state === STATE_STALE_CONFIG) {
+    configFilename = '.genvid-agent.json';
+    try {
+      const cfg = JSON.parse(await fs.readFile(join(REPO_ROOT, configFilename), 'utf8'));
+      cfgHasC3 = hasC3Markers(cfg);
+    } catch {
+      // unreadable/invalid JSON — leave cfgHasC3 false; evaluateConfig below
+      // will surface the read failure per-expectation.
+    }
+  }
+
   const components = await walkComponents(PLUGIN_ROOT);
   const findings = [];
   for (const component of components) {
@@ -56,19 +80,19 @@ async function main() {
       findings.push(await evaluateFile(component, entry));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry));
+      findings.push(await evaluateConfig(component, entry, configFilename));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
     }
   }
 
-  const hostDrift = await evaluateHostDrift();
+  const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
 
-  const report = formatReport(state, findings);
+  const report = formatReport(state, findings, { cfgHasC3 });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
@@ -135,9 +159,9 @@ async function evaluateFile(component, entry) {
   };
 }
 
-async function evaluateConfig(component, entry) {
+async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json') {
   const required = entry.required !== false;
-  const inFile = entry.in ?? '.gvt-agent.json';
+  const inFile = entry.in ?? configFilename;
   const filePath = join(REPO_ROOT, inFile);
 
   let parsed;
@@ -194,16 +218,16 @@ function evaluateTool(component, entry) {
 // to flag). This is a repo-health check, not a per-component expectation — a
 // stale host misleads host-specific skills (create-pr, release-*) at the start
 // of a session, and repos do migrate hosts (Bitbucket → GitHub).
-async function evaluateHostDrift() {
+async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
   let configuredHost;
   try {
-    const raw = await fs.readFile(join(REPO_ROOT, '.gvt-agent.json'), 'utf8');
+    const raw = await fs.readFile(join(REPO_ROOT, configFilename), 'utf8');
     configuredHost = resolveKey(JSON.parse(raw), 'repo.host').value;
   } catch {
     return null; // no config / unreadable — other findings cover that
   }
 
-  const drift = detectHostDrift({ configuredHost, remoteUrl: gitRemoteUrl() });
+  const drift = detectHostDrift({ configuredHost, remoteUrl: gitRemoteUrl(REPO_ROOT) });
   if (!drift) return null;
 
   return {
@@ -241,15 +265,6 @@ function evaluateDescriptionLengths(components) {
   return findings;
 }
 
-function gitRemoteUrl() {
-  const result = spawnSync('git', ['remote', 'get-url', 'origin'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-  });
-  if (result.status !== 0) return null; // no remote, or not a git repo
-  return result.stdout.trim();
-}
-
 // ---- helpers ---------------------------------------------------------------
 
 async function fileExists(path) {
@@ -278,7 +293,7 @@ function commandExists(cmd) {
 
 // ---- report ----------------------------------------------------------------
 
-function formatReport(state, findings) {
+function formatReport(state, findings, { cfgHasC3 = false } = {}) {
   const errors = findings.filter((f) => f.severity === 'error');
   const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
@@ -326,6 +341,16 @@ function formatReport(state, findings) {
   } else if (state === STATE_GREENFIELD) {
     lines.push('');
     lines.push('> Run `--fix` to scaffold the four convention files.');
+  } else if (state === STATE_STALE_CONFIG) {
+    lines.push('');
+    if (cfgHasC3) {
+      lines.push(
+        '> Legacy `.genvid-agent.json` with C3 markers detected. Run `--fix` to see the '
+        + 'port-and-keep steps (it will NOT auto-rename).',
+      );
+    } else {
+      lines.push('> Legacy `.genvid-agent.json` detected (pre-`gvt` name). Run `--fix` to rename it to `.gvt-agent.json`.');
+    }
   }
 
   return lines.join('\n');
@@ -361,6 +386,8 @@ async function runFix(state) {
   let plan;
   if (state === STATE_GREENFIELD) {
     plan = await planGreenfield(REPO_ROOT, PLUGIN_ROOT);
+  } else if (state === STATE_STALE_CONFIG) {
+    plan = await planStaleConfig(REPO_ROOT, PLUGIN_ROOT);
   } else {
     // STATE_LEGACY
     const snapshotPath = join(SCRIPT_DIR, 'legacy-manifest-snapshot.json');
