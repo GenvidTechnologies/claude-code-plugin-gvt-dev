@@ -2,7 +2,7 @@
 
 Cross-cutting gotchas for building Genvid Claude Code plugins — things that cost
 real debugging time and recur across plugins. Surfaced while authoring the
-genvid-c3 sibling plugin.
+gvt-construct3 sibling plugin.
 
 ## Ship MCP servers via `plugin.json`, not a root `.mcp.json`
 
@@ -57,6 +57,30 @@ grep -rnE 'Step [0-9]+[a-z]?|### [0-9]+[a-z]?\.' plugin/skills/<name>/
 
 Reconcile every hit against the new numbering. `claude plugin validate` will
 **not** catch a dangling "see Step 4a" — it's prose, not schema.
+
+## Don't name another plugin's components in illustrative examples
+
+When a shipped skill/agent body or `CONVENTIONS.md` needs an *illustrative*
+`namespace:component` example (an "e.g. …" agent or skill reference), use a
+fake/descriptive placeholder (e.g. `<domain-plugin>:<explorer>`) or one of
+`gvt-dev`'s **own** components — never another plugin's real name. We ship many
+of our own; there's no reason to borrow a sibling plugin's.
+
+Two failure modes motivate this:
+
+- **It goes stale on rename.** `CONVENTIONS.md` shipped `genvid-c3:c3-explorer`
+  as the domain-explorer example; the C3 plugin was later renamed
+  `genvid-c3 → gvt-construct3`, and because consumers receive `CONVENTIONS.md`
+  verbatim, the dead name propagated to every consuming repo until filed as a bug
+  (#122). A placeholder can't rename-rot.
+- **It privileges one plugin.** An illustrative example shouldn't imply the one
+  sibling that happens to be named is the canonical or only choice.
+
+This is about *illustrative* references. **Factual** prose — "X is the reference
+implementation", a concrete real manifest shown as a worked example — legitimately
+names a real plugin, but must then be kept **current** (a stale factual name is
+just a bug). When in doubt about whether a reference is illustrative or factual,
+prefer the placeholder.
 
 ## Example
 

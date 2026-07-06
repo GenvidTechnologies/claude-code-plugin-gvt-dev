@@ -50,7 +50,7 @@ If no related context exists, proceed normally.
 
 ### Phase 1: Analysis
 
-Dispatch a recon agent with the task description to explore the problem space, identify requirements, and document constraints. **Prefer the project's domain explorer** when the task is domain-specific: a domain task (e.g. a Construct 3 event-sheet migration) needs the domain's MCP tools, which the generic analyst lacks — check `CLAUDE.md` for any agent-dispatch guidance naming a better-fit recon agent (e.g. `genvid-c3:c3-explorer`) and dispatch that instead. **Fall back to `gvt-dev:analyst`** for general tasks, or when `CLAUDE.md` names no domain explorer.
+Dispatch a recon agent with the task description to explore the problem space, identify requirements, and document constraints. **Prefer the project's domain explorer** when the task is domain-specific: a domain task (e.g. a Construct 3 event-sheet migration) needs the domain's MCP tools, which the generic analyst lacks — check `CLAUDE.md` for any agent-dispatch guidance naming a better-fit recon agent (e.g. `<domain-plugin>:<explorer>`) and dispatch that instead. **Fall back to `gvt-dev:analyst`** for general tasks, or when `CLAUDE.md` names no domain explorer.
 
 **Input:** the user's task description plus any relevant prior context (initiative docs, prior work).
 
