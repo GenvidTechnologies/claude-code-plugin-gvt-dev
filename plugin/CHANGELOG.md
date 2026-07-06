@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-07-06
+
 ### Added
 
 - **`audit-conventions`: pre-fill inferable `.gvt-agent.json` fields on the greenfield scaffold (#116).** Greenfield `--fix` previously copied the all-blank skeleton verbatim, leaving every field a placeholder. It now pre-fills the inferable ones: `commands.*` from `package.json` scripts — but **only when a lockfile pins the package manager** (`package-lock.json`→npm, `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn); with no lockfile the command fields stay blank rather than emitting a wrong `npm` placeholder that would break a pnpm/yarn consumer's pre-commit hook (the #8 lesson). Also `repo.host` from the git remote, `repo.default_branch` from `origin/HEAD`, and `project.name` from the remote slug. Every inference graceful-degrades and never throws; existing values and the skip-if-exists guard are never overridden. Behavioral skill change → version bump at release.
