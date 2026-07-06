@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-07-06
+
 ### Fixed
 
 - **Stale cross-plugin example references in shipped docs/skill bodies (#122).** The `Agent Dispatch Guide` example in `CONVENTIONS.md` — and the mirrored Phase-1 guidance in `plan-task` — named a real sibling plugin's agent, `genvid-c3:c3-explorer`, which went dead when that plugin was renamed `genvid-c3 → gvt-construct3`. Because `CONVENTIONS.md` ships to consumers verbatim, the stale example propagated to every consuming repo (surfaced in GenvidTechnologies/c3addon-genvid-marketplace#4, which applied a local stopgap patch). Both now use a rename-proof placeholder `<domain-plugin>:<explorer>` instead of naming any real plugin — `gvt-dev` ships only generic agents, so a *domain* explorer example can't be a local component, making a placeholder the right fix. Also swept related sibling-plugin name drift: `release-plugin`'s description trigger example (dropped the stale second name for the local `gvt-dev` example) and three stale `genvid-c3` factual references in `reconcile-mcp-pin` (→ `gvt-construct3`, matching two already-current references in the same file). This is the canonical upstream fix, so the next `sync-config` clears the consumer drift. Doc/description-only change to shipped surface → version bump at release.
