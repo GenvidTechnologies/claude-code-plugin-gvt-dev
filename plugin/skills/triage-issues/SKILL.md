@@ -161,6 +161,15 @@ approved changes using the **Mutation recipes** in `docs/issue-triage.md`:
 Apply one issue fully before moving to the next. If a write fails, stop on that
 issue, report the failure, and do **not** stamp `triagedLabel`.
 
+**A blocked create is not a plain failure — recover it.** When a split/sub-issue
+`gh issue create` is blocked by the auto-mode write-classifier (a `Bash(gh issue
+*)` allow-rule does not override that gate) or a permission prompt the user isn't
+present for — distinct from a genuine tracker/API error — don't drop the split:
+surface the fully drafted issue body so the user can file it (`! gh issue create
+…`) and record it as an outstanding action. The drafted split body is required
+regardless; only the create is best-effort (see
+`development-principles.md` principle #9).
+
 ## 4. Safety
 
 | Action | Interactive (default) | `--non-interactive` |
