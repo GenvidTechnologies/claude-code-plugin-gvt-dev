@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`development-principles.md` principle #9 "External writes are best-effort", wired into the issue-filing skills (#125).** A follow-up (or split) issue's body — title, labels, body — is *always drafted*, but the `gh issue create` is *best-effort*: the Claude Code auto-mode write-classifier is a separate external-writes gate that a static `Bash(gh issue *)` allow-rule does **not** override, so a create can be silently denied even when the user explicitly opted into it. The new principle says to surface the fully drafted body for the user to file (`! gh issue create …`) and record it as an outstanding action rather than dropping it. `plan-task` (a new closing step for deferred-scope follow-ups), `plan-next-issue` (Closing summary — no-writes: it surfaces a delegate's drafted-but-unfiled body), and `triage-issues` (split-issue creation) each reference the principle at their issue-filing point. Surfaced running `plan-next-issue` → `plan-task` on `c3addon-youtube-video-plugin` #12, where a deferred-playlists follow-up `gh issue create` was classifier-denied despite the allow-rule and had to be recovered by hand. Runtime-imported reference doc + behavioral skill guidance → version bump at release.
+
 ## [4.1.1] - 2026-07-06
 
 ### Fixed

@@ -197,3 +197,12 @@ reads the backlog to detect triage need and rank candidates.
 Report: whether triage ran (and what it changed, from its summary); which issue(s)
 were chosen; and how they were routed into planning (one combined plan, or N
 sequential `plan-task` runs). Point the user at the plan(s) `plan-task` produced.
+
+If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
+its `gh issue create` was blocked — the auto-mode write-classifier denied it (a
+`Bash(gh issue *)` allow-rule does not override that gate) or a permission prompt
+fired while the user was away — **surface the fully drafted body here and record it
+as an outstanding action** rather than letting it drop. This is consistent with the
+skill's no-writes stance: it reports the drafted body; the user files it (`! gh
+issue create …`). See `${CLAUDE_PLUGIN_ROOT}/docs/development-principles.md`
+principle #9.
