@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`plan-task`: two Phase-gate refinements (#128, #127).** (1) The Phase-1 **dependency-bump gate** — "verify the bump is real before treating it as dependency work" — was framed entirely around npm lockfiles (`^`/`~` ranges, "read the lockfile entry"), which doesn't map to a **vendored/binary** bump (a checked-in `.c3addon` blob, a copied library, an LFS asset — no lockfile exists). It now spells out the equivalent checks: inspect the vendored artifact's **embedded version** against the target, and verify the issue body's **reconciliation premise** (CI pins, docs, surrounding config) against current state, since a prior PR may have shipped the surrounding migration and left only the blob swap. Surfaced on a burbank task bumping two vendored `.c3addon` blobs. (2) The Phase-4 **ADR threshold** gated authorship on the *formal designer* having run, so the **full-proposal / simple-task shortcut** — which replaces the designer with an `AskUserQuestion` design-fork checkpoint — could resolve a genuinely ADR-worthy decision yet skip the record. Clause (a) now fires when Phase 2 ran **or** a shortcut checkpoint resolved a non-trivial design fork: it's *whether a non-trivial design decision was made* that gates the ADR, not *which phase surfaced it*. Surfaced on construct3-chef #98 (shortcut path, three cross-module design forks, ADR `0009` rightly authored). Behavioral skill guidance → version bump at release.
+
 ## [4.2.0] - 2026-07-08
 
 ### Added
