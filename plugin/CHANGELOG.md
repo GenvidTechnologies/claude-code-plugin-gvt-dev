@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-07-20
+
 ### Added
 
 - **`audit-conventions`: author-time README inventory lint (maintainer/dogfood runs only).** The audit now warns when the plugin repo's root `README.md` "Skills" table or "Agents" list drifts from the components actually under `plugin/skills` / `plugin/agents` — either a component present but unlisted, or a stale row/name with no matching component. Like the description-length cap, it only fires on a run against the plugin source (`AUDITING_PLUGIN_SOURCE`), never in a consumer's audit, and is a non-fatal `warning`. Catches the drift behind the README that listed 15 skills when 21 existed. Behavioral skill change → version bump at release.
