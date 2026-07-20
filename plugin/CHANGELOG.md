@@ -10,6 +10,7 @@ and follows [semantic versioning](https://semver.org/).
 ### Added
 
 - **`audit-conventions`: detect `CONVENTIONS.md` drift in a migrated repo and offer a vetoable `--fix` resync (#132).** Previously a migrated repo's `--fix` skipped any existing `CONVENTIONS.md` outright and the plain audit had no drift check at all — yet `CONVENTIONS.md` itself already claimed "the audit reports drift on each run so you can re-sync after the plugin updates," which wasn't true. The plain audit now emits a non-fatal WARNING when the repo-root copy differs from the plugin's canonical bytes; `--fix` previews the resync (absent → copy; drifted → resync with a `+N/−M` line-count diff hint; identical → no-op note) and `--apply` writes it, refusing a dirty working tree like every other `--fix` path. Makes the CONVENTIONS.md claim real. Behavioral skill change → version bump at release.
+- **`audit-conventions`: advisory repo-hygiene checks (retired tokens, broken doc links, orphaned docs) + new optional `hygiene` config key (#131).** Adds a one-line sub-note that the internal `lib/fs-walk.mjs` extraction is a non-visible refactor with no consumer-facing surface.
 
 ## [4.2.1] - 2026-07-15
 

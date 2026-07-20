@@ -3,6 +3,11 @@ name: audit-conventions
 description: Validates the consuming repo against the genvid plugin's convention contract — walks every installed skill and agent's metadata.expects (required files, config keys, tools) and reports missing/mismatched items with the reason each was needed. Default mode is read-only; --fix migrates a legacy or greenfield repo to the new contract. Use to check whether a repo satisfies the plugin's expectations or to surface drift after a plugin update.
 metadata:
   expects:
+    config:
+      - key: hygiene
+        in: .gvt-agent.json
+        required: false
+        reason: Optional overrides for the advisory repo-hygiene scanners (retired-token deny-list, exclude paths); sensible defaults apply when absent.
     tools:
       - command: node
         reason: Runs the validator script
@@ -121,6 +126,8 @@ State: migrated
 ```
 
 The **Warnings** section holds non-fatal repo-health flags that aren't tied to a component expectation — `repo.host` drift (the configured host disagrees with the `origin` git remote) and, for a **migrated** repo, `CONVENTIONS.md` drift from the plugin's canonical copy (see Behavior by state above). Warnings are excluded from the required-expectations tally and never affect the exit code; an absent `repo.host`, an unresolvable/unrecognized remote, or an absent `CONVENTIONS.md` stays silent.
+
+Also folded into **Warnings** and **Info** are three advisory repo-hygiene checks, scanning `docs/**.md` + `CLAUDE.md`: a **retired-token scan** (info) flags lines still using a deny-listed token (e.g. a pre-rebrand `genvid:` invocation); a **broken intra-repo markdown link check** (warning) flags a relative link whose target doesn't resolve on disk; a **`docs/TOC.md` orphan check** (info) flags a doc under `docs/` that no line of `docs/TOC.md` references. All three respect the optional `hygiene` config block (`retiredTokens`, `excludePaths` — see `CONVENTIONS.md`) and fall back to sensible defaults when it's absent. Like the `repo.host`/`CONVENTIONS.md` warnings above, **these three checks are purely advisory: they never affect the required-expectations tally or the exit code**, same framing as the host-drift and description-length checks — they surface repo-health drift for the user to act on, not a contract violation to fail CI over.
 
 Exit code: 0 if no errors (warnings alone keep it 0); non-zero if any required expectation is unmet.
 
