@@ -343,6 +343,83 @@ export async function planStaleConfig(repoRoot, pluginRoot) {
 }
 
 // -----------------------------------------------------------------------------
+// planMigratedResync — resync a migrated repo's CONVENTIONS.md against canonical
+// -----------------------------------------------------------------------------
+
+// Count how many lines in `a` don't appear in `b`, treating each side as a
+// multiset of lines (a simple diff hint, not a precise line-by-line diff).
+function lineMultisetDiffCount(a, b) {
+  const counts = new Map();
+  for (const line of b) counts.set(line, (counts.get(line) ?? 0) + 1);
+  let missing = 0;
+  for (const line of a) {
+    const remaining = counts.get(line) ?? 0;
+    if (remaining > 0) {
+      counts.set(line, remaining - 1);
+    } else {
+      missing++;
+    }
+  }
+  return missing;
+}
+
+// A migrated repo already carries its own CONVENTIONS.md (copied at migration
+// time); this planner resyncs it against the plugin's current canonical copy.
+// Unlike greenfield/stale-config's pushScaffold (which never overwrites a
+// pre-existing file — issue #25), a migrated repo's CONVENTIONS.md IS the
+// plugin's copy, so keeping it in sync with the canonical is the desired
+// behavior here, not an overwrite hazard.
+export async function planMigratedResync(repoRoot, pluginRoot) {
+  const canonical = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
+  const targetPath = join(repoRoot, CONVENTIONS_FILENAME);
+
+  let local = null;
+  try {
+    local = await fs.readFile(targetPath, 'utf8');
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+    local = null;
+  }
+
+  if (local === null) {
+    return {
+      state: 'migrated',
+      actions: [{
+        type: 'write-file',
+        path: targetPath,
+        content: canonical,
+        summary: `Copy plugin's CONVENTIONS.md to repo root (${canonical.length} bytes)`,
+      }],
+    };
+  }
+
+  if (local === canonical) {
+    return {
+      state: 'migrated',
+      actions: [{
+        type: 'note',
+        summary: `${CONVENTIONS_FILENAME} is up to date with the plugin's canonical copy — nothing to resync`,
+      }],
+    };
+  }
+
+  const canonicalLines = canonical.split('\n');
+  const localLines = local.split('\n');
+  const added = lineMultisetDiffCount(canonicalLines, localLines);
+  const removed = lineMultisetDiffCount(localLines, canonicalLines);
+
+  return {
+    state: 'migrated',
+    actions: [{
+      type: 'write-file',
+      path: targetPath,
+      content: canonical,
+      summary: `Resync ${CONVENTIONS_FILENAME} — local copy drifted from canonical (+${added}/−${removed} lines)`,
+    }],
+  };
+}
+
+// -----------------------------------------------------------------------------
 // planLegacy — translate, scaffold, delete-rendered, remove-submodule
 // -----------------------------------------------------------------------------
 
