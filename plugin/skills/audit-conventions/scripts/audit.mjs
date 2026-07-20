@@ -30,6 +30,7 @@ import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3M
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
+import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -95,6 +96,15 @@ async function main() {
   if (conventionsDrift) findings.push(conventionsDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
+
+  // Author-time lint (maintainer/dogfood run only): the repo-root README's
+  // Skills table / Agents list must stay in sync with plugin/skills + plugin/agents.
+  if (AUDITING_PLUGIN_SOURCE) {
+    const readme = await readFileOrNull(join(REPO_ROOT, 'README.md'));
+    const skillNames = components.filter((c) => c.type === 'skill').map((c) => c.name);
+    const agentNames = components.filter((c) => c.type === 'agent').map((c) => c.name);
+    findings.push(...checkReadmeInventory(readme, skillNames, agentNames));
+  }
 
   const hygiene = await loadHygieneConfig(configFilename);
   const hygieneOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
@@ -340,6 +350,14 @@ async function dirExists(path) {
   }
 }
 
+async function readFileOrNull(path) {
+  try {
+    return await fs.readFile(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 function commandExists(cmd) {
   const checker = process.platform === 'win32' ? 'where' : 'which';
   const result = spawnSync(checker, [cmd], { stdio: 'pipe' });
@@ -423,6 +441,7 @@ function formatFinding(f) {
     'retired-token',
     'broken-link',
     'orphaned-doc',
+    'readme-inventory',
   ];
   if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
