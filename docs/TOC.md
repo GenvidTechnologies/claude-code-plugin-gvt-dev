@@ -44,6 +44,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0011-create-adr-skill-dispatch-design.md`](decisions/0011-create-adr-skill-dispatch-design.md) — why `create-adr` delegates all writes to `tech-writer` (not reimplementing), moves the MADR-lite template to `plugin/docs/`, and gates renumber blast radius with clean-tree + dry-run
 - [`decisions/0012-stale-config-migration-state.md`](decisions/0012-stale-config-migration-state.md) — why the audit-conventions state detector gets a distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename instead of falling through to `greenfield` or reusing `legacy`
 - [`decisions/0013-migrated-state-conventions-resync-scoping.md`](decisions/0013-migrated-state-conventions-resync-scoping.md) — why the `--fix` CONVENTIONS.md resync is scoped to the migrated state only, leaving `pushScaffold`'s skip-if-exists intact for greenfield/stale/legacy
+- [`decisions/0014-git-tracked-config-scan-for-retired-tokens.md`](decisions/0014-git-tracked-config-scan-for-retired-tokens.md) — why the retired-token scanner's config-file coverage is intersected with `git ls-files` rather than scanned by presence, so untracked local overrides (e.g. `.claude/settings.local.json`) can't trip false positives
 
 ## Scaffolding sources
 
