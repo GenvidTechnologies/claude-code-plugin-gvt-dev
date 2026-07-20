@@ -241,6 +241,37 @@ async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
   };
 }
 
+// Compares the repo-root CONVENTIONS.md against the plugin's canonical copy
+// and flags drift (non-fatal — a repo-health check, not a per-component
+// expectation). Only meaningful once a repo has actually migrated: a
+// greenfield/legacy/stale-config repo either has no CONVENTIONS.md yet or is
+// mid-migration, so drift there is covered by other findings instead. Absence
+// of a repo-root CONVENTIONS.md is itself NOT flagged — this very repo has no
+// root CONVENTIONS.md (only plugin/CONVENTIONS.md), and flagging it would make
+// this repo's own dogfood `commands.validate` permanently noisy.
+async function evaluateConventionsDrift(state, pluginRoot) {
+  if (state !== STATE_MIGRATED) return null;
+
+  let repoContent;
+  try {
+    repoContent = await fs.readFile(join(REPO_ROOT, 'CONVENTIONS.md'), 'utf8');
+  } catch {
+    return null; // no root CONVENTIONS.md — nothing to compare, stay silent
+  }
+
+  const canonicalContent = await fs.readFile(join(pluginRoot, 'CONVENTIONS.md'), 'utf8');
+  if (repoContent === canonicalContent) return null;
+
+  return {
+    kind: 'conventions-drift',
+    ok: false,
+    severity: 'warning',
+    detail:
+      "CONVENTIONS.md has drifted from the plugin's canonical copy — run " +
+      '`/gvt-dev:audit-conventions --fix` to preview the resync.',
+  };
+}
+
 // Author-time lint: flag any skill/agent whose rendered description exceeds the
 // session listing's `skillListingMaxDescChars` cap, since over-cap descriptions
 // are silently truncated in the listing. Non-fatal warnings (repo-health, not a
