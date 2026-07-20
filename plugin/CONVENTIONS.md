@@ -9,7 +9,7 @@ If you're forking or adapting the plugin for your own org, this file is what you
 | File | Purpose | Required |
 |------|---------|----------|
 | `CLAUDE.md` | Project context loaded by Claude Code on session start. Holds project-specific facts the plugin's skills reference (commit format, PR format, etc.). Imports this file with `@CONVENTIONS.md`. | Yes |
-| `CONVENTIONS.md` | This file. Lives at the consuming repo's root as a copy of the plugin's canonical version, written by `/gvt-dev:audit-conventions --fix` on first migration. The audit reports drift on each run so you can re-sync after the plugin updates. | Yes |
+| `CONVENTIONS.md` | This file. Lives at the consuming repo's root as a copy of the plugin's canonical version, written by `/gvt-dev:audit-conventions --fix` on first migration. The plain audit warns on each run if this copy has drifted from the canonical; `/gvt-dev:audit-conventions --fix` (dry-run preview, then `--apply`) re-syncs it after the plugin updates. | Yes |
 | `docs/TOC.md` | Index of the project's documentation. Used by planning skills to scope their work. | Yes |
 | `.gvt-agent.json` | Capability registry — project name, build/test commands, repo settings, feature toggles. | Yes |
 
