@@ -16,6 +16,10 @@ import { listMarkdown } from './fs-walk.mjs';
 export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
 
+// Naive: also matches links inside inline code spans (e.g. a doc showing
+// `[text](fake.md)` as a Markdown example). Acceptable for an advisory,
+// info/warning-only check — false positives are rare in practice and a repo can
+// suppress a noisy file via hygiene.excludePaths. A real fix needs a Markdown parser.
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 
 // ---- shared helpers ---------------------------------------------------------
