@@ -24,3 +24,18 @@ export function gitDefaultBranch(repoRoot) {
   if (!branch) return null;
   return branch.replace(/^origin\//, '');
 }
+
+// Returns the set of repo-relative, forward-slash paths git tracks (index +
+// HEAD), per `git ls-files` — includes staged-but-uncommitted files, so no
+// commit/identity is required, just an initialized repo with an index.
+// Returns null (not a Set) when not a git repo / git unavailable, same
+// graceful-degradation contract as the other helpers here.
+export function gitTrackedFiles(repoRoot) {
+  const result = spawnSync('git', ['ls-files'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) return null; // not a git repo, or git unavailable
+  const paths = result.stdout.split('\n').filter((line) => line.length > 0);
+  return new Set(paths);
+}

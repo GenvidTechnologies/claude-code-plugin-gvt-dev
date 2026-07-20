@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from '../lib/hygiene.mjs';
 
@@ -21,6 +22,14 @@ async function writeRepoFile(dir, rel, content) {
   const path = join(dir, rel);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content);
+}
+
+function git(dir, args) {
+  const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  }
+  return result.stdout;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +87,75 @@ test('scanRetiredTokens: missing docs/ dir -> []', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// scanRetiredTokens — git-tracked config coverage (ADR-0014)
+// ---------------------------------------------------------------------------
+
+test('scanRetiredTokens: a git-tracked .gvt-agent.json containing a retired token is flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeRepoFile(d, '.gvt-agent.json', '{ "note": "genvid-dev: legacy" }\n');
+    git(d, ['add', '.gvt-agent.json']);
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'retired-token');
+    assert.equal(findings[0].ok, false);
+    assert.equal(findings[0].severity, 'info');
+    assert.match(findings[0].detail, /\.gvt-agent\.json:1 contains retired token 'genvid-dev:'/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: an untracked .claude/settings.local.json containing a retired token is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    // Written to disk but never `git add`-ed — conventionally a per-developer
+    // local override, which can legitimately contain a literal retired-token
+    // string (e.g. a permission grep-pattern rule).
+    await writeRepoFile(d, '.claude/settings.local.json', '{ "rule": "genvid-dev:" }\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: a git-tracked config line containing "http" with a token is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeRepoFile(
+      d,
+      'package.json',
+      '{ "homepage": "https://example.com/genvid-dev:" }\n',
+    );
+    git(d, ['add', 'package.json']);
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: non-git repo with a docs/foo.md token is still flagged (markdown scan unaffected)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/foo.md', 'Use genvid-dev: to invoke.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].detail, /docs\/foo\.md:1 contains retired token 'genvid-dev:'/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // scanBrokenLinks
 // ---------------------------------------------------------------------------
 
@@ -109,6 +187,55 @@ test('scanBrokenLinks: links to an existing file, an existing dir, an external U
   try {
     const findings = await scanBrokenLinks(dir);
     assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanBrokenLinks: a link inside an inline code span is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/foo.md', 'Use `[x](./missing.md)` as an example.\n');
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanBrokenLinks: a link inside a fenced code block is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(
+      d,
+      'docs/foo.md',
+      '```md\n[x](./missing.md)\n```\n',
+    );
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanBrokenLinks: masking is span-local — a genuine broken link outside a code span on the same line is still flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(
+      d,
+      'docs/foo.md',
+      'Use `[x](./missing-in-span.md)` as an example, but [y](./missing-outside.md) is real.\n',
+    );
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].detail, /docs\/foo\.md:1 broken link -> \.\/missing-outside\.md/);
+    assert.ok(
+      !findings.some((f) => f.detail.includes('missing-in-span.md')),
+      'the link inside the inline code span must not be flagged',
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

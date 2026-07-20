@@ -12,15 +12,41 @@ import { promises as fs } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 
 import { listMarkdown } from './fs-walk.mjs';
+import { gitTrackedFiles } from './git-info.mjs';
 
 export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
 
-// Naive: also matches links inside inline code spans (e.g. a doc showing
-// `[text](fake.md)` as a Markdown example). Acceptable for an advisory,
-// info/warning-only check — false positives are rare in practice and a repo can
-// suppress a noisy file via hygiene.excludePaths. A real fix needs a Markdown parser.
+// Fixed allow-list of repo-root config paths scanRetiredTokens also considers,
+// beyond the Markdown candidate set. Repo-relative, forward-slash paths. Not
+// scanned by presence alone — see configCandidateFiles below, which
+// intersects this list with `git ls-files` (ADR-0014): a per-developer
+// .claude/settings.local.json is conventionally untracked and can
+// legitimately contain a literal retired-token string (e.g. a permission
+// grep-pattern rule), so scanning it by presence would false-positive on
+// local junk.
+export const RETIRED_TOKEN_CONFIG_CANDIDATES = [
+  'package.json',
+  '.gvt-agent.json',
+  '.claude/settings.json',
+  '.claude/settings.local.json',
+];
+
+// Inline code spans and fenced code blocks are skipped (see maskInlineCode and
+// the inFence tracking in scanBrokenLinks below), so a doc showing
+// `[text](fake.md)` as a Markdown example no longer false-positives. Known
+// remaining limitation: reference-style links (`[text][ref]`) are not
+// resolved — intentionally out of scope (#135).
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
+
+// Blanks out backtick-delimited inline code spans on a single line so LINK_RE
+// doesn't match links shown as Markdown examples inside them. Operates
+// per-line (deliberately not `[\s\S]` across the whole file) so an unmatched
+// backtick run (no closing run on the same line) leaves the line unchanged —
+// normal links elsewhere on that line still scan.
+function maskInlineCode(line) {
+  return line.replace(/(`+)[\s\S]*?\1/g, (span) => ' '.repeat(span.length));
+}
 
 // ---- shared helpers ---------------------------------------------------------
 
@@ -62,11 +88,28 @@ async function pathExists(path) {
   }
 }
 
+// Config candidate set for scanRetiredTokens only: RETIRED_TOKEN_CONFIG_CANDIDATES
+// intersected with the git-tracked set, minus excludePaths (same union
+// semantics as listCandidateFiles). If gitTrackedFiles returns null (not a
+// git repo, or git unavailable), the config scan is skipped ([]) — the
+// Markdown scan is unaffected. See ADR-0014.
+function configCandidateFiles(repoRoot, opts = {}) {
+  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+  const tracked = gitTrackedFiles(repoRoot);
+  if (tracked == null) return [];
+  return RETIRED_TOKEN_CONFIG_CANDIDATES.filter(
+    (f) => tracked.has(f) && !isExcluded(f, excludePaths),
+  );
+}
+
 // ---- scanRetiredTokens -------------------------------------------------------
 
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
-  const files = await listCandidateFiles(repoRoot, opts);
+  const files = [
+    ...(await listCandidateFiles(repoRoot, opts)),
+    ...configCandidateFiles(repoRoot, opts),
+  ];
   const findings = [];
 
   for (const relPath of files) {
@@ -103,11 +146,20 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
     if (content == null) continue;
 
     const lines = content.split('\n');
+    let inFence = false;
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        inFence = !inFence;
+        continue; // fence delimiter line itself never contains a link to scan
+      }
+      if (inFence) continue;
+
+      const maskedLine = maskInlineCode(line);
       LINK_RE.lastIndex = 0;
       let match;
-      while ((match = LINK_RE.exec(line))) {
+      while ((match = LINK_RE.exec(maskedLine))) {
         const rawTarget = match[1].trim();
         if (!rawTarget) continue;
         if (rawTarget.startsWith('#')) continue; // pure anchor
