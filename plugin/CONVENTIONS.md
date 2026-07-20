@@ -9,7 +9,7 @@ If you're forking or adapting the plugin for your own org, this file is what you
 | File | Purpose | Required |
 |------|---------|----------|
 | `CLAUDE.md` | Project context loaded by Claude Code on session start. Holds project-specific facts the plugin's skills reference (commit format, PR format, etc.). Imports this file with `@CONVENTIONS.md`. | Yes |
-| `CONVENTIONS.md` | This file. Lives at the consuming repo's root as a copy of the plugin's canonical version, written by `/gvt-dev:audit-conventions --fix` on first migration. The audit reports drift on each run so you can re-sync after the plugin updates. | Yes |
+| `CONVENTIONS.md` | This file. Lives at the consuming repo's root as a copy of the plugin's canonical version, written by `/gvt-dev:audit-conventions --fix` on first migration. The plain audit warns on each run if this copy has drifted from the canonical; `/gvt-dev:audit-conventions --fix` (dry-run preview, then `--apply`) re-syncs it after the plugin updates. | Yes |
 | `docs/TOC.md` | Index of the project's documentation. Used by planning skills to scope their work. | Yes |
 | `.gvt-agent.json` | Capability registry — project name, build/test commands, repo settings, feature toggles. | Yes |
 
@@ -93,6 +93,11 @@ The keys above are the shared core, but the schema is **not closed**. A single s
 This is expected extensibility, **not** schema drift. Keep these blocks lean (machine-read access mechanics); put prose conventions and command recipes in a `docs/<skill>.md` doc instead. (Reserve `features` for booleans the plugin can't infer; reserve a namespaced block for richer per-skill config.)
 
 One scope caution for the `bugTracker` block: keep its `actionQuery` covering the **whole open backlog**, not narrowed to a single label (e.g. `--label bug`). `triage-issues` and `plan-next-issue` detect untriaged work by subtracting `triagedLabel` from `actionQuery`, so a label-scoped query silently hides untriaged issues that don't match the label and makes the backlog look groomed when it isn't.
+
+A second example is `audit-conventions`' optional `hygiene` block, tuning its advisory repo-hygiene scanners (retired-token deny-list, broken intra-repo doc links, orphaned-doc check — see the skill for what each check does). Two optional keys, each with baked-in defaults so the block can be omitted entirely:
+
+- `retiredTokens` (array) — **replaces** the default deny-list (`genvid:`, `genvid-dev:`, `genvid-c3`) when provided, since a repo's deny-list is a deliberate full override.
+- `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. Applies to all three scanners. This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan.
 
 ## How `/gvt-dev:audit-conventions` works
 

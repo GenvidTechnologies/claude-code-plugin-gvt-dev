@@ -3,6 +3,11 @@ name: audit-conventions
 description: Validates the consuming repo against the genvid plugin's convention contract — walks every installed skill and agent's metadata.expects (required files, config keys, tools) and reports missing/mismatched items with the reason each was needed. Default mode is read-only; --fix migrates a legacy or greenfield repo to the new contract. Use to check whether a repo satisfies the plugin's expectations or to surface drift after a plugin update.
 metadata:
   expects:
+    config:
+      - key: hygiene
+        in: .gvt-agent.json
+        required: false
+        reason: Optional overrides for the advisory repo-hygiene scanners (retired-token deny-list, exclude paths); sensible defaults apply when absent.
     tools:
       - command: node
         reason: Runs the validator script
@@ -58,6 +63,7 @@ When a required check is missing, take the reason seriously — it's what the sk
 - **Missing tool** — install the tool, or document in `CLAUDE.md` why the skill in question isn't usable in this repo. **Windows caveat:** the tool check probes the PATH of the *shell that launched the audit*, so a POSIX tool like `grep` (the `cleanup-initiative` requirement) reports **missing** from PowerShell but **present** from Git Bash, which puts `usr/bin` on PATH. That's an environmental difference, not a false positive — if a skill you actually use needs `grep`, run it from a shell that has the tool (or install it on the system PATH) rather than treating the finding as a bug.
 - **State = greenfield** — run `/gvt-dev:audit-conventions --fix` to scaffold the four convention files.
 - **State = legacy** — run `/gvt-dev:audit-conventions --fix` to migrate from the old template-rendered setup.
+- **`CONVENTIONS.md` drift warning (state = migrated)** — run `/gvt-dev:audit-conventions --fix` to preview the resync, then `--apply` once reviewed.
 
 ## `--fix` mode
 
@@ -85,7 +91,7 @@ Executes the same plan against the filesystem and prints per-action results.
 
 - **Greenfield** — scaffolds `CLAUDE.md`, `CONVENTIONS.md` (copy of the plugin's canonical), `docs/TOC.md`, `.gvt-agent.json`. The scaffolded files have placeholders the user fills in. Any of these that **already exist** are left untouched and reported as SKIPPED — a repo can own a hand-written `CONVENTIONS.md` or `CLAUDE.md` while still classifying greenfield (no `.gvt-agent.json`), and the scaffold never overwrites existing content.
 - **Legacy** — translates the old `claude-config.json` into `.gvt-agent.json` (mapping the project's real `PACKAGE_MANAGER` / `TEST_COMMAND` / validation commands into `commands.*`, not generic `npm` placeholders), adds the `@CONVENTIONS.md` import to `CLAUDE.md`, copies `CONVENTIONS.md` to the repo root, deletes the rendered `.claude/` files that came from the legacy templates (only files carrying the `AUTO-GENERATED` marker — and no `LOCAL EDIT` block — are deleted; user-edited and locally-extended files are kept and surfaced in the SKIPPED notes), ports legacy per-agent context sidecars (`.claude/agents/*/project-*.md`) to their new `docs/` homes, removes dangling references to the deleted files (the `pre-commit-lint.js` hook entry in `.claude/settings.json`, submodule-referencing `package.json` scripts), and removes the `burbank-claude-config` submodule via `git submodule deinit` + `git rm`. After applying, it prints a **Manual follow-up** report listing any stale text references (in `CLAUDE.md`, `docs/`) or orphaned sidecars it could not clean up automatically.
-- **Migrated** — refuses to "fix" anything (validation only). Tell the user the repo is already migrated.
+- **Migrated** — the plan is a `CONVENTIONS.md` resync, not a full scaffold/migration (the repo is already on the contract). Plain audit WARNS when the repo-root `CONVENTIONS.md` has drifted from the plugin's canonical copy; `--fix` offers a vetoable resync: absent → copy the canonical in; drifted → resync, with the dry-run showing a `+N/−M` line-count diff hint; identical → a no-op note, nothing to do. `--apply` still refuses a dirty working tree, same as any other state.
 
 ### Safety rails
 
@@ -119,7 +125,9 @@ State: migrated
 - 18 of 19 required expectations satisfied.
 ```
 
-The **Warnings** section holds non-fatal repo-health flags that aren't tied to a component expectation — currently `repo.host` drift (the configured host disagrees with the `origin` git remote). Warnings are excluded from the required-expectations tally and never affect the exit code; an absent `repo.host` or an unresolvable/unrecognized remote stays silent.
+The **Warnings** section holds non-fatal repo-health flags that aren't tied to a component expectation — `repo.host` drift (the configured host disagrees with the `origin` git remote) and, for a **migrated** repo, `CONVENTIONS.md` drift from the plugin's canonical copy (see Behavior by state above). Warnings are excluded from the required-expectations tally and never affect the exit code; an absent `repo.host`, an unresolvable/unrecognized remote, or an absent `CONVENTIONS.md` stays silent.
+
+Also folded into **Warnings** and **Info** are three advisory repo-hygiene checks, scanning `docs/**.md` + `CLAUDE.md`: a **retired-token scan** (info) flags lines still using a deny-listed token (e.g. a pre-rebrand `genvid:` invocation); a **broken intra-repo markdown link check** (warning) flags a relative link whose target doesn't resolve on disk; a **`docs/TOC.md` orphan check** (info) flags a doc under `docs/` that no line of `docs/TOC.md` references. All three respect the optional `hygiene` config block (`retiredTokens`, `excludePaths` — see `CONVENTIONS.md`) and fall back to sensible defaults when it's absent. Like the `repo.host`/`CONVENTIONS.md` warnings above, **these three checks are purely advisory: they never affect the required-expectations tally or the exit code**, same framing as the host-drift and description-length checks — they surface repo-health drift for the user to act on, not a contract violation to fail CI over.
 
 Exit code: 0 if no errors (warnings alone keep it 0); non-zero if any required expectation is unmet.
 

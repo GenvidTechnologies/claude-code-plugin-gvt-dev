@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`audit-conventions`: detect `CONVENTIONS.md` drift in a migrated repo and offer a vetoable `--fix` resync (#132).** Previously a migrated repo's `--fix` skipped any existing `CONVENTIONS.md` outright and the plain audit had no drift check at all — yet `CONVENTIONS.md` itself already claimed "the audit reports drift on each run so you can re-sync after the plugin updates," which wasn't true. The plain audit now emits a non-fatal WARNING when the repo-root copy differs from the plugin's canonical bytes; `--fix` previews the resync (absent → copy; drifted → resync with a `+N/−M` line-count diff hint; identical → no-op note) and `--apply` writes it, refusing a dirty working tree like every other `--fix` path. Makes the CONVENTIONS.md claim real. Behavioral skill change → version bump at release.
+- **`audit-conventions`: advisory repo-hygiene checks (retired tokens, broken doc links, orphaned docs) + new optional `hygiene` config key (#131).** Adds a one-line sub-note that the internal `lib/fs-walk.mjs` extraction is a non-visible refactor with no consumer-facing surface.
+- **`plan-task`/`planner`: document a known-red-baseline convention for intentionally-red TDD steps (#130).** Some plans intentionally sequence a red step (a golden/snapshot fixture regenerated later, or a TDD test added before its wiring task); running the full validator after each earlier task kept reporting that expected red. `plan-task`'s Execution section now records the expected-red set before execution and gates each earlier task on typecheck + its own targeted tests, blocking only on *new* red — deferring the full-suite/golden gate to the regeneration task and the final validation gate. `planner` now instructs labeling each intentionally-red step (which checks, until which task) so the executor can tell baseline from regression. Behavioral skill guidance → version bump at release.
+- `create-adr`: add a from-empty chronological-backfill path for authoring multiple ADRs at once (#133).
+
 ## [4.2.1] - 2026-07-15
 
 ### Changed

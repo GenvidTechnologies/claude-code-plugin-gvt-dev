@@ -67,7 +67,7 @@ Read these at runtime if present:
 - **Cross-domain tasks are two tasks.** Changes in different domains (per the project's CLAUDE.md domain split) are always separate commits, even if they're logically one feature.
 - **Refactoring before feature.** If existing code needs to change before the feature can slot in, that's a separate task (P-step) committed first. This includes building validation tools.
 - **Deferrals must be classified.** Every deferred or carved-out item is either *additional scope* (its own slice is fine) or *finish-quality of the code this plan touches* (folds into the motivating task — never a separate cleanup task or follow-up issue). See `development-principles.md` principle #8.
-- **WIP commits are fine.** Branches are squash-merged, so `[WIP]` tags in intermediate commits are acceptable when a multi-step change intentionally breaks tests temporarily.
+- **WIP commits are fine.** Branches are squash-merged, so `[WIP]` tags in intermediate commits are acceptable when a multi-step change intentionally breaks tests temporarily. **Label each intentionally-red step** — name which checks it leaves failing and until which task they're expected to turn green — so the executor can build the known-red baseline and tell it apart from a regression instead of misreading it as one (see `plan-task`'s Execution section, known-red baseline).
 
 ## Output Format
 

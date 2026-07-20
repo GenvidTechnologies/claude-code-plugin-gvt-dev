@@ -18,6 +18,9 @@
   "paths": {
     "plugin_root": "plugin"
   },
+  "hygiene": {
+    "excludePaths": ["docs/plugin-authoring.md"]
+  },
   "bugTracker": {
     "kind": "github",
     "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees",

@@ -69,6 +69,51 @@ go to §3.
    the sole write owner; this skill does not duplicate those steps.
 4. Proceed to §6 (commit).
 
+## 2b. From-empty chronological backfill (multiple records at once)
+
+Use this path only when the ADR directory is **empty** (highest existing N = 0,
+per §1 step 2) and you're seeding **several** past decisions at once from git
+history, rather than authoring one new record going forward (§2) or inserting
+into an existing sequence (§3).
+
+1. **Why this differs from §3:** §3 exists to open a slot inside an
+   already-populated sequence, so it must shift later records up — hence the
+   renumber script and the clean-tree gate. Backfilling an empty directory has
+   nothing to shift: N is always the next unused number and no existing file
+   ever moves. Do **not** run the renumber script or the clean-tree gate for
+   this path.
+2. **Filter for ADR-worthiness first.** Not every commit is a decision worth a
+   record. Backfill only genuine decisions — a non-trivial architecture or
+   compromise choice, or a case where an alternative was weighed and rejected —
+   the same bar `plan-task` Phase 4 applies when deciding whether a change
+   needs an ADR. Skip routine feature commits.
+3. **Order the filtered decisions chronologically**, oldest first, and assign
+   them `0001…000N` in that order.
+4. **Derive each record's date from git history of the code the decision is
+   about**, not from today:
+   - `git log --diff-filter=A -- <file>` for when the affected file first
+     appeared, or
+   - `git log -S'<symbol>'` for when a specific pattern/approach was
+     introduced.
+   Hedge to month/year when the exact day can't be pinned from history — never
+   fabricate day precision. Follow the §0 date policy and
+   `plan-task` Phase-4 step 5 for how to record this: each record distinguishes
+   **Originally decided** (the derived git-history date) from **Recorded**
+   (today, when the ADR file is actually written).
+5. **On a date tie with unknown day** (two candidate decisions land in the same
+   month/year with no way to order them from history), ask the user which
+   comes first — never fabricate an ordering.
+6. **Dispatch `gvt-dev:tech-writer` once per record**, each at its explicit
+   assigned number, reusing the same content contract as §2 step 2 (template,
+   target number, stage-only instruction). Do not let tech-writer compute
+   next-highest — pass the number explicitly, as in §3e.
+7. **Write the `docs/TOC.md` Decision-Records index once, centrally,** after
+   all records are drafted — not as N parallel per-record writes, which would
+   race the same file. This skill (not tech-writer) owns this single index
+   pass for the batch.
+8. **Land the whole backfill as one commit** covering all N records plus the
+   single TOC update, per §6.
+
 ## 3. Chronological / retroactive insertion path
 
 ### 3a. Determine insertion number N

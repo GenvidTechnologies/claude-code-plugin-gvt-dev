@@ -43,6 +43,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0010-agent-dispatch-guide-domain-explorers.md`](decisions/0010-agent-dispatch-guide-domain-explorers.md) — why `plan-task` Phase 1 prefers a repo's named domain explorer over the generic analyst when one is declared
 - [`decisions/0011-create-adr-skill-dispatch-design.md`](decisions/0011-create-adr-skill-dispatch-design.md) — why `create-adr` delegates all writes to `tech-writer` (not reimplementing), moves the MADR-lite template to `plugin/docs/`, and gates renumber blast radius with clean-tree + dry-run
 - [`decisions/0012-stale-config-migration-state.md`](decisions/0012-stale-config-migration-state.md) — why the audit-conventions state detector gets a distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename instead of falling through to `greenfield` or reusing `legacy`
+- [`decisions/0013-migrated-state-conventions-resync-scoping.md`](decisions/0013-migrated-state-conventions-resync-scoping.md) — why the `--fix` CONVENTIONS.md resync is scoped to the migrated state only, leaving `pushScaffold`'s skip-if-exists intact for greenfield/stale/legacy
 
 ## Scaffolding sources
 

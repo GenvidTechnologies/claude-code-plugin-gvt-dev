@@ -26,9 +26,10 @@ import {
   STATE_MIGRATED,
   STATE_STALE_CONFIG,
 } from './lib/state-detect.mjs';
-import { planGreenfield, planLegacy, planStaleConfig, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
+import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
+import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -90,7 +91,16 @@ async function main() {
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
 
+  const conventionsDrift = await evaluateConventionsDrift(state, PLUGIN_ROOT);
+  if (conventionsDrift) findings.push(conventionsDrift);
+
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
+
+  const hygiene = await loadHygieneConfig(configFilename);
+  const hygieneOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
+  findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
+  findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
+  findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));
 
   const report = formatReport(state, findings, { cfgHasC3 });
   console.log(report);
@@ -241,6 +251,37 @@ async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
   };
 }
 
+// Compares the repo-root CONVENTIONS.md against the plugin's canonical copy
+// and flags drift (non-fatal — a repo-health check, not a per-component
+// expectation). Only meaningful once a repo has actually migrated: a
+// greenfield/legacy/stale-config repo either has no CONVENTIONS.md yet or is
+// mid-migration, so drift there is covered by other findings instead. Absence
+// of a repo-root CONVENTIONS.md is itself NOT flagged — this very repo has no
+// root CONVENTIONS.md (only plugin/CONVENTIONS.md), and flagging it would make
+// this repo's own dogfood `commands.validate` permanently noisy.
+async function evaluateConventionsDrift(state, pluginRoot) {
+  if (state !== STATE_MIGRATED) return null;
+
+  let repoContent;
+  try {
+    repoContent = await fs.readFile(join(REPO_ROOT, 'CONVENTIONS.md'), 'utf8');
+  } catch {
+    return null; // no root CONVENTIONS.md — nothing to compare, stay silent
+  }
+
+  const canonicalContent = await fs.readFile(join(pluginRoot, 'CONVENTIONS.md'), 'utf8');
+  if (repoContent === canonicalContent) return null;
+
+  return {
+    kind: 'conventions-drift',
+    ok: false,
+    severity: 'warning',
+    detail:
+      "CONVENTIONS.md has drifted from the plugin's canonical copy — run " +
+      '`/gvt-dev:audit-conventions --fix` to preview the resync.',
+  };
+}
+
 // Author-time lint: flag any skill/agent whose rendered description exceeds the
 // session listing's `skillListingMaxDescChars` cap, since over-cap descriptions
 // are silently truncated in the listing. Non-fatal warnings (repo-health, not a
@@ -263,6 +304,20 @@ function evaluateDescriptionLengths(components) {
     }
   }
   return findings;
+}
+
+// Reads the optional `hygiene` block from the repo's config file (graceful —
+// missing file, missing key, or invalid JSON all resolve to undefined so the
+// hygiene scanners fall back to their own baked-in defaults). Not merged with
+// the per-component config reads above since this is a repo-health check, not
+// a component expectation.
+async function loadHygieneConfig(configFilename = '.gvt-agent.json') {
+  try {
+    const raw = await fs.readFile(join(REPO_ROOT, configFilename), 'utf8');
+    return JSON.parse(raw).hygiene;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---- helpers ---------------------------------------------------------------
@@ -357,9 +412,19 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
 }
 
 function formatFinding(f) {
-  // Repo-health / author-lint findings (host-drift, desc-length) aren't tied to
-  // a component/expectation — they carry a self-contained detail string.
-  if (f.kind === 'host-drift' || f.kind === 'desc-length') return `- ${f.detail}`;
+  // Repo-health / author-lint findings (host-drift, conventions-drift,
+  // desc-length, and the hygiene scanners' retired-token/broken-link/
+  // orphaned-doc) aren't tied to a component/expectation — they carry a
+  // self-contained detail string.
+  const SELF_CONTAINED_KINDS = [
+    'host-drift',
+    'conventions-drift',
+    'desc-length',
+    'retired-token',
+    'broken-link',
+    'orphaned-doc',
+  ];
+  if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
 }
@@ -367,13 +432,6 @@ function formatFinding(f) {
 // ---- --fix orchestration ---------------------------------------------------
 
 async function runFix(state) {
-  if (state === STATE_MIGRATED) {
-    console.log('## --fix mode\n');
-    console.log(`State: ${state}\n`);
-    console.log('This repo is already migrated. Nothing to fix — run without --fix to validate.');
-    process.exit(0);
-  }
-
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');
     console.error(`State: ${state}\n`);
@@ -388,6 +446,8 @@ async function runFix(state) {
     plan = await planGreenfield(REPO_ROOT, PLUGIN_ROOT);
   } else if (state === STATE_STALE_CONFIG) {
     plan = await planStaleConfig(REPO_ROOT, PLUGIN_ROOT);
+  } else if (state === STATE_MIGRATED) {
+    plan = await planMigratedResync(REPO_ROOT, PLUGIN_ROOT);
   } else {
     // STATE_LEGACY
     const snapshotPath = join(SCRIPT_DIR, 'legacy-manifest-snapshot.json');

@@ -12,6 +12,7 @@ import {
   planGreenfield,
   planLegacy,
   planStaleConfig,
+  planMigratedResync,
   hasC3Markers,
   applyPlan,
   scanDanglingReferences,
@@ -523,6 +524,65 @@ test('planStaleConfig: C3 markers present -> note-only plan (no git-cmd, no writ
     assert.equal(plan.state, 'stale-config');
     assert.ok(plan.actions.length > 0, 'expected at least one note action');
     assert.ok(plan.actions.every((a) => a.type === 'note'), 'every action must be a note (no fs effect)');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// planMigratedResync — resync a migrated repo's CONVENTIONS.md vs canonical
+// ---------------------------------------------------------------------------
+
+test('planMigratedResync: absent repo copy -> single write-file action, greenfield-style summary', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const canonical = await fs.readFile(join(PLUGIN_ROOT, 'CONVENTIONS.md'), 'utf8');
+    const plan = await planMigratedResync(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'migrated');
+    assert.equal(plan.actions.length, 1);
+    const [action] = plan.actions;
+    assert.equal(action.type, 'write-file');
+    assert.ok(action.path.replace(/\\/g, '/').endsWith('CONVENTIONS.md'));
+    assert.equal(action.content, canonical);
+    assert.match(action.summary, /Copy plugin's CONVENTIONS\.md to repo root/);
+    assert.match(action.summary, new RegExp(`${canonical.length} bytes`));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planMigratedResync: drifted repo copy -> single write-file action with a +/- line hint', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'CONVENTIONS.md', 'stale hand-edited contract\nwith drifted lines\n');
+  });
+  try {
+    const canonical = await fs.readFile(join(PLUGIN_ROOT, 'CONVENTIONS.md'), 'utf8');
+    const plan = await planMigratedResync(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'migrated');
+    assert.equal(plan.actions.length, 1);
+    const [action] = plan.actions;
+    assert.equal(action.type, 'write-file');
+    assert.equal(action.content, canonical);
+    assert.match(action.summary, /drifted from canonical/);
+    assert.match(action.summary, /\+\d+\/[−-]\d+ lines/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planMigratedResync: identical repo copy -> single note action, no write-file', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const canonical = await fs.readFile(join(PLUGIN_ROOT, 'CONVENTIONS.md'), 'utf8');
+    await writeRepoFile(dir, 'CONVENTIONS.md', canonical);
+
+    const plan = await planMigratedResync(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'migrated');
+    assert.equal(plan.actions.length, 1);
+    assert.equal(plan.actions.filter((a) => a.type === 'write-file').length, 0);
+    const [action] = plan.actions;
+    assert.equal(action.type, 'note');
+    assert.match(action.summary, /up to date with the plugin's canonical copy/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
