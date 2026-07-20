@@ -26,7 +26,7 @@ import {
   STATE_MIGRATED,
   STATE_STALE_CONFIG,
 } from './lib/state-detect.mjs';
-import { planGreenfield, planLegacy, planStaleConfig, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
+import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 
@@ -89,6 +89,9 @@ async function main() {
 
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
+
+  const conventionsDrift = await evaluateConventionsDrift(state, PLUGIN_ROOT);
+  if (conventionsDrift) findings.push(conventionsDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
 
@@ -388,9 +391,10 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
 }
 
 function formatFinding(f) {
-  // Repo-health / author-lint findings (host-drift, desc-length) aren't tied to
-  // a component/expectation — they carry a self-contained detail string.
-  if (f.kind === 'host-drift' || f.kind === 'desc-length') return `- ${f.detail}`;
+  // Repo-health / author-lint findings (host-drift, conventions-drift,
+  // desc-length) aren't tied to a component/expectation — they carry a
+  // self-contained detail string.
+  if (f.kind === 'host-drift' || f.kind === 'conventions-drift' || f.kind === 'desc-length') return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
 }
@@ -398,13 +402,6 @@ function formatFinding(f) {
 // ---- --fix orchestration ---------------------------------------------------
 
 async function runFix(state) {
-  if (state === STATE_MIGRATED) {
-    console.log('## --fix mode\n');
-    console.log(`State: ${state}\n`);
-    console.log('This repo is already migrated. Nothing to fix — run without --fix to validate.');
-    process.exit(0);
-  }
-
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');
     console.error(`State: ${state}\n`);
@@ -419,6 +416,8 @@ async function runFix(state) {
     plan = await planGreenfield(REPO_ROOT, PLUGIN_ROOT);
   } else if (state === STATE_STALE_CONFIG) {
     plan = await planStaleConfig(REPO_ROOT, PLUGIN_ROOT);
+  } else if (state === STATE_MIGRATED) {
+    plan = await planMigratedResync(REPO_ROOT, PLUGIN_ROOT);
   } else {
     // STATE_LEGACY
     const snapshotPath = join(SCRIPT_DIR, 'legacy-manifest-snapshot.json');
