@@ -32,11 +32,21 @@ export const RETIRED_TOKEN_CONFIG_CANDIDATES = [
   '.claude/settings.local.json',
 ];
 
-// Naive: also matches links inside inline code spans (e.g. a doc showing
-// `[text](fake.md)` as a Markdown example). Acceptable for an advisory,
-// info/warning-only check — false positives are rare in practice and a repo can
-// suppress a noisy file via hygiene.excludePaths. A real fix needs a Markdown parser.
+// Inline code spans and fenced code blocks are skipped (see maskInlineCode and
+// the inFence tracking in scanBrokenLinks below), so a doc showing
+// `[text](fake.md)` as a Markdown example no longer false-positives. Known
+// remaining limitation: reference-style links (`[text][ref]`) are not
+// resolved — intentionally out of scope (#135).
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
+
+// Blanks out backtick-delimited inline code spans on a single line so LINK_RE
+// doesn't match links shown as Markdown examples inside them. Operates
+// per-line (deliberately not `[\s\S]` across the whole file) so an unmatched
+// backtick run (no closing run on the same line) leaves the line unchanged —
+// normal links elsewhere on that line still scan.
+function maskInlineCode(line) {
+  return line.replace(/(`+)[\s\S]*?\1/g, (span) => ' '.repeat(span.length));
+}
 
 // ---- shared helpers ---------------------------------------------------------
 
@@ -136,11 +146,20 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
     if (content == null) continue;
 
     const lines = content.split('\n');
+    let inFence = false;
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        inFence = !inFence;
+        continue; // fence delimiter line itself never contains a link to scan
+      }
+      if (inFence) continue;
+
+      const maskedLine = maskInlineCode(line);
       LINK_RE.lastIndex = 0;
       let match;
-      while ((match = LINK_RE.exec(line))) {
+      while ((match = LINK_RE.exec(maskedLine))) {
         const rawTarget = match[1].trim();
         if (!rawTarget) continue;
         if (rawTarget.startsWith('#')) continue; // pure anchor

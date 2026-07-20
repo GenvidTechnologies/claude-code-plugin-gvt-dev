@@ -192,6 +192,55 @@ test('scanBrokenLinks: links to an existing file, an existing dir, an external U
   }
 });
 
+test('scanBrokenLinks: a link inside an inline code span is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/foo.md', 'Use `[x](./missing.md)` as an example.\n');
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanBrokenLinks: a link inside a fenced code block is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(
+      d,
+      'docs/foo.md',
+      '```md\n[x](./missing.md)\n```\n',
+    );
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanBrokenLinks: masking is span-local — a genuine broken link outside a code span on the same line is still flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(
+      d,
+      'docs/foo.md',
+      'Use `[x](./missing-in-span.md)` as an example, but [y](./missing-outside.md) is real.\n',
+    );
+  });
+  try {
+    const findings = await scanBrokenLinks(dir);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].detail, /docs\/foo\.md:1 broken link -> \.\/missing-outside\.md/);
+    assert.ok(
+      !findings.some((f) => f.detail.includes('missing-in-span.md')),
+      'the link inside the inline code span must not be flagged',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanBrokenLinks: missing docs/ dir -> []', async () => {
   const dir = await withTempRepo(async () => {});
   try {
