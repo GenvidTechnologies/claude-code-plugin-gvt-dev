@@ -6,7 +6,7 @@
 // ok: false, severity, detail }`, no `component`/`target`/`reason` fields since
 // these aren't tied to a component's metadata.expects declaration.
 //
-// NOT wired into audit.mjs yet — a later task adds that.
+// Wired into audit.mjs's validate mode (main()) as info/warning findings.
 
 import { promises as fs } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -28,8 +28,15 @@ function isExcluded(relPath, excludePaths) {
 // CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
 // listMarkdown's shape). Missing docs/ or CLAUDE.md are handled gracefully by
 // listMarkdown / safeReadFile respectively — this helper never throws.
+//
+// excludePaths is a UNION of the baked-in defaults and any opts.excludePaths
+// — the defaults (CHANGELOG.md, docs/superpowers/, docs/decisions/) always
+// apply, so a consuming repo customizing this list only needs to name what it
+// wants to ADD, not restate the defaults. This differs from retiredTokens
+// (below), which replaces-when-provided, since a repo's deny-list is a
+// deliberate full override.
 async function listCandidateFiles(repoRoot, opts = {}) {
-  const excludePaths = opts.excludePaths ?? DEFAULT_EXCLUDE_PATHS;
+  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
   const files = [...(await listMarkdown(repoRoot, 'docs')), 'CLAUDE.md'];
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
@@ -139,7 +146,12 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
 
   const findings = [];
   for (const relPath of docs) {
-    if (!tocContent.includes(relPath)) {
+    // docs/TOC.md lives inside docs/ itself, so it commonly links siblings
+    // with a bare, docs-relative filename (e.g. `foo.md`) rather than the
+    // full repo-relative path (`docs/foo.md`). A doc counts as indexed if
+    // EITHER form appears in the TOC text.
+    const docsRelPath = relPath.startsWith('docs/') ? relPath.slice('docs/'.length) : relPath;
+    if (!tocContent.includes(relPath) && !tocContent.includes(docsRelPath)) {
       findings.push({
         kind: 'orphaned-doc',
         ok: false,

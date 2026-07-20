@@ -157,6 +157,21 @@ test('scanOrphanedDocs: a doc whose path is mentioned in docs/TOC.md is NOT flag
   }
 });
 
+test('scanOrphanedDocs: a doc indexed via a bare docs-relative filename (no docs/ prefix) is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    // docs/TOC.md lives inside docs/ itself, so it commonly links siblings
+    // with a bare filename rather than the full repo-relative path.
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\n- [Foo](foo.md)\n');
+    await writeRepoFile(d, 'docs/foo.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanOrphanedDocs: a doc under an excludePaths dir is NOT flagged', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
@@ -213,6 +228,45 @@ test('opts.excludePaths override changes scanOrphanedDocs results vs defaults', 
 
     const overriddenFindings = await scanOrphanedDocs(dir, { excludePaths: ['docs/special/'] });
     assert.deepEqual(overriddenFindings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('opts.excludePaths MERGES with the baked-in defaults, it does not replace them', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
+    // Still covered by the baked-in defaults even though opts.excludePaths
+    // only names an unrelated extra directory.
+    await writeRepoFile(d, 'docs/decisions/0001-example.md', 'content\n');
+    await writeRepoFile(d, 'CHANGELOG.md', '## Unreleased\n- did a thing\n');
+    // Only excluded via the opts override.
+    await writeRepoFile(d, 'docs/special/foo.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, { excludePaths: ['docs/special/'] });
+    assert.deepEqual(
+      findings,
+      [],
+      'docs/decisions/ and CHANGELOG.md defaults must still apply alongside the opts addition',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('opts.retiredTokens REPLACES the defaults (does not merge) — a custom deny-list stops matching the baked-in tokens', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/foo.md', 'Uses genvid-dev: and custom-token: markers.\n');
+  });
+  try {
+    const overriddenFindings = await scanRetiredTokens(dir, { retiredTokens: ['custom-token:'] });
+    assert.equal(overriddenFindings.length, 1);
+    assert.match(overriddenFindings[0].detail, /custom-token:/);
+    assert.ok(
+      !overriddenFindings.some((f) => f.detail.includes('genvid-dev:')),
+      'the baked-in genvid-dev: token must not be matched once retiredTokens is overridden',
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

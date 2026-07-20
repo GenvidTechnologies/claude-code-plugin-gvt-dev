@@ -29,6 +29,7 @@ import {
 import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
+import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -94,6 +95,12 @@ async function main() {
   if (conventionsDrift) findings.push(conventionsDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
+
+  const hygiene = await loadHygieneConfig(configFilename);
+  const hygieneOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
+  findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
+  findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
+  findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));
 
   const report = formatReport(state, findings, { cfgHasC3 });
   console.log(report);
@@ -299,6 +306,20 @@ function evaluateDescriptionLengths(components) {
   return findings;
 }
 
+// Reads the optional `hygiene` block from the repo's config file (graceful —
+// missing file, missing key, or invalid JSON all resolve to undefined so the
+// hygiene scanners fall back to their own baked-in defaults). Not merged with
+// the per-component config reads above since this is a repo-health check, not
+// a component expectation.
+async function loadHygieneConfig(configFilename = '.gvt-agent.json') {
+  try {
+    const raw = await fs.readFile(join(REPO_ROOT, configFilename), 'utf8');
+    return JSON.parse(raw).hygiene;
+  } catch {
+    return undefined;
+  }
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 async function fileExists(path) {
@@ -392,9 +413,18 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
 
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
-  // desc-length) aren't tied to a component/expectation — they carry a
+  // desc-length, and the hygiene scanners' retired-token/broken-link/
+  // orphaned-doc) aren't tied to a component/expectation — they carry a
   // self-contained detail string.
-  if (f.kind === 'host-drift' || f.kind === 'conventions-drift' || f.kind === 'desc-length') return `- ${f.detail}`;
+  const SELF_CONTAINED_KINDS = [
+    'host-drift',
+    'conventions-drift',
+    'desc-length',
+    'retired-token',
+    'broken-link',
+    'orphaned-doc',
+  ];
+  if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
 }
