@@ -14,11 +14,12 @@
 //   note             { summary }   (no fs effect; surfaced in dry-run/apply output)
 
 import { promises as fs } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
 import { inferHostFromRemote } from './host-drift.mjs';
+import { listFiles, listMarkdown } from './fs-walk.mjs';
 
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
@@ -905,11 +906,6 @@ export async function scanDanglingReferences(repoRoot) {
   return warnings;
 }
 
-// Recursively list *.md files under <repoRoot>/<sub>, returned repo-relative.
-async function listMarkdown(repoRoot, sub) {
-  return listFiles(repoRoot, sub, (name) => name.endsWith('.md'));
-}
-
 // List project-*.md sidecars one level under each child of <repoRoot>/<base>.
 async function listSidecars(repoRoot, base) {
   const out = [];
@@ -933,27 +929,5 @@ async function listSidecars(repoRoot, base) {
       }
     }
   }
-  return out;
-}
-
-async function listFiles(repoRoot, sub, predicate) {
-  const out = [];
-  async function walk(dir) {
-    let entries;
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(full);
-      } else if (entry.isFile() && predicate(entry.name)) {
-        out.push(relative(repoRoot, full).split('\\').join('/'));
-      }
-    }
-  }
-  await walk(join(repoRoot, sub));
   return out;
 }
