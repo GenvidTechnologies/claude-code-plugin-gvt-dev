@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { gitRemoteUrl, gitDefaultBranch } from '../lib/git-info.mjs';
+import { writeFile } from 'node:fs/promises';
+
+import { gitRemoteUrl, gitDefaultBranch, gitTrackedFiles } from '../lib/git-info.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'git-info-test-'));
@@ -87,6 +89,30 @@ test('gitDefaultBranch: resolves refs/remotes/origin/HEAD and strips the "origin
   });
   try {
     assert.equal(gitDefaultBranch(dir), 'main');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('gitTrackedFiles: not a git repo degrades to null (no throw)', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    assert.equal(gitTrackedFiles(dir), null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('gitTrackedFiles: git repo with a staged file returns a Set containing it', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeFile(join(d, 'package.json'), '{}\n');
+    git(d, ['add', 'package.json']);
+  });
+  try {
+    const tracked = gitTrackedFiles(dir);
+    assert.ok(tracked instanceof Set);
+    assert.ok(tracked.has('package.json'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
