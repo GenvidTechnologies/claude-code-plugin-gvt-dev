@@ -2,7 +2,7 @@
 
 The **`gvt-dev` plugin** for Claude Code — shared skills, agents, and hooks used across Genvid game projects.
 
-The plugin provides workflows for git (`commit-changes`, `create-pr`, `rebase-branch`, `rebase-stack`, `split-branch`), planning (`plan-task` with an analyst → designer → planner pipeline), validation, code review, session retrospectives, convention auditing, plugin releasing (`release-plugin`), and npm package releasing (`release-npm-package`).
+The plugin provides workflows for git (`commit-changes`, `create-pr`, `rebase-branch`, `rebase-stack`, `split-branch`, `clear-worktree`), planning (`plan-task` with an analyst → designer → planner pipeline), backlog grooming (`triage-issues`, `plan-next-issue`), decision records (`create-adr`), validation, code review, session retrospectives, convention auditing, plugin releasing (`release-plugin`, `reconcile-mcp-pin`), and npm package releasing (`release-npm-package`).
 
 It is distributed through the [`claude-code-gvt-marketplace`](https://github.com/GenvidTechnologies/claude-code-gvt-marketplace) catalog (marketplace name `gvt-plugins`).
 
@@ -32,10 +32,14 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `commit-changes` | Create a git commit following the project's CLAUDE.md format |
 | `create-pr` | Open a PR (GitHub via `gh`, Bitbucket via copy-paste link) |
 | `plan-task` | Analysis → design → planning pipeline with user checkpoints |
+| `plan-next-issue` | Pick the next backlog issue and route it into `plan-task` (optionally triages first) |
+| `triage-issues` | Triage an issue backlog — dedup, enrich, link dependencies, split, stamp `triaged` |
+| `create-adr` | Add or chronologically insert an Architecture Decision Record |
 | `validate-changes` | Dispatch the validator agent on the project's full validation suite |
 | `rebase-branch` | Rebase a feature branch with conflict resolution guidance |
 | `rebase-stack` | Rebase a stacked branch after an earlier branch was squash-merged |
 | `split-branch` | Split a large branch into reviewable stacked branches |
+| `clear-worktree` | Tear down a git worktree safely, recovering unpushed work and worktree-keyed memory |
 | `run-retro` | Session retrospective — proposes doc / skill / agent improvements |
 | `sync-config` | Wraps `/plugin update gvt-dev` + audit re-run |
 | `cleanup-initiative` | Close out an initiative folder (optional convention) |
@@ -43,11 +47,13 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `publish-npm-package` | Set up a package to publish on npmjs via OIDC trusted publishing |
 | `release-plugin` | Cut a plugin release — bump, tag, and bump the marketplace `source.ref` |
 | `release-npm-package` | Cut a routine npm package release — bump, tag, and trigger the OIDC publish workflow |
+| `reconcile-mcp-pin` | Reconcile agent tool inventories after a bundled MCP server pin bump / scope rename |
+| `migrate-cordova-ci` | Migrate a Cordova plugin's CI from CircleCI to GitHub Actions |
 | `audit-conventions` | Validate / migrate against the convention contract |
 
 **Agents** (dispatched via `subagent_type: "gvt-dev:<name>"`):
 
-`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`.
+`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`.
 
 **Hook:** `pre-commit-lint` runs `commands.lint` from `.gvt-agent.json` before every `git commit` in the Bash tool.
 
