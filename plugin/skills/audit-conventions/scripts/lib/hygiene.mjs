@@ -126,6 +126,9 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
             ok: false,
             severity: 'info',
             detail: `${relPath}:${idx + 1} contains retired token '${token}'`,
+            file: relPath,
+            line: idx + 1,
+            token,
           });
         }
       }
