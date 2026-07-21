@@ -24,6 +24,7 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - `../plugin/skills/reconcile-mcp-pin/SKILL.md` — maintainer skill: after a bundled MCP server pin is bumped in `plugin.json`, reconcile the agents' hand-enumerated tool inventories (read/mutate split, count-sanity-checked `npm pack` surface, stale-version sweep) and hand off to `release-plugin`
 - `../plugin/skills/migrate-cordova-ci/SKILL.md` — migrate a Cordova plugin's CI/CD from CircleCI to GitHub Actions; bundles parameterized `android.yml`/`ios.yml` (smoke + distribute tiers) + `version-guard.js` templates (lifted from `cordova-plugin-marketplace`), encodes the 8 known CI gotchas, and runs a manual live-CI gate
+- `../plugin/skills/maintain-wiki/SKILL.md` — maintain a project's LLM-wiki compounding-memory knowledge base (`ingest`/`query`/`lint`); scaffolds the three-tier `raw/`/`wiki/`/`docs/wiki-schema.md` layout; carries the `wiki-librarian` agent for its read-only `query` phase
 - [`create-adr`](../plugin/skills/create-adr/SKILL.md) — author or chronologically insert an ADR on demand; dispatches `tech-writer` for scaffold/fill/index, owns the numbering + renumber-and-sweep
 - [`../plugin/docs/decision-record.template.md`](../plugin/docs/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 or the `create-adr` skill (see development-principles principle #7)
 
@@ -45,6 +46,18 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0012-stale-config-migration-state.md`](decisions/0012-stale-config-migration-state.md) — why the audit-conventions state detector gets a distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename instead of falling through to `greenfield` or reusing `legacy`
 - [`decisions/0013-migrated-state-conventions-resync-scoping.md`](decisions/0013-migrated-state-conventions-resync-scoping.md) — why the `--fix` CONVENTIONS.md resync is scoped to the migrated state only, leaving `pushScaffold`'s skip-if-exists intact for greenfield/stale/legacy
 - [`decisions/0014-git-tracked-config-scan-for-retired-tokens.md`](decisions/0014-git-tracked-config-scan-for-retired-tokens.md) — why the retired-token scanner's config-file coverage is intersected with `git ls-files` rather than scanned by presence, so untracked local overrides (e.g. `.claude/settings.local.json`) can't trip false positives
+- [`decisions/0015-maintain-wiki-design-boundaries.md`](decisions/0015-maintain-wiki-design-boundaries.md) — why `maintain-wiki`'s `wiki/`+`raw/` tiers live at the repo root (outside the hygiene scanners' `docs/**` walk), why `lint` stays a standalone verb never wired into `audit.mjs`, and why `ingest` is a new thin verb rather than a rewrite of `run-retro`/`condense-lessons`
+
+## Knowledge Base
+
+This repo maintains an LLM-wiki compounding-memory knowledge base about its
+own practice, per `/gvt-dev:maintain-wiki`: immutable captured sources under
+the repo-root `raw/`, LLM-maintained pages under the repo-root `wiki/`
+(`wiki/index.md`, `wiki/log.md`), and the maintenance rules below. `raw/` and
+`wiki/` sit outside `docs/`, so the orphan-doc scanner doesn't index them —
+this pointer is here for human/agent discovery.
+
+- [`wiki-schema.md`](wiki-schema.md) — the maintenance schema for this repo's `raw/`/`wiki/` tiers: page format, create-vs-update lifecycle, `raw/` immutability, and the (currently manual, unenforced) decay policy
 
 ## Scaffolding sources
 

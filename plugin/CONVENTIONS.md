@@ -15,7 +15,7 @@ If you're forking or adapting the plugin for your own org, this file is what you
 
 Anything else (architecture docs, runbooks, design patterns) is your own; the plugin doesn't depend on it.
 
-Some skills scaffold a doc into `docs/` and **self-index it in `docs/TOC.md`** under a conventional section heading — `Decision Records` for ADRs (`/gvt-dev:plan-task`), `Process` for workflow/convention docs like `docs/issue-triage.md` (`/gvt-dev:triage-issues`). These sections are optional and created on demand. The index is the discovery surface, so a scaffolded doc that isn't indexed is invisible to the planning and triage skills.
+Some skills scaffold a doc into `docs/` and **self-index it in `docs/TOC.md`** under a conventional section heading — `Decision Records` for ADRs (`/gvt-dev:plan-task`), `Process` for workflow/convention docs like `docs/issue-triage.md` (`/gvt-dev:triage-issues`), `Knowledge Base` for `docs/wiki-schema.md` (`/gvt-dev:maintain-wiki`). These sections are optional and created on demand. The index is the discovery surface, so a scaffolded doc that isn't indexed is invisible to the planning and triage skills.
 
 > **Scope note:** genvid carries project-aware workflows, not generic tooling. It deliberately does not reimplement standalone PR review or code simplification — use Anthropic's official `code-review` (`/code-review`) and `code-simplifier` plugins for those. The `gvt-dev:code-reviewer` agent exists only as the `plan-task` review gate.
 
@@ -98,6 +98,14 @@ A second example is `audit-conventions`' optional `hygiene` block, tuning its ad
 
 - `retiredTokens` (array) — **replaces** the default deny-list (`genvid:`, `genvid-dev:`, `genvid-c3`) when provided, since a repo's deny-list is a deliberate full override.
 - `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. Applies to all three scanners. This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan.
+
+A third example is the `wiki` block, configuring the LLM-wiki compounding-memory practice (`/gvt-dev:maintain-wiki` and its read-only `wiki-librarian` agent):
+
+- `wikiDir` (default `wiki`) — the directory holding the wiki's pages, index, and log.
+- `rawDir` (default `raw`) — the directory holding immutable source captures cited for provenance.
+- `decay` (optional) — thresholds governing staleness flagging in `maintain-wiki lint`.
+
+`wikiDir` and `rawDir` are declared `required: false` in both the `maintain-wiki` skill's and the `wiki-librarian` agent's `metadata.expects`; `decay` is declared `required: false` in the skill's alone (the agent never reads it). All three are optional because the wiki practice is opt-in — a repo that doesn't maintain a wiki must never fail the aggregated audit over it, the same reasoning behind the `package.json` expectation in `publish-npm-package`.
 
 ## How `/gvt-dev:audit-conventions` works
 

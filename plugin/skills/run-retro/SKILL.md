@@ -76,6 +76,7 @@ If a skill improvement applies to **all consuming repos** (not just this one), i
 - `CONVENTIONS.md` itself needs a refinement
 
 Note the change as a proposed plugin PR and follow the workflow in the plugin repo's CONTRIBUTING/README.
+If the repo maintains a wiki (`docs/wiki-schema.md` present), `/gvt-dev:maintain-wiki ingest` is the wiki tier's ingest — route durable, compounding insights there instead of (or alongside) a structured doc.
 
 ## 4. Output Format
 

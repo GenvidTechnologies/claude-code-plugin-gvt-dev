@@ -50,10 +50,11 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `reconcile-mcp-pin` | Reconcile agent tool inventories after a bundled MCP server pin bump / scope rename |
 | `migrate-cordova-ci` | Migrate a Cordova plugin's CI from CircleCI to GitHub Actions |
 | `audit-conventions` | Validate / migrate against the convention contract |
+| `maintain-wiki` | Maintain a project's LLM-wiki compounding-memory knowledge base (ingest / query / lint) |
 
 **Agents** (dispatched via `subagent_type: "gvt-dev:<name>"`):
 
-`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`.
+`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`, `wiki-librarian`.
 
 **Hook:** `pre-commit-lint` runs `commands.lint` from `.gvt-agent.json` before every `git commit` in the Bash tool.
 
