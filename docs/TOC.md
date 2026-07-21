@@ -47,6 +47,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0013-migrated-state-conventions-resync-scoping.md`](decisions/0013-migrated-state-conventions-resync-scoping.md) — why the `--fix` CONVENTIONS.md resync is scoped to the migrated state only, leaving `pushScaffold`'s skip-if-exists intact for greenfield/stale/legacy
 - [`decisions/0014-git-tracked-config-scan-for-retired-tokens.md`](decisions/0014-git-tracked-config-scan-for-retired-tokens.md) — why the retired-token scanner's config-file coverage is intersected with `git ls-files` rather than scanned by presence, so untracked local overrides (e.g. `.claude/settings.local.json`) can't trip false positives
 - [`decisions/0015-maintain-wiki-design-boundaries.md`](decisions/0015-maintain-wiki-design-boundaries.md) — why `maintain-wiki`'s `wiki/`+`raw/` tiers live at the repo root (outside the hygiene scanners' `docs/**` walk), why `lint` stays a standalone verb never wired into `audit.mjs`, and why `ingest` is a new thin verb rather than a rewrite of `run-retro`/`condense-lessons`
+- [`decisions/0016-stale-config-conventions-resync-and-scoped-token-report.md`](decisions/0016-stale-config-conventions-resync-and-scoped-token-report.md) — why the migrated-state CONVENTIONS.md resync (0013) is extracted into a shared `planConventionsResync` helper and reused for the stale-config state, and why the stale-config token report uses a report-local needle set instead of widening `DEFAULT_RETIRED_TOKENS`
 
 ## Knowledge Base
 
