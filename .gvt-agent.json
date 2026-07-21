@@ -21,6 +21,10 @@
   "hygiene": {
     "excludePaths": ["docs/plugin-authoring.md"]
   },
+  "wiki": {
+    "wikiDir": "wiki",
+    "rawDir": "raw"
+  },
   "bugTracker": {
     "kind": "github",
     "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees",
