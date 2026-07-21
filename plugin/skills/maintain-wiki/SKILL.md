@@ -114,9 +114,13 @@ already sitting in `<rawDir>/` — into compounding `wiki/` content.
    second thin page for the same topic.
 3. **Dispatch `gvt-dev:tech-writer`** to author (new page) or update
    (existing page) per the page format and lifecycle rules in
-   `docs/wiki-schema.md`, add a new page to `<wikiDir>/index.md`, and append
-   one entry per source to `<wikiDir>/log.md`. Keep the single-writer-per-file
-   discipline: one `tech-writer` dispatch owns a given page for that run.
+   `docs/wiki-schema.md`. The **same** dispatch also owns the two bookkeeping
+   writes for that run — registering a new page in `<wikiDir>/index.md` and
+   appending one entry per source to `<wikiDir>/log.md` — so the page and its
+   index/log entries land as one consistent unit. Keep the
+   single-writer-per-file discipline: one `tech-writer` dispatch owns the page,
+   the index, and the log for a given run; don't parallelize two ingests that
+   both touch `index.md`/`log.md`.
 4. **Report** what was created/updated and the log entries appended.
 
 **This is a new, thin verb — it does not replace or rewrite `run-retro` or

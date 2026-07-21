@@ -116,4 +116,13 @@ by `lint` and should be reviewed for a re-capture before being trusted." -->
 Relate pages to each other with ordinary intra-wiki Markdown links —
 `[<title>](<other-page>.md)` — inside the `Related` section of a page (or
 inline in the body, where a specific claim points at another page). Keep link
-targets relative to `wiki/` so they resolve the same way the pages are read.
+targets relative to the linking page so they resolve the same way the pages
+are read:
+
+- **Sibling page** (same `wiki/` dir) → `[<title>](./other-page.md)`
+- **The schema doc** → `[schema](../docs/wiki-schema.md)`
+- **An ADR or other repo doc** → `[ADR 0001](../docs/decisions/0001-*.md)`
+
+A `raw/` capture is cited in a page's `Sources` section, not linked as a
+wiki-link — `Sources` records provenance (`../raw/<capture>.md`), wiki-links
+relate living pages.
