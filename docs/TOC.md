@@ -48,6 +48,17 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0014-git-tracked-config-scan-for-retired-tokens.md`](decisions/0014-git-tracked-config-scan-for-retired-tokens.md) — why the retired-token scanner's config-file coverage is intersected with `git ls-files` rather than scanned by presence, so untracked local overrides (e.g. `.claude/settings.local.json`) can't trip false positives
 - [`decisions/0015-maintain-wiki-design-boundaries.md`](decisions/0015-maintain-wiki-design-boundaries.md) — why `maintain-wiki`'s `wiki/`+`raw/` tiers live at the repo root (outside the hygiene scanners' `docs/**` walk), why `lint` stays a standalone verb never wired into `audit.mjs`, and why `ingest` is a new thin verb rather than a rewrite of `run-retro`/`condense-lessons`
 
+## Knowledge Base
+
+This repo maintains an LLM-wiki compounding-memory knowledge base about its
+own practice, per `/gvt-dev:maintain-wiki`: immutable captured sources under
+the repo-root `raw/`, LLM-maintained pages under the repo-root `wiki/`
+(`wiki/index.md`, `wiki/log.md`), and the maintenance rules below. `raw/` and
+`wiki/` sit outside `docs/`, so the orphan-doc scanner doesn't index them —
+this pointer is here for human/agent discovery.
+
+- [`wiki-schema.md`](wiki-schema.md) — the maintenance schema for this repo's `raw/`/`wiki/` tiers: page format, create-vs-update lifecycle, `raw/` immutability, and the (currently manual, unenforced) decay policy
+
 ## Scaffolding sources
 
 - [`../plugin/skeleton/`](../plugin/skeleton/) — pristine placeholder convention files that `audit-conventions --fix` writes to a greenfield repo
