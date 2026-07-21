@@ -276,7 +276,7 @@ async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
 // root CONVENTIONS.md (only plugin/CONVENTIONS.md), and flagging it would make
 // this repo's own dogfood `commands.validate` permanently noisy.
 async function evaluateConventionsDrift(state, pluginRoot) {
-  if (state !== STATE_MIGRATED) return null;
+  if (state !== STATE_MIGRATED && state !== STATE_STALE_CONFIG) return null;
 
   let repoContent;
   try {

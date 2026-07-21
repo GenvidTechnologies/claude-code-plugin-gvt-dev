@@ -167,3 +167,37 @@ test('audit --fix --apply on stale-config with a dirty git tree: refuses with th
 test('sanity: plugin root resolves to a real directory with skeleton files', () => {
   assert.ok(existsSync(join(PLUGIN_ROOT, 'skeleton', 'CLAUDE.md')), 'plugin/skeleton/CLAUDE.md should exist');
 });
+
+// ---------------------------------------------------------------------------
+// evaluateConventionsDrift widened to also fire for STATE_STALE_CONFIG (#149)
+// ---------------------------------------------------------------------------
+
+test('audit (plain, no --fix): stale-config repo with a drifted root CONVENTIONS.md warns', async () => {
+  await withTempStaleConfigRepo(async (tmpDir) => {
+    // Deliberately different from the plugin's canonical CONVENTIONS.md.
+    await writeFile(join(tmpDir, 'CONVENTIONS.md'), '# Drifted conventions\n\nThis is not the canonical copy.\n');
+
+    const result = spawnAudit([], tmpDir);
+    assert.match(result.stdout, /State: stale-config/, 'report should show the stale-config state');
+    assert.match(
+      result.stdout,
+      /CONVENTIONS\.md has drifted.*--fix/s,
+      'plain audit should surface a drift warning mentioning --fix',
+    );
+  });
+});
+
+test('audit (plain, no --fix): stale-config repo with no root CONVENTIONS.md stays silent on drift', async () => {
+  await withTempStaleConfigRepo(async (tmpDir) => {
+    // No CONVENTIONS.md written at all — confirm absence.
+    assert.ok(!existsSync(join(tmpDir, 'CONVENTIONS.md')), 'precondition: CONVENTIONS.md must not exist');
+
+    const result = spawnAudit([], tmpDir);
+    assert.match(result.stdout, /State: stale-config/, 'report should show the stale-config state');
+    assert.doesNotMatch(
+      result.stdout,
+      /CONVENTIONS\.md has drifted/,
+      'absent CONVENTIONS.md must not be flagged as drift',
+    );
+  });
+});
