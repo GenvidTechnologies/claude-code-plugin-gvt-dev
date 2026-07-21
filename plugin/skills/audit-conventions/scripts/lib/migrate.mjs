@@ -370,7 +370,7 @@ function lineMultisetDiffCount(a, b) {
 // pre-existing file — issue #25), a migrated repo's CONVENTIONS.md IS the
 // plugin's copy, so keeping it in sync with the canonical is the desired
 // behavior here, not an overwrite hazard.
-export async function planMigratedResync(repoRoot, pluginRoot) {
+export async function planConventionsResync(repoRoot, pluginRoot) {
   const canonical = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
   const targetPath = join(repoRoot, CONVENTIONS_FILENAME);
 
@@ -383,25 +383,19 @@ export async function planMigratedResync(repoRoot, pluginRoot) {
   }
 
   if (local === null) {
-    return {
-      state: 'migrated',
-      actions: [{
-        type: 'write-file',
-        path: targetPath,
-        content: canonical,
-        summary: `Copy plugin's CONVENTIONS.md to repo root (${canonical.length} bytes)`,
-      }],
-    };
+    return [{
+      type: 'write-file',
+      path: targetPath,
+      content: canonical,
+      summary: `Copy plugin's CONVENTIONS.md to repo root (${canonical.length} bytes)`,
+    }];
   }
 
   if (local === canonical) {
-    return {
-      state: 'migrated',
-      actions: [{
-        type: 'note',
-        summary: `${CONVENTIONS_FILENAME} is up to date with the plugin's canonical copy — nothing to resync`,
-      }],
-    };
+    return [{
+      type: 'note',
+      summary: `${CONVENTIONS_FILENAME} is up to date with the plugin's canonical copy — nothing to resync`,
+    }];
   }
 
   const canonicalLines = canonical.split('\n');
@@ -409,15 +403,16 @@ export async function planMigratedResync(repoRoot, pluginRoot) {
   const added = lineMultisetDiffCount(canonicalLines, localLines);
   const removed = lineMultisetDiffCount(localLines, canonicalLines);
 
-  return {
-    state: 'migrated',
-    actions: [{
-      type: 'write-file',
-      path: targetPath,
-      content: canonical,
-      summary: `Resync ${CONVENTIONS_FILENAME} — local copy drifted from canonical (+${added}/−${removed} lines)`,
-    }],
-  };
+  return [{
+    type: 'write-file',
+    path: targetPath,
+    content: canonical,
+    summary: `Resync ${CONVENTIONS_FILENAME} — local copy drifted from canonical (+${added}/−${removed} lines)`,
+  }];
+}
+
+export async function planMigratedResync(repoRoot, pluginRoot) {
+  return { state: 'migrated', actions: await planConventionsResync(repoRoot, pluginRoot) };
 }
 
 // -----------------------------------------------------------------------------
