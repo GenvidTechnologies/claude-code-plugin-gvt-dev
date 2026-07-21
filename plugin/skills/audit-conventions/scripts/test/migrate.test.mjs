@@ -512,6 +512,53 @@ test('planStaleConfig: pure stale-name (no C3 markers) -> git mv, no .gvt-agent.
   }
 });
 
+test('planStaleConfig: pure stale-name + drifted repo-root CONVENTIONS.md -> resync write-file with drift hint', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({ project: { name: 'foo' } }, null, 2));
+    await writeRepoFile(d, 'CONVENTIONS.md', '# Drifted conventions\n\nThis is not the canonical copy.\n');
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+
+    const conventionsWrite = plan.actions.find(
+      (a) => a.type === 'write-file' && a.path.replace(/\\/g, '/').endsWith('CONVENTIONS.md'),
+    );
+    assert.ok(conventionsWrite, 'expected a write-file action resyncing CONVENTIONS.md');
+    assert.match(
+      conventionsWrite.summary,
+      /\+\d+\/−\d+ lines/,
+      'summary should carry the +N/−M drift hint (Unicode minus)',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('planStaleConfig: pure stale-name + identical repo-root CONVENTIONS.md -> note only, no write', async () => {
+  const dir = await withTempRepo(async (d) => {
+    const canonical = await fs.readFile(join(PLUGIN_ROOT, 'CONVENTIONS.md'), 'utf8');
+    await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({ project: { name: 'foo' } }, null, 2));
+    await writeRepoFile(d, 'CONVENTIONS.md', canonical);
+  });
+  try {
+    const plan = await planStaleConfig(dir, PLUGIN_ROOT);
+    assert.equal(plan.state, 'stale-config');
+
+    const conventionsWrite = plan.actions.find(
+      (a) => a.type === 'write-file' && a.path.replace(/\\/g, '/').endsWith('CONVENTIONS.md'),
+    );
+    assert.equal(conventionsWrite, undefined, 'must NOT queue a write-file for an already up-to-date CONVENTIONS.md');
+
+    const conventionsNote = plan.actions.find(
+      (a) => a.type === 'note' && /CONVENTIONS\.md is up to date/.test(a.summary),
+    );
+    assert.ok(conventionsNote, 'expected an up-to-date note for CONVENTIONS.md');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('planStaleConfig: C3 markers present -> note-only plan (no git-cmd, no write)', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, '.genvid-agent.json', JSON.stringify({

@@ -330,9 +330,7 @@ export async function planStaleConfig(repoRoot, pluginRoot) {
   // .gvt-agent.json itself, which the git mv above just produced. Scaffolding
   // it here would race the mv and orphan the real config behind an empty
   // shadow file (the bug this state fixes).
-  const conventionsSource = await fs.readFile(join(pluginRoot, CONVENTIONS_FILENAME), 'utf8');
-  await pushScaffold(actions, repoRoot, CONVENTIONS_FILENAME, conventionsSource,
-    `Copy plugin's CONVENTIONS.md to repo root (${conventionsSource.length} bytes)`);
+  actions.push(...await planConventionsResync(repoRoot, pluginRoot));
 
   await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
