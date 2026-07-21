@@ -64,6 +64,7 @@ Once all reusable insights from a session are captured in a durable home, replac
 ```
 
 **A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the gvt-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
+When the repo maintains a wiki, `/gvt-dev:maintain-wiki ingest` is the wiki tier's ingest — a compounding page in `wiki/` is a durable home for an extracted insight.
 
 If some insights aren't yet captured in any durable home — either **too session-specific** to generalize, or **reusable but with no home yet** — keep them under the condensed entry rather than dropping them:
 
