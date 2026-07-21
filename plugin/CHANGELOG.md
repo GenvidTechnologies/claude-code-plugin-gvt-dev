@@ -7,6 +7,11 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`maintain-wiki`: new skill for an LLM-wiki compounding-memory knowledge base (#143).** A three-verb skill — `ingest` (read immutable `raw/` captures, write or update `wiki/` pages via `tech-writer`, append `wiki/log.md`), `query` (answer a question from the wiki with citations, via the read-only `wiki-librarian` agent), and `lint` (advisory health check — dead links, orphaned pages, staleness, optional `raw/` immutability). Scaffolds the three-tier `raw/`/`wiki/`/`docs/wiki-schema.md` layout from bundled templates on first use. Markdown-only — no vector DB, no retrieval engine — a wiki accumulates and compounds where RAG retrieves and forgets. New invocable skill → version bump at release.
+- **`wiki-librarian`: new read-only agent, the query phase of `maintain-wiki` (#143).** Fetches and synthesizes an answer from a consuming repo's LLM-wiki (`wiki/` pages, `wiki/index.md`, `wiki/log.md`), citing `raw/` immutable source captures for provenance; never writes. New agent → version bump at release.
+
 ## [4.3.0] - 2026-07-20
 
 ### Added
