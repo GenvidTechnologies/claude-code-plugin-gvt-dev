@@ -47,6 +47,12 @@ const APPLY_MODE = process.argv.includes('--apply');
 const rel = relative(REPO_ROOT, PLUGIN_ROOT);
 const AUDITING_PLUGIN_SOURCE = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 
+// Report-local retired-token needles for the stale-config --fix Manual-follow-up scan.
+// Deliberately NOT merged into DEFAULT_RETIRED_TOKENS (lib/hygiene.mjs) — keeping it
+// scoped avoids newly flagging mid-migration / C3 repos in plain audit. Keep the
+// 'genvid:'/'genvid-dev:' entries in sync with DEFAULT_RETIRED_TOKENS if that changes.
+const STALE_REPORT_TOKENS = ['genvid:', 'genvid-dev:', '.genvid-agent.json'];
+
 async function main() {
   const state = await detectState(REPO_ROOT);
 
@@ -270,7 +276,7 @@ async function evaluateHostDrift(configFilename = '.gvt-agent.json') {
 // root CONVENTIONS.md (only plugin/CONVENTIONS.md), and flagging it would make
 // this repo's own dogfood `commands.validate` permanently noisy.
 async function evaluateConventionsDrift(state, pluginRoot) {
-  if (state !== STATE_MIGRATED) return null;
+  if (state !== STATE_MIGRATED && state !== STATE_STALE_CONFIG) return null;
 
   let repoContent;
   try {
@@ -450,6 +456,17 @@ function formatFinding(f) {
 
 // ---- --fix orchestration ---------------------------------------------------
 
+// Scans for the stale-report retired-token needles (see STALE_REPORT_TOKENS
+// above) and reduces the hits to CLAUDE.md / docs/ files only, in the same
+// { file, hint } shape formatDanglingReport expects. Report-only — no
+// rewriting.
+async function staleFollowup() {
+  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS });
+  return hits
+    .filter((h) => h.file === 'CLAUDE.md' || h.file.startsWith('docs/'))
+    .map((h) => ({ file: h.file, hint: `line ${h.line} uses retired token '${h.token}'` }));
+}
+
 async function runFix(state) {
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');
@@ -476,6 +493,7 @@ async function runFix(state) {
 
   if (!APPLY_MODE) {
     console.log(formatPlanDryRun(plan));
+    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup()));
     savePreviewedPlan(REPO_ROOT, plan);
     process.exit(0);
   }
@@ -502,6 +520,9 @@ async function runFix(state) {
   if (plan.state === STATE_LEGACY) {
     const warnings = await scanDanglingReferences(REPO_ROOT);
     console.log('\n' + formatDanglingReport(warnings));
+  }
+  if (plan.state === STATE_STALE_CONFIG) {
+    console.log('\n' + formatDanglingReport(await staleFollowup()));
   }
 
   clearPreviewedPlan(REPO_ROOT);

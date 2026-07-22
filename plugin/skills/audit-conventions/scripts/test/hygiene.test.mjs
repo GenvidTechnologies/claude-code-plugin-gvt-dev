@@ -47,6 +47,9 @@ test('scanRetiredTokens: flags a retired token in a doc', async () => {
     assert.equal(findings[0].ok, false);
     assert.equal(findings[0].severity, 'info');
     assert.match(findings[0].detail, /docs\/foo\.md:1 contains retired token 'genvid-dev:'/);
+    assert.equal(findings[0].file, 'docs/foo.md');
+    assert.equal(findings[0].line, 1);
+    assert.equal(findings[0].token, 'genvid-dev:');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
