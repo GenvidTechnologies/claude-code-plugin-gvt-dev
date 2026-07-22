@@ -123,8 +123,12 @@ State: migrated
 ### Info (optional)
 - **code-reviewer** expects `docs/code-review-context.md` — file not found (optional). Reason: Provides project-specific context (architecture, domain rules) for review.
 
-### OK
-- 18 of 19 required expectations satisfied.
+### Summary
+- required: 18 of 19 satisfied.
+- optional: 11 of 12 satisfied.
+- 1 required expectation unmet.
+- 1 warning (non-fatal).
+- 1 optional expectation unmet.
 ```
 
 The **Warnings** section holds non-fatal repo-health flags that aren't tied to a component expectation — `repo.host` drift (the configured host disagrees with the `origin` git remote) and, for a **migrated or stale-config** repo, `CONVENTIONS.md` drift from the plugin's canonical copy (see Behavior by state above). Warnings are excluded from the required-expectations tally and never affect the exit code; an absent `repo.host`, an unresolvable/unrecognized remote, or an absent `CONVENTIONS.md` stays silent.
