@@ -141,11 +141,12 @@ A rename touches more than the file — work the whole cross-reference surface:
 3. **Dispatch references** — every `gvt-dev:<old-name>` (skills dispatching an agent) and `/gvt-dev:<old-name>` invocation mention.
 4. **`metadata.expects` paths** — a renamed scaffolded doc (e.g. `docs/<x>.md`) is declared in *both* the skill and its agent.
 5. **Cross-doc references** — `plugin/CONVENTIONS.md`, `CLAUDE.md`, `docs/TOC.md`.
-6. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` migration note; **leave shipped version entries intact** (they record what actually shipped).
-7. **Leave `docs/superpowers/specs|plans/` historical artifacts unchanged** — they're dated design records.
-8. **Decide config-schema scope** — a namespaced config block (e.g. `bugTracker`) can keep its name to avoid a consumer config break even when the skill is renamed; if so, note the intentional decoupling.
-9. **Consumer impact** — a renamed invocation name or scaffolded doc path is **breaking**: it needs a version bump and a CHANGELOG migration note.
-10. **Verify** — `claude plugin validate plugin` and `node plugin/skills/audit-conventions/scripts/audit.mjs` (exit 0).
+6. **Tracker label / metadata descriptions** — an issue-tracker label whose *description* names the skill (e.g. the `triaged` label's `set by /gvt-dev:triage-issues`) is a cross-reference the repo-file scanners never see; update it with the tracker CLI (`gh label edit <name> --description …`). This surface is **invisible to `audit-conventions`' retired-token scan** (it walks `docs/**.md` + `CLAUDE.md` only), so it drifts silently across a rename or rebrand — exactly how the `triaged` label's description outlived both the #92 rebrand and the `triage-bugs`→`triage-issues` rename before this retro caught it.
+7. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` migration note; **leave shipped version entries intact** (they record what actually shipped).
+8. **Leave `docs/superpowers/specs|plans/` historical artifacts unchanged** — they're dated design records.
+9. **Decide config-schema scope** — a namespaced config block (e.g. `bugTracker`) can keep its name to avoid a consumer config break even when the skill is renamed; if so, note the intentional decoupling.
+10. **Consumer impact** — a renamed invocation name or scaffolded doc path is **breaking**: it needs a version bump and a CHANGELOG migration note.
+11. **Verify** — `claude plugin validate plugin` and `node plugin/skills/audit-conventions/scripts/audit.mjs` (exit 0).
 
 ## Adding shared reference content
 
