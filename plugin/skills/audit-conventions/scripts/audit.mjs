@@ -172,13 +172,14 @@ async function evaluateFile(component, entry) {
   const exists = await fileExists(path);
 
   if (exists) {
-    return { kind: 'file', component: component.name, target: entry.path, ok: true };
+    return { kind: 'file', component: component.name, target: entry.path, ok: true, required };
   }
   return {
     kind: 'file',
     component: component.name,
     target: entry.path,
     ok: false,
+    required,
     severity: required ? 'error' : 'info',
     detail: `file not found${required ? '' : ' (optional)'}`,
     reason: entry.reason,
@@ -200,6 +201,7 @@ async function evaluateConfig(component, entry, configFilename = '.gvt-agent.jso
       component: component.name,
       target: `${entry.key} in ${inFile}`,
       ok: false,
+      required,
       severity: required ? 'error' : 'info',
       detail: err.code === 'ENOENT' ? `${inFile} not found` : `${inFile} unreadable (${err.message})`,
       reason: entry.reason,
@@ -208,13 +210,20 @@ async function evaluateConfig(component, entry, configFilename = '.gvt-agent.jso
 
   const result = resolveKey(parsed, entry.key);
   if (result.found) {
-    return { kind: 'config', component: component.name, target: `${entry.key} in ${inFile}`, ok: true };
+    return {
+      kind: 'config',
+      component: component.name,
+      target: `${entry.key} in ${inFile}`,
+      ok: true,
+      required,
+    };
   }
   return {
     kind: 'config',
     component: component.name,
     target: `${entry.key} in ${inFile}`,
     ok: false,
+    required,
     severity: required ? 'error' : 'info',
     detail: `key not found (path broke at "${result.missingAt}")${required ? '' : ' (optional)'}`,
     reason: entry.reason,
@@ -226,13 +235,14 @@ function evaluateTool(component, entry) {
   const exists = commandExists(entry.command);
 
   if (exists) {
-    return { kind: 'tool', component: component.name, target: entry.command, ok: true };
+    return { kind: 'tool', component: component.name, target: entry.command, ok: true, required };
   }
   return {
     kind: 'tool',
     component: component.name,
     target: entry.command,
     ok: false,
+    required,
     severity: required ? 'error' : 'info',
     detail: `command not found on PATH${required ? '' : ' (optional)'}`,
     reason: entry.reason,
