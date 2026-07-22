@@ -31,6 +31,7 @@ import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
+import { summarizeExpectations } from './lib/summary.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -386,10 +387,6 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
   const errors = findings.filter((f) => f.severity === 'error');
   const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
-  const oks = findings.filter((f) => f.ok);
-  // Warnings are non-fatal repo-health flags, not contract expectations — keep
-  // them out of the "N of M required satisfied" tally.
-  const requiredCount = findings.filter((f) => f.severity !== 'info' && f.severity !== 'warning').length;
 
   const lines = [];
   lines.push('## Audit Results');
@@ -413,8 +410,10 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
     lines.push('');
   }
 
+  const { requiredMet, requiredTotal, optionalMet, optionalTotal } = summarizeExpectations(findings);
   lines.push('### Summary');
-  lines.push(`- ${oks.length} of ${requiredCount} required expectations satisfied.`);
+  lines.push(`- required: ${requiredMet} of ${requiredTotal} satisfied.`);
+  lines.push(`- optional: ${optionalMet} of ${optionalTotal} satisfied.`);
   if (errors.length > 0) {
     lines.push(`- ${errors.length} required expectation${errors.length === 1 ? '' : 's'} unmet.`);
   }
