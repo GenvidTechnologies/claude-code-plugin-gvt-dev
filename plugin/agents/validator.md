@@ -30,6 +30,8 @@ Run the project's validation suite and report pass/fail status with details on a
 
 4. **Parse the output** — identify each check that ran (lint, test, typecheck, project-specific validators), and whether each passed or failed.
 
+5. **Fetch the pre-committed acceptance criteria and check it against the staged diff.** For a tracker-based run, fetch the current issue body via `bugTracker.readOne` and read its `## Acceptance Criteria` section; for an issue-less run, read `docs/acceptance/<slug>.md`. Check each `- [ ]` row against the staged diff (`git diff --staged`) and report whether it's satisfied.
+
 ## Output Format
 
 ```markdown
@@ -40,6 +42,11 @@ Run the project's validation suite and report pass/fail status with details on a
 - test: PASS / FAIL (N passed, M failed — list failures with file:line)
 - typecheck: PASS / FAIL (details)
 - <project-specific checks>: PASS / FAIL / SKIPPED
+
+### Acceptance Criteria
+- [x] R1: ... — satisfied (file:line)
+- [ ] R2: ... — not satisfied (reason)
+- <source>: issue #N body / docs/acceptance/<slug>.md / none found
 
 ### Summary
 Overall: PASS / FAIL
