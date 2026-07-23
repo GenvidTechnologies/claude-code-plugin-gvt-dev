@@ -90,6 +90,10 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
+### Acceptance Criteria Verification
+
+The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, `docs/acceptance/<slug>.md`. Independently check each `- [ ]` row against the staged diff and report per-row pass/fail.
+
 ### Five-Dimension Coverage Check
 
 For the concepts this diff introduces or changes, verify it doesn't leave a documentation dimension silently stale — **implementation, design, architecture, purpose, compromise** (defined in `${CLAUDE_PLUGIN_ROOT}/docs/development-principles.md` principle #7).
