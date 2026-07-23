@@ -17,7 +17,7 @@ Anything else (architecture docs, runbooks, design patterns) is your own; the pl
 
 Some skills scaffold a doc into `docs/` and **self-index it in `docs/TOC.md`** under a conventional section heading — `Decision Records` for ADRs (`/gvt-dev:plan-task`), `Process` for workflow/convention docs like `docs/issue-triage.md` (`/gvt-dev:triage-issues`), `Knowledge Base` for `docs/wiki-schema.md` (`/gvt-dev:maintain-wiki`). These sections are optional and created on demand. The index is the discovery surface, so a scaffolded doc that isn't indexed is invisible to the planning and triage skills.
 
-> **Scope note:** genvid carries project-aware workflows, not generic tooling. It deliberately does not reimplement standalone PR review or code simplification — use Anthropic's official `code-review` (`/code-review`) and `code-simplifier` plugins for those. The `gvt-dev:code-reviewer` agent exists only as the `plan-task` review gate.
+> **Scope note:** genvid carries project-aware workflows, not generic tooling. It deliberately does not reimplement standalone PR review or code simplification — use Anthropic's official `code-review` (`/code-review`) and `code-simplifier` plugins for those. The `gvt-dev:code-reviewer` agent exists only as the `plan-task` review gate. This is verification-first, not review-as-an-afterthought: implementers author, then a distinct-model `code-reviewer` (haiku) and the `validator` independently critique against a pre-committed `## Acceptance Criteria` checklist, and the orchestrator gates the commit on both. Because the criteria are fixed before generation, the critic checks a target that can't move (see ADR-0017).
 
 ## Expected sections in `CLAUDE.md`
 
@@ -106,6 +106,8 @@ A third example is the `wiki` block, configuring the LLM-wiki compounding-memory
 - `decay` (optional) — thresholds governing staleness flagging in `maintain-wiki lint`.
 
 `wikiDir` and `rawDir` are declared `required: false` in both the `maintain-wiki` skill's and the `wiki-librarian` agent's `metadata.expects`; `decay` is declared `required: false` in the skill's alone (the agent never reads it). All three are optional because the wiki practice is opt-in — a repo that doesn't maintain a wiki must never fail the aggregated audit over it, the same reasoning behind the `package.json` expectation in `publish-npm-package`.
+
+`plan-task` reuses the existing `bugTracker` block — `readOne` to fetch the current issue body, plus the host-native issue-edit command (e.g. `gh issue edit --body-file`) — to read and write the plan's pre-committed `## Acceptance Criteria` checklist in the issue body. No new config block is introduced. For issue-less runs, the checklist falls back to a committed `docs/acceptance/<slug>.md` file. See ADR-0017.
 
 ## How `/gvt-dev:audit-conventions` works
 
