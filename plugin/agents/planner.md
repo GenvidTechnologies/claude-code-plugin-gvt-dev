@@ -51,6 +51,8 @@ From a design document (produced by the designer), produce a concrete implementa
 
 9. **Verify your verification scripts.** When the plan calls for a validation script as a load-bearing gate (e.g., `--dry-run` mode of an existing CLI tool), confirm that the script actually exercises the things it's supposed to verify. Watch for `skip` paths that bypass real checks ("already done," "not applicable") — those can silently turn a "0 failed" report into a no-op. If the gate has a known weakness, either fix the script as a P-step or note the gap explicitly so the implementer knows the check isn't load-bearing yet.
 
+10. **Seed the `## Acceptance Criteria` checklist** from the design's Test Criteria table — one plain `- [ ] ...` item per verifiable requirement, per plan, and per task where a task maps cleanly to a criteria subset. This is additive: nothing consumes it yet (a later `plan-task` Phase 4 step wires the pre-commit and the validator/code-reviewer read — see ADR-0017).
+
 ## Domain Knowledge
 
 Read these at runtime if present:
@@ -83,6 +85,10 @@ Prerequisite branches or PRs (if any).
 
 ## Summary
 1-2 sentence overview.
+
+## Acceptance Criteria
+- [ ] R1: ... (seeded from the design's Test Criteria table)
+- [ ] R2: ...
 
 ## Tasks
 

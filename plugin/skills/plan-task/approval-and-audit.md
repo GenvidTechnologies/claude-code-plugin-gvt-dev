@@ -30,3 +30,4 @@ Before presenting the plan to the user, verify:
 - [ ] **Friction point audit done** — the `gvt-dev:designer` agent owns the friction audit. If you skipped the designer (simple-task shortcut), do at least a lightweight pass: missing seams, preparatory refactors, useful tooling.
 - [ ] **Tool relationships** — if creating a new tool/command, documented how it complements existing tools in the same space.
 - [ ] **Context management** — if there are 3+ substantial tasks, specified an execution strategy (subagents, fresh sessions, or single session) and the handoff mechanism (plan doc, committed code, mini-retros).
+- [ ] **Acceptance criteria recorded** — the `## Acceptance Criteria` checklist was written to the issue body (or `docs/acceptance/<slug>.md` fallback) before execution begins.

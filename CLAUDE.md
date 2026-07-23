@@ -167,7 +167,7 @@ The marketplace catalog ([`claude-code-gvt-marketplace`](https://github.com/Genv
 
 ## Conventions in this repo
 
-- **Commit messages**: scope-based freeform (`<scope>: <description>`), no ticket prefix. The `BUN-XXXX` format in `examples/` is illustrative of a *consuming* game project, not this repo.
+- **Commit messages**: scope-based freeform (`<scope>: <description>`), no ticket prefix. The `BUN-XXXX` format in `examples/` is illustrative of a *consuming* game project, not this repo. Individual commits carry the harness-standard `Co-Authored-By:`/`Claude-Session:` trailers when Claude Code authors them; since PRs are **squash-merged**, those per-commit trailers are collapsed away at merge, so the convention that reaches `main` is just the squash message — don't rely on the trailers surviving.
 - **Branches**: descriptive kebab-case, no prefix (e.g., `split-marketplace`).
 - **Merging PRs**: merge commits are disabled — PRs are **squash-merged** (`gh pr merge <n> --squash`). A `--merge` will be rejected by the repository.
 - **Skill names**: verb-noun, namespaced as `/gvt-dev:<name>` at invocation time.

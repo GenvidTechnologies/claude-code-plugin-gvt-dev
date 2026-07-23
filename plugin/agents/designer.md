@@ -72,6 +72,7 @@ From a requirements document (produced by the analyst), propose a concrete desig
    - Unit tests for logic
    - Manual verification steps for UI/behavior
    - Validation commands that should pass
+   - This table is the **acceptance-criteria source**: the downstream planner seeds the plan's `## Acceptance Criteria` checklist directly from it, so keep each row committable/emittable as-is rather than requiring separate re-authoring.
 
 ## Domain Knowledge
 
