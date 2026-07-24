@@ -125,7 +125,13 @@ Build a **ranked shortlist** of candidate issues to address:
 
 Rank by readiness to plan: higher priority first, then issues that are already
 triaged/enriched and unblocked (no open dependency), de-prioritizing anything
-still `needsInfoLabel` or flagged a duplicate. **Also flag/de-prioritize any
+still `needsInfoLabel` or flagged a duplicate. **An epic / tracking / umbrella
+issue is not itself a plannable unit** — recognize one by an `epic:`/`tracking:`
+title prefix or a body that's a checklist of child issues, and don't rank it as
+a candidate; route to its next *unblocked* child instead. And when a
+higher-priority issue is **blocked by** a lower-priority one (its dependency),
+surface the *unblocker* as the better candidate rather than the blocked parent —
+planning the blocker first is what actually advances the higher-priority work. **Also flag/de-prioritize any
 candidate that may already be shipped:** when an issue names a concrete target
 (a file, doc, or section), run a cheap `git log origin/<default-branch> -- <target>`
 against the just-fetched default branch — if the proposed change already appears
