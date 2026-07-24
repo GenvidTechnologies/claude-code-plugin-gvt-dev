@@ -4,11 +4,13 @@ These principles guide all decision-making — analysis, design, planning, and i
 
 1. **Iterative development.** No two iterations are the same — some lean toward analysis and design, others toward implementation and testing. Decide on what you know, work on what you decide, validate what you've done, investigate what you don't know. Build tools when needed to investigate or validate.
    - Project workflow: Explore → Propose → Validate → Prepare → Implement → Reevaluate, with checkpoints between phases. See the `plan-task` skill for the full flow.
+   - Moldable investigation: the `build-probe` skill operationalizes "build tools to investigate" — state a checkable question, scaffold a throwaway probe in the scratchpad, run it against the real system, then promote or discard. (#144)
 
 2. **Many Much More Small Steps (MMMSS).** On unfamiliar terrain, the shortest path is not the direct one — it's the one that gets you there. Small steps beat large leaps because you can't see the canyon until you're in it.
 
 3. **Make the change easy, then make the easy change** (Kent Beck). Prepare the landscape so the actual feature is a confident small step on known ground. Preparation isn't just refactoring — it includes writing tools to validate or automate the change. Keep generic tools around.
    - Prepare/Feature split: P-steps (pure additions, no behavioral change) before F-steps (wire together). See the `plan-task` skill's Friction Point Audit.
+   - Which tools to keep: `build-probe`'s promote-vs-discard rule keeps a probe only when its question recurs *and* it's generic enough to survive re-asking — discard the contextual majority. (#144)
 
 4. **TDD with refactoring first.** A good test fails first, then you make it pass. If the test is hard to write, stop and go back to the drawing board — the design probably needs work. Refactoring comes before tests: make the code testable, write the failing test, then implement.
    - Red-then-green commit ordering for bug fixes: when a fix requires both an invariant change that *exposes* the bug and a behavioral change that *corrects* it, commit them in that order. The exposing commit flips an existing test (or a new one) to failing; the correcting commit turns it green. The commit log becomes a bisect-friendly regression record — no post-hoc revert-and-verify needed.
