@@ -51,6 +51,7 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `migrate-cordova-ci` | Migrate a Cordova plugin's CI from CircleCI to GitHub Actions |
 | `audit-conventions` | Validate / migrate against the convention contract |
 | `maintain-wiki` | Maintain a project's LLM-wiki compounding-memory knowledge base (ingest / query / lint) |
+| `build-probe` | Build a throwaway probe to answer one checkable question, then promote or discard |
 
 **Agents** (dispatched via `subagent_type: "gvt-dev:<name>"`):
 
