@@ -172,7 +172,7 @@ The marketplace catalog ([`claude-code-gvt-marketplace`](https://github.com/Genv
 - **Merging PRs**: merge commits are disabled — PRs are **squash-merged** (`gh pr merge <n> --squash`). A `--merge` will be rejected by the repository.
 - **Skill names**: verb-noun, namespaced as `/gvt-dev:<name>` at invocation time.
 - **Agent dispatch references** inside skills: always namespaced (`gvt-dev:validator`, `gvt-dev:analyst`, etc.).
-- **Versioning**: `plugin/.claude-plugin/plugin.json` carries a semver `version`. Bump it when shipping a meaningful change to skills/agents/hooks.
+- **Versioning**: `plugin/.claude-plugin/plugin.json` carries a semver `version`. Bump it when shipping a meaningful change to skills/agents/hooks — but **once per release cycle, not once per change.** If `version` is already ahead of the newest release tag (`git tag -l 'v*' | sort -V | tail -1`), this cycle's bump has already happened: add your `[Unreleased]` CHANGELOG entry and leave `version` alone. Otherwise a second change in the same unreleased cycle double-bumps and desyncs the tag/marketplace `source.ref` contract. The `[Unreleased]` entries' own "→ version bump at release" phrasing is the tell: the bump belongs to the *release*, which `release-plugin` owns — not to each change.
 - **Release tags**: plain annotated tags named `v<semver>` (e.g. `v2.0.0`). The marketplace pins by `source.ref` in `.claude-plugin/marketplace.json`, which must match the tag name exactly (tag minus `v` == `plugin/.claude-plugin/plugin.json` `version`).
 - **License**: MIT-0 (`LICENSE` at repo root).
 
