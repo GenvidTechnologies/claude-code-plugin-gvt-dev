@@ -2,6 +2,8 @@
 
 These principles guide all decision-making — analysis, design, planning, and implementation.
 
+> **Numbering is a citation surface — append only.** Skills and agents cite these principles *by number* (`grep -rnE '(development-principles\.md|principle) #[0-9]+' plugin/`). Nothing validates those references, so inserting a principle mid-list or renumbering silently repoints every citation to the wrong principle. Add new principles at the **end**; to retire one, mark it retired in place rather than removing it and closing the gap.
+
 1. **Iterative development.** No two iterations are the same — some lean toward analysis and design, others toward implementation and testing. Decide on what you know, work on what you decide, validate what you've done, investigate what you don't know. Build tools when needed to investigate or validate.
    - Project workflow: Explore → Propose → Validate → Prepare → Implement → Reevaluate, with checkpoints between phases. See the `plan-task` skill for the full flow.
    - Moldable investigation: the `build-probe` skill operationalizes "build tools to investigate" — state a checkable question, scaffold a throwaway probe in the scratchpad, run it against the real system, then promote or discard. (#144)
