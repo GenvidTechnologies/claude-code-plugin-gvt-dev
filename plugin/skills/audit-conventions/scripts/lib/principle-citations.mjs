@@ -19,13 +19,18 @@ import { listMarkdown } from './fs-walk.mjs';
 
 const PRINCIPLES_DOC_PATH = 'plugin/docs/development-principles.md';
 
-// Keyword-anchored: only matches "#N" when preceded by "principle"/
-// "principles" or the doc's own filename (optionally inside a backtick code
-// span, e.g. `` `development-principles.md` #10 ``). Deliberately does NOT
-// match keyword-less issue/PR references like "Distinct from #6" or a
-// sibling project's own numbering like "construct3-chef #136" — those are
-// not principle citations at all, and treating every bare "#N" as one would
-// flood findings with false positives.
+// Keyword-anchored: only matches "#N" when immediately preceded by
+// "principle"/"principles" or the doc's own filename (optionally inside a
+// backtick code span, e.g. `` `development-principles.md` #10 ``).
+// Deliberately does NOT match keyword-less issue/PR references like "Distinct
+// from #6" or a sibling project's own numbering like "construct3-chef #136" —
+// those are not principle citations at all, and treating every bare "#N" as
+// one would flood findings with false positives.
+//
+// The `\b` blocks a word-char run bleeding into the keyword ("myprinciple #4").
+// It deliberately does NOT block a hyphenated compound ("sub-principles #7"):
+// `-` is itself a word boundary, and that's load-bearing — the doc's own name,
+// "development-principles", is hyphenated.
 //
 // Consequence: an illustrative example of a *bad* citation can't be written
 // anywhere under plugin/ — it fires for real. Masking inline code spans first
@@ -33,7 +38,7 @@ const PRINCIPLES_DOC_PATH = 'plugin/docs/development-principles.md';
 // real form `` `development-principles.md` #11 `` puts the number outside the
 // span; masking would blank the anchoring keyword and lose genuine citations.
 // See ADR-0019.
-const CITATION_RE = /(?:development-principles\.md`?|principles?)\s+#(\d+)/gi;
+const CITATION_RE = /(?:development-principles\.md`?|\bprinciples?)\s+#(\d+)/gi;
 
 async function safeReadFile(path) {
   try {
@@ -88,6 +93,10 @@ export function findCitations(content) {
 
 // ---- scanPrincipleCitations -----------------------------------------------------
 
+// `opts` is accepted for signature parity with hygiene.mjs's scanners but is
+// deliberately unused: those filter by `excludePaths`/`retiredTokens`, whereas
+// this scanner's scope is fixed (plugin/**/*.md minus CHANGELOG.md) and
+// author-time-only, so there is no consuming-repo config to honour.
 export async function scanPrincipleCitations(repoRoot, opts = {}) {
   const principlesContent = await safeReadFile(join(repoRoot, PRINCIPLES_DOC_PATH));
   if (principlesContent == null) return []; // no development-principles.md — nothing to check against

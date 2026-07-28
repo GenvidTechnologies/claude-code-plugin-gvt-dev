@@ -134,6 +134,21 @@ test('findCitations: does NOT match "construct3-chef #136" (an unrelated project
   assert.deepEqual(result, []);
 });
 
+// The keyword is `\b`-anchored. These two cases pin the boundary in BOTH
+// directions, because they pull opposite ways and a "simplification" of the
+// regex in either direction would break one of them.
+test('findCitations: does NOT match a word-char run bleeding into the keyword ("myprinciple #4")', () => {
+  const content = 'the myprinciple #4 helper is unrelated.\n';
+  const result = findCitations(content);
+  assert.deepEqual(result, []);
+});
+
+test('findCitations: DOES match a hyphenated compound ("sub-principles #7") — `-` is a word boundary, and the doc\'s own name is hyphenated', () => {
+  const content = 'see sub-principles #7 below.\n';
+  const result = findCitations(content);
+  assert.deepEqual(result, [{ line: 1, number: 7 }]);
+});
+
 test('findCitations: all three forms together, in order, with correct line numbers, and no false positives from keyword-less refs', () => {
   const content = [
     'See principle #7 for details.', // line 1
