@@ -167,10 +167,17 @@ async function loadComponent(type, name, filePath) {
 
 // ---- evaluate --------------------------------------------------------------
 
+// A trailing slash in the declared `path` marks a DIRECTORY expectation (e.g.
+// `docs/decisions/`, declared by create-adr, plan-task, and tech-writer).
+// fileExists() is isFile()-strict, so checking a directory through it always
+// reported "file not found" no matter what was on disk — telling a repo that
+// HAD scaffolded docs/decisions/ that it hadn't, and (had any directory
+// expectation ever been marked required) failing the audit outright.
 async function evaluateFile(component, entry) {
   const required = entry.required !== false;
   const path = join(REPO_ROOT, entry.path);
-  const exists = await fileExists(path);
+  const isDir = entry.path.endsWith('/');
+  const exists = isDir ? await dirExists(path) : await fileExists(path);
 
   if (exists) {
     return { kind: 'file', component: component.name, target: entry.path, ok: true, required };
@@ -182,7 +189,7 @@ async function evaluateFile(component, entry) {
     ok: false,
     required,
     severity: required ? 'error' : 'info',
-    detail: `file not found${required ? '' : ' (optional)'}`,
+    detail: `${isDir ? 'directory' : 'file'} not found${required ? '' : ' (optional)'}`,
     reason: entry.reason,
   };
 }

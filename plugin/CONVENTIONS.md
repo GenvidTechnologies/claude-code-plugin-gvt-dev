@@ -158,6 +158,8 @@ metadata:
 
 Three axes — `files`, `config`, `tools` — plus a mandatory `reason` on every entry. `required: true` is the default; only `required: false` is written explicitly. A skill with no prerequisites omits `expects:` entirely.
 
+Under `files`, a **trailing slash marks a directory expectation** — `docs/decisions/` is satisfied by a directory, `docs/TOC.md` by a file, and the two are checked differently. Write the slash only when you mean a directory: a file path given a trailing slash will look for a directory of that name and report `directory not found`, and a directory path *without* one will never be satisfied no matter what is on disk. `create-adr`, `plan-task`, and `tech-writer` all declare `docs/decisions/` this way.
+
 Because `audit-conventions` aggregates every installed skill's **required** expectations into one repo-wide check, a prerequisite that only one skill needs — and that isn't one of the four contract files — should be `required: false`. Otherwise every consuming repo's audit fails even when that skill is never used. (Same principle as the `commands.*` rule above: "required if the corresponding skill is used.") The `package.json` expectation in `publish-npm-package` is the canonical example.
 
 ## Forking and adapting
