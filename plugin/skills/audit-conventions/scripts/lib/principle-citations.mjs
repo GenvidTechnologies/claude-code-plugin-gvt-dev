@@ -26,6 +26,13 @@ const PRINCIPLES_DOC_PATH = 'plugin/docs/development-principles.md';
 // sibling project's own numbering like "construct3-chef #136" — those are
 // not principle citations at all, and treating every bare "#N" as one would
 // flood findings with false positives.
+//
+// Consequence: an illustrative example of a *bad* citation can't be written
+// anywhere under plugin/ — it fires for real. Masking inline code spans first
+// (as hygiene.mjs's maskInlineCode does for links) would NOT help, since the
+// real form `` `development-principles.md` #11 `` puts the number outside the
+// span; masking would blank the anchoring keyword and lose genuine citations.
+// See ADR-0019.
 const CITATION_RE = /(?:development-principles\.md`?|principles?)\s+#(\d+)/gi;
 
 async function safeReadFile(path) {
