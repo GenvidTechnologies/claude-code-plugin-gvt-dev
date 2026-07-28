@@ -31,6 +31,7 @@ import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
+import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { summarizeExpectations } from './lib/summary.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -111,6 +112,14 @@ async function main() {
     const skillNames = components.filter((c) => c.type === 'skill').map((c) => c.name);
     const agentNames = components.filter((c) => c.type === 'agent').map((c) => c.name);
     findings.push(...checkReadmeInventory(readme, skillNames, agentNames));
+
+    // Also author-time-only, but `error` rather than the family's usual
+    // `warning`: a consumer can't fix the plugin's own principle citations
+    // (the check is confined to this repo's `plugin/` tree, so it can only
+    // ever break this repo's own build, never a consumer's), and a
+    // mis-pointed citation silently repoints agent guidance at the wrong
+    // principle — a functional regression, not a doc-tidiness gap.
+    findings.push(...(await scanPrincipleCitations(REPO_ROOT)));
   }
 
   const hygiene = await loadHygieneConfig(configFilename);
@@ -446,9 +455,9 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
 
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
-  // desc-length, and the hygiene scanners' retired-token/broken-link/
-  // orphaned-doc) aren't tied to a component/expectation — they carry a
-  // self-contained detail string.
+  // desc-length, the hygiene scanners' retired-token/broken-link/
+  // orphaned-doc, readme-inventory, and principle-citation) aren't tied to a
+  // component/expectation — they carry a self-contained detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
     'conventions-drift',
@@ -457,6 +466,7 @@ function formatFinding(f) {
     'broken-link',
     'orphaned-doc',
     'readme-inventory',
+    'principle-citation',
   ];
   if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
