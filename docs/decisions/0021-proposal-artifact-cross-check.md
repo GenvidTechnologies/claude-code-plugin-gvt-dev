@@ -45,9 +45,10 @@ explicit fork rather than silently resolved either way.
 
 This fits the existing pipeline architecture at two points rather than one:
 `plan-task` cites and repeats the principle at **both** entry points where a
-proposal's claims get adopted — the full-proposal shortcut (`SKILL.md:63`
-region, the requirements-adoption bullet) and the Phase 1 analysis path
-(`SKILL.md`'s feature/bug gate paragraph) — since the shortcut is one path
+proposal's claims get adopted — the full-proposal shortcut (the
+requirements-adoption bullet list under `## Shortcuts`) and the Phase 1
+analysis path (the feature/bug gate cluster, just before the Phase 1
+checkpoint) — since the shortcut is one path
 into requirements-gathering, not the only one, and Phase 1 has the identical
 exposure whenever `plan-task` is invoked directly on an untriaged issue. A
 corresponding line was added to `approval-and-audit.md`'s Self-Audit
@@ -120,8 +121,9 @@ batch, 3 of 8 issues (#184, #186, #188) were written against a stale or
 wrong reading of their target, each a case this gate would have caught
 directly rather than by luck.
 
-The gate also found drift in **#180's own body**: the issue claimed
-`SKILL.md:146` listed "exactly the four gates," naming
+The gate also found drift in **#180's own body**: the issue claimed the
+shortcut's verification bullet — then at `SKILL.md:146`, before this change
+shifted it — listed "exactly the four gates," naming
 mechanism-superseded as the fourth. The actual four are
 feature-already-shipped/bug-symptom-observable (the unbuilt gate),
 mechanism-presence, mechanism-supersession, and pattern-divergence. Minor,
