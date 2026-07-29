@@ -80,7 +80,7 @@ Wait for user feedback. Iterate if needed.
 
 Dispatch the **`gvt-dev:planner`** agent with the approved design document.
 
-**Input:** the design document plus the user's chosen option and any feedback from Phase 2.
+**Input:** the design document plus the user's chosen option and any feedback from Phase 2. **Pass the designer's `## Test Criteria` table through verbatim — do not summarize or paraphrase it.** Phase 4's pre-committed `## Acceptance Criteria` checklist is seeded directly from that table, so a summarized hand-off silently breaks the seeding: the planner, having nothing to transcribe, reconstructs its own criteria and its own numbering, and the resulting checklist looks complete while tracing to nothing. Summarizing the *rest* of the design is fine and often useful — the table specifically is a load-bearing artifact, not context. (Symptom to watch for: the planner's output says its acceptance criteria were "derived from the design prose" or "reconstructed" rather than transcribed. That is the planner correctly reporting that this hand-off dropped the table — treat it as a defect in the dispatch, not as a note to pass along.)
 
 **Output:** an implementation plan with ordered tasks, domain assignments (see `CLAUDE.md` for the project's implementer-agent inventory), and risks.
 
