@@ -51,8 +51,42 @@ block in `.gvt-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Resolve the conventions contract.** Locate `docs/issue-triage.md`. If it is
-   **absent**, do not guess conventions — establish it first (see §0b).
+1. **Resolve the conventions contract.** Locate `docs/issue-triage.md`, and
+   independently check for a **near-miss** — a hand-authored triage doc that
+   exists under a different name. This guards against a real failure mode
+   (issue #178): a repo can carry a doc written before the `triage-bugs` →
+   `triage-issues` rename, or under a typo'd name, and under exact-filename
+   resolution it reads as "absent" while the real, hand-authored contract sits
+   dead and unread.
+
+   **Scan the top level of `docs/` only — explicitly non-recursive.** This
+   repo is the proof case: a recursive scan would also match
+   `docs/superpowers/plans/` and `docs/superpowers/specs/`, frozen and
+   accurate historical design records from before the rename — files that must
+   never be touched or flagged as a live near-miss.
+
+   Either of these two independent signals qualifies a `docs/*.md` file as a
+   near-miss:
+   - **Filename glob:** `docs/*[Tt]riage*.md`.
+   - **Marker line:** the file contains the line the bundled templates emit
+     (`Project conventions consumed by …triage-issues`), matched tolerantly of
+     the pre-rename name this doc was renamed from and of any plugin
+     namespace prefix — a rename is the likeliest origin of a near-miss, and
+     that is the entire population this detection addresses.
+
+   Combine detection with canonical-file presence into four outcomes,
+   resolved **before any routing to §0b**:
+   - **Canonical, no near-miss** (`docs/issue-triage.md` present) → proceed to
+     step 2.
+   - **Near-miss, no canonical** → route to §0b's "Near-miss found" branch.
+   - **Absent** (neither present) → route to §0b's "No contract at all"
+     branch.
+   - **Both present** — a dead duplicate, possibly contradicting the live
+     contract → proceed to step 2 as normal, **and** report the duplicate
+     (its path) alongside that review, offering removal or a merge into the
+     canonical file. Interactively, offer it there; in `--non-interactive`,
+     defer the offer, leave both files untouched, and carry it into the §5
+     closing summary as an outstanding item.
 2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
@@ -88,6 +122,48 @@ taxonomy, stop and offer to scaffold `docs/issue-triage.md` (→ §0b)
 rather than grooming on.
 
 ### 0b. Establish the contract
+
+**Near-miss found.** Step 1 detected a `docs/*.md` file that looks like the
+triage contract under a different name, with no `docs/issue-triage.md`
+present. Report, for every candidate:
+- its path,
+- its first line,
+- its heading list (`##`/`###` lines), and
+- whether it carries the marker line — a marker-bearing candidate is far more
+  likely to be the dead-orphan case than a coincidental filename match.
+
+**Rank marker-bearing candidates first.** If more than one near-miss exists,
+present all of them — never auto-pick one.
+
+Offer three options via `AskUserQuestion`:
+- **Rename it to `docs/issue-triage.md`** — the **default**. `git mv` the file
+  when it is tracked, a plain filesystem move otherwise; this preserves every
+  hand-authored word. Then fall through to step 3 as if the contract had
+  always lived at the canonical path.
+- **Replace it with a fresh scaffold** — destructive. Enumerate exactly what
+  gets discarded (the file's path, size, and heading list) and, per
+  `development-principles.md` principle #6, **preview the plan in one turn and
+  apply it in the next**, only after the user has seen it, before writing
+  anything.
+- **Keep both** — the skill still reads only `docs/issue-triage.md`, so state
+  plainly that choosing to keep both files leaves the near-miss dead and
+  unread, and carry it into the §5 closing summary as an outstanding item.
+
+Do not carry over the scaffold branch's "remind the user to set
+`needsInfoLabel`/`triagedLabel` to match the chosen variant" line into this
+branch — an adopted, hand-authored doc has no chosen variant to match. A later
+task adds an evidence-based label/heading fit check instead.
+
+In `--non-interactive`, **defer**: report the near-miss and the three options
+above, write nothing — no rename, no scaffold — and stop the run, recording
+the deferral as an outstanding item. This deliberately departs from issue
+#178's own acceptance criterion, which asked for unattended auto-rename:
+renaming a hand-authored consumer file unattended is a write the §4 safety
+table had no row for, and deferring still prevents the double-scaffold
+outcome without an unattended mutation of the user's file. With `--force`,
+take the documented default (rename), then step 3's heading check runs
+report-only and the TOC index step runs automatically (both added by a later
+task).
 
 **No contract at all.** If `docs/issue-triage.md` is absent, offer to scaffold it — do
 not guess conventions. Two bundled templates exist; pick the one that matches the
@@ -180,6 +256,7 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
+| Contract-file resolution (rename a near-miss to `docs/issue-triage.md`, replace it, remove a stale duplicate) | preview, then per-option approval | **deferred** unless `--force` (which renames) |
 | Field / label / priority / body / language | per-issue approval | auto-apply |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
