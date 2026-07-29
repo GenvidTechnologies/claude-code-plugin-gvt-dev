@@ -51,37 +51,8 @@ block in `.gvt-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Read `docs/issue-triage.md`.** If it is **absent**, offer to scaffold it — do
-   not guess conventions. Two bundled templates exist; pick the one that matches the
-   repo's label scheme:
-   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
-     **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
-   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
-     **flat** variant for repos using a simple category-label set (e.g. GitHub's
-     defaults: `bug`, `enhancement`, `documentation`, `duplicate`, `question`,
-     `wontfix`) with no `type:`/`priority/`/`area:` scheme.
-
-   **Detect the default:** probe the repo's labels (`gh label list --json name -L 200`,
-   or the tracker equivalent). If any label name is prefixed `type:` or `priority/`,
-   default to **structured**; otherwise default to **flat**. Confirm the choice with
-   the user (`AskUserQuestion`, detected default first) before copying — the probe is
-   a heuristic, not a verdict. Once scaffolded, remind the user to set the
-   `bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
-   (the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
-   the detected default without asking.
-
-   **Index the scaffolded doc in `docs/TOC.md`.** After copying the template, add a
-   one-line entry for `docs/issue-triage.md` to `docs/TOC.md` under a **Process**
-   heading (create the heading if absent) — mirroring how `plan-task` indexes a
-   scaffolded `docs/decisions/` record. An unindexed contract doc is invisible to
-   the planning/triage skills that discover docs via the index. Interactively,
-   **offer** it; in `--non-interactive`, add it **automatically**. Make it idempotent
-   (skip if the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
-
-   **If the user declines scaffolding, or a quick scan of the open backlog shows no
-   bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
-   offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
-   Otherwise proceed with the full workflow only once the contract exists.
+1. **Resolve the conventions contract.** Locate `docs/issue-triage.md`. If it is
+   **absent**, do not guess conventions — establish it first (see §0b).
 2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
@@ -89,10 +60,11 @@ block in `.gvt-agent.json` (access mechanics).
    For the full analyst-driven workflow, offer to add a `bugTracker` block (show the
    example block at the bottom of this skill); proceed with §1 onward only once it
    exists.
-3. **Resolve scope:**
+3. **Reconcile the resolved contract** — labels (3a), headings (3b), TOC index (3c). (Filled in below.)
+4. **Resolve scope:**
    - Default: `actionQuery` minus `triagedLabel` (open issues not yet triaged).
    - Override: an explicit query/label, or a list of issue IDs passed as args.
-4. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
+5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended.
 
 ### 0a. Light-touch groom (no-contract path)
@@ -112,8 +84,42 @@ tracker's **existing label vocabulary** — no analyst dispatch, no
 - **Summarize** what changed.
 
 When the groom reveals a backlog large or bug-heavy enough to warrant the full
-taxonomy, stop and offer to scaffold `docs/issue-triage.md` (back to §0 step 1)
+taxonomy, stop and offer to scaffold `docs/issue-triage.md` (→ §0b)
 rather than grooming on.
+
+### 0b. Establish the contract
+
+**No contract at all.** If `docs/issue-triage.md` is absent, offer to scaffold it — do
+not guess conventions. Two bundled templates exist; pick the one that matches the
+repo's label scheme:
+- `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
+  **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
+- `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
+  **flat** variant for repos using a simple category-label set (e.g. GitHub's
+  defaults: `bug`, `enhancement`, `documentation`, `duplicate`, `question`,
+  `wontfix`) with no `type:`/`priority/`/`area:` scheme.
+
+**Detect the default:** probe the repo's labels (`gh label list --json name -L 200`,
+or the tracker equivalent). If any label name is prefixed `type:` or `priority/`,
+default to **structured**; otherwise default to **flat**. Confirm the choice with
+the user (`AskUserQuestion`, detected default first) before copying — the probe is
+a heuristic, not a verdict. Once scaffolded, remind the user to set the
+`bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
+(the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
+the detected default without asking.
+
+**Index the scaffolded doc in `docs/TOC.md`.** After copying the template, add a
+one-line entry for `docs/issue-triage.md` to `docs/TOC.md` under a **Process**
+heading (create the heading if absent) — mirroring how `plan-task` indexes a
+scaffolded `docs/decisions/` record. An unindexed contract doc is invisible to
+the planning/triage skills that discover docs via the index. Interactively,
+**offer** it; in `--non-interactive`, add it **automatically**. Make it idempotent
+(skip if the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
+
+**If the user declines scaffolding, or a quick scan of the open backlog shows no
+bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
+offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
+Otherwise proceed with the full workflow only once the contract exists.
 
 ## 1. Dispatch exploration (Phase 1)
 
