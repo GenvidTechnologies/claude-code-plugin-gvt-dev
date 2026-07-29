@@ -161,13 +161,25 @@ higher-priority issue is **blocked by** a lower-priority one (its dependency),
 surface the *unblocker* as the better candidate rather than the blocked parent —
 planning the blocker first is what actually advances the higher-priority work. **Also flag/de-prioritize any
 candidate that may already be shipped:** when an issue names a concrete target
-(a file, doc, or section), run a cheap `git log origin/<default-branch> -- <target>`
-against the just-fetched default branch — if the proposed change already appears
-there, the issue is likely resolved by a merged PR that never auto-closed it.
-This is a soft signal, not a hard exclude (the file can exist while the specific
-change didn't land, and many issues name no concrete target); surface it in the
-candidate's one-line rationale so the user can skip it or confirm it's still
-needed. Present the top candidates with a one-line rationale each and ask the user
+(a file, doc, or section), check it against the just-fetched default branch —
+`git log origin/<default-branch> -- <target>` for whether the file moved, and
+then **read the target itself**. The log alone answers *"was this file touched?"*,
+which is neither necessary nor sufficient for *"did the proposed change land?"* —
+so treat it as a cheap pre-filter, not the check. A rule the issue asks for may
+already sit in an untouched file (log clean, work shipped anyway), and a file may
+have been rewritten into text that is **stricter** than what the issue proposes,
+so adopting the issue's wording verbatim would be a *regression* rather than a
+no-op (log dirty, but the residual is the opposite of what the issue asks). Both
+of those are content questions; only reading the target answers them. This is
+also the ranking-time instance of `development-principles.md` principle **#13** —
+a proposal is a claim about the artifact it modifies — so what you learn here is
+worth carrying into the handoff, since `plan-task` owes the same check at
+adoption time.
+This is a soft signal, not a hard exclude (many issues name no concrete target,
+and a partial overlap usually means *rescope*, not *skip*); surface it in the
+candidate's one-line rationale — naming which part already shipped and which
+residual is left — so the user can skip it, or confirm the residual is still
+worth planning. Present the top candidates with a one-line rationale each and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
 recommended candidate first). **With a single ranked candidate, skip the
 `AskUserQuestion` shortlist ceremony** — a one-option multiSelect is just
