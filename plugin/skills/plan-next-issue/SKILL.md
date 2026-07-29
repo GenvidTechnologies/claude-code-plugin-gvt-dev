@@ -104,10 +104,38 @@ Detect whether the backlog needs grooming before planning:
 - **If untriaged open issues exist**, surface the count and **offer** to triage:
   *"N open issues are untriaged. Triage first so the shortlist is deduplicated and
   enriched?"* If the user accepts, **invoke `gvt-dev:triage-issues`** and keep
-  its analyst report (priorities, enrichment) in hand for step 2. **With only one
-  (or very few) untriaged issues, triage's dedup/linking value is nil — note that
-  and skip straight to ranking (§2) rather than offering; a lone issue's enrichment,
-  if any, folds into the §2 metadata fetch.**
+  its analyst report (priorities, enrichment) in hand for step 2. **A small
+  backlog is not by itself a reason to skip.** Dedup/linking value does shrink
+  as the untriaged count drops, but triage's other two payloads — per-issue
+  **enrichment** (label completeness, body accuracy, cross-reference correctness)
+  and **staleness detection** — are per-issue and don't shrink with count;
+  staleness in fact *grows* with issue age. Neither is reachable from §2's fetch,
+  which is metadata-only by design. So the untriaged count is one input to the
+  skip decision, not the criterion.
+
+  Lean toward **offering** whenever a candidate shows, for example:
+  - it is **unlabeled** — never triaged at all, as opposed to triaged-and-clean;
+  - it carries a **blocked-upstream / blocked-by**-style label — the block may
+    have cleared since the label was applied, and nothing detects that
+    automatically; it's added and dropped by hand;
+  - it was **auto-filed** by a bot or release automation — those bodies carry
+    generated, unverified tables and inventories;
+  - it is **old relative to its subject's release cadence** (e.g. a pin-bump
+    issue several releases stale).
+
+  These are examples, not a closed list. The fourth trigger doesn't duplicate
+  §2's `git log origin/<default-branch> -- <target>` probe: that probe fires
+  only for issues naming a concrete file target, is a soft signal about the
+  file, and runs **after** this skip decision, so it cannot inform it — triage
+  instead reads full bodies and the closed-issue comparison set.
+
+  **Skip straight to ranking (§2) only when the backlog is both small and
+  recently triaged.** When it's genuinely marginal, **ask rather than
+  pre-recommending the skip**, and state the **asymmetry**: an unnecessary
+  triage pass costs one analyst dispatch, while a wrong skip costs a plan built
+  on stale premises. If the query's JSON doesn't expose author or creation date,
+  say so and lean toward **offering** rather than silently treating the
+  auto-filed and age triggers as not firing.
 - **If none are untriaged** (or the user declines), skip to step 2.
 
 In `--non-interactive`, triage automatically when untriaged issues exist; pass
@@ -144,8 +172,7 @@ to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
 recommended candidate first). **With a single ranked candidate, skip the
 `AskUserQuestion` shortlist ceremony** — a one-option multiSelect is just
 friction; present it inline with its rationale and route straight to §3, where
-`plan-task`'s own checkpoint is the gate. (Mirrors the lone-issue triage-skip in
-§1.)
+`plan-task`'s own checkpoint is the gate.
 
 In `--non-interactive`, auto-pick the single top-ranked candidate.
 
@@ -190,7 +217,7 @@ handoff.
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
 | Run `triage-issues` | offer when untriaged issues exist | auto when untriaged issues exist |
-| Destructive triage actions (close-as-duplicate, splits) | per delegated approval | **deferred** unless `--force` |
+| Destructive triage actions (close-as-duplicate, splits, contract-file resolution) | per delegated approval | **deferred** unless `--force` |
 | Pick issue(s) to plan | user selects one or more | auto-pick top-ranked |
 | Combine vs sequential plans | ask when >1 selected | sequential |
 

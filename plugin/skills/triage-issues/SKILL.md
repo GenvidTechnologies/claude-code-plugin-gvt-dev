@@ -6,10 +6,10 @@ metadata:
     files:
       - path: docs/issue-triage.md
         required: false
-        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; the skill offers to scaffold it from the bundled template if absent
+        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
       - path: docs/TOC.md
         required: false
-        reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/issue-triage.md when docs/TOC.md is present
+        reason: §0c adds a one-line index entry for the resolved docs/issue-triage.md contract — scaffolded, adopted from a near-miss, or already canonical — when docs/TOC.md is present
     config:
       - key: bugTracker.actionQuery
         in: .gvt-agent.json
@@ -51,37 +51,43 @@ block in `.gvt-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Read `docs/issue-triage.md`.** If it is **absent**, offer to scaffold it — do
-   not guess conventions. Two bundled templates exist; pick the one that matches the
-   repo's label scheme:
-   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
-     **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
-   - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
-     **flat** variant for repos using a simple category-label set (e.g. GitHub's
-     defaults: `bug`, `enhancement`, `documentation`, `duplicate`, `question`,
-     `wontfix`) with no `type:`/`priority/`/`area:` scheme.
+1. **Resolve the conventions contract.** Locate `docs/issue-triage.md`, and
+   independently check for a **near-miss** — a hand-authored triage doc that
+   exists under a different name. This guards against a real failure mode
+   (issue #178): a repo can carry a doc written before the `triage-bugs` →
+   `triage-issues` rename, or under a typo'd name, and under exact-filename
+   resolution it reads as "absent" while the real, hand-authored contract sits
+   dead and unread.
 
-   **Detect the default:** probe the repo's labels (`gh label list --json name -L 200`,
-   or the tracker equivalent). If any label name is prefixed `type:` or `priority/`,
-   default to **structured**; otherwise default to **flat**. Confirm the choice with
-   the user (`AskUserQuestion`, detected default first) before copying — the probe is
-   a heuristic, not a verdict. Once scaffolded, remind the user to set the
-   `bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
-   (the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
-   the detected default without asking.
+   **Scan the top level of `docs/` only — explicitly non-recursive.** This
+   repo is the proof case: a recursive scan would also match
+   `docs/superpowers/plans/` and `docs/superpowers/specs/`, frozen and
+   accurate historical design records from before the rename — files that must
+   never be touched or flagged as a live near-miss.
 
-   **Index the scaffolded doc in `docs/TOC.md`.** After copying the template, add a
-   one-line entry for `docs/issue-triage.md` to `docs/TOC.md` under a **Process**
-   heading (create the heading if absent) — mirroring how `plan-task` indexes a
-   scaffolded `docs/decisions/` record. An unindexed contract doc is invisible to
-   the planning/triage skills that discover docs via the index. Interactively,
-   **offer** it; in `--non-interactive`, add it **automatically**. Make it idempotent
-   (skip if the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
+   Either of these two independent signals qualifies a `docs/*.md` file as a
+   near-miss:
+   - **Filename glob:** `docs/*[Tt]riage*.md`.
+   - **Marker line:** the file contains the line the bundled templates emit
+     (`Project conventions consumed by …triage-issues`), matched tolerantly of
+     the pre-rename name this doc was renamed from and of any plugin
+     namespace prefix — a rename is the likeliest origin of a near-miss, and
+     that is the entire population this detection addresses.
 
-   **If the user declines scaffolding, or a quick scan of the open backlog shows no
-   bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
-   offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
-   Otherwise proceed with the full workflow only once the contract exists.
+   Combine detection with canonical-file presence into four outcomes,
+   resolved **before any routing to §0b**:
+   - **Canonical, no near-miss** (`docs/issue-triage.md` present) → proceed to
+     step 2.
+   - **Near-miss, no canonical** → route to §0b's "Near-miss found" branch.
+   - **Absent** (neither present) → route to §0b's "No contract at all"
+     branch.
+   - **Both present** — a dead duplicate, possibly contradicting the live
+     contract → proceed to step 2 as normal (the canonical file *is* the
+     contract; nothing routes to §0b). Then, **during §0c**, report the
+     duplicate by path and offer either removing it or merging its content
+     into the canonical file. Interactively, offer that choice per-option; in
+     `--non-interactive`, defer it, leave both files untouched, and carry it
+     into the §5 closing summary as an outstanding item.
 2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
@@ -89,10 +95,14 @@ block in `.gvt-agent.json` (access mechanics).
    For the full analyst-driven workflow, offer to add a `bugTracker` block (show the
    example block at the bottom of this skill); proceed with §1 onward only once it
    exists.
-3. **Resolve scope:**
+3. **Reconcile the resolved contract** (→ §0c) — label keys, required
+   headings, TOC index. Runs for **any resolved contract** — freshly
+   scaffolded, adopted via rename, or **already-canonical** — and is
+   **skipped on the §0a light-touch path**.
+4. **Resolve scope:**
    - Default: `actionQuery` minus `triagedLabel` (open issues not yet triaged).
    - Override: an explicit query/label, or a list of issue IDs passed as args.
-4. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
+5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended.
 
 ### 0a. Light-touch groom (no-contract path)
@@ -112,8 +122,156 @@ tracker's **existing label vocabulary** — no analyst dispatch, no
 - **Summarize** what changed.
 
 When the groom reveals a backlog large or bug-heavy enough to warrant the full
-taxonomy, stop and offer to scaffold `docs/issue-triage.md` (back to §0 step 1)
+taxonomy, stop and offer to scaffold `docs/issue-triage.md` (→ §0b)
 rather than grooming on.
+
+### 0b. Establish the contract
+
+**Near-miss found.** Step 1 detected a `docs/*.md` file that looks like the
+triage contract under a different name, with no `docs/issue-triage.md`
+present. Report, for every candidate:
+- its path,
+- its first line,
+- its heading list (`##`/`###` lines), and
+- whether it carries the marker line — a marker-bearing candidate is far more
+  likely to be the dead-orphan case than a coincidental filename match.
+
+**Rank marker-bearing candidates first.** If more than one near-miss exists,
+present all of them — never auto-pick one.
+
+Offer three options via `AskUserQuestion`:
+- **Rename it to `docs/issue-triage.md`** — the **default**. `git mv` the file
+  when it is tracked, a plain filesystem move otherwise; this preserves every
+  hand-authored word. Then fall through to step 3 as if the contract had
+  always lived at the canonical path.
+- **Replace it with a fresh scaffold** — destructive. Enumerate exactly what
+  gets discarded (the file's path, size, and heading list) and, per
+  `development-principles.md` principle #6, **preview the plan in one turn and
+  apply it in the next**, only after the user has seen it, before writing
+  anything.
+- **Keep both** — the skill still reads only `docs/issue-triage.md`, so state
+  plainly that choosing to keep both files leaves the near-miss dead and
+  unread, and carry it into the §5 closing summary as an outstanding item.
+
+On the **rename** option specifically, do not carry over the scaffold
+branch's variant-matching nudge — an adopted, hand-authored doc has no chosen
+variant to match. §0c's evidence-based label-keys check, and its
+required-headings check, run instead once the contract is adopted. (**Replace**
+produces a fresh scaffold, so the nudge still applies there; **keep both**
+leaves no resolved contract, so §0c does not run at all.)
+
+In `--non-interactive`, **defer**: report the near-miss and the three options
+above, write nothing — no rename, no scaffold — and stop the run, recording
+the deferral as an outstanding item. This deliberately departs from issue
+#178's own acceptance criterion, which asked for unattended auto-rename:
+renaming a hand-authored consumer file unattended is a write the §4 safety
+table had no row for, and deferring still prevents the double-scaffold
+outcome without an unattended mutation of the user's file. With `--force`,
+take the documented default (rename), then §0c's required-headings check runs
+report-only and its TOC-index sub-block runs automatically.
+
+**No contract at all.** If `docs/issue-triage.md` is absent, offer to scaffold it — do
+not guess conventions. Two bundled templates exist; pick the one that matches the
+repo's label scheme:
+- `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
+  **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
+- `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
+  **flat** variant for repos using a simple category-label set (e.g. GitHub's
+  defaults: `bug`, `enhancement`, `documentation`, `duplicate`, `question`,
+  `wontfix`) with no `type:`/`priority/`/`area:` scheme.
+
+**Detect the default:** probe the repo's labels (`gh label list --json name -L 200`,
+or the tracker equivalent). If any label name is prefixed `type:` or `priority/`,
+default to **structured**; otherwise default to **flat**. Confirm the choice with
+the user (`AskUserQuestion`, detected default first) before copying — the probe is
+a heuristic, not a verdict. Once scaffolded, remind the user to set the
+`bugTracker` block's `needsInfoLabel`/`triagedLabel` to match the chosen variant
+(the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
+the detected default without asking.
+
+Once scaffolded, §0c's TOC-index sub-block indexes the new
+`docs/issue-triage.md` in `docs/TOC.md`.
+
+**If the user declines scaffolding, or a quick scan of the open backlog shows no
+bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
+offer a **light-touch groom** instead (→ §0a, which skips the rest of §0).
+Otherwise proceed with the full workflow only once the contract exists.
+
+### 0c. Reconcile the resolved contract
+
+Runs for **any resolved contract** — freshly scaffolded, adopted via rename,
+or already-canonical — and is **skipped on the §0a light-touch path**.
+
+**Label keys.** Check `bugTracker.triagedLabel` and `bugTracker.needsInfoLabel`
+against the repo's actual label set.
+
+- **Reuse the label set §0b already probed when one is available** (the
+  scaffold branch's `gh label list --json name -L 200`, or the tracker
+  equivalent); **fetch it on demand here otherwise** — the already-canonical
+  path never enters §0b, so nothing has probed yet. Either shape is fine; the
+  point is never probing twice when the set is already in hand.
+- A key naming a label that does not exist → **warn at load time**, print the
+  exact fix commands (create the label, or repoint the config key), and
+  **continue**. Never a stop. **No automatic write in either mode.**
+- If the probe failed (CLI absent, unauthenticated), **or the list came back
+  at exactly the `-L 200` cap and may be truncated**, report **inconclusive**
+  rather than warning — a truncated list would produce false "label missing"
+  reports.
+- If `bugTracker` is absent there is nothing to check; say so and move on.
+
+Why this matters: the origin repo's contract declared a `needs-info` label
+that did not exist there. Nothing surfaced it, and the flag-missing-info
+recipe would have failed — or created a spurious label — only later, when
+that specific recipe fired. This turns a latent mid-run failure into a
+load-time warning.
+
+This is an evidence-based check, and it **replaces** the scaffold branch's
+blind variant-matching nudge (the one telling the user which label keys the
+just-copied template expects) on the adopted and already-canonical paths.
+**Leave that nudge where it is in the scaffold branch** — it is still correct
+there, where a variant was just chosen — and do not duplicate it here.
+
+**Required headings.** Check the resolved contract for the eight headings the
+skill and analyst locate guidance by: `## Types`, `## Priorities`,
+`## Labels`, `## Required fields`, `## Splitting`, `## Duplicates`,
+`## Dependencies`, `## Mutation recipes`.
+
+- Report any missing ones. A pre-rename doc may predate sections the skill
+  now reads.
+- **Interactively, offer to append stubs.** **Never rewrite an existing
+  section.** Word each stub so an empty section cannot be misread as a
+  deliberate policy of "none" — e.g. "not yet specified — see the bundled
+  template".
+- **Unattended (`--non-interactive`, including `--force`): report only.**
+
+**`docs/TOC.md` index.** Runs for the scaffolded, adopted, and
+already-canonical paths alike — not just a fresh scaffold. The origin repo's
+contract was also unindexed, which is why nothing else surfaced it: an
+unindexed contract doc is invisible to the planning/triage skills that
+discover docs through the index.
+
+Once the contract is resolved (copied from a template, renamed from a
+near-miss, or already sitting at the canonical path), add a one-line entry
+for `docs/issue-triage.md` to `docs/TOC.md` under a **Process** heading
+(create the heading if absent) — mirroring how `plan-task` indexes a
+scaffolded `docs/decisions/` record. Interactively, **offer** it; in
+`--non-interactive`, add it **automatically**. Make it idempotent (skip if
+the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
+
+**Do not write on the "keep both" outcome** from §0b — there the indexed
+path is not the contract.
+
+**Stale duplicate.** Only on step 1's **both present** outcome, where a
+near-miss sits alongside a canonical `docs/issue-triage.md`. The canonical
+file is the contract and the run proceeds normally; the near-miss is dead
+weight that may contradict it — and, having never been read, may be the older
+and more carefully written of the two. Report it by path, with its first line
+and heading list so the user can judge, then offer either **removing** it or
+**merging** its content into the canonical file. Removal is destructive and a
+merge rewrites the live contract, so both take per-option approval and the
+preview-then-apply discipline of `development-principles.md` principle #6.
+In `--non-interactive`, defer and write nothing; under `--force`, take
+**remove**. Either way, carry the outcome into the §5 closing summary.
 
 ## 1. Dispatch exploration (Phase 1)
 
@@ -174,6 +332,8 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
+| Near-miss contract resolution — rename to `docs/issue-triage.md`, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
+| Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred** unless `--force`, which takes **remove** |
 | Field / label / priority / body / language | per-issue approval | auto-apply |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
@@ -189,6 +349,14 @@ Report: issues triaged; fields / labels / priorities changed; duplicates linked 
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run.
 
+Also report, when §0 produced them: how the contract was resolved (scaffolded /
+adopted, and from which near-miss path / already canonical); any deferred
+near-miss resolution (§0b's `--non-interactive` defer, so a stopped run leaves a
+record of why); §0c's label-key warning or inconclusive result; any missing
+required headings; whether the `docs/TOC.md` index entry was added or skipped;
+and any dead duplicate carried forward from the both-present outcome or a "keep
+both" choice.
+
 ## Example `bugTracker` block
 
 Add this to `.gvt-agent.json` (GitHub / `gh` example — adjust queries, labels,
@@ -197,7 +365,7 @@ and the CLI for your tracker):
 ```json
 "bugTracker": {
   "kind": "github",
-  "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees",
+  "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees,author,createdAt",
   "comparisonQuery": "gh issue list --state all -L 500 --json number,title,labels,state",
   "readOne": "gh issue view {id} --json number,title,body,labels,comments",
   "triagedLabel": "triaged",
