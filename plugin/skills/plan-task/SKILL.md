@@ -155,6 +155,7 @@ For an **issue that's already a full proposal** (rationale + a concrete proposed
   Investigate the factual questions; only the preference questions go to `AskUserQuestion`. This replaces dispatching the designer.
 - Present a combined design + plan in **one checkpoint**, explicitly flagging any friction the chosen answers introduce.
 - Still produce `plan.md`, a prep commit, one-commit-each tasks, and the validator + code-reviewer gates.
+- **Compressing the pipeline does not drop the Phase 3 obligations — run [`approval-and-audit.md`](approval-and-audit.md)'s self-audit checklist at the combined checkpoint.** The shortcut replaces the analyst and designer *dispatches*, not the checks that Phase 3 owns. The one most often lost is **writing the `## Acceptance Criteria` checklist to the issue body before execution begins** (ADR-0017): the criteria feel "already written" because they're in `plan.md`, but `plan.md` is transient and gitignored, so criteria that live only there are gone the moment the next task overwrites it — and reviewers never see what the work was pledged against. Write them to the issue (or the `docs/acceptance/<slug>.md` fallback) at the checkpoint, not retroactively after the commits land.
 
 For **continuation** of existing work:
 
