@@ -6,10 +6,10 @@ metadata:
     files:
       - path: docs/issue-triage.md
         required: false
-        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; the skill offers to scaffold it from the bundled template if absent
+        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
       - path: docs/TOC.md
         required: false
-        reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/issue-triage.md when docs/TOC.md is present
+        reason: §0c adds a one-line index entry for the resolved docs/issue-triage.md contract — scaffolded, adopted from a near-miss, or already canonical — when docs/TOC.md is present
     config:
       - key: bugTracker.actionQuery
         in: .gvt-agent.json
@@ -333,6 +333,14 @@ Report: issues triaged; fields / labels / priorities changed; duplicates linked 
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run.
 
+Also report, when §0 produced them: how the contract was resolved (scaffolded /
+adopted, and from which near-miss path / already canonical); any deferred
+near-miss resolution (§0b's `--non-interactive` defer, so a stopped run leaves a
+record of why); §0c's label-key warning or inconclusive result; any missing
+required headings; whether the `docs/TOC.md` index entry was added or skipped;
+and any dead duplicate carried forward from the both-present outcome or a "keep
+both" choice.
+
 ## Example `bugTracker` block
 
 Add this to `.gvt-agent.json` (GitHub / `gh` example — adjust queries, labels,
@@ -341,7 +349,7 @@ and the CLI for your tracker):
 ```json
 "bugTracker": {
   "kind": "github",
-  "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees",
+  "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees,author,createdAt",
   "comparisonQuery": "gh issue list --state all -L 500 --json number,title,labels,state",
   "readOne": "gh issue view {id} --json number,title,body,labels,comments",
   "triagedLabel": "triaged",
