@@ -82,11 +82,12 @@ block in `.gvt-agent.json` (access mechanics).
    - **Absent** (neither present) → route to §0b's "No contract at all"
      branch.
    - **Both present** — a dead duplicate, possibly contradicting the live
-     contract → proceed to step 2 as normal, **and** report the duplicate
-     (its path) alongside that review, offering removal or a merge into the
-     canonical file. Interactively, offer it there; in `--non-interactive`,
-     defer the offer, leave both files untouched, and carry it into the §5
-     closing summary as an outstanding item.
+     contract → proceed to step 2 as normal (the canonical file *is* the
+     contract; nothing routes to §0b). Then, **during §0c**, report the
+     duplicate by path and offer either removing it or merging its content
+     into the canonical file. Interactively, offer that choice per-option; in
+     `--non-interactive`, defer it, leave both files untouched, and carry it
+     into the §5 closing summary as an outstanding item.
 2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
@@ -152,10 +153,12 @@ Offer three options via `AskUserQuestion`:
   plainly that choosing to keep both files leaves the near-miss dead and
   unread, and carry it into the §5 closing summary as an outstanding item.
 
-Do not carry over the scaffold branch's variant-matching nudge into this
-branch — an adopted, hand-authored doc has no chosen variant to match. §0c's
-evidence-based label-keys check, and its required-headings check, run instead
-once the rename lands.
+On the **rename** option specifically, do not carry over the scaffold
+branch's variant-matching nudge — an adopted, hand-authored doc has no chosen
+variant to match. §0c's evidence-based label-keys check, and its
+required-headings check, run instead once the contract is adopted. (**Replace**
+produces a fresh scaffold, so the nudge still applies there; **keep both**
+leaves no resolved contract, so §0c does not run at all.)
 
 In `--non-interactive`, **defer**: report the near-miss and the three options
 above, write nothing — no rename, no scaffold — and stop the run, recording
@@ -258,6 +261,18 @@ the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
 **Do not write on the "keep both" outcome** from §0b — there the indexed
 path is not the contract.
 
+**Stale duplicate.** Only on step 1's **both present** outcome, where a
+near-miss sits alongside a canonical `docs/issue-triage.md`. The canonical
+file is the contract and the run proceeds normally; the near-miss is dead
+weight that may contradict it — and, having never been read, may be the older
+and more carefully written of the two. Report it by path, with its first line
+and heading list so the user can judge, then offer either **removing** it or
+**merging** its content into the canonical file. Removal is destructive and a
+merge rewrites the live contract, so both take per-option approval and the
+preview-then-apply discipline of `development-principles.md` principle #6.
+In `--non-interactive`, defer and write nothing; under `--force`, take
+**remove**. Either way, carry the outcome into the §5 closing summary.
+
 ## 1. Dispatch exploration (Phase 1)
 
 Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
@@ -317,7 +332,8 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Contract-file resolution (rename a near-miss to `docs/issue-triage.md`, replace it, remove a stale duplicate) | preview, then per-option approval | **deferred** unless `--force` (which renames) |
+| Near-miss contract resolution — rename to `docs/issue-triage.md`, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
+| Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred** unless `--force`, which takes **remove** |
 | Field / label / priority / body / language | per-issue approval | auto-apply |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
