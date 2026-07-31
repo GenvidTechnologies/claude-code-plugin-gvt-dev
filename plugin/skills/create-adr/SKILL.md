@@ -193,6 +193,16 @@ per-file moves are safe. If running renumber steps manually, apply the same rule
 
 ## 6. Commit ownership
 
+0. **If this skill was invoked from inside a `plan-task` execution, stop after
+   staging — that orchestrator owns the commit** (ADR-0008), and steps 1–3 below
+   do not apply. Stage tech-writer's files by explicit path, report them, and
+   return. The `git status` sweep in step 1 assumes this skill is the only writer
+   in the tree; during `plan-task` execution it is not, because independent tasks
+   may be dispatched concurrently and stage into the same index — so the sweep
+   would land a sibling task's files in the ADR commit. `plan-task` Phase 4 step 5
+   dispatches `gvt-dev:tech-writer` directly for exactly this reason; reach for
+   this skill on demand *outside* a plan run, or for an insertion/backfill whose
+   renumber step this skill owns.
 1. After tech-writer (and `--apply`, if an insertion) stages its files, confirm
    the staged set with `git status`.
 2. Commit using the project's commit format from `CLAUDE.md` (e.g.
