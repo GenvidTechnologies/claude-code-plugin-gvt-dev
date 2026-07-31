@@ -54,6 +54,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0019-principle-citation-error-severity.md`](decisions/0019-principle-citation-error-severity.md) — why the `principle-citation` content scanner is `error` severity instead of matching the all-`warning` author-time family (`readme-inventory`, `desc-length`, `orphaned-doc`), and why an unparseable principles doc collapses to one finding rather than one per citation
 - [`decisions/0020-near-miss-contract-resolution.md`](decisions/0020-near-miss-contract-resolution.md) — why `triage-issues` §0 detects a near-miss conventions doc via a non-recursive filename glob + marker-line grep, resolves it to one of four outcomes (canonical/near-miss/absent/both), defers unattended rather than auto-renaming, and why the check couldn't instead live in `audit-conventions`
 - [`decisions/0021-proposal-artifact-cross-check.md`](decisions/0021-proposal-artifact-cross-check.md) — why a full proposal's claims are cross-checked against the artifact it modifies via a shared principle (#13) cited at both `plan-task` entry points, rather than a local-only gate or an artifact-wins-by-default fallback
+- [`decisions/0022-okf-bundle-root-is-the-wiki-tier.md`](decisions/0022-okf-bundle-root-is-the-wiki-tier.md) — why the OKF v0.2 bundle root is `<wikiDir>/` (not the repo root or a `wiki/references/` mirror), leaving `<rawDir>/` outside the bundle so the `raw/` immutability rule stands unamended
 
 ## Knowledge Base
 
