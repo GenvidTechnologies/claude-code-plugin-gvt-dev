@@ -162,7 +162,14 @@ gh pr edit <child> --base <default-branch>   # retarget
 gh pr reopen <child>
 ```
 
-Both can error when the child's base branch was deleted. Only if they do is a rebuild needed — the same `--onto` rebase, then a fresh PR:
+**If both succeed**, the PR is reopened and retargeted — you are now in the `OPEN` case above, and the branch content still needs fixing. Finish with the same rebase and push:
+
+```bash
+git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git push --force-with-lease
+```
+
+**If either errors** — which can happen when the child's base branch was deleted — only then rebuild: the same `--onto` rebase, followed by a fresh PR:
 
 ```bash
 git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
