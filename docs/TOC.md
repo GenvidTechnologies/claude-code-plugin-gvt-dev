@@ -55,6 +55,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0020-near-miss-contract-resolution.md`](decisions/0020-near-miss-contract-resolution.md) — why `triage-issues` §0 detects a near-miss conventions doc via a non-recursive filename glob + marker-line grep, resolves it to one of four outcomes (canonical/near-miss/absent/both), defers unattended rather than auto-renaming, and why the check couldn't instead live in `audit-conventions`
 - [`decisions/0021-proposal-artifact-cross-check.md`](decisions/0021-proposal-artifact-cross-check.md) — why a full proposal's claims are cross-checked against the artifact it modifies via a shared principle (#13) cited at both `plan-task` entry points, rather than a local-only gate or an artifact-wins-by-default fallback
 - [`decisions/0022-okf-bundle-root-is-the-wiki-tier.md`](decisions/0022-okf-bundle-root-is-the-wiki-tier.md) — why the OKF v0.2 bundle root is `<wikiDir>/` (not the repo root or a `wiki/references/` mirror), leaving `<rawDir>/` outside the bundle so the `raw/` immutability rule stands unamended
+- [`decisions/0023-skill-local-gate-with-pointer.md`](decisions/0023-skill-local-gate-with-pointer.md) — why `run-retro`'s cache-lags-source verification gate stays skill-local rather than a shared `development-principles.md` principle, with a bidirectional pointer from `CLAUDE.md`'s dogfooding caveat
 
 ## Knowledge Base
 
