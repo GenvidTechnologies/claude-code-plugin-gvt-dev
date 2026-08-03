@@ -6,7 +6,7 @@ metadata:
     files:
       - path: docs/wiki-schema.md
         required: false
-        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, decay policy, verb contract); the skill offers to scaffold it from the bundled template if absent
+        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract); the skill offers to scaffold it from the bundled template if absent
       - path: docs/TOC.md
         required: false
         reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/wiki-schema.md when docs/TOC.md is present
@@ -19,10 +19,6 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: The directory holding immutable source captures cited for provenance (defaults to raw)
-      - key: wiki.decay
-        in: .gvt-agent.json
-        required: false
-        reason: Optional staleness thresholds (e.g. staleAfterDays) that lint applies when flagging stale pages
     tools:
       - command: git
         required: false
@@ -151,11 +147,11 @@ mutates anything. Checks, run against `<wikiDir>/` (and optionally `<rawDir>/`):
   `<wikiDir>/` page that doesn't exist.
 - **Orphaned pages** — a page under `<wikiDir>/` not listed in
   `<wikiDir>/index.md`.
-- **Stale pages** — pages whose `Sources`/last-touched signal exceeds the
-  optional `wiki.decay` thresholds (e.g. `staleAfterDays`) from
-  `.gvt-agent.json`, per the decay policy documented in `docs/wiki-schema.md`.
-  Without a configured threshold, this check is judgment-based rather than
-  numeric — flag candidates, don't invent a default cutoff.
+- **Stale pages** — pages whose frontmatter `stale_after` date has passed
+  (`today >= stale_after`), per the staleness policy documented in
+  `docs/wiki-schema.md`. Without a declared `stale_after`, this check is
+  judgment-based rather than numeric — flag candidates, don't invent a
+  default cutoff.
 - **`raw/` immutability (optional)** — `git log --diff-filter=M -- <rawDir>/`
   to flag any file under `<rawDir>/` that has been modified after its initial
   commit (a `raw/` file should only ever be added or re-captured as a new
