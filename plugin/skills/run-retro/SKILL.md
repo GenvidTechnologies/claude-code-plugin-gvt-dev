@@ -30,6 +30,10 @@ Review the conversation and identify:
 - **Missing documentation** — information that would have shortened the session
 - **Workflow gaps** — manual steps that could be automated (skills, hooks, scripts)
 
+**In the plugin repo, verify every finding against source before proposing it.** The skills and agents you just exercised ran from the **installed cache** (`~/.claude/plugins/cache/…/<version>/`), which lags `plugin/` between releases — so friction you observed may already be fixed. Before writing up any skill/agent finding, read the **working-tree** `plugin/skills/<name>/SKILL.md` or `plugin/agents/<name>.md` — not the text you were invoked with — and drop the finding if source already addresses it. Compare `plugin/.claude-plugin/plugin.json`'s `version` against the newest release tag (`git tag -l 'v*' | sort -V | tail -1`) to gauge whether a gap is even possible: equal means cache and source agree; ahead means every observation is suspect. **When a finding survives the check, record the source version it was verified against**, so a later reader can tell a stale proposal from a live one.
+
+The stakes exceed a wasted cycle: source may have been rewritten into wording *stricter* than your finding proposes, so adopting it verbatim would be a **regression**, not a no-op — and a retro-authored issue carries retro authority into triage and planning. (Sibling to the plugin-repo note in §2: that one scopes *which files* a plugin-repo retro edits; this one gates *whether a finding is real* before it's written up. Both are plugin-repo-conditional — a consuming-repo retro is unaffected, since there the plugin genuinely is an upstream dependency.)
+
 ## 2. Documentation Improvements
 
 Start from the project's documentation index (`docs/TOC.md`) and the repo's `CLAUDE.md`. **If `docs/TOC.md` is absent** (a greenfield consumer that hasn't scaffolded the contract, or the plugin repo itself), don't dead-end — discover the doc surface directly instead: glob `docs/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
