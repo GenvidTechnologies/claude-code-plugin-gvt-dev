@@ -101,11 +101,10 @@ A second example is `audit-conventions`' optional `hygiene` block, tuning its ad
 
 A third example is the `wiki` block, configuring the LLM-wiki compounding-memory practice (`/gvt-dev:maintain-wiki` and its read-only `wiki-librarian` agent):
 
-- `wikiDir` (default `wiki`) — the directory holding the wiki's pages, index, and log.
+- `wikiDir` (default `wiki`) — the directory holding the wiki's pages, index, and log. `wikiDir` **is** the OKF v0.2 bundle root — no separate `bundleRoot` key is introduced, since a second name for one thing is guaranteed drift. `rawDir` is outside the bundle.
 - `rawDir` (default `raw`) — the directory holding immutable source captures cited for provenance.
-- `decay` (optional) — thresholds governing staleness flagging in `maintain-wiki lint`.
 
-`wikiDir` and `rawDir` are declared `required: false` in both the `maintain-wiki` skill's and the `wiki-librarian` agent's `metadata.expects`; `decay` is declared `required: false` in the skill's alone (the agent never reads it). All three are optional because the wiki practice is opt-in — a repo that doesn't maintain a wiki must never fail the aggregated audit over it, the same reasoning behind the `package.json` expectation in `publish-npm-package`.
+`wikiDir` and `rawDir` are declared `required: false` in both the `maintain-wiki` skill's and the `wiki-librarian` agent's `metadata.expects`. Both are optional because the wiki practice is opt-in — a repo that doesn't maintain a wiki must never fail the aggregated audit over it, the same reasoning behind the `package.json` expectation in `publish-npm-package`.
 
 `plan-task` reuses the existing `bugTracker` block — `readOne` to fetch the current issue body, plus the host-native issue-edit command (e.g. `gh issue edit --body-file`) — to read and write the plan's pre-committed `## Acceptance Criteria` checklist in the issue body. No new config block is introduced. For issue-less runs, the checklist falls back to a committed `docs/acceptance/<slug>.md` file. See ADR-0017.
 

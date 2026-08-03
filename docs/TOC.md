@@ -56,6 +56,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 - [`decisions/0021-proposal-artifact-cross-check.md`](decisions/0021-proposal-artifact-cross-check.md) — why a full proposal's claims are cross-checked against the artifact it modifies via a shared principle (#13) cited at both `plan-task` entry points, rather than a local-only gate or an artifact-wins-by-default fallback
 - [`decisions/0022-okf-bundle-root-is-the-wiki-tier.md`](decisions/0022-okf-bundle-root-is-the-wiki-tier.md) — why the OKF v0.2 bundle root is `<wikiDir>/` (not the repo root or a `wiki/references/` mirror), leaving `<rawDir>/` outside the bundle so the `raw/` immutability rule stands unamended
 - [`decisions/0023-skill-local-gate-with-pointer.md`](decisions/0023-skill-local-gate-with-pointer.md) — why `run-retro`'s cache-lags-source verification gate stays skill-local rather than a shared `development-principles.md` principle, with a bidirectional pointer from `CLAUDE.md`'s dogfooding caveat
+- [`decisions/0024-okf-concept-page-frontmatter-contract.md`](decisions/0024-okf-concept-page-frontmatter-contract.md) — why the concept-page frontmatter emits the full OKF v0.2 key set rather than the `type`-only minimum, drops the `## Sources` body section while keeping `## Related`, and retires `wiki.decay` in favor of per-page `stale_after`
 
 ## Knowledge Base
 
