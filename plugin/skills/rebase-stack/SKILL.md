@@ -134,16 +134,47 @@ Verify all refs were updated:
 git log --oneline --decorate origin/<default-branch>..HEAD
 ```
 
-## When merging the parent CLOSED the child PR
+## When the parent's merge disrupts the child PR
 
-Squash-merging the parent **with branch deletion** doesn't just orphan the child's commits — GitHub auto-**CLOSES** the child PR (not "MERGED-but-commits-lost", an outright *closed* state). And a closed PR **whose base branch was deleted cannot be reopened or retargeted**: both `gh pr edit <child> --base <default-branch>` and `gh pr reopen <child>` error out. There is no in-place recovery — you must rebuild the PR.
+Squash-merging the parent **with branch deletion** orphans the child's commits. What happens to the child *PR* varies — GitHub may auto-retarget it to the default branch and leave it OPEN, or close it outright, depending on branch protection, org settings, whether the child had already been retargeted, and timing. **Check, don't assume:**
 
-Recovery is the same `--onto` rebase followed by a **fresh** PR:
+```bash
+gh pr view <child> --json state,baseRefName,mergeable
+```
+
+### If `state: OPEN`
+
+GitHub retargeted the base to `<default-branch>` and kept the PR open — usually reporting `mergeable: CONFLICTING`, because the branch still carries the parent's pre-squash commits. The `--onto` rebase is the whole fix; the PR number and its review thread survive:
 
 ```bash
 git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
 git push --force-with-lease
-gh pr create --base <default-branch> ...    # the closed PR cannot be reused
+```
+
+Re-check with `gh pr view <child> --json mergeable` — it should read `MERGEABLE`. No new PR.
+
+### If `state: CLOSED`
+
+Try in-place recovery **before** rebuilding:
+
+```bash
+gh pr edit <child> --base <default-branch>   # retarget
+gh pr reopen <child>
+```
+
+**If both succeed**, the PR is reopened and retargeted — you are now in the `OPEN` case above, and the branch content still needs fixing. Finish with the same rebase and push:
+
+```bash
+git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git push --force-with-lease
+```
+
+**If either errors** — which can happen when the child's base branch was deleted — only then rebuild: the same `--onto` rebase, followed by a fresh PR:
+
+```bash
+git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git push --force-with-lease
+gh pr create --base <default-branch> ...    # only after in-place recovery failed
 ```
 
 **Prevent it:** before merging the parent, **retarget the child to `<default-branch>`** (`gh pr edit <child> --base <default-branch>`) while the child's base branch still exists. Once retargeted, merging (and deleting) the parent leaves the child a normal open PR against the default branch — no close, no rebuild.
