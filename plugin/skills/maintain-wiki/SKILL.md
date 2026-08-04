@@ -69,6 +69,12 @@ first use.
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/raw-readme.template.md` →
      `<rawDir>/README.md`
 
+   **Resolve the placeholders as you copy.** The templates spell the wiki's
+   directories as `<wikiDir>/` and `<rawDir>/`; substitute the names resolved
+   in step 1 into the copied text, so the scaffolded file names the project's
+   actual directories. `wiki-schema.template.md` is the exception — its header
+   tells the consumer to edit it for their project, so copy it as-is.
+
    Interactively, **offer** the scaffold (`AskUserQuestion`); in
    `--non-interactive`, scaffold **automatically**. **This step is idempotent**:
    re-running it only creates the pieces that are still missing — a directory,
@@ -163,6 +169,8 @@ mutates anything. Checks, run against `<wikiDir>/` (and optionally `<rawDir>/`):
   `<wikiDir>/` (e.g. `../docs/decisions/…`). Legal per §6.1 and resolvable on
   local disk — so a plain dead-link check passes it silently — but
   **unresolvable to an external OKF consumer** that receives only the bundle.
+  Existence-check the target as you go — one that escapes the bundle *and*
+  doesn't resolve on disk is dead as well, so say so in the same note.
   Report it as a note, not a defect: the schema doc calls this a deliberate,
   documented trade-off for the rare page that must point outside the bundle,
   not a pattern to reach for by default.
