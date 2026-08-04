@@ -1,3 +1,20 @@
+---
+type: practice-note
+title: audit-conventions as Proto-Lint
+description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md, and where the boundary with maintain-wiki lint sits per ADR-0015.
+tags: [llm-wiki, maintain-wiki, audit-conventions, lint, hygiene-scanners]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
+sources:
+  - id: karpathy
+    resource: ../raw/karpathy-llm-wiki-agent-memory.md
+    title: Capture — Karpathy's LLM Wiki as Agent Memory
+    last_modified: 2026-07-21
+  - id: karpathy-upstream
+    resource: https://aaif.io/blog/karpathys-llm-wiki-as-agent-memory/
+    title: Karpathy's LLM Wiki as Agent Memory (aaif.io)
+---
+
 # audit-conventions as Proto-Lint
 
 The `audit-conventions` skill's hygiene scanners already perform an informal,

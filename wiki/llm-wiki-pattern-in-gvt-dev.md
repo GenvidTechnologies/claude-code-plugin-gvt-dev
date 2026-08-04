@@ -1,3 +1,27 @@
+---
+type: practice-note
+title: The LLM-Wiki Pattern in gvt-dev
+description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
+tags: [llm-wiki, maintain-wiki, knowledge-management, plugin-architecture]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
+sources:
+  - id: karpathy
+    resource: ../raw/karpathy-llm-wiki-agent-memory.md
+    title: Capture — Karpathy's LLM Wiki as Agent Memory
+    last_modified: 2026-07-21
+  - id: karpathy-upstream
+    resource: https://aaif.io/blog/karpathys-llm-wiki-as-agent-memory/
+    title: Karpathy's LLM Wiki as Agent Memory (aaif.io)
+  - id: beyond-rag
+    resource: ../raw/beyond-rag-llm-wiki-pattern.md
+    title: Capture — Beyond RAG, the LLM wiki pattern that builds compounding knowledge
+    last_modified: 2026-07-21
+  - id: beyond-rag-upstream
+    resource: https://levelup.gitconnected.com/beyond-rag-how-andrej-karpathys-llm-wiki-pattern-builds-knowledge-that-actually-compounds-31a08528665e
+    title: Beyond RAG (levelup.gitconnected.com)
+---
+
 # The LLM-Wiki Pattern in gvt-dev
 
 How Karpathy's LLM-maintained-wiki pattern maps onto surfaces that already
