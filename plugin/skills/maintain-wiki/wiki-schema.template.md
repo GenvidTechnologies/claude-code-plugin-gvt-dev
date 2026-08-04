@@ -3,7 +3,7 @@
 > Project conventions consumed by `/gvt-dev:maintain-wiki`. Copy this file to
 > `docs/wiki-schema.md` and edit it for your project. This is the **maintenance
 > schema** for the three-tier wiki: `raw/` (immutable captured sources) →
-> `wiki/` (LLM-maintained pages, `index.md`, `log.md`) → this schema (the rules
+> `<wikiDir>/` (LLM-maintained pages, `index.md`, `log.md`) → this schema (the rules
 > that govern how the first two are kept in sync).
 >
 > The section headings must stay the same — the skill locates guidance by
@@ -95,11 +95,14 @@ fits. A claim drawn from a source carries a footnote keyed to that source's
   connects to. Optional if the topic is genuinely standalone.
 
 **Tolerated, never rejected** (§11 consumer clauses): a conformant consumer
-MUST NOT reject a bundle for missing optional frontmatter fields, unknown
-`type` values, unknown additional frontmatter keys, broken cross-links, or a
-missing `index.md` — and MUST treat a bare `verified` mapping as a
-one-element list. This bounds what a future mechanical linter (`lint`, below,
-and #150) may flag.
+MUST NOT reject a bundle for missing optional frontmatter fields, a missing
+optional family (§5.3), unknown `type` values, unknown additional frontmatter
+keys, broken cross-links, or a missing `index.md` — and MUST treat a bare
+`verified` mapping as a one-element list. This bounds what a future mechanical
+linter (`lint`, below, and #150) may flag. The **binding** statement for
+`lint` and #150 lives in the skill body's `lint` section (plugin-owned, so it
+survives edits to this file); this paragraph is the format's own statement of
+the same clauses.
 
 ## Page lifecycle: create vs. update
 
@@ -108,13 +111,13 @@ forgets, a wiki page is the durable, growing record of everything known about
 one topic. Two situations, two different actions:
 
 - **New topic → new page.** If the ingested source describes a topic with no
-  existing page, create one under `wiki/<topic-slug>.md`, add it to
-  `wiki/index.md`, and append an entry to `wiki/log.md`.
+  existing page, create one under `<wikiDir>/<topic-slug>.md`, add it to
+  `<wikiDir>/index.md`, and append an entry to `<wikiDir>/log.md`.
 - **New facts about an existing topic → update the page in place.** Don't
   create a second page for the same topic, and don't just append raw
   paragraphs — integrate the new facts into the existing prose, updating the
   `description` if the topic's shape has changed, and refresh the frontmatter
-  `sources` list. Append an entry to `wiki/log.md` either way.
+  `sources` list. Append an entry to `<wikiDir>/log.md` either way.
 
 When it's ambiguous whether a source is a new topic or a refinement of an
 existing one, prefer updating the closer existing page — a wiki with one
@@ -132,7 +135,7 @@ was when captured.
   date or revision), leaving the prior capture in place. The wiki page that
   cites it gets updated (see above); the old capture stays as the record of
   what was true when it was captured.
-- This is what makes `wiki/` pages re-verifiable: every claim traces back to
+- This is what makes `<wikiDir>/` pages re-verifiable: every claim traces back to
   an immutable file, not a source that may have moved on since.
 
 ## Decay / staleness policy
@@ -163,18 +166,21 @@ settled architecture omit stale_after or set it a year out." -->
 
 `/gvt-dev:maintain-wiki` operates through three verbs:
 
-- **`ingest`** — read new or changed files under `raw/`, write new `wiki/`
+- **`ingest`** — read new or changed files under `raw/`, write new `<wikiDir>/`
   pages or update existing ones per the lifecycle rule above, and append one
-  entry per source to `wiki/log.md`.
+  entry per source to `<wikiDir>/log.md`.
 - **`query`** — answer a question **from the wiki**, with citations back to
   the pages (and, transitively, the `raw/` sources) that support the answer.
   Query is served by the `gvt-dev:wiki-librarian` agent so exploration stays
   off the main thread.
 - **`lint`** — an advisory health check, not a mutation. It flags: dead
-  wiki-links (a `Related` link to a page that no longer exists), pages
-  orphaned from `wiki/index.md` (a page not listed in the index), `raw/`
-  mutations (a `raw/` file that has been edited rather than re-captured), and
-  stale pages per `stale_after` (above).
+  wiki-links (a `Related` link to a page that no longer exists), out-of-bundle
+  links (a link that resolves outside `<wikiDir>/` — legal, but unresolvable
+  to a consumer that receives only the bundle), orphaned pages (a page listed
+  in **no** index — neither `<wikiDir>/index.md` nor its own subdirectory's
+  `index.md`), `raw/` mutations (a `raw/` file that has been edited rather
+  than re-captured), and stale pages per `stale_after` (above). The skill body
+  carries the full rules.
 
 ## Wiki-links
 
