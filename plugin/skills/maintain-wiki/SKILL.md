@@ -53,13 +53,29 @@ first use.
 1. **Resolve the wiki's directories** from the `wiki` block in `.gvt-agent.json`:
    `wikiDir` (default `wiki`), `rawDir` (default `raw`). These names are used
    throughout the rest of this skill.
-2. **Probe for the three-tier layout:**
+2. **Resolve the verb.** The user (or dispatching skill/command) names one of
+   `ingest`, `query`, `lint`. If none is given, ask which is wanted — the three
+   verbs have different inputs and safety profiles, so don't guess. **Resolve it
+   before probing (step 4):** only `ingest` scaffolds, so the verb is what
+   decides whether a missing layout is something to *create* or merely something
+   to *report*.
+3. **Confirm mode:** interactive by default. `--non-interactive` (alias
+   `--auto`) runs unattended, applying the scaffold and TOC index automatically
+   per the rules below. That automatic application is precisely why the verb is
+   resolved first — an unattended `query` or `lint` must never create a wiki.
+4. **Probe for the three-tier layout:**
    - `<wikiDir>/` and `<rawDir>/` directories
    - `<wikiDir>/index.md` and `<wikiDir>/log.md`
    - `docs/wiki-schema.md`
 
-   **If any piece is absent, offer to scaffold it** from the bundled templates
-   — do not guess conventions:
+   **Only `ingest` scaffolds.** For `query` and `lint`, a missing piece is a
+   **reportable state, not a gap to fill**: `query` says the wiki can't answer
+   the question, and `lint` no-ops gracefully (see its section below). Creating
+   a wiki as a side effect of a read-only verb would contradict both, and under
+   `--non-interactive` it would do so silently.
+
+   **If any piece is absent *and the verb is `ingest`*, offer to scaffold it**
+   from the bundled templates — do not guess conventions:
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/wiki-schema.template.md` →
      `docs/wiki-schema.md`
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/wiki-index.template.md` →
@@ -92,12 +108,6 @@ first use.
    Make it **idempotent** (skip if the entry already exists) and **skip
    gracefully if `docs/TOC.md` is absent** — the doc still exists and works,
    it's just undiscoverable through the index.
-3. **Confirm mode:** interactive by default. `--non-interactive` (alias
-   `--auto`) runs unattended, applying the scaffold and TOC index automatically
-   per the rules above.
-4. **Resolve the verb.** The user (or dispatching skill/command) names one of
-   `ingest`, `query`, `lint`. If none is given, ask which is wanted — the three
-   verbs have different inputs and safety profiles, so don't guess.
 
 ## `ingest`
 
