@@ -36,9 +36,10 @@ bundle — captures are not concept documents, so §11's frontmatter
 requirement never reaches them and the `raw/` immutability convention
 (below) stands unamended.
 
-> **The `wiki/` bundle is OKF v0.2 conformant** — every page under `wiki/`
-> carries parseable frontmatter with a non-empty `type`, and `wiki/index.md`
-> and `wiki/log.md` follow §8 and §9 (#192, ADR-0026). Per ADR-0022 decision 4
+> **The `wiki/` bundle is OKF v0.2 conformant** — every **non-reserved** `.md`
+> under `wiki/` carries parseable frontmatter with a non-empty `type`, and the
+> two reserved files follow §8 and §9: `wiki/index.md` carries `okf_version`
+> as its sole key, `wiki/log.md` carries no frontmatter at all (#192, ADR-0026). Per ADR-0022 decision 4
 > the claim is scoped to the **bundle**, never to this repo — nothing outside
 > `wiki/` is in scope, including `raw/`. Nothing mechanical enforces it yet:
 > #150 is the tracked conformance walk, and until it ships the claim rests on

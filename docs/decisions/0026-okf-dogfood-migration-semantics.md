@@ -47,7 +47,7 @@ moved.
 
 **2. `usage_window` is omitted absent any `usage_count`, and the format question
 is handed to #221 rather than fixed here.** The key is defined — in both
-`docs/wiki-schema.md:114-115` and
+`docs/wiki-schema.md:117-118` and
 `plugin/skills/maintain-wiki/wiki-schema.template.md:88` — as framing "every
 `usage_count` in the page." Nothing in the format emits a `usage_count`, and
 `wiki-librarian` never reads `usage_window`. Emitting it would frame an empty
@@ -64,7 +64,7 @@ warns about, where three copies of one contract silently disagree. Filed as
 **#221**.
 
 **Contrast with `stale_after`, which is also omitted and is *not* a defect.**
-`docs/wiki-schema.md:181-182` explicitly sanctions the omission — "`stale_after`
+`docs/wiki-schema.md:184-185` explicitly sanctions the omission — "`stale_after`
 is typically omitted … Set one only when a page describes something actively in
 flux." Both pages describe settled structure, so no date is owed. That asymmetry
 is the whole point of separating the two: one omission is the schema's own
@@ -80,7 +80,7 @@ depends on that point. It was provenance for nothing.
 
 The operative rule is **keep-where-cited / drop-where-not**, applied to both
 pages: a `sources[]` entry stays when a body footnote keys to it. `beyond-rag`
-keeps a real footnote on the sibling page (`wiki/llm-wiki-pattern-in-gvt-dev.md:44`),
+keeps a real footnote on the sibling page (`wiki/llm-wiki-pattern-in-gvt-dev.md:42`),
 where the RAG-contrast framing it genuinely contributed lives — so the source is
 not dropped from the bundle, only from the page it did not inform. Nothing is
 lost from the record either way: `wiki/log.md`'s 2026-07-21 entry still records
@@ -103,8 +103,9 @@ from, not what the page was written against.
 
 Relatedly, the footnote *definition* labels (`[^karpathy]: Karpathy's LLM Wiki
 as Agent Memory — immutable capture, 2026-07-21.`) are plain text, never
-markdown links. Linking them would have added four new out-of-bundle links and
-changed `lint`'s expected output on this bundle from 2 advisories to 6 — turning
+markdown links. Linking them would have added three new out-of-bundle links —
+one per definition, since a marker is inline and cannot carry a link — and
+changed `lint`'s expected output on this bundle from 2 advisories to 5 — turning
 a documented, understood standing finding (decision 5) into noise, for a
 convenience the `sources[]` block already provides.
 
@@ -203,7 +204,7 @@ Keyed to the decision each alternative was rejected under.
   links.** Rejected: the `-upstream` entry is the same source at a second
   address (ADR-0024 decision 9), so a second footnote would double-cite one
   source; and linking the labels would add four out-of-bundle links, taking
-  `lint`'s expected output from 2 advisories to 6 and drowning the two
+  `lint`'s expected output from 2 advisories to 5 and drowning the two
   deliberate, documented findings in incidental ones.
 - **(5) Inline ADR-0015's content into a wiki page and drop the links.** Would
   close both advisories and make the bundle self-contained. Rejected: it

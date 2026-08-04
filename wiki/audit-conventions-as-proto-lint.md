@@ -52,8 +52,9 @@ looks-like-drift patterns).
 These scanners match the shape of the wiki pattern's `lint` verb almost
 exactly — dead links, orphaned pages, stale/retired references[^karpathy] —
 just applied to `docs/` instead of `wiki/`. They are wired into
-`audit.mjs`'s validate mode as **advisory, exit-0 findings** (`info`/`warning` severity, never
-`error`): a consuming repo's audit never fails because of a broken doc link
+`audit.mjs`'s validate mode as **advisory, exit-0 findings** (`info`/`warning`
+severity, never `error`): a consuming repo's audit never fails because of a
+broken doc link
 or an orphaned page, it just gets told about it. That advisory posture — flag,
 don't block — is exactly what `docs/wiki-schema.md` describes for the
 `lint` verb's own findings.
