@@ -255,13 +255,41 @@ Keyed to the decision each alternative was rejected under.
 - **What #192 validates, and what it does not.** Now exercised against real data:
   §11's tolerant-consumer bound (two omitted optional keys, neither a defect),
   the out-of-bundle advisory (**2** instances), bundle-absolute link resolution
-  (**1** instance), and all four `wiki-librarian` frontmatter behaviors ADR-0025
-  shipped unverified — routing by `type`/`tags`, trust tier, `status`, and
-  currency from `generated.at`. **Still unexercised: the nested-`index.md` orphan
-  rule.** The wiki has no subdirectories, and creating one purely to exercise a
-  check would be inventing content to satisfy a test. ADR-0025 handed over *two*
-  unvalidated rules; this closes one of them, and saying so plainly is more
-  useful than implying all of #191 is now proven.
+  (**1** instance). **Still unexercised: the nested-`index.md` orphan rule.** The
+  wiki has no subdirectories, and creating one purely to exercise a check would
+  be inventing content to satisfy a test. ADR-0025 handed over *two* unvalidated
+  rules; this closes one of them, and saying so plainly is more useful than
+  implying all of #191 is now proven.
+- **`wiki-librarian`'s four behaviors are each only *half* validated — do not
+  record them as verified as a block.** A hand-driven query run against the
+  migrated bundle (the agent cannot be dispatched: `maintain-wiki` has never been
+  released, so the installed cache has no copy) gave:
+  - **Routing** — `tags` works, discriminating (a `lint` query shortlists one
+    page) and generalizing (an `llm-wiki` query shortlists both). **`type` cut
+    nothing**: both pages are genuinely `practice-note`, so at n=1 distinct value
+    its discriminating power is untested, as is §11's never-reject-an-unknown-`type`
+    rule. Routing is validated for `tags` alone.
+  - **Trust tier** — correct, but only the **absent-key** path. Nothing declares
+    `verified`, so the declared path and §11's bare-`verified`-as-one-element-list
+    rule are unexercised.
+  - **`status: deprecated`** — correct via a scratchpad fixture (exclude-or-flag
+    plainly; on a single-source corpus the flag branch is what keeps the question
+    answerable). But both real pages declare `status: stable` *explicitly*, so the
+    **absent ⇒ `stable` default is unexercised**.
+  - **Currency** — only the `generated.at` half; no page declares `stale_after`,
+    so the mechanical `today >= stale_after` verdict never ran.
+
+  Note the pattern: trust tier and `status` exercise **opposite** halves of their
+  respective defaults, so "both work" would paper over complementary blind spots.
+- **The query run surfaced two `wiki-librarian` gaps, filed as #222.**
+  (1) It resolved this bundle's one bundle-absolute link against the *filesystem
+  root* and reported a legal, §6.1-**recommended** form as a broken link — the
+  agent never received the resolution rule #191 gave `lint`. (2) Nothing states
+  which wins for currency when `generated.at` and `log.md` disagree, which they
+  now deliberately do: decision 1 back-stamps `generated.at` to content
+  production, while `log.md` records the migration touch. Both are true and mean
+  different things; without a precedence rule a reader concludes the field is
+  simply stale.
 - **`raw/` was untouched — 0 files.** Per ADR-0022 decisions 2 and 4, `<rawDir>/`
   is outside the bundle, so §11.1 never reaches it and no frontmatter is owed
   there. No capture was edited, `git log --diff-filter=M -- raw/` stays empty,
