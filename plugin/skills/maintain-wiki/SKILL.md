@@ -1,6 +1,6 @@
 ---
 name: maintain-wiki
-description: Maintains an LLM-wiki compounding-memory knowledge base for a project through three verbs — ingest (read immutable raw/ captures, write or update wiki/ pages, append wiki/log.md), query (answer a question from the wiki with citations, via the read-only wiki-librarian agent), and lint (advisory health check of an existing wiki — dead links, orphaned pages, staleness, optional raw/ immutability). Scaffolds the three-tier raw/wiki/schema layout on first use from bundled templates. Markdown-only — no vector DB, no retrieval engine — a wiki accumulates and compounds where RAG retrieves and forgets. Use when standing up a project knowledge wiki, ingesting sources into it, querying it, or checking its health.
+description: Maintains an LLM-wiki compounding-memory knowledge base for a project through three verbs — ingest (read immutable raw/ captures, write or update <wikiDir>/ pages, append <wikiDir>/log.md), query (answer a question from the wiki with citations, via the read-only wiki-librarian agent), and lint (advisory health check of an existing wiki — dead links, orphaned pages, staleness, optional raw/ immutability). Scaffolds the three-tier raw/wiki/schema layout on first use from bundled templates. Markdown-only — no vector DB, no retrieval engine — a wiki accumulates and compounds where RAG retrieves and forgets. Use when standing up a project knowledge wiki, ingesting sources into it, querying it, or checking its health.
 metadata:
   expects:
     files:
@@ -28,7 +28,7 @@ metadata:
 # Maintain Wiki
 
 Maintain a project's **LLM-wiki**: a three-tier, markdown-only compounding-memory
-knowledge base — `raw/` (immutable captured sources) → `wiki/` (LLM-maintained
+knowledge base — `raw/` (immutable captured sources) → `<wikiDir>/` (LLM-maintained
 pages, `index.md`, `log.md`) → `docs/wiki-schema.md` (the maintenance rules that
 keep the first two in sync). No vector DB, no retrieval engine, no render step:
 **a wiki accumulates and compounds; RAG retrieves and forgets.** The skill
@@ -40,11 +40,11 @@ first use.
 - **`query` → subagent.** Reading and synthesizing an answer runs in the
   read-only `gvt-dev:wiki-librarian` agent, off this thread, so the wiki's
   content never has to be pulled fully into the orchestrating conversation.
-- **`ingest` writes → `gvt-dev:tech-writer`.** Authoring or updating a `wiki/`
+- **`ingest` writes → `gvt-dev:tech-writer`.** Authoring or updating a `<wikiDir>/`
   page is a write, dispatched to `tech-writer` under the single-writer-per-file
   discipline (see `condense-lessons` for the precedent) rather than performed
   ad hoc on this thread.
-- **`lint` → here.** The health check reads across `wiki/` and (optionally)
+- **`lint` → here.** The health check reads across `<wikiDir>/` and (optionally)
   `raw/` history directly; it's advisory and read-only, so there's no
   write-safety reason to delegate it.
 
@@ -73,7 +73,7 @@ first use.
    `--non-interactive`, scaffold **automatically**. **This step is idempotent**:
    re-running it only creates the pieces that are still missing — a directory,
    file, or index entry already present is left untouched and skipped silently.
-   A partially-scaffolded wiki (e.g. `wiki/` exists but `docs/wiki-schema.md`
+   A partially-scaffolded wiki (e.g. `<wikiDir>/` exists but `docs/wiki-schema.md`
    doesn't) is a normal, supported state, not an error.
 
    **Index the scaffolded schema doc in `docs/TOC.md`.** After copying
@@ -96,7 +96,7 @@ first use.
 ## `ingest`
 
 The wiki tier's ingest motion: turn durable insight — freshly captured, or
-already sitting in `<rawDir>/` — into compounding `wiki/` content.
+already sitting in `<rawDir>/` — into compounding `<wikiDir>/` content.
 
 1. **Gather what's being ingested.** This can be: the current session's
    insight(s) handed in directly, a specific source or insight named by the

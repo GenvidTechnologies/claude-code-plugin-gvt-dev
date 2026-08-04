@@ -1,6 +1,6 @@
 ---
 name: wiki-librarian
-description: Read-only. Answers a question about this project by fetching and synthesizing from the consuming repo's LLM-wiki — wiki/ pages, wiki/index.md (the wiki's internal TOC), and wiki/log.md (ingestion history) — citing raw/ immutable source captures for provenance where relevant. Returns one structured, cited answer. Never writes. Use as the query phase of the maintain-wiki skill.
+description: Read-only. Answers a question about this project by fetching and synthesizing from the consuming repo's LLM-wiki — <wikiDir>/ pages, <wikiDir>/index.md (the wiki's internal TOC), and <wikiDir>/log.md (ingestion history) — citing raw/ immutable source captures for provenance where relevant. Returns one structured, cited answer. Never writes. Use as the query phase of the maintain-wiki skill.
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
@@ -62,7 +62,7 @@ Use `Read`, `Grep`, and `Glob` freely across `<wikiDir>/` and `<rawDir>/`. `Bash
 
 ### Provenance (where relevant)
 - `<rawDir>/<source>` — <original source this claim traces to>
-- Last updated: <date/commit from wiki/log.md or git log>, per `<wikiDir>/log.md` | git history
+- Last updated: <date/commit from <wikiDir>/log.md or git log>, per `<wikiDir>/log.md` | git history
 
 ### Notes
 - Coverage: full / partial / not found in wiki.
