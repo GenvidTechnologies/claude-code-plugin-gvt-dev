@@ -12,7 +12,8 @@ okf_version: "0.2"
 This is the wiki's table of contents — every page under `<wikiDir>/`, grouped
 under section headings, one line each. `/gvt-dev:maintain-wiki` keeps this
 list current: a new page is added here when it's created, and `lint` flags
-any page missing from this list. Each entry's description is the linked
+any page listed in **no** index — here, or in a subdirectory's own
+`index.md`. Each entry's description is the linked
 page's frontmatter `description`, so the index and the page can't drift. See
 `docs/wiki-schema.md` for the page format and maintenance rules.
 

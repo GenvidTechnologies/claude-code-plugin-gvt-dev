@@ -95,11 +95,14 @@ fits. A claim drawn from a source carries a footnote keyed to that source's
   connects to. Optional if the topic is genuinely standalone.
 
 **Tolerated, never rejected** (§11 consumer clauses): a conformant consumer
-MUST NOT reject a bundle for missing optional frontmatter fields, unknown
-`type` values, unknown additional frontmatter keys, broken cross-links, or a
-missing `index.md` — and MUST treat a bare `verified` mapping as a
-one-element list. This bounds what a future mechanical linter (`lint`, below,
-and #150) may flag.
+MUST NOT reject a bundle for missing optional frontmatter fields, a missing
+optional family (§5.3), unknown `type` values, unknown additional frontmatter
+keys, broken cross-links, or a missing `index.md` — and MUST treat a bare
+`verified` mapping as a one-element list. This bounds what a future mechanical
+linter (`lint`, below, and #150) may flag. The **binding** statement for
+`lint` and #150 lives in the skill body's `lint` section (plugin-owned, so it
+survives edits to this file); this paragraph is the format's own statement of
+the same clauses.
 
 ## Page lifecycle: create vs. update
 
@@ -171,10 +174,13 @@ settled architecture omit stale_after or set it a year out." -->
   Query is served by the `gvt-dev:wiki-librarian` agent so exploration stays
   off the main thread.
 - **`lint`** — an advisory health check, not a mutation. It flags: dead
-  wiki-links (a `Related` link to a page that no longer exists), pages
-  orphaned from `<wikiDir>/index.md` (a page not listed in the index), `raw/`
-  mutations (a `raw/` file that has been edited rather than re-captured), and
-  stale pages per `stale_after` (above).
+  wiki-links (a `Related` link to a page that no longer exists), out-of-bundle
+  links (a link that resolves outside `<wikiDir>/` — legal, but unresolvable
+  to a consumer that receives only the bundle), orphaned pages (a page listed
+  in **no** index — neither `<wikiDir>/index.md` nor its own subdirectory's
+  `index.md`), `raw/` mutations (a `raw/` file that has been edited rather
+  than re-captured), and stale pages per `stale_after` (above). The skill body
+  carries the full rules.
 
 ## Wiki-links
 
