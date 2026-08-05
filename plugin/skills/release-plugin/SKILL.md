@@ -185,7 +185,8 @@ Classify into exactly one state and act accordingly:
 | **clean** | Triangle consistent: latest tag ↔ remote `plugin.json` version ↔ marketplace `ref` all equal, tag commit on default branch, CHANGELOG has the section | Proceed to Phase 2 |
 | **local-stale-ff** | Working tree clean and local is *behind* `origin/<default-branch>` with no divergent commits (`git rev-list --count HEAD..origin/<default-branch>` > 0, `...origin/<default-branch>..HEAD` == 0) | This is **not** a broken release. Offer `git merge --ff-only origin/<default-branch>`, then **re-run Phase 1** |
 | **first-release** | The plugin has **no entry** in `marketplace.json` (and usually no `vX.Y.Z` tag yet) | Skip prior-tag comparisons; Phase 2 builds the *first* entry |
-| **genuine-inconsistency** | Any of: tag commit not on default branch (orphaned tag); marketplace `ref` ≠ remote `plugin.json` version; tag string ≠ `plugin.json` version; CHANGELOG missing the released version's section | Enter the reconcile path below |
+| **pre-release (version already bumped)** | `plugin.json` version is *ahead* of the newest tag, the marketplace `ref` matches that **newest tag**, and `CHANGELOG.md` has a non-empty `## [Unreleased]` | This is **not** a broken release — it is a repo whose cycle bump already landed. Carry that version into Phase 2 as the version being released; **do not re-bump, and never "align" it down to the tag** |
+| **genuine-inconsistency** | Any of: tag commit not on default branch (orphaned tag); marketplace `ref` ≠ remote `plugin.json` version **at the released tag**; tag string ≠ `plugin.json` version *while the pre-release shape above does not hold*; CHANGELOG missing the released version's section | Enter the reconcile path below |
 
 ### Reconcile path (genuine-inconsistency only)
 
@@ -198,7 +199,7 @@ explicit yes/no, and re-print state after each:
 |--------------|-------------------|
 | Marketplace `ref` ≠ released tag | Set `ref` to the tag that *is* on the default branch with a CHANGELOG entry (the true last good release) |
 | Tag commit not on default branch (orphaned) | Report it; only with explicit confirmation, delete + recreate the tag on the correct commit. **Never silently move a tag** |
-| Tag ↔ `plugin.json` mismatch | Align the lagging side to the released version on the default branch |
+| Tag ↔ `plugin.json` mismatch | Align the lagging side to the released version on the default branch. **First rule out the pre-release state above** — when `plugin.json` is ahead by a pending version, "aligning" it *down* to the tag destroys the cycle's bump. That is a release to cut, not a defect to fix |
 | Missing CHANGELOG section | Add the dated section for the already-tagged version from the commit range since the prior tag |
 
 If the only problem is a stale local checkout, you are in **local-stale-ff**,
@@ -209,7 +210,14 @@ not here — do not "reconcile" a fast-forward.
 **Release type.** If the plugin has no entry in `marketplace.json`, this is a
 **first release**; otherwise it is a **version bump**.
 
-**Version.** Infer the bump from the changes since the last tag, then confirm
+**Version.** **If Phase 1 classified the repo as `pre-release`, the version is
+already decided — it is the value in `plugin.json`.** Confirm that value with the
+user and skip the inference below; a repo whose convention is to bump once per
+cycle (on the cycle's first change, not at release time) arrives here already
+carrying the version being released. Re-inferring can only disagree with a
+deliberate choice already committed.
+
+Otherwise, infer the bump from the changes since the last tag, then confirm
 with the user (accept an explicit override):
 
 - A new `skills/<name>/` or `agents/<name>.md`, or any user-visible feature →
@@ -239,6 +247,9 @@ Make all in-repo edits, then a single release commit. Work on the default branch
 (or a short-lived branch if it is protected — see Phase 5).
 
 1. **Version.** Set `<plugin_root>/.claude-plugin/plugin.json` `version` to `X.Y.Z`.
+   **In the `pre-release` state this is already done** — verify it reads `X.Y.Z`
+   and make no edit. The release commit is then CHANGELOG-only, which is
+   expected, not a sign something was missed.
 2. **CHANGELOG.** In `<plugin_root>/CHANGELOG.md`, move the `## [Unreleased]`
    content into a new dated section `## [X.Y.Z] - <today>` (Keep a Changelog
    format), leaving an empty `## [Unreleased]` above it. Use the session's

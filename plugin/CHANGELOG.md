@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`release-plugin`: a deliberately pre-bumped `plugin.json` no longer classifies as a broken release (session retro).** Phase 1's state table listed "tag string ≠ `plugin.json` version" under `genuine-inconsistency`, whose reconcile row says to "align the lagging side to the released version on the default branch" — so a repo that bumps its version on the cycle's *first change* rather than at release time (this repo's documented convention) presented as broken, and the offered remedy would have reverted the bump, destroying the cycle's version. Adds a **`pre-release`** state — version ahead of the newest tag, marketplace `ref` matching that newest tag, non-empty `[Unreleased]` — recognized as normal, alongside the existing `local-stale-ff` carve-out; narrows the `genuine-inconsistency` clause so it excludes that shape; and teaches Phase 2 to take the already-committed version as decided rather than re-inferring a bump, and Phase 3 to expect a CHANGELOG-only release commit. Behavioral skill change → version bump at release.
+
+### Changed
+
+- **`plan-task`: a design phase that concludes the work is two issues now has a path (session retro).** Phase 4's acceptance-criteria step resolves its target through a chain whose every link assumes the issue already exists, so a Phase 2 split left the criteria with nowhere correct to go — the task description's `#N` had become the parent, and the issue-less `docs/acceptance/<slug>.md` fallback would silently absorb the case, leaving the real target with no criteria. Splitting previously appeared nowhere in the `plan-task` bundle; it existed only in `triage-issues`, i.e. before `plan-task` is ever invoked. The design checkpoint now files the split issues (linked to the parent as native sub-issues where supported, split rationale recorded on the original, original kept open as the analysis of record) before leaving Phase 2, then re-enters planning on the first split issue with the rest as a queue; the target-resolution chain warns that a split makes it stale by construction. Behavioral skill change → version bump at release.
+
 ## [4.4.0] - 2026-08-05
 
 ### Added
