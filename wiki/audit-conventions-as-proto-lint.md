@@ -1,3 +1,20 @@
+---
+type: practice-note
+title: audit-conventions as Proto-Lint
+description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md, and where the boundary with maintain-wiki lint sits per ADR-0015.
+tags: [llm-wiki, maintain-wiki, audit-conventions, lint, hygiene-scanners]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
+sources:
+  - id: karpathy
+    resource: ../raw/karpathy-llm-wiki-agent-memory.md
+    title: Capture — Karpathy's LLM Wiki as Agent Memory
+    last_modified: 2026-07-21
+  - id: karpathy-upstream
+    resource: https://aaif.io/blog/karpathys-llm-wiki-as-agent-memory/
+    title: Karpathy's LLM Wiki as Agent Memory (aaif.io)
+---
+
 # audit-conventions as Proto-Lint
 
 The `audit-conventions` skill's hygiene scanners already perform an informal,
@@ -33,10 +50,11 @@ looks-like-drift patterns).
 ## How this is already "proto-lint"
 
 These scanners match the shape of the wiki pattern's `lint` verb almost
-exactly — dead links, orphaned pages, stale/retired references — just applied
-to `docs/` instead of `wiki/`. They are wired into `audit.mjs`'s validate
-mode as **advisory, exit-0 findings** (`info`/`warning` severity, never
-`error`): a consuming repo's audit never fails because of a broken doc link
+exactly — dead links, orphaned pages, stale/retired references[^karpathy] —
+just applied to `docs/` instead of `wiki/`. They are wired into
+`audit.mjs`'s validate mode as **advisory, exit-0 findings** (`info`/`warning`
+severity, never `error`): a consuming repo's audit never fails because of a
+broken doc link
 or an orphaned page, it just gets told about it. That advisory posture — flag,
 don't block — is exactly what `docs/wiki-schema.md` describes for the
 `lint` verb's own findings.
@@ -73,17 +91,10 @@ lint` as often or as rarely as it likes, and its `audit-conventions` exit
 code is never affected by wiki content health — the two gates stay
 independent.
 
-## Sources
-
-- `raw/karpathy-llm-wiki-agent-memory.md` — the `lint` verb definition (dead
-  links, orphaned pages, staleness, schema violations) this page compares
-  the existing scanners against.
-- `raw/beyond-rag-llm-wiki-pattern.md` — the point that maintenance
-  discipline, not format alone, is what makes a wiki (or a lint tier)
-  actually useful.
-
 ## Related
 
 - [The LLM-Wiki Pattern in gvt-dev](llm-wiki-pattern-in-gvt-dev.md) — the
   broader pattern-mapping page this one narrows in from; see its
   `audit-conventions ≈ proto-lint` bullet.
+
+[^karpathy]: Karpathy's LLM Wiki as Agent Memory — immutable capture, 2026-07-21.

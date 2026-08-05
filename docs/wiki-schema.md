@@ -36,10 +36,14 @@ bundle — captures are not concept documents, so §11's frontmatter
 requirement never reaches them and the `raw/` immutability convention
 (below) stands unamended.
 
-> As of this writing, the `wiki/` bundle does **not yet** satisfy §11.1–§11.3
-> (neither existing page carries frontmatter) — this schema specifies the
-> target format; #192 is the tracked migration that brings the pages into
-> conformance.
+> **The `wiki/` bundle is OKF v0.2 conformant** — every **non-reserved** `.md`
+> under `wiki/` carries parseable frontmatter with a non-empty `type`, and the
+> two reserved files follow §8 and §9: `wiki/index.md` carries `okf_version`
+> as its sole key, `wiki/log.md` carries no frontmatter at all (#192, ADR-0026). Per ADR-0022 decision 4
+> the claim is scoped to the **bundle**, never to this repo — nothing outside
+> `wiki/` is in scope, including `raw/`. Nothing mechanical enforces it yet:
+> #150 is the tracked conformance walk, and until it ships the claim rests on
+> the discipline of whoever last edited a page.
 
 ## Page format
 
@@ -224,6 +228,13 @@ only receives the `wiki/` bundle on its own. Treat this as a deliberate,
 documented trade-off for the rare page that genuinely needs to point outside
 the bundle (e.g. to this schema doc or an ADR) — not as a pattern to reach
 for by default.
+
+This bundle has **two** such links, both deliberate and both permanent: each
+concept page cites `../docs/decisions/0015-…`, the record that draws the
+`audit-conventions` / `maintain-wiki lint` boundary the pages analyse, and no
+in-bundle page states that boundary. They surface as two `lint` out-of-bundle
+advisories on **every** run — a known and accepted floor, not a backlog item
+(ADR-0026). They are also the only real-data exercise of that check.
 
 Consumers **must tolerate broken links** (§6.1): a link whose target doesn't
 exist yet is not malformed — it may simply be knowledge not yet written.

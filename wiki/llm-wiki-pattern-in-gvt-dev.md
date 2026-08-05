@@ -1,3 +1,27 @@
+---
+type: practice-note
+title: The LLM-Wiki Pattern in gvt-dev
+description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
+tags: [llm-wiki, maintain-wiki, knowledge-management, plugin-architecture]
+status: stable
+generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
+sources:
+  - id: karpathy
+    resource: ../raw/karpathy-llm-wiki-agent-memory.md
+    title: Capture — Karpathy's LLM Wiki as Agent Memory
+    last_modified: 2026-07-21
+  - id: karpathy-upstream
+    resource: https://aaif.io/blog/karpathys-llm-wiki-as-agent-memory/
+    title: Karpathy's LLM Wiki as Agent Memory (aaif.io)
+  - id: beyond-rag
+    resource: ../raw/beyond-rag-llm-wiki-pattern.md
+    title: Capture — Beyond RAG, the LLM wiki pattern that builds compounding knowledge
+    last_modified: 2026-07-21
+  - id: beyond-rag-upstream
+    resource: https://levelup.gitconnected.com/beyond-rag-how-andrej-karpathys-llm-wiki-pattern-builds-knowledge-that-actually-compounds-31a08528665e
+    title: Beyond RAG (levelup.gitconnected.com)
+---
+
 # The LLM-Wiki Pattern in gvt-dev
 
 How Karpathy's LLM-maintained-wiki pattern maps onto surfaces that already
@@ -13,12 +37,12 @@ one pattern applied, not the plugin's design story.
 
 ## The pattern, briefly
 
-Karpathy's proposal (see Sources) contrasts a maintained wiki with
+Karpathy's proposal[^karpathy] contrasts a maintained wiki with
 retrieval-augmented generation: RAG re-retrieves from a static corpus and
-forgets, while a wiki is rewritten by the agent as it learns, so knowledge
-compounds session over session. The pattern has three tiers (immutable raw
-captures, LLM-maintained pages + index + log, and a maintenance schema) and
-three verbs (`ingest`, `query`, `lint`).
+forgets[^beyond-rag], while a wiki is rewritten by the agent as it learns, so
+knowledge compounds session over session. The pattern has three tiers
+(immutable raw captures, LLM-maintained pages + index + log, and a
+maintenance schema) and three verbs (`ingest`, `query`, `lint`).[^karpathy]
 
 ## What gvt-dev already had that maps onto it
 
@@ -57,7 +81,7 @@ wiki pattern in mind:
   already check for exactly the kind of content-health issues the wiki
   pattern's `lint` verb is meant to catch — dead links, orphaned pages, stale
   tokens — just scoped to `docs/**` and `CLAUDE.md` rather than to `wiki/`.
-  See [`audit-conventions` as proto-lint](audit-conventions-as-proto-lint.md)
+  See [`audit-conventions` as proto-lint](/audit-conventions-as-proto-lint.md)
   for the detail and where the boundary between the two now sits.
 
 ## Why this mapping matters
@@ -69,17 +93,11 @@ mapping is that it shows the pattern wasn't adopted wholesale from nothing:
 surfaces the plugin already had, rather than duplicating what `docs/TOC.md`,
 ADRs, or the existing hygiene scanners already do well.
 
-## Sources
-
-- `raw/karpathy-llm-wiki-agent-memory.md` — the three-tier structure and
-  three-verb (`ingest`/`query`/`lint`) split, and the "compounds vs.
-  retrieves and forgets" framing used above.
-- `raw/beyond-rag-llm-wiki-pattern.md` — the RAG-contrast framing and the
-  point that maintenance discipline (schema + lint), not the markdown format
-  alone, is what makes the pattern actually compound knowledge.
-
 ## Related
 
 - [`audit-conventions` as proto-lint](audit-conventions-as-proto-lint.md) —
   the narrower, factual companion page on the existing hygiene scanners and
   where the `lint` verb boundary sits.
+
+[^karpathy]: Karpathy's LLM Wiki as Agent Memory — immutable capture, 2026-07-21.
+[^beyond-rag]: Beyond RAG — how the LLM wiki pattern builds knowledge that compounds; immutable capture, 2026-07-21.
