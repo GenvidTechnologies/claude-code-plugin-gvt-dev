@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-08-05
+
 ### Added
 
 - **`build-probe`: new skill operationalizing the Moldable pillar of the practice layer (#144, ADR-0018).** A pure-discipline skill (single `SKILL.md`, no bundled scripts/agent/config) teaching the probe-and-discard loop: state a checkable question → scaffold a throwaway probe in the harness scratchpad (uncommitted — that location *is* the throwaway mechanism) → run it against the real system → report the concrete result on-thread → discard by default, promoting to a kept tool only when the question *recurs* and the probe is *generic* enough to survive re-asking. Deviates from the mandated five-part `triage-issues` pattern on the merits — a probe integrates with no external system, and a read-only analyst subagent would contradict its on-thread-report premise (recorded in ADR-0018). `development-principles.md` principles #1 (investigate/build tools) and #3 (keep generic tools) gain one-line sub-bullets pointing at the skill as their operationalization; because that doc is runtime-imported reference content, the cross-reference is part of the behavioral surface. New invocable skill → version bump at release.
