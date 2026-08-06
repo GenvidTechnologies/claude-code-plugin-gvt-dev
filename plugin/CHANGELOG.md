@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-08-06
+
 ### Added
 
 - **`metadata.pillar` + `audit-conventions` Practice Coverage report (#227, ADR-0027).** A new optional frontmatter key, `metadata.pillar`, lets a skill or agent declare which of the four practice pillars (`spec`/`verify`/`environment`/`moldable`) it serves; it's opt-in, currently declared on 11 components, and absence means the component serves repo mechanics rather than a pillar. It's encoded as a comma-delimited scalar rather than a YAML list, so the deliberately minimal frontmatter parser needs no list support to read it. `audit-conventions` gains a new `### Practice Coverage` report section, rendered between `### Info (optional)` and `### Summary`, two-sided: a plugin-side census of which components declare each pillar, beside a consumer-side adoption verdict for the audited repo. It carries zero findings, so a pillar showing `not adopted` can never change the audit's exit code — structural, not policy. Consumer-side detection currently covers exactly one pillar (Environment, via presence-only checks for the wiki tier); Verify renders `not detectable`, citing #160 (`write-eval` never shipped), and Moldable renders `n/a by design`, citing ADR-0018 — both stated as deliberate scope, not gaps. A `pillar-unknown` author-time warning fires on an unrecognized value, gated to runs against the plugin's own source so it can never fire in a consuming repo. `plugin/CONVENTIONS.md` documents the schema addition as the canonical contract consuming repos resync against. Consumer-facing schema + behavioral skill change → version bump at release.
