@@ -48,7 +48,7 @@ From a design document (produced by the designer), produce a concrete implementa
 
 7. **Flag throwaway intermediate steps.** When a later task routes through a high-level upstream *aggregate* — a `detect*`/`analyze*`/`build*` that internally performs traversal + diff + discovery — read its **implementation, not just its signature**. If an *earlier* task installs a parallel version of that same internal work into code the later task **deletes wholesale**, the earlier task is throwaway: it de-risks a code path the final step never takes. Fold the earlier task's permanent deletions into the later one, skip the parallel install, and note that the real de-risking for the later step is **comprehensive equivalence tests** (pin existing behavior before/after), not an intermediate refactor the final step discards. This generalizes make-the-change-easy-first: an easy-first step only helps if the hard step actually *uses* it.
 
-8. **Assign domain** — each task is assigned to the appropriate implementer agent. Use `ts-implementer` for TypeScript work. The project may have additional domain-specific implementer agents (consult `CLAUDE.md` or the project's `.claude/agents/`) for non-TypeScript domains. If a task touches multiple domains, split it.
+8. **Assign domain** — each task is assigned to the appropriate implementer agent. Use `ts-implementer` for TypeScript work. The project may have additional domain-specific implementer agents (consult `CLAUDE.md` or the project's `.claude/agents/`) for non-TypeScript domains. If a task touches multiple domains, split it. When the target repository's own contribution rules require a step to be performed **by a person** — a manual editor round-trip, a human review or release gate, a signing step — that step is still a task: assign it `— **human**` instead of an implementer agent, and give it a one-line `**Why:**` naming the constraint and where it was read (e.g. that repo's `README.md`). Leaving it in the Risks table instead records the constraint without scheduling the work, which is exactly what lets it surface mid-execution.
 
 9. **Verify your verification scripts.** When the plan calls for a validation script as a load-bearing gate (e.g., `--dry-run` mode of an existing CLI tool), confirm that the script actually exercises the things it's supposed to verify. Watch for `skip` paths that bypass real checks ("already done," "not applicable") — those can silently turn a "0 failed" report into a no-op. If the gate has a known weakness, either fix the script as a P-step or note the gap explicitly so the implementer knows the check isn't load-bearing yet.
 
@@ -118,6 +118,10 @@ settled it, and whether the correction changes what the criterion asks for.
 2. [Description] — <implementer-agent>
    **Files:** list of files
    **Commit:** <commit message following CLAUDE.md format>
+3. [Description of a step the target repo's own contribution rules require a person to do] — **human**
+   **Files:** list of files
+   **Why:** <the constraint and where it was read, e.g. "target-repo/README.md forbids hand-authored project JSON">
+   (No **Commit:** — a human step produces no commit of its own; if it does, the following task commits the result.)
 
 ### Validation
 N. Run validator + code-reviewer
