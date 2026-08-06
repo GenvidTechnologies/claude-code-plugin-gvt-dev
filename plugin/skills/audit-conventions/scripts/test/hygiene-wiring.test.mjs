@@ -6,11 +6,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/hygiene-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -20,26 +20,14 @@ function spawnAudit(args, cwd) {
   return spawnSync(process.execPath, [AUDIT_PATH, ...args], { cwd, encoding: 'utf8' });
 }
 
-// Builds a minimal STATE_MIGRATED temp repo (state is detected solely by the
-// presence of .gvt-agent.json) with docs fixtures that trip all three
-// hygiene scanners:
+// Builds a minimal STATE_MIGRATED temp repo (via withTempMigratedRepo) with
+// docs fixtures that trip all three hygiene scanners:
 //   - docs/example.md: a retired 'genvid-dev:' token, plus a dangling
 //     relative link (./nope.md doesn't exist).
 //   - docs/orphan.md: present on disk, but not referenced from docs/TOC.md.
 //   - docs/TOC.md: indexes docs/example.md but not docs/orphan.md.
 async function withTempHygieneRepo(setup) {
-  const dir = await mkdtemp(join(tmpdir(), 'audit-hygiene-wiring-test-'));
-  try {
-    await writeFile(
-      join(dir, '.gvt-agent.json'),
-      JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' } }, null, 2),
-    );
-    // Some components (commit-changes, create-pr, plan-task) require CLAUDE.md
-    // — write a minimal one so the exit-code assertion below is isolated to
-    // hygiene findings (info/warning) rather than tripping on an unrelated
-    // required-file error.
-    await writeFile(join(dir, 'CLAUDE.md'), '# Test repo\n');
-    await mkdir(join(dir, 'docs'), { recursive: true });
+  return withTempMigratedRepo(async (dir) => {
     await writeFile(
       join(dir, 'docs', 'example.md'),
       [
@@ -57,11 +45,7 @@ async function withTempHygieneRepo(setup) {
       ['# TOC', '', '- [Example](./example.md)', ''].join('\n'),
     );
     if (setup) await setup(dir);
-    return dir;
-  } catch (err) {
-    await rm(dir, { recursive: true, force: true });
-    throw err;
-  }
+  });
 }
 
 test('audit: hygiene scanners surface retired-token, broken-link, orphaned-doc findings, and exit 0', async () => {

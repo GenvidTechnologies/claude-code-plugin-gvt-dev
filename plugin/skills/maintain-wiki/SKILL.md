@@ -2,6 +2,7 @@
 name: maintain-wiki
 description: Maintains an LLM-wiki compounding-memory knowledge base for a project through three verbs — ingest (read immutable raw/ captures, write or update <wikiDir>/ pages, append <wikiDir>/log.md), query (answer a question from the wiki with citations, via the read-only wiki-librarian agent), and lint (advisory health check of an existing wiki — dead links, orphaned pages, staleness, out-of-bundle links, optional raw/ immutability). Scaffolds the three-tier raw/wiki/schema layout on first use from bundled templates. Markdown-only — no vector DB, no retrieval engine — a wiki accumulates and compounds where RAG retrieves and forgets. Use when standing up a project knowledge wiki, ingesting sources into it, querying it, or checking its health.
 metadata:
+  pillar: environment
   expects:
     files:
       - path: docs/wiki-schema.md

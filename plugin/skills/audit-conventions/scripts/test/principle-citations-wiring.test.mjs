@@ -12,11 +12,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/principle-citations-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -26,8 +26,9 @@ function spawnAudit(args, cwd) {
   return spawnSync(process.execPath, [AUDIT_PATH, ...args], { cwd, encoding: 'utf8' });
 }
 
-// Builds a minimal STATE_MIGRATED temp repo (state is detected solely by the
-// presence of .gvt-agent.json) carrying:
+// Builds a minimal STATE_MIGRATED temp repo (via withTempMigratedRepo)
+// carrying:
+//   - docs/TOC.md: condense-lessons requires it (see withTempMigratedRepo).
 //   - plugin/docs/development-principles.md: a small valid 1-3 principle list.
 //   - plugin/skills/foo/SKILL.md: a citation to principle #99, which does NOT
 //     exist in that list.
@@ -39,19 +40,7 @@ function spawnAudit(args, cwd) {
 // itself; this one proves the gate actively suppresses a real, would-be
 // finding when auditing a repo that is not the plugin source.
 async function withTempPrincipleCitationRepo() {
-  const dir = await mkdtemp(join(tmpdir(), 'audit-principle-citations-wiring-test-'));
-  try {
-    await writeFile(
-      join(dir, '.gvt-agent.json'),
-      JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' } }, null, 2),
-    );
-    // Some components (commit-changes, create-pr, plan-task) require CLAUDE.md,
-    // and condense-lessons requires docs/TOC.md — write minimal versions of
-    // both so the exit-code assertion below is isolated to the
-    // principle-citation gate rather than tripping on an unrelated
-    // required-file error.
-    await writeFile(join(dir, 'CLAUDE.md'), '# Test repo\n');
-    await mkdir(join(dir, 'docs'), { recursive: true });
+  return withTempMigratedRepo(async (dir) => {
     await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
     await mkdir(join(dir, 'plugin', 'docs'), { recursive: true });
     await writeFile(
@@ -70,11 +59,7 @@ async function withTempPrincipleCitationRepo() {
       join(dir, 'plugin', 'skills', 'foo', 'SKILL.md'),
       ['# Foo', '', 'See principle #99 for details.', ''].join('\n'),
     );
-    return dir;
-  } catch (err) {
-    await rm(dir, { recursive: true, force: true });
-    throw err;
-  }
+  });
 }
 
 test('audit: principle-citation scanner does NOT run against a consuming repo, even with a bogus citation present', async () => {

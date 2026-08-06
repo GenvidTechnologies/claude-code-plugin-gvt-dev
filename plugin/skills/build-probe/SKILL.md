@@ -2,6 +2,7 @@
 name: build-probe
 description: Guides building a throwaway probe script that answers one checkable question blocking a decision — scaffold it in the scratchpad (never the repo tree), run it against the real system, report the concrete answer on-thread, then discard by default or promote only when the question recurs and the probe is generic enough to survive re-asking. Operationalizes development-principles.md principles 1 and 3 (investigate what you don't know; build tools, keep the generic ones). Use when analysis stalls on an unfamiliar system, before a plan leans on an unverified assumption, or whenever "I think X is true" needs to become "I checked."
 metadata:
+  pillar: moldable
   expects:
     files:
       - path: CLAUDE.md

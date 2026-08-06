@@ -33,6 +33,9 @@ import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygi
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { summarizeExpectations } from './lib/summary.mjs';
+import { PILLARS, parsePillars } from './lib/pillars.mjs';
+import { detectWikiAdoption } from './lib/practice-detect.mjs';
+import { formatPracticeCoverage } from './lib/pillar-report.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(SCRIPT_DIR, '..', '..', '..'); // <plugin>/skills/audit-conventions/scripts -> <plugin>
@@ -104,6 +107,7 @@ async function main() {
   if (conventionsDrift) findings.push(conventionsDrift);
 
   for (const finding of evaluateDescriptionLengths(components)) findings.push(finding);
+  for (const finding of evaluatePillarDeclarations(components)) findings.push(finding);
 
   // Author-time lint (maintainer/dogfood run only): the repo-root README's
   // Skills table / Agents list must stay in sync with plugin/skills + plugin/agents.
@@ -128,7 +132,16 @@ async function main() {
   findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));
 
-  const report = formatReport(state, findings, { cfgHasC3 });
+  // Practice Coverage (epic #142): the plugin-side census is the same
+  // `components` walk used for expectations above (each entry already
+  // carries its parsed `pillar` field); the consumer-side adoption verdict
+  // is currently wired for the `environment` pillar only (the wiki — the
+  // only pillar with a detector today, per lib/practice-detect.mjs).
+  const repoConfig = await loadRepoConfig(configFilename);
+  const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
+  const practices = { environment: wikiAdoption.verdict };
+
+  const report = formatReport(state, findings, { cfgHasC3, pillarCensus: components, practices });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
@@ -170,8 +183,14 @@ async function loadComponent(type, name, filePath) {
   const content = await fs.readFile(filePath, 'utf8');
   const descLen = descriptionLength(content);
   const fm = extractFrontmatter(content);
-  if (!fm) return { type, name, expects: null, descLen };
-  return { type, name, expects: fm.metadata?.expects ?? null, descLen };
+  if (!fm) return { type, name, expects: null, descLen, pillar: [] };
+  return {
+    type,
+    name,
+    expects: fm.metadata?.expects ?? null,
+    descLen,
+    pillar: parsePillars(fm.metadata?.pillar),
+  };
 }
 
 // ---- evaluate --------------------------------------------------------------
@@ -349,6 +368,43 @@ function evaluateDescriptionLengths(components) {
   return findings;
 }
 
+// Author-time lint: flag any skill/agent whose `metadata.pillar` names an id
+// not in PILLARS (e.g. a typo like `enviroment`). Non-fatal warning, and only
+// in a maintainer/dogfood run against the plugin source — a consumer's audit
+// walks the installed cache, whose pillar declarations a consumer can't fix.
+function evaluatePillarDeclarations(components) {
+  if (!AUDITING_PLUGIN_SOURCE) return [];
+  const validIds = new Set(PILLARS.map((p) => p.id));
+  const findings = [];
+  for (const c of components) {
+    for (const id of c.pillar ?? []) {
+      if (validIds.has(id)) continue;
+      findings.push({
+        kind: 'pillar-unknown',
+        ok: false,
+        severity: 'warning',
+        detail:
+          `${c.type} \`${c.name}\` declares unknown pillar \`${id}\` — expected one of: ` +
+          `${[...validIds].join(', ')}.`,
+      });
+    }
+  }
+  return findings;
+}
+
+// Reads the full parsed config file (graceful — missing/unreadable/invalid
+// JSON all resolve to undefined). Used for cross-cutting reads (e.g. the
+// `wiki` block feeding Practice Coverage's Environment adoption verdict)
+// that aren't a per-component expectation.
+async function loadRepoConfig(configFilename = '.gvt-agent.json') {
+  try {
+    const raw = await fs.readFile(join(REPO_ROOT, configFilename), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
 // Reads the optional `hygiene` block from the repo's config file (graceful —
 // missing file, missing key, or invalid JSON all resolve to undefined so the
 // hygiene scanners fall back to their own baked-in defaults). Not merged with
@@ -399,7 +455,7 @@ function commandExists(cmd) {
 
 // ---- report ----------------------------------------------------------------
 
-function formatReport(state, findings, { cfgHasC3 = false } = {}) {
+function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], practices = {} } = {}) {
   const errors = findings.filter((f) => f.severity === 'error');
   const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
@@ -423,6 +479,12 @@ function formatReport(state, findings, { cfgHasC3 = false } = {}) {
   if (infos.length > 0) {
     lines.push('### Info (optional)');
     for (const f of infos) lines.push(formatFinding(f));
+    lines.push('');
+  }
+
+  const coverage = formatPracticeCoverage(pillarCensus, practices);
+  if (coverage) {
+    lines.push(coverage);
     lines.push('');
   }
 
@@ -474,6 +536,7 @@ function formatFinding(f) {
     'orphaned-doc',
     'readme-inventory',
     'principle-citation',
+    'pillar-unknown',
   ];
   if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';

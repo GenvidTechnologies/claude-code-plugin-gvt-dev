@@ -161,6 +161,25 @@ Under `files`, a **trailing slash marks a directory expectation** — `docs/deci
 
 Because `audit-conventions` aggregates every installed skill's **required** expectations into one repo-wide check, a prerequisite that only one skill needs — and that isn't one of the four contract files — should be `required: false`. Otherwise every consuming repo's audit fails even when that skill is never used. (Same principle as the `commands.*` rule above: "required if the corresponding skill is used.") The `package.json` expectation in `publish-npm-package` is the canonical example.
 
+### Practice-layer pillar declaration
+
+A component's frontmatter can also carry `metadata.pillar`, a sibling of `expects:` naming which of the practice layer's four pillars — `spec`, `verify`, `environment`, `moldable` — the component serves:
+
+```yaml
+---
+name: build-probe
+description: Scaffold a throwaway probe to answer a moldable-development question
+metadata:
+  pillar: moldable
+---
+```
+
+This is opt-in, the same principle as `expects:` above — "a skill with no prerequisites omits `expects:` entirely." Absence means the component is not a practice-layer component; it serves repo mechanics instead. Don't declare a pillar just to have one: the census records coverage, and a manufactured entry would make imbalance measure decomposition granularity rather than coverage.
+
+A component genuinely serving two pillars uses a comma-delimited scalar (`pillar: spec,verify`), not a YAML list — the frontmatter parser is deliberately minimal and doesn't read YAML scalar sequences, so a comma-delimited scalar covers the multi-pillar case with zero parser or schema change.
+
+The declared value feeds `audit-conventions`'s `### Practice Coverage` report section, which is advisory and carries no findings — it can never affect the audit's exit code.
+
 ## Forking and adapting
 
 This plugin is intentionally generic. If your org has different conventions, the right move is usually to fork the plugin and edit the skill bodies — not to keep adding feature flags to `.gvt-agent.json`. The `.gvt-agent.json` schema deliberately stays small to keep the contract readable.

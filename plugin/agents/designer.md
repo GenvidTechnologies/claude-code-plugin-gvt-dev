@@ -4,6 +4,7 @@ description: From a requirements document, proposes a concrete design with 2-3 o
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
+  pillar: spec
   expects:
     files:
       - path: docs/TOC.md

@@ -4,6 +4,7 @@ description: Runs the project's full validation suite (lint, test, typecheck, cu
 tools: Read, Grep, Glob, Bash
 model: haiku
 metadata:
+  pillar: verify
   expects:
     config:
       - key: commands.validate

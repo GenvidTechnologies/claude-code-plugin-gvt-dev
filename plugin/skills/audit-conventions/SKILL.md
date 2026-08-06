@@ -2,6 +2,7 @@
 name: audit-conventions
 description: Validates the consuming repo against the genvid plugin's convention contract — walks every installed skill and agent's metadata.expects (required files, config keys, tools) and reports missing/mismatched items with the reason each was needed. Default mode is read-only; --fix migrates a legacy or greenfield repo to the new contract. Use to check whether a repo satisfies the plugin's expectations or to surface drift after a plugin update.
 metadata:
+  pillar: verify
   expects:
     config:
       - key: hygiene
@@ -123,6 +124,15 @@ State: migrated
 ### Info (optional)
 - **code-reviewer** expects `docs/code-review-context.md` — file not found (optional). Reason: Provides project-specific context (architecture, domain rules) for review.
 
+### Practice Coverage
+
+| Pillar | Components | Adoption |
+| --- | --- | --- |
+| Spec | plan-task, analyst, designer, planner | not evaluated |
+| Verify | audit-conventions, validate-changes, code-reviewer, validator | not detectable (#160 — write-eval never shipped, so there is no consumer-side artifact to detect) |
+| Environment | maintain-wiki, wiki-librarian | adopted |
+| Moldable | build-probe | n/a by design (ADR-0018 — build-probe deliberately ships no config block, doc, template, agent or repo artifact) |
+
 ### Summary
 - required: 18 of 19 satisfied.
 - optional: 11 of 12 satisfied.
@@ -136,6 +146,8 @@ The **Warnings** section holds non-fatal repo-health flags that aren't tied to a
 Also folded into **Warnings** and **Info** are three advisory repo-hygiene checks, scanning `docs/**.md` + `CLAUDE.md`: a **retired-token scan** (info) flags lines still using a deny-listed token (e.g. a pre-rebrand `genvid:` invocation); a **broken intra-repo markdown link check** (warning) flags a relative link whose target doesn't resolve on disk; a **`docs/TOC.md` orphan check** (info) flags a doc under `docs/` that no line of `docs/TOC.md` references. All three respect the optional `hygiene` config block (`retiredTokens`, `excludePaths` — see `CONVENTIONS.md`) and fall back to sensible defaults when it's absent. Like the `repo.host`/`CONVENTIONS.md` warnings above, **these three checks are purely advisory: they never affect the required-expectations tally or the exit code**, same framing as the host-drift and description-length checks — they surface repo-health drift for the user to act on, not a contract violation to fail CI over.
 
 A fourth content scan, **principle-citation**, is different on both scope and severity: it only runs when the audit is run against this plugin's own source (a consuming repo can't fix the plugin's own citations), scans `plugin/**/*.md` (minus `CHANGELOG.md`) rather than `docs/**.md` + `CLAUDE.md`, and flags a citation to a `development-principles.md` principle number that doesn't exist in the doc's current list (a typo'd or stale citation number). Unlike the three checks above, this one is **`error` severity** — a mis-pointed citation silently repoints agent guidance at the wrong principle, a functional regression rather than a doc-tidiness gap, and `warning` findings never move the exit code (see ADR-0019 for the full rationale).
+
+**Practice Coverage** is a fifth section, and it carries no findings at all — it's purely advisory, and a pillar showing `not adopted` can never move the exit code, by construction rather than by policy (there's no severity to assign it in the first place). It maps the plugin's four practice pillars (Spec, Verify, Environment, Moldable — declared via the opt-in `metadata.pillar` frontmatter key documented in `CONVENTIONS.md`'s "Practice-layer pillar declaration" section) against two columns that answer two different questions: **Components** is the plugin-side census — which installed skills/agents declare `metadata.pillar` for that pillar — while **Adoption** is the consumer-side verdict for the repo actually being audited. Today only Environment has a working consumer-side detector (the wiki); every other pillar reports **`not evaluated`**, meaning no detector exists yet for that pillar, not that the repo failed one. `not detectable` and `n/a by design` are likewise deliberate states, not gaps to close: Verify is `not detectable` because `write-eval` never shipped (#160 — there's no consumer-side artifact to look for), and Moldable is `n/a by design` because `build-probe` intentionally ships no config block, doc, template, agent, or repo artifact to detect (ADR-0018). Neither should be read as "TODO" or "unimplemented." A `> Pillar gap:` line appears only when a pillar has zero components declaring it. A related author-time check, **pillar-unknown**, warns on an unrecognized `metadata.pillar` value; like the README-inventory and principle-citation checks, it's gated to runs against the plugin's own source tree and can never fire in a consuming repo's audit.
 
 Exit code: 0 if no errors (warnings alone keep it 0); non-zero if any required expectation is unmet.
 
