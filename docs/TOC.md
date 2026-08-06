@@ -14,6 +14,10 @@ read and update.
 - [`../plugin/docs/development-principles.md`](../plugin/docs/development-principles.md) — the philosophy behind the analysis → design → planning pipeline (incl. principle #7: five-dimension doc coverage + decision records)
 - [`plugin-authoring.md`](plugin-authoring.md) — cross-plugin authoring gotchas (shipping MCP servers via `plugin.json`; `npx` package-name resolution; version pinning)
 
+## Process
+
+- [`issue-triage.md`](issue-triage.md) — this repo's dogfooded issue-triage conventions (types, priorities, labels, required fields, splitting/duplicate/dependency policy, and the `gh` mutation recipes) consumed by `/gvt-dev:triage-issues` and the `issue-triage-analyst`; access mechanics live in `.gvt-agent.json`'s `bugTracker` block
+
 ## Components
 
 Each skill and agent carries its own documentation in its frontmatter (`metadata.expects`) and body:
