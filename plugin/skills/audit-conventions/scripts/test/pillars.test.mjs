@@ -1,8 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
 
 import { extractFrontmatter } from '../lib/frontmatter.mjs';
-import { parsePillars, computePluginCoverage } from '../lib/pillars.mjs';
+import { parsePillars, computePluginCoverage, PILLARS } from '../lib/pillars.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// scripts/test/pillars.test.mjs -> scripts -> audit-conventions -> skills -> plugin
+const PLUGIN_ROOT = resolve(__dirname, '..', '..', '..', '..');
 
 // T5 — extractFrontmatter reads metadata.pillar as a plain scalar.
 test('extractFrontmatter: reads metadata.pillar scalar', () => {
@@ -83,4 +90,81 @@ test('computePluginCoverage: a component can declare multiple comma-delimited pi
   assert.deepEqual(coverage.moldable, ['both']);
   assert.deepEqual(coverage.verify, []);
   assert.deepEqual(coverage.environment, []);
+});
+
+// T7 — real-tree assertion: walks the actual plugin/skills and plugin/agents
+// trees and pins the curated set of components declaring metadata.pillar
+// (landed in 4dffa87, curation decision recorded in ADR-0027). If this ever
+// fails because someone added or removed a declaration, the test IS the
+// specification — update it deliberately, don't just make it pass.
+async function collectRealDeclaredComponents() {
+  const components = [];
+
+  const skillsDir = join(PLUGIN_ROOT, 'skills');
+  const skillEntries = await fs.readdir(skillsDir, { withFileTypes: true });
+  for (const entry of skillEntries) {
+    if (!entry.isDirectory()) continue;
+    const skillFile = join(skillsDir, entry.name, 'SKILL.md');
+    let content;
+    try {
+      content = await fs.readFile(skillFile, 'utf8');
+    } catch {
+      continue;
+    }
+    const fm = extractFrontmatter(content);
+    const pillar = fm?.metadata?.pillar;
+    if (pillar != null) components.push({ name: entry.name, pillar });
+  }
+
+  const agentsDir = join(PLUGIN_ROOT, 'agents');
+  const agentEntries = await fs.readdir(agentsDir, { withFileTypes: true });
+  for (const entry of agentEntries) {
+    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    const content = await fs.readFile(join(agentsDir, entry.name), 'utf8');
+    const fm = extractFrontmatter(content);
+    const pillar = fm?.metadata?.pillar;
+    if (pillar != null) components.push({ name: entry.name.replace(/\.md$/, ''), pillar });
+  }
+
+  return components;
+}
+
+test('real tree: exactly the intended 11 components declare metadata.pillar, and every value is a known pillar id', async () => {
+  const declared = await collectRealDeclaredComponents();
+
+  const expectedByPillar = {
+    spec: ['plan-task', 'analyst', 'designer', 'planner'],
+    verify: ['audit-conventions', 'validate-changes', 'validator', 'code-reviewer'],
+    environment: ['maintain-wiki', 'wiki-librarian'],
+    moldable: ['build-probe'],
+  };
+  const expectedNames = Object.values(expectedByPillar).flat().sort();
+
+  const actualNames = declared.map((c) => c.name).sort();
+  assert.deepEqual(
+    actualNames,
+    expectedNames,
+    `declaring component set changed — expected exactly ${JSON.stringify(expectedNames)}, ` +
+      `got ${JSON.stringify(actualNames)}`,
+  );
+
+  const knownIds = new Set(PILLARS.map((p) => p.id));
+  for (const { name, pillar } of declared) {
+    for (const id of parsePillars(pillar)) {
+      assert.ok(knownIds.has(id), `${name} declares unknown pillar id '${id}'`);
+    }
+  }
+
+  // Per-pillar membership: catches a component declaring the wrong pillar,
+  // which set-of-names equality alone would not (e.g. build-probe declaring
+  // 'spec' instead of 'moldable' would still pass the set check above).
+  const coverage = computePluginCoverage(declared);
+  for (const [pillar, names] of Object.entries(expectedByPillar)) {
+    assert.deepEqual(
+      [...coverage[pillar]].sort(),
+      [...names].sort(),
+      `pillar '${pillar}' declarers changed — expected ${JSON.stringify(names)}, ` +
+        `got ${JSON.stringify(coverage[pillar])}`,
+    );
+  }
 });
