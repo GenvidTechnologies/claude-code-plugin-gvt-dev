@@ -4,6 +4,7 @@ description: Reviews code for quality, security, project conventions, and docume
 tools: Read, Grep, Glob, Bash
 model: haiku
 metadata:
+  pillar: verify
   expects:
     files:
       - path: docs/code-review-context.md

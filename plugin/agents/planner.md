@@ -4,6 +4,7 @@ description: From a design document, produces an implementation plan with ordere
 tools: Read, Grep, Glob, Bash
 model: sonnet
 metadata:
+  pillar: spec
   expects:
     files:
       - path: CLAUDE.md

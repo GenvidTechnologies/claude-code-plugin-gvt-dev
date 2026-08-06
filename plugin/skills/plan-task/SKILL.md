@@ -2,6 +2,7 @@
 name: plan-task
 description: Orchestrates an analysis → design → planning pipeline for non-trivial tasks by dispatching the gvt-dev:analyst, gvt-dev:designer, and gvt-dev:planner agents with explicit user checkpoints between phases. Produces a reviewable plan document, then drives execution by delegating to implementer agents with validator + code-reviewer gates. Use when starting a multi-step feature, refactor, or migration.
 metadata:
+  pillar: spec
   expects:
     files:
       - path: CLAUDE.md

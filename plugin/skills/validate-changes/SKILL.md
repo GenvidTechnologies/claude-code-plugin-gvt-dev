@@ -2,6 +2,7 @@
 name: validate-changes
 description: Dispatches the gvt-dev:validator agent to run the project's full validation suite (lint, tests, build, custom checks) and surfaces a pass/fail summary with actionable fixes. Use when the user wants to verify pending changes pass all project checks before committing or pushing — the agent dispatch keeps raw validator output out of the main conversation.
 metadata:
+  pillar: verify
   expects:
     tools:
       - command: git

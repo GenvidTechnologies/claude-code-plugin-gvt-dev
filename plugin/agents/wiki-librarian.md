@@ -4,6 +4,7 @@ description: Read-only. Answers a question about this project by fetching and sy
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
+  pillar: environment
   expects:
     config:
       - key: wiki.wikiDir

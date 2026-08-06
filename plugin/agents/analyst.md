@@ -4,6 +4,7 @@ description: Explores a problem space, understands current state, and produces a
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
+  pillar: spec
   expects:
     files:
       - path: docs/TOC.md

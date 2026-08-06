@@ -2,6 +2,7 @@
 name: audit-conventions
 description: Validates the consuming repo against the genvid plugin's convention contract — walks every installed skill and agent's metadata.expects (required files, config keys, tools) and reports missing/mismatched items with the reason each was needed. Default mode is read-only; --fix migrates a legacy or greenfield repo to the new contract. Use to check whether a repo satisfies the plugin's expectations or to surface drift after a plugin update.
 metadata:
+  pillar: verify
   expects:
     config:
       - key: hygiene
