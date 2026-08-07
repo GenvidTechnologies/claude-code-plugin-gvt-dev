@@ -192,6 +192,25 @@ recommended candidate first). **With a single ranked candidate, skip the
 friction; present it inline with its rationale and route straight to §3, where
 `plan-task`'s own checkpoint is the gate.
 
+**Alongside the shortlist, check for an unreleased delta — advisory only.**
+Gate on the repo actually versioning by tag: `git tag -l` finds
+version-shaped tags (a `vX.Y.Z`-style scheme). No version tags → skip this
+check silently, no output. Skip silently too on §1's no-SSH fallback path,
+where no fetch occurred and tags can't be refreshed. Otherwise reuse §1's
+already-performed fetch — add no second network round-trip — and compare the
+newest version tag against `origin/<default-branch>` locally:
+`git rev-list --count <newest-tag>..origin/<default-branch>`. Zero → skip
+silently, nothing unreleased. Non-zero → surface **one line** beside the
+shortlist: how many commits are unreleased since `<newest-tag>`. Where the
+repo **consumes its own published artifact** (a plugin or package it both
+publishes and installs, so its own tooling runs from the released copy rather
+than the working tree), the line also notes that planning will otherwise run against the
+**older installed copy** until it ships. This is **strictly advisory**: it
+never blocks planning and never auto-invokes a release skill. Whether the
+delta is actually worth releasing first — CHANGELOG shape, whether a feature
+chain is mid-flight, release-cadence judgement — is a call for the user (and
+the repo's own release skill, if it has one), not for this check.
+
 In `--non-interactive`, auto-pick the single top-ranked candidate.
 
 ## 3. Plan
