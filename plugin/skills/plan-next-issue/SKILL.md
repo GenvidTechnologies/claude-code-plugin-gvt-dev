@@ -72,11 +72,14 @@ re-implements their work.
 
 Detect whether the backlog needs grooming before planning:
 
-- **First, `git fetch` the default branch** (`repo.default_branch` from
-  `.gvt-agent.json`, e.g. `main` — a read-only network call, consistent with
-  this skill's no-writes stance) so candidates are ranked and planned against
-  fresh `origin/<default-branch>`, not stale local state. **An open issue is not
-  proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
+- **First, `git fetch origin`** — no branch refspec (`.gvt-agent.json`'s
+  `repo.default_branch`, e.g. `main`, is still what you rank against; a
+  read-only network call, consistent with this skill's no-writes stance).
+  Fetch the whole remote, not `git fetch origin <branch>`: an explicit refspec
+  suppresses git's tag auto-following, and §2's unreleased-delta check depends
+  on a current local tag list. This keeps candidates ranked and planned
+  against fresh `origin/<default-branch>`, not stale local state. **An open
+  issue is not proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
   leaves its issue OPEN indefinitely, so already-shipped work can surface as
   plannable. Fetching first lets the ranking step (§2) catch this before any branch
   is created — rather than leaving it to `plan-task`'s late Phase 4 freshness check.
@@ -91,7 +94,10 @@ Detect whether the backlog needs grooming before planning:
   already matches the remote, so proceed. (Compare the **tracking ref**, not
   `HEAD` — a failed fetch leaves `origin/<default-branch>` at its last-fetched
   value, and you may be on any branch.) The signing/push path still legitimately
-  needs the user — this fallback is only for the read.
+  needs the user — this fallback is only for the read. On this path no fetch
+  occurs, so tags cannot be refreshed — §2's unreleased-delta check skips
+  silently here rather than reporting a possibly-stale number, consistent with
+  the check being advisory: a possibly-wrong number is worse than none.
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
@@ -185,6 +191,25 @@ recommended candidate first). **With a single ranked candidate, skip the
 `AskUserQuestion` shortlist ceremony** — a one-option multiSelect is just
 friction; present it inline with its rationale and route straight to §3, where
 `plan-task`'s own checkpoint is the gate.
+
+**Alongside the shortlist, check for an unreleased delta — advisory only.**
+Gate on the repo actually versioning by tag: `git tag -l` finds
+version-shaped tags (a `vX.Y.Z`-style scheme). No version tags → skip this
+check silently, no output. Skip silently too on §1's no-SSH fallback path,
+where no fetch occurred and tags can't be refreshed. Otherwise reuse §1's
+already-performed fetch — add no second network round-trip — and compare the
+newest version tag against `origin/<default-branch>` locally:
+`git rev-list --count <newest-tag>..origin/<default-branch>`. Zero → skip
+silently, nothing unreleased. Non-zero → surface **one line** beside the
+shortlist: how many commits are unreleased since `<newest-tag>`. Where the
+repo **consumes its own published artifact** (a plugin or package it both
+publishes and installs, so its own tooling runs from the released copy rather
+than the working tree), the line also notes that planning will otherwise run against the
+**older installed copy** until it ships. This is **strictly advisory**: it
+never blocks planning and never auto-invokes a release skill. Whether the
+delta is actually worth releasing first — CHANGELOG shape, whether a feature
+chain is mid-flight, release-cadence judgement — is a call for the user (and
+the repo's own release skill, if it has one), not for this check.
 
 In `--non-interactive`, auto-pick the single top-ranked candidate.
 
