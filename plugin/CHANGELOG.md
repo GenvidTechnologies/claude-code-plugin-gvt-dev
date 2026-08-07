@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-08-07
+
 ### Changed
 
 - **`plan-task`: a co-dispatched agent's reading of the git index is a mid-race snapshot, and its report about a _sibling's_ files must not be trusted or acted on (session retro).** The co-staging paragraph already warned about the _write_ side — a bare `git add -A` / `git commit -a` at the end of one task captures its siblings' staged files — and the explicit-pathspec rule closes that. It said nothing about the _read_ side, which survives every pathspec discipline: concurrent agents finish staging at different moments, so an agent running `git status` to confirm its own work also sees a **partial** view of everyone else's, and a sibling's file legitimately shows as untracked or unstaged merely because that sibling hasn't finished. Two consequences are now stated. The orchestrator **verifies co-staged state itself** rather than assembling it from the agents' reports, since those reports disagree and the disagreement is not evidence of a fault. And each dispatch is told **not to act on what it observes about files outside its own task** — the sharp failure is an agent reading a sibling's not-yet-created file as _missing_ and helpfully creating it, producing a duplicate or clobber that no commit-time pathspec can catch, because the damage lands inside the sibling's own path. Observed on 2026-08-07 with two `tech-writer` tasks co-dispatched for an ADR and a CHANGELOG entry: the second reported the first's ADR as untracked and its `docs/TOC.md` edit as unstaged, when both were staged — harmless only because the orchestrator re-checked rather than believing it. Behavioral skill change → version bump at release.
