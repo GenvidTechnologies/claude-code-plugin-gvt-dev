@@ -11,6 +11,12 @@ permissions:
 jobs:
   leak-grep:
     runs-on: ubuntu-latest
+    # This job is a few greps over tracked files — it should finish in well
+    # under a minute. A generous cap still fails fast when the runner hangs
+    # rather than letting it burn the default 6h budget: during the 2026-08-06
+    # Actions outage one run sat 15 minutes before being cancelled, which reads
+    # as a content failure at a glance when it never ran a line of its own logic.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
