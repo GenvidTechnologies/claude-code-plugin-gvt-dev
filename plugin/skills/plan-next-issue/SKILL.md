@@ -72,11 +72,14 @@ re-implements their work.
 
 Detect whether the backlog needs grooming before planning:
 
-- **First, `git fetch` the default branch** (`repo.default_branch` from
-  `.gvt-agent.json`, e.g. `main` — a read-only network call, consistent with
-  this skill's no-writes stance) so candidates are ranked and planned against
-  fresh `origin/<default-branch>`, not stale local state. **An open issue is not
-  proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
+- **First, `git fetch origin`** — no branch refspec (`.gvt-agent.json`'s
+  `repo.default_branch`, e.g. `main`, is still what you rank against; a
+  read-only network call, consistent with this skill's no-writes stance).
+  Fetch the whole remote, not `git fetch origin <branch>`: an explicit refspec
+  suppresses git's tag auto-following, and §2's unreleased-delta check depends
+  on a current local tag list. This keeps candidates ranked and planned
+  against fresh `origin/<default-branch>`, not stale local state. **An open
+  issue is not proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
   leaves its issue OPEN indefinitely, so already-shipped work can surface as
   plannable. Fetching first lets the ranking step (§2) catch this before any branch
   is created — rather than leaving it to `plan-task`'s late Phase 4 freshness check.
@@ -91,7 +94,10 @@ Detect whether the backlog needs grooming before planning:
   already matches the remote, so proceed. (Compare the **tracking ref**, not
   `HEAD` — a failed fetch leaves `origin/<default-branch>` at its last-fetched
   value, and you may be on any branch.) The signing/push path still legitimately
-  needs the user — this fallback is only for the read.
+  needs the user — this fallback is only for the read. On this path no fetch
+  occurs, so tags cannot be refreshed — §2's unreleased-delta check skips
+  silently here rather than reporting a possibly-stale number, consistent with
+  the check being advisory: a possibly-wrong number is worse than none.
 - Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
   yet triaged). This is a count/metadata check — do **not** pull bodies here.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
