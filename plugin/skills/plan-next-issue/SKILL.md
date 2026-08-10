@@ -249,6 +249,17 @@ Hand off cleanly: once `plan-task` takes over, it owns the analysis → design �
 planning checkpoints and the plan/branch creation. This skill's job ends at the
 handoff.
 
+**What the handoff carries.** However the selection routed, the invocation of
+`gvt-dev:plan-task` states explicitly: **every** selected issue number (not
+just the first — this is what lets `plan-task` *detect* a multi-issue target
+rather than infer one); the **routing verdict** for this invocation —
+**combined** across the issues, or **sequential** for this one; whether each
+issue is **shortcut-eligible** (proposes a concrete change/mechanism, not just
+a problem + goal); and any **already-shipped / residual finding** from §2, so
+`plan-task` doesn't re-derive it. This describes what's *passed* into the
+invocation, not anything written — nothing here is written; the writes all
+happen inside `plan-task`.
+
 ## Safety
 
 | Action | Interactive (default) | `--non-interactive` |

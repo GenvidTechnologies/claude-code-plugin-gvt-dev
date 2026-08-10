@@ -106,7 +106,7 @@ A third example is the `wiki` block, configuring the LLM-wiki compounding-memory
 
 `wikiDir` and `rawDir` are declared `required: false` in both the `maintain-wiki` skill's and the `wiki-librarian` agent's `metadata.expects`. Both are optional because the wiki practice is opt-in — a repo that doesn't maintain a wiki must never fail the aggregated audit over it, the same reasoning behind the `package.json` expectation in `publish-npm-package`.
 
-`plan-task` reuses the existing `bugTracker` block — `readOne` to fetch the current issue body, plus the host-native issue-edit command (e.g. `gh issue edit --body-file`) — to read and write the plan's pre-committed `## Acceptance Criteria` checklist in the issue body. No new config block is introduced. For issue-less runs, the checklist falls back to a committed `docs/acceptance/<slug>.md` file. See ADR-0017.
+`plan-task` reuses the existing `bugTracker` block — `readOne` to fetch the current issue body, plus the host-native issue-edit command (e.g. `gh issue edit --body-file`) — to read and write the plan's pre-committed `## Acceptance Criteria` checklist in the issue body. No new config block is introduced. For issue-less runs, the checklist falls back to a committed `docs/acceptance/<slug>.md` file. See ADR-0017. For a plan targeting more than one issue, only the **canonical** target (the lowest issue number among them) gets the checklist via that same `readOne` + issue-edit round-trip; each **sibling** target instead gets a pointer to the canonical issue via the host-native comment command (e.g. `gh issue comment {id} --body …` for `bugTracker.kind: github`) — no second checklist copy, and no new `bugTracker` field.
 
 ## How `/gvt-dev:audit-conventions` works
 
