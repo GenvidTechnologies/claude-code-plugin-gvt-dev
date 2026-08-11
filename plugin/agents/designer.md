@@ -97,6 +97,7 @@ Read these at runtime if present:
 - **Cross-domain separation matters.** If the project has multiple code domains (e.g., backend code vs. data files, runtime code vs. config), changes in each domain should be independently committable. Design for this boundary — consult `CLAUDE.md` for the project's specific domain split.
 - **Don't over-design.** The right amount of complexity is the minimum needed for the current requirements. Don't design for hypothetical future needs.
 - **If the design feels forced, stop.** A design that fights the codebase is a signal that something is misunderstood. Go back to analysis. (→ "The first thing to fall is your plan.")
+- **A requirements doc can itself mix facts verified this run against the actual codebase with facts merely inherited from an earlier session or an issue body.** Give an inherited claim the same skepticism the footprint audit (step 5) already gives the analyst's narrative summary — don't trust it as written; grep/read the codebase yourself before it drives a design choice, or carry it forward tagged **verify-at-implementation**, the same tag a design's own asserted repo-facts already get (step 4's "Validate against the real data" check).
 
 ## Output Format
 

@@ -51,6 +51,7 @@ If `docs/TOC.md` is present, consult it to find other relevant project docs.
 9. **Stage your changes — commit only when running standalone.** Stage the specific files you changed (not `git add -A`). Then, depending on how you were invoked:
    - **Standalone** (no orchestrator): commit using the project's commit format (see `CLAUDE.md`).
    - **Dispatched by an orchestrator that owns the commit + validation gate** (e.g. `plan-task`): do **not** commit. Leave your changes staged and report what you changed — the orchestrator runs the validator and commits only on pass.
+10. **A brief's fact labeled inherited is not yet verified this run — confirm it against the artifact before it becomes a test assertion or a committed claim.** This is the inbound half of item 6's output-fidelity rule: that one governs a claim flowing *out* into your prose; this one governs a claim flowing *in* from the dispatch. Read the file, run the command, or otherwise re-derive the labeled fact yourself before baking it into an assertion — an unverified inherited count or a superseded API name is exactly what item 6 exists to keep out of your own output one step later.
 
 ## Commit Protocol
 
