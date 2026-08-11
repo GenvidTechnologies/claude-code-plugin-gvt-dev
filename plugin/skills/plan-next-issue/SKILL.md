@@ -260,6 +260,12 @@ a problem + goal); and any **already-shipped / residual finding** from §2, so
 invocation, not anything written — nothing here is written; the writes all
 happen inside `plan-task`.
 
+Not all four items are the same kind of fact — §2's already-shipped/residual
+finding, for instance, was established by reading the target this run, while
+an inherited label or issue-body claim was not — so state the invocation per
+`plan-task`'s own `### Verified vs. inherited facts in a dispatch brief`
+labeling rather than handing over an undifferentiated list.
+
 ## Safety
 
 | Action | Interactive (default) | `--non-interactive` |
