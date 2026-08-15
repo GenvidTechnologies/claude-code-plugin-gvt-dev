@@ -102,10 +102,14 @@ The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed
 
 The denominator is every row present in that **fetched section** — never your own enumeration of what the criteria "should" be, and never a count of literal `- [ ]` checklist syntax (this file's own body carries 20 unrelated checklist rows above; that's a different thing being counted). If the section cannot be fully fetched or fully read, report the checklist as incomplete and grade nothing — do not grade the readable portion and silently drop the rest.
 
-Independently check each row against the staged diff and grade it into one of four states:
+**Resolve the corpus before grading a single row — don't assume staged.** By the time this agent runs at the end of `plan-task` execution, every task is typically already committed, so `git diff --staged` resolves empty even though real changes exist on the branch. Follow the same fallback the **Review Process**'s first step already uses: try `git diff --staged` first, then `git diff HEAD~1` (or the wider range the diff spans, e.g. `git diff main...HEAD`) if nothing is staged. **A dispatch that names the comparison explicitly is honored over this default** — the orchestrator dispatching this review knows whether the work is staged or committed; its instruction wins over the staged-first assumption. State which comparison you actually used alongside the verdicts (e.g. "graded against `git diff main...HEAD`"), so a reader can tell what corpus produced them.
 
-- **satisfied** — the staged diff demonstrates the row.
-- **not satisfied** — the staged diff contradicts or omits the row.
+**An empty resolved corpus is reported, not graded.** If every fallback above still resolves to nothing — no staged changes, no diff on the named or fallback range — stop and report that; do not grade rows against it. This is the corpus-level counterpart to the **fetched-section denominator** rule two paragraphs up: that rule covers an Acceptance Criteria **section** that couldn't be fully fetched or read; this one covers a **diff** that resolved to nothing to check the rows against. The two are easy to conflate because both end in "report, don't grade" — but a missing section and an empty diff are different failures with different fixes, so name which one occurred. Left unreported, an empty corpus renders identically to a genuine clean pass — a full list of `satisfied` verdicts with nothing to back any of them — which is what makes it dangerous rather than merely unhelpful.
+
+Independently check each row against the resolved diff and grade it into one of four states:
+
+- **satisfied** — the resolved diff demonstrates the row.
+- **not satisfied** — the resolved diff contradicts or omits the row.
 - **`unverifiable-as-written`** — the row's own text names evidence that cannot settle it: a zero-hit pass condition with no positive control (#218), or a `[point-in-time]` row whose moment has already passed. A row that cannot fail also cannot pass.
 - **out of scope** — a `[not-yet-due]` row: it names an action outside this branch (a release, a tag, downstream coordination, answering the issue on `main`), so it is correctly unmet right now, and grading it unmet would be a false failure.
 
