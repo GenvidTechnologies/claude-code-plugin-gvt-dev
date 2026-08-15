@@ -10,6 +10,10 @@ metadata:
       - key: commands.validate
         in: .gvt-agent.json
         reason: The shell command this agent runs verbatim
+      - key: bugTracker.readOne
+        in: .gvt-agent.json
+        required: false
+        reason: The tracker command used to fetch the pre-committed acceptance criteria section for grading
     tools:
       - command: git
         reason: Reports which files changed alongside the validation run
@@ -31,7 +35,14 @@ Run the project's validation suite and report pass/fail status with details on a
 
 4. **Parse the output** — identify each check that ran (lint, test, typecheck, project-specific validators), and whether each passed or failed.
 
-5. **Fetch the pre-committed acceptance criteria and check it against the staged diff.** For a tracker-based run, fetch the current issue body via `bugTracker.readOne` and read its `## Acceptance Criteria` section; for an issue-less run, read `docs/acceptance/<slug>.md`. Check each `- [ ]` row against the staged diff (`git diff --staged`) and report whether it's satisfied.
+5. **Fetch the pre-committed acceptance criteria and check it against the staged diff.** For a tracker-based run, fetch the current issue body via `bugTracker.readOne` and read its `## Acceptance Criteria` section; for an issue-less run, read `docs/acceptance/<slug>.md`.
+   - **Count the rows in the fetched section first.** That count is the denominator, and it comes from the section you read, not from your own enumeration of what you think should be there — the two can disagree and be seen to disagree. Emit every fetched row exactly once; the emitted rows must equal the denominator.
+   - **If the section can't be fetched, or you can only read part of it, report it incomplete rather than grading the readable portion.** A partial grade rendered in the complete format is indistinguishable from a complete one.
+   - **Grade each row into one of four states:**
+     - *satisfied* / *not satisfied* — check the row against the staged diff (`git diff --staged`), cited to `file:line`.
+     - **`unverifiable-as-written`** — the row's own text names evidence that cannot settle it here. Two cases: a zero-hit pass condition carrying no positive control (see #218 for that rule — don't re-derive it), or a row marked `[point-in-time]` whose moment has already passed. Neither a pass nor a fail — a row that cannot fail also cannot pass. Say what would settle it. It does not flip `Overall`.
+     - **out of scope** — the row is marked `[not-yet-due]` (a release, a tag, downstream coordination, answering the issue on `main`). It is correctly unmet now; grading it unmet is a false failure. Report it, never omit it, never count it unmet.
+   - **A `[point-in-time]` row you can check now is recorded now** — its verdict cannot be re-derived at a later gate.
 
 ## Output Format
 
@@ -45,8 +56,11 @@ Run the project's validation suite and report pass/fail status with details on a
 - <project-specific checks>: PASS / FAIL / SKIPPED
 
 ### Acceptance Criteria
+- <criteria>: N rows in the fetched section; N graded, X unverifiable-as-written, Y out of scope
 - [x] R1: ... — satisfied (file:line)
 - [ ] R2: ... — not satisfied (reason)
+- [ ] R3: ... — unverifiable-as-written (<why the evidence cannot discriminate>) — see #218
+- [ ] R20: ... — out of scope for branch review (marked [not-yet-due]; post-merge)
 - <source>: issue #N body / docs/acceptance/<slug>.md / none found
 
 ### Summary
@@ -60,3 +74,5 @@ Action needed: [list of issues to fix]
 - **Run all checks.** Don't skip checks to save time. The validate command is the contract.
 - **Report specific failures.** Include file names, line numbers, error messages from the underlying tools' output.
 - **Exit early on catastrophic failure** (e.g., syntax error preventing tests from running) — report it immediately rather than continuing checks that depend on a broken state.
+- **Leave the checkbox unticked for `unverifiable-as-written` and out-of-scope rows.** Nothing about either state should read as satisfied — the reason clause is what distinguishes them from `not satisfied`, not the checkbox.
+- **`unverifiable-as-written` is not the same finding as `unevaluable`** (used by `designer.md`/`planner.md` at authoring time). `unevaluable` means the author couldn't demonstrate the control when writing the criterion — the author's problem to fix. `unverifiable-as-written` means the check runs fine here but its result can't discriminate a pass from a fail — a grading-time finding you report, not one you can fix.
