@@ -105,7 +105,8 @@ change.
 
 **Scoped out: `designer.md` / `analyst.md`.** These two agents already
 carry the two *half*-implementations of this rule, split across files:
-`designer.md:57` ("don't trust the analyst's narrative summary — grep the
+designer.md's "Run the footprint audit when the design removes or renames a
+shared symbol" item ("don't trust the analyst's narrative summary — grep the
 codebase") and `analyst.md:59` ("do not treat the committed copy as ground
 truth"). Mirroring #13 into both agents explicitly would unify the halves,
 but exceeds #180's ask; the shared principle is citable from them later if
@@ -122,8 +123,9 @@ wrong reading of their target, each a case this gate would have caught
 directly rather than by luck.
 
 The gate also found drift in **#180's own body**: the issue claimed the
-shortcut's verification bullet — then at `SKILL.md:146`, before this change
-shifted it — listed "exactly the four gates," naming
+shortcut's verification bullet — the bullet whose mechanism-presence check
+"sits alongside the unbuilt gate," before this change shifted it — listed
+"exactly the four gates," naming
 mechanism-superseded as the fourth. The actual four are
 feature-already-shipped/bug-symptom-observable (the unbuilt gate),
 mechanism-presence, mechanism-supersession, and pattern-divergence. Minor,
