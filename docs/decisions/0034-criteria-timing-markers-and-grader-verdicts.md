@@ -145,7 +145,8 @@ Alternatives considered and rejected:
 ## Consequences
 
 The rule is duplicated across five files by the repo's cite-and-repeat
-default (`plugin/skills/plan-task/SKILL.md:195`, per ADR-0033's same
+default (per `SKILL.md`'s "an agent dispatched standalone may never load the
+shared doc, so each inline copy is load-bearing" clause, per ADR-0033's same
 convention) rather than centralized in a shared `plugin/docs/` reference: a
 shared home was unavailable, not merely unattractive. `grep -c
 CLAUDE_PLUGIN_ROOT plugin/agents/validator.md` returns **0**, so a shared

@@ -7,8 +7,11 @@
 ## Context
 
 `designer.md` item 8 already governed a criterion's *pattern* — an over-broad
-token grep that can't tell a call from a mention (`:79`), and an unfalsifiable
-zero-hit result without a positive control (`:80`) — but said nothing about a
+token grep that can't tell a call from a mention (per its "Write the
+criterion against the property instead" guidance), and an unfalsifiable
+zero-hit result without a positive control (per its "zero hits proves
+nothing until the pattern is shown able to match" bullet) — but said nothing
+about a
 criterion's *expected value* or its *evaluability*. Four issues surfaced three
 distinct gaps in that space: #259 (a count criterion's baseline asserted from
 reading rather than measured), #272 (a criterion's expected value made
@@ -52,7 +55,9 @@ that shape on behavior grounds ("a rule that costs a file-open is the rule
 most likely to be improvised past"), which is the same profile here: mid-
 step material an agent under time pressure needs inline, not one hop away.
 This is the repo's established **cite-and-repeat** convention
-(`plugin/skills/plan-task/SKILL.md:195`), and the accepted cost is real: the
+(per `SKILL.md`'s "an agent dispatched standalone may never load the shared
+doc, so each inline copy is load-bearing" clause), and the accepted cost is
+real: the
 designer and planner prose is tailored per agent voice (not a shared block),
 so a future edit to the underlying rule is applied at two sites, not one.
 `plugin/docs/development-principles.md` currently carries **13** principles
@@ -70,10 +75,12 @@ case), and under ADR-0030's one-hazard-per-bolded-lead convention that is
 "sibling, not duplicate" argument for staying separate rests on a verified
 mis-attribution**: its `## Relationship to #272` comparison table credits
 #272's remedy as "exclude comment lines, anchor to call sites" —
-`designer.md:79`'s code-structural set — which #272 explicitly disclaims as
+designer.md's "Write the criterion against the property instead" bullet's
+code-structural set — which #272 explicitly disclaims as
 inapplicable to a token that is a mention everywhere by nature (#272's
 actual remedy is enumerate the corpus → scope the criterion → carve out
-newly authored prose, i.e. `designer.md:85`'s zero-over-a-corpus form).
+newly authored prose, i.e. the zero-over-a-corpus form from designer.md's
+"A zero over a corpus" bullet).
 #272's own maintainer comment, dated 2026-08-12, had already offered the
 fold in exactly this direction before this record was authored. #298's AC 5
 asked for the two to be "legible as one family" — one bullet satisfies that
@@ -86,8 +93,10 @@ item 8.
 restructured item 8.** The three new bullets are ordered the way a row must
 survive them — can it fail (#259), can it pass (#272/#298), can it be
 evaluated (#270) — each opening with a back-reference to the bullet(s)
-before it, the same chaining convention `designer.md:80`–`:81` already
-establishes for the token-grep/zero-hit pair. Two alternative structures
+before it, the same chaining convention designer.md's "zero hits proves
+nothing until the pattern is shown able to match" bullet and its "A grep
+prescribed against prose this same design authors" sub-bullet already
+establish for the token-grep/zero-hit pair. Two alternative structures
 were considered and rejected in favor of this one; see Compromise. The width
 decision is recorded in this same record rather than minting a second one
 (the precedent ADR-0030 §"one shape at two widths" sets): `planner.md`
@@ -108,12 +117,13 @@ additive"), so #298's own prescribed criterion could not have fired on the
 very cases that motivated filing it. Shipped as four independent bullets,
 the guidance would have recommended in one bullet the exact form it
 declares worthless two bullets later. The corpus floor —
-`designer.md:86`'s "assert the invariant, not the total: a floor (`≥` the
+designer.md's "assert the **invariant**, not the total: a floor (`≥` the
 measured baseline) so an added citation cannot fail it" — satisfies #298's
 underlying intent (existing occurrences survive), is evaluable on any diff
 shape including all-additive, and is what #270's own text calls out as the
 form to prefer wherever it expresses the same intent. A diff-based control
-remains available as a documented fallback (`designer.md:87`) for cases the
+remains available as a documented fallback (per designer.md's bullet noting
+a diff-evaluated control "can be unevaluable at grading time") for cases the
 corpus form genuinely cannot express, explicitly marked subordinate to it.
 
 This fits the existing architecture as an extension of `designer.md` item 8
@@ -144,7 +154,8 @@ Alternatives considered and rejected:
    Rejected as a *current* change, though it is the cleanest end state and
    would scale better as the cluster grows: it rewrites shipped text all
    four issues explicitly ask to leave intact, and it puts the byte-exact
-   "Prefer the count" steer (`designer.md:80`) at churn risk for no
+   "Prefer the count" steer (from designer.md's "fails loudly on a broken
+   pattern" clause) at churn risk for no
    behavioral gain today. Recorded as the tripwire: if a sixth member
    arrives for this cluster, regroup into named sections rather than
    appending a seventh bolded lead.
