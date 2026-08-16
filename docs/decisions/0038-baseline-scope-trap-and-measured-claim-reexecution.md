@@ -149,10 +149,39 @@ that cannot fail — and *defective* (born wrong) rather than *decayed*. Caught
 during execution of Task 1, amended in the open on #324 to an expected **2**
 (original + citation;
 `grep -c "Measure the baseline by running the row's own command against the pre-change tree" plugin/agents/designer.md`
-→ 2 today), matching T3's existing shape in the same table. **The
-generalizable rule: a set-level coherence check must screen new prose against
-every span the criteria table itself pins, not only against literals named as
-hazards.**
+→ 2 today), matching T3's existing shape in the same table.
+
+**Corrected during the post-merge retro — the first draft of this decision
+overstated the finding, and the correction is the more useful record.** It
+claimed a *generalizable new rule* was needed: "a set-level coherence check
+must screen new prose against every span the criteria table itself pins." That
+is not new. `designer.md:92` already rules on this exact shape and prescribes
+the remedy T12c failed to use:
+
+> **A pinned total** (`grep -c X` → 2, unchanged) — assert the **invariant**,
+> not the total: that the pre-existing occurrences survive, as a **floor**
+> (`≥` the measured baseline) **so an added citation cannot fail it**, plus a
+> canonical-form rule for any added occurrence.
+
+T12c was written as an **exact pin at 1** rather than a floor. The shipped
+rule anticipates precisely the failure that occurred, and had it been applied
+the row would have read `≥1` and passed untouched.
+
+**What is genuinely unaddressed is narrower, and sits in a seam.** `:92`
+states the floor remedy for the *whole-file-count* case, then offers an
+alternative — *"Where the surviving sites must be pinned individually, pin
+each by its full byte-exact sentence rather than by a whole-file count"* — and
+**the floor does not carry forward to that alternative.** But a `grep -c` on a
+byte-exact sentence is still a count, and a citation still moves it. T12c took
+the byte-exact-sentence form and inherited no floor with it. Closing that seam
+is filed separately; it is a one-clause change to `:92`, not a new rule.
+
+**The meta-lesson is the one worth keeping:** a retro finding written up
+without re-reading the shipped rule it supposedly generalizes will overstate
+itself, and an ADR is exactly where that error compounds — every later
+planning run that cites this record would have inherited a "new rule" that
+already existed in stricter form. This is `run-retro` §1's verify-against-
+source gate doing its job on this record's own author.
 
 This fits the existing architecture as a further extension of `designer.md`
 item 8 / `planner.md` item 12's five-named-group Test Criteria cluster
