@@ -228,5 +228,7 @@ shape is the same class of defect (a row that cannot fail cannot pass either)
 and is not in that enumeration: this change ships an authoring-side rule
 whose violation the graders still cannot name as a grading-time verdict. Out
 of scope here because grader-side vocabulary belongs to a different issue
-family than authoring-side rule placement; a follow-up issue naming this gap
-is being drafted separately.
+family than authoring-side rule placement. The follow-up naming this gap is
+**#325**, filed during this change's execution; it is deliberately left
+unscoped here, since its placement should be resolved against whatever #239
+does to the same region.
