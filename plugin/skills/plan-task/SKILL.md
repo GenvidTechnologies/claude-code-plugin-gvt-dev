@@ -111,7 +111,7 @@ Dispatch the **`gvt-dev:planner`** agent with the approved design document.
 
 **Checkpoint:** "Here's the implementation plan. Ready to proceed?"
 
-Wait for explicit approval before saving. See [`approval-and-audit.md`](approval-and-audit.md) for the self-audit checklist to run before presenting.
+Wait for explicit approval before saving. This is **plan approval**: it authorizes Phase 4 below — saving `plan.md`, creating the branch, writing the acceptance-criteria checklist, the prep commit — and stops there. The checkpoint wording above ("Ready to proceed?") is easily heard as "shall I implement it?", but the whole of Phase 4 sits between this approval and `## Execution (Post-Approval)`, which requires its own separate, explicit **execution approval** before the first implementer dispatch. See [`approval-and-audit.md`](approval-and-audit.md) for the self-audit checklist to run before presenting.
 
 ### Phase 4: Save and Branch
 
@@ -205,6 +205,7 @@ For **simple tasks** (single-file, obvious implementation), compress the pipelin
 - Skip the designer if the approach is obvious
 - The planner can produce a minimal plan directly
 - Run the validator gate inline (the project's `validate` command directly) instead of dispatching `gvt-dev:validator` when the change is trivial and deterministic (e.g. a single-line doc edit) and a full subagent per commit would cost more than it surfaces. Still gate before the commit — only the mechanism is lighter, not the gate. The known-red baseline treatment above applies the same way when the gate runs inline: check the recorded expected-red set before flagging a failure as new.
+- **The compressed checkpoint above authorizes Phase 4 only** — the first implementer dispatch still needs its own separate execution approval under `## Execution (Post-Approval)`, taken as its own turn.
 
 For an **issue that's already a full proposal** (rationale + a concrete proposed change/mechanism; open questions optional):
 
@@ -220,7 +221,7 @@ For an **issue that's already a full proposal** (rationale + a concrete proposed
 
   Investigate the factual questions; only the preference questions go to `AskUserQuestion`. This replaces dispatching the designer.
   - **An issue with no open-questions section resolves this classification block trivially — there's no fork to classify.** That's exactly where the mechanism gate above earns its keep: nothing in this classification step is triggered by a fork the issue never raised, so its absence is not a signal that the prescribed mechanism needs no check.
-- Present a combined design + plan in **one checkpoint**, explicitly flagging any friction the chosen answers introduce.
+- Present a combined design + plan in **one checkpoint**, explicitly flagging any friction the chosen answers introduce. **This checkpoint ends at plan approval, not execution approval** — answering its `AskUserQuestion` authorizes Phase 4 only (saving `plan.md`, creating the branch, writing the acceptance-criteria checklist, the prep commit), never the first implementer dispatch, which needs its own separate, explicit **execution approval** taken as its own turn under `## Execution (Post-Approval)`. This boundary is easy to miss on this path specifically: the canonical statement of it sits in a section this path has already read past by the time it reaches this checkpoint, so nothing here restates it at the point where the crossing actually happens.
 - Still produce `plan.md`, a prep commit, one-commit-each tasks, and the validator + code-reviewer gates.
 - **Compressing the pipeline does not drop the Phase 3 obligations — run [`approval-and-audit.md`](approval-and-audit.md)'s self-audit checklist at the combined checkpoint.** The shortcut replaces the analyst and designer *dispatches*, not the checks that Phase 3 owns. The one most often lost is **writing the `## Acceptance Criteria` checklist to the issue body before execution begins** (ADR-0017): the criteria feel "already written" because they're in `plan.md`, but `plan.md` is transient and gitignored, so criteria that live only there are gone the moment the next task overwrites it — and reviewers never see what the work was pledged against. Write them to the issue — the **canonical** target when the plan combines several issues, per Phase 4 step 4 — or the `docs/acceptance/<slug>.md` fallback, at the checkpoint, not retroactively after the commits land.
 

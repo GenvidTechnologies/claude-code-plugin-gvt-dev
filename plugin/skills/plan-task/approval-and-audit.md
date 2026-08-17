@@ -8,7 +8,7 @@
 2. **Display the plan properly formatted** in the conversation (not just a file write) so the user can review it directly.
 3. **Ask whether the user has concerns or wants changes** — don't assume the first draft is ready for approval. Use `AskUserQuestion` to get explicit feedback.
 4. **Iterate on feedback** — incorporate the user's changes, then present the revised plan.
-5. **Wait for explicit approval** before creating the branch or making any changes.
+5. **Wait for explicit approval** before creating the branch or making any changes. This is **plan approval** — it authorizes Phase 4 (branch creation, the acceptance-criteria write, the prep commit) and nothing past it; the first implementer dispatch needs a separate, explicit **execution approval** later, under `## Execution (Post-Approval)`.
 
 The user must be able to see and review the complete plan in the conversation before approving. A plan is a conversation, not a deliverable — expect at least one round of feedback before it's ready.
 
