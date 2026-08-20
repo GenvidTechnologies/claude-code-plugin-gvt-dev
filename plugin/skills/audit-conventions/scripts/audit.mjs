@@ -30,6 +30,7 @@ import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3M
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
+import { resolveExpectationPath, overrideFindings } from './lib/path-overrides.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { summarizeExpectations } from './lib/summary.mjs';
@@ -84,21 +85,35 @@ async function main() {
   }
 
   const components = await walkComponents(PLUGIN_ROOT);
+
+  // Loaded here — before the expectation loop — because evaluateFile /
+  // evaluateConfig below need `paths` to resolve overrides as they walk each
+  // component's declared expectations. Reused (not reloaded) at the Practice
+  // Coverage read further down.
+  const repoConfig = await loadRepoConfig(configFilename);
+  const pathOverrides = repoConfig?.paths;
+
   const findings = [];
+  const declaredPaths = new Set();
   for (const component of components) {
     const expects = component.expects;
     if (!expects) continue;
 
     for (const entry of expects.files ?? []) {
-      findings.push(await evaluateFile(component, entry));
+      declaredPaths.add(entry.path);
+      findings.push(await evaluateFile(component, entry, pathOverrides));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry, configFilename));
+      findings.push(await evaluateConfig(component, entry, configFilename, pathOverrides));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
     }
   }
+  // Surfaces a `paths` key that doesn't match any declared expectation path
+  // (typo, retired path) or an unusable override value — otherwise a mistyped
+  // key is silently inert, which is the defect this wiring exists to fix.
+  findings.push(...overrideFindings(pathOverrides, declaredPaths));
 
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
@@ -137,7 +152,6 @@ async function main() {
   // carries its parsed `pillar` field); the consumer-side adoption verdict
   // is currently wired for the `environment` pillar only (the wiki — the
   // only pillar with a detector today, per lib/practice-detect.mjs).
-  const repoConfig = await loadRepoConfig(configFilename);
   const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
   const practices = { environment: wikiAdoption.verdict };
 
@@ -201,10 +215,11 @@ async function loadComponent(type, name, filePath) {
 // reported "file not found" no matter what was on disk — telling a repo that
 // HAD scaffolded docs/decisions/ that it hadn't, and (had any directory
 // expectation ever been marked required) failing the audit outright.
-async function evaluateFile(component, entry) {
+async function evaluateFile(component, entry, pathOverrides) {
   const required = entry.required !== false;
-  const path = join(REPO_ROOT, entry.path);
-  const isDir = entry.path.endsWith('/');
+  const resolvedPath = resolveExpectationPath(pathOverrides, entry.path);
+  const path = join(REPO_ROOT, resolvedPath);
+  const isDir = resolvedPath.endsWith('/');
   const exists = isDir ? await dirExists(path) : await fileExists(path);
 
   if (exists) {
@@ -222,9 +237,9 @@ async function evaluateFile(component, entry) {
   };
 }
 
-async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json') {
+async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json', pathOverrides) {
   const required = entry.required !== false;
-  const inFile = entry.in ?? configFilename;
+  const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
   const filePath = join(REPO_ROOT, inFile);
 
   let parsed;
@@ -525,8 +540,9 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
-  // orphaned-doc, readme-inventory, and principle-citation) aren't tied to a
-  // component/expectation — they carry a self-contained detail string.
+  // orphaned-doc, readme-inventory, principle-citation, and path-override)
+  // aren't tied to a component/expectation — they carry a self-contained
+  // detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
     'conventions-drift',
@@ -537,6 +553,7 @@ function formatFinding(f) {
     'readme-inventory',
     'principle-citation',
     'pillar-unknown',
+    'path-override',
   ];
   if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
