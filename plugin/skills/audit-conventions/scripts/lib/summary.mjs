@@ -22,3 +22,24 @@ export function summarizeExpectations(findings) {
 
   return summary;
 }
+
+// Renders the scan-coverage line shown in the report's Summary section,
+// distinguishing "scanned N files and found nothing" from "found nothing
+// because there was nothing to scan." A configured root that could not be
+// used falls back to the default root — `unrepresentable: true` — and that
+// fallback must be stated explicitly rather than silently producing a line
+// that looks identical to a normal, honored scan.
+//
+// Pure function: no I/O, no side effects. `root` may be a single path string
+// or an array of path strings (the scan can cover more than one root, e.g.
+// `docs/` + `CLAUDE.md`).
+export function formatScanSummary({ root, unrepresentable, fileCount }) {
+  const roots = Array.isArray(root) ? root : [root];
+  const rootList = roots.filter(Boolean).join(', ');
+
+  const fallbackNote = unrepresentable
+    ? ' (configured root could not be represented; fell back to the default root)'
+    : '';
+
+  return `scanned ${fileCount} file(s) under ${rootList}${fallbackNote}`;
+}

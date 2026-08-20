@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { summarizeExpectations } from '../lib/summary.mjs';
+import { summarizeExpectations, formatScanSummary } from '../lib/summary.mjs';
 
 test('summarizeExpectations: empty input yields all zeros', () => {
   assert.deepEqual(summarizeExpectations([]), {
@@ -84,4 +84,38 @@ test('summarizeExpectations: findings with a non-boolean required are ignored by
     optionalMet: 0,
     optionalTotal: 0,
   });
+});
+
+test('formatScanSummary: plain root case names the root(s) and file count', () => {
+  const line = formatScanSummary({ root: 'docs/', unrepresentable: false, fileCount: 27 });
+  assert.match(line, /\bscanned\b/);
+  assert.match(line, /27/);
+  assert.match(line, /docs\//);
+});
+
+test('formatScanSummary: multiple roots are all named in the line', () => {
+  const line = formatScanSummary({
+    root: ['docs/', 'CLAUDE.md'],
+    unrepresentable: false,
+    fileCount: 27,
+  });
+  assert.match(line, /\bscanned\b/);
+  assert.match(line, /27/);
+  assert.match(line, /docs\//);
+  assert.match(line, /CLAUDE\.md/);
+});
+
+test('formatScanSummary: unrepresentable root states the fallback explicitly', () => {
+  const line = formatScanSummary({ root: 'docs/', unrepresentable: true, fileCount: 27 });
+  assert.match(line, /\bscanned\b/);
+  assert.match(line, /27/);
+  // The whole point of the flag: a silent fallback must not read identically
+  // to a normal, honored scan.
+  assert.match(line, /fell back|fallback|could not/i);
+});
+
+test('formatScanSummary: fileCount 0 is surfaced, not hidden', () => {
+  const line = formatScanSummary({ root: 'docs/', unrepresentable: false, fileCount: 0 });
+  assert.match(line, /\bscanned\b/);
+  assert.match(line, /\b0\b/);
 });
