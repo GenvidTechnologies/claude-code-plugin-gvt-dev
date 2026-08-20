@@ -271,3 +271,10 @@ wiki *detection/migration* scope (a separate concern, tracked under #146):
 `audit-conventions` may one day detect that a repo has a wiki and offer to
 migrate its scaffold, but it does not — and will not — run `lint`'s content
 checks itself.
+
+One exception to "never wired into `audit.mjs`" is content, not the `lint`
+verb itself: `audit-conventions`' retired-token hygiene scanner
+(`scanRetiredTokens`) does reach `<wikiDir>/`, because `lint` has no
+retired-token check of its own — dead-wiki-links and orphaned pages stay
+`lint`'s alone, unchanged by this. See `plugin/CONVENTIONS.md`'s `hygiene`
+paragraph for the full per-scanner scope table and ADR-0041 for why.

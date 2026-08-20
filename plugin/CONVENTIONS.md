@@ -79,8 +79,8 @@ Skills tolerate missing sections — they fall back to generic behavior — but 
 - Suggested toggles: `tdd` (project practices TDD), `monorepo` (multiple sub-projects in one repo).
 
 **`paths`** (optional object) — two distinct uses, told apart by key name.
-- **Convention-file overrides** — keys are convention-file names, values are the override path. Set only when a convention file lives somewhere non-default. Example: `{"docs/TOC.md": "documentation/INDEX.md"}`.
-- **Reserved key `plugin_root`** — *not* a convention-file override. When this repo **publishes** a Claude Code plugin from a subfolder (so several plugins, or a plugin plus a dev/consumer workspace, can share one repo), `paths.plugin_root` names that subfolder — the directory containing `.claude-plugin/plugin.json` (e.g. `"plugin"`). Consumed only by `/gvt-dev:release-plugin`, which resolves `.claude-plugin/plugin.json`, `CHANGELOG.md`, `claude plugin validate`, and the release-triangle `git show` paths relative to it, and selects the `git-subdir` marketplace source shape. Defaults to `"."` (plugin at the repo root → current behavior, fully backward-compatible) when absent. Declared `required: false` in `release-plugin`'s `metadata.expects`. A convention-file override never uses the key name `plugin_root`.
+- **Convention-file overrides** — keys are a **declared expectation path**: any file/directory path a component's `metadata.expects` names, not just the four convention files — `docs/TOC.md` is one such path, so the existing example below still works verbatim. Values are the override path. Set only when the declared path lives somewhere non-default. Example: `{"docs/TOC.md": "documentation/INDEX.md"}`. `/gvt-dev:audit-conventions` resolves every declared expectation through this override in both validate mode (`evaluateFile`/`evaluateConfig`) and `--fix` (the stale-config TOC scaffold target), so the two modes agree on where the file lives. A `paths` key that matches no declared expectation, or whose value is empty/unusable, is reported as a `warning` finding rather than silently ignored.
+- **Reserved key `plugin_root`** — *not* a convention-file override. When this repo **publishes** a Claude Code plugin from a subfolder (so several plugins, or a plugin plus a dev/consumer workspace, can share one repo), `paths.plugin_root` names that subfolder — the directory containing `.claude-plugin/plugin.json` (e.g. `"plugin"`). Consumed by two skills, both resolving it to that directory: `/gvt-dev:release-plugin`, which resolves `.claude-plugin/plugin.json`, `CHANGELOG.md`, `claude plugin validate`, and the release-triangle `git show` paths relative to it, and selects the `git-subdir` marketplace source shape; and `/gvt-dev:reconcile-mcp-pin`, which resolves the plugin's `skills/`/`agents/` tree relative to it. Defaults to `"."` (plugin at the repo root → current behavior, fully backward-compatible) when absent. Declared `required: false` in both skills' `metadata.expects`. A convention-file override never uses the key name `plugin_root`.
 
 ### Skill-specific config blocks
 
@@ -97,7 +97,17 @@ One scope caution for the `bugTracker` block: keep its `actionQuery` covering th
 A second example is `audit-conventions`' optional `hygiene` block, tuning its advisory repo-hygiene scanners (retired-token deny-list, broken intra-repo doc links, orphaned-doc check — see the skill for what each check does). Two optional keys, each with baked-in defaults so the block can be omitted entirely:
 
 - `retiredTokens` (array) — **replaces** the default deny-list (`genvid:`, `genvid-dev:`, `genvid-c3`) when provided, since a repo's deny-list is a deliberate full override.
-- `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. Applies to all three scanners. This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan.
+- `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. Applies to whichever candidate set a scanner walks (see the scope table below). This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan, plus one `<wikiDir>/` page from the same scan (see the next paragraph).
+
+The three scanners do not share one walk — scope is per-scanner (ADR-0041):
+
+| Scanner | docs root | `<wikiDir>/` | `<rawDir>/` |
+|---|---|---|---|
+| `scanRetiredTokens` | yes | **yes** | no |
+| `scanBrokenLinks` | yes | no | no |
+| `scanOrphanedDocs` | yes | no | no |
+
+All three walk the docs root (`docs/` by default, or the `paths['docs/TOC.md']`-derived root above) plus repo-root `CLAUDE.md`. Only `scanRetiredTokens` additionally walks `<wikiDir>/` — token drift there is otherwise unowned, since `maintain-wiki`'s `lint` verb has no retired-token check of its own, whereas `lint` already owns dead-wiki-links and orphaned pages, so those two scanners deliberately never widen. `<rawDir>/` is never walked by any scanner: it sits outside the docs walk at the default repo-root layout, and is explicitly excluded (at its resolved, anchored path, never a bare directory name) on the rare nested layout — either way it stays out because it legitimately holds retired tokens and dead links as part of its immutable captured-source record.
 
 A third example is the `wiki` block, configuring the LLM-wiki compounding-memory practice (`/gvt-dev:maintain-wiki` and its read-only `wiki-librarian` agent):
 
