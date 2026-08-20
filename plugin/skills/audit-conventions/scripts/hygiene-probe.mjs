@@ -22,17 +22,14 @@
 // wikiCandidateFiles (landed in commit 10e4522) — not yet wired into any
 // scanner call.
 //
-// --docs-root: see the footnote printed at the bottom of the report when
-// this flag is passed. Short version: lib/hygiene.mjs's listCandidateFiles
-// (the root all three scanners below actually walk) is module-private and
-// hardcodes 'docs' today, so this flag does NOT change the scan results
-// above the footnote — a later task (F2) adds opts.docsRoot support to
-// listCandidateFiles, at which point the opts.docsRoot this probe already
-// passes through will start being honoured with no changes needed here. In
-// the meantime this probe uses the exported, general-purpose
-// wikiCandidateFiles(repoRoot, dir, opts) helper (it accepts any directory,
-// not just a wiki checkout) to preview what the candidate set at --docs-root
-// would look like, without reimplementing the walk.
+// --docs-root: relocates the walk root the three scanners below actually use
+// (lib/hygiene.mjs's listCandidateFiles, via opts.docsRoot — landed in F2/
+// #384) away from the 'docs' default, so this flag DOES change the scan
+// results above. The PREVIEW line under "Candidate-set sizes" additionally
+// uses the exported, general-purpose wikiCandidateFiles(repoRoot, dir, opts)
+// helper (it accepts any directory, not just a wiki checkout) to show the
+// docsRoot candidate count next to the default-root one, without
+// reimplementing the walk.
 
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -97,9 +94,8 @@ async function main() {
 
   const hygiene = await loadHygieneConfig(repoRoot);
   const baseOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
-  // opts.docsRoot is passed through even though nothing reads it today (see
-  // the file-header note) — forward-compatible with F2, inert until then.
   const scanOpts = docsRoot ? { ...baseOpts, docsRoot } : baseOpts;
+  const effectiveDocsRoot = docsRoot ?? 'docs';
 
   console.log('## hygiene-probe');
   console.log('');
@@ -117,22 +113,20 @@ async function main() {
   // it applies the identical listMarkdown-plus-excludePaths walk to whatever
   // directory it's given. It omits the one thing listCandidateFiles adds on
   // top (the repo-root CLAUDE.md), which is reported separately below.
-  const docsCandidates = await wikiCandidateFiles(repoRoot, 'docs', scanOpts);
+  //
+  // effectiveDocsRoot mirrors opts.docsRoot ?? 'docs' — the exact root the
+  // scanner calls below actually walk (opts.docsRoot is honored by
+  // listCandidateFiles as of F2/#384), so this line reports the real
+  // candidate set, not a preview of one.
+  const docsCandidates = await wikiCandidateFiles(repoRoot, effectiveDocsRoot, scanOpts);
   const claudeMdIncluded = await fileExists(join(repoRoot, 'CLAUDE.md'));
   console.log('### Candidate-set sizes');
   console.log(
-    `  - docs/ markdown candidates (root actually walked by the scanners below): ${docsCandidates.length}`,
+    `  - ${effectiveDocsRoot}/ markdown candidates (root actually walked by the scanners below): ${docsCandidates.length}`,
   );
   console.log(
     `  - CLAUDE.md ${claudeMdIncluded ? 'present — included as +1 in retired-token/broken-link scans' : 'absent — nothing added'}`,
   );
-  if (docsRoot && docsRoot !== 'docs') {
-    const previewCandidates = await wikiCandidateFiles(repoRoot, docsRoot, scanOpts);
-    console.log(
-      `  - PREVIEW ONLY — candidates under --docs-root '${docsRoot}' if the walk were pointed there: ${previewCandidates.length} ` +
-        `(the scanner runs below still walked 'docs', not '${docsRoot}' — see the footnote)`,
-    );
-  }
   if (wikiDir) {
     const wikiCandidates = await wikiCandidateFiles(repoRoot, wikiDir, scanOpts);
     console.log(`  - wiki candidates under --wiki-dir '${wikiDir}': ${wikiCandidates.length}`);
@@ -159,17 +153,6 @@ async function main() {
       'NOTE: wikiCandidateFiles is not wired into any scanner call above (ADR-0015 decision 2 /',
     );
     console.log('commit 10e4522) — this only lists the candidate set it would produce.');
-    console.log('');
-  }
-
-  if (docsRoot) {
-    console.log('NOTE on --docs-root: opts.docsRoot was passed through to every scanner call above,');
-    console.log("but lib/hygiene.mjs's listCandidateFiles (the root all three scanners actually walk)");
-    console.log("is module-private and hardcodes 'docs' today — this flag has NO EFFECT on the scan");
-    console.log('results above (only on the PREVIEW candidate-set line, which uses the exported');
-    console.log('wikiCandidateFiles helper instead). A later task (F2) adds opts.docsRoot support to');
-    console.log('listCandidateFiles; once that lands this same call starts honouring it with no');
-    console.log('changes needed here.');
     console.log('');
   }
 }

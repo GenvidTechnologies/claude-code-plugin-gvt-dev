@@ -10,7 +10,9 @@ import {
   scanBrokenLinks,
   scanOrphanedDocs,
   wikiCandidateFiles,
+  candidateFileCount,
 } from '../lib/hygiene.mjs';
+import { resolveDocsRoot } from '../lib/path-overrides.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'hygiene-test-'));
@@ -402,6 +404,124 @@ test('opts.retiredTokens REPLACES the defaults (does not merge) — a custom den
       !overriddenFindings.some((f) => f.detail.includes('genvid-dev:')),
       'the baked-in genvid-dev: token must not be matched once retiredTokens is overridden',
     );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// opts.docsRoot — a relocated knowledge base (#384). Backward compatibility:
+// omitting opts.docsRoot must behave byte-identically to the pre-#384 walk
+// (proved above by every existing test in this file, none of which pass
+// docsRoot).
+// ---------------------------------------------------------------------------
+
+// T8 (load-bearing, acceptance row): a repo that retired docs/ entirely in
+// favor of documentation/, declaring the relocation via
+// `paths: {"docs/TOC.md": "documentation/INDEX.md"}`. Measured baseline on
+// the pre-#384 code (git-stashed and probed directly, not asserted here since
+// that code no longer exists once this commit lands): scanRetiredTokens(dir),
+// scanBrokenLinks(dir), scanOrphanedDocs(dir) each returned 0 findings against
+// this exact fixture — "scanned and clean" was indistinguishable from
+// "scanned nothing", which is the defect this task fixes.
+test('opts.docsRoot: scanRetiredTokens finds a hit under a relocated root — no docs/ directory exists at all', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/INDEX.md', '# Index\n\nNothing here.\n');
+    await writeRepoFile(d, 'documentation/page.md', 'Uses genvid-dev: to invoke.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, { docsRoot: 'documentation' });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'retired-token');
+    assert.equal(findings[0].file, 'documentation/page.md');
+    assert.equal(findings[0].token, 'genvid-dev:');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('opts.docsRoot: omitting the override on the same relocated-root fixture still finds nothing — docsRoot must be passed explicitly', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/INDEX.md', '# Index\n\nNothing here.\n');
+    await writeRepoFile(d, 'documentation/page.md', 'Uses genvid-dev: to invoke.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanOrphanedDocs: opts.docsRoot moves BOTH the index location and the re-filter to the relocated root', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/TOC.md', '# TOC\n\nNothing here.\n');
+    await writeRepoFile(d, 'documentation/foo.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, { docsRoot: 'documentation' });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphaned-doc');
+    assert.match(findings[0].detail, /documentation\/foo\.md is not referenced in documentation\/TOC\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanOrphanedDocs: opts.docsRoot — a doc indexed via a bare docsRoot-relative filename is NOT flagged', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/TOC.md', '# TOC\n\n- [Foo](foo.md)\n');
+    await writeRepoFile(d, 'documentation/foo.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, { docsRoot: 'documentation' });
+    assert.deepEqual(findings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('opts.docsRoot: an unrepresentable override falls back to root "docs" (resolveDocsRoot\'s guard), and the scanners still walk it normally', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
+    await writeRepoFile(d, 'docs/foo.md', 'content\n');
+  });
+  try {
+    const { root, unrepresentable } = resolveDocsRoot({ 'docs/TOC.md': 'INDEX.md' });
+    assert.equal(root, 'docs');
+    assert.equal(unrepresentable, true);
+
+    const findings = await scanOrphanedDocs(dir, { docsRoot: root });
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].detail, /docs\/foo\.md is not referenced in docs\/TOC\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('candidateFileCount: counts the same candidate set listCandidateFiles produces (docs/**.md + CLAUDE.md)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'x\n');
+    await writeRepoFile(d, 'docs/b.md', 'x\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'x\n');
+  });
+  try {
+    assert.equal(await candidateFileCount(dir), 3);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('candidateFileCount: honors opts.docsRoot, and the default root sees none of the relocated files', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/a.md', 'x\n');
+  });
+  try {
+    // listCandidateFiles always appends the 'CLAUDE.md' candidate regardless
+    // of whether it exists on disk (missing files are handled gracefully by
+    // safeReadFile downstream) — so the +1 shows up in both counts below.
+    assert.equal(await candidateFileCount(dir, { docsRoot: 'documentation' }), 2);
+    assert.equal(await candidateFileCount(dir), 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

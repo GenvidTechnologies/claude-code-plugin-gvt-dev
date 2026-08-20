@@ -62,10 +62,17 @@ function effectiveExcludes(opts) {
   return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
 }
 
-// Candidate file set shared by all three scanners: docs/**.md + repo-root
+// Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
 // CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
-// listMarkdown's shape). Missing docs/ or CLAUDE.md are handled gracefully by
-// listMarkdown / safeReadFile respectively — this helper never throws.
+// listMarkdown's shape). Missing <docsRoot>/ or CLAUDE.md are handled gracefully
+// by listMarkdown / safeReadFile respectively — this helper never throws.
+//
+// opts.docsRoot relocates the walk root away from the 'docs' default — see
+// resolveDocsRoot (lib/path-overrides.mjs), which derives it from a
+// `docs/TOC.md` paths override and already guards the unrepresentable case
+// (a repo-root override would make this walk recurse the entire repo). A
+// repo with no override behaves byte-identically: opts.docsRoot is undefined
+// and the default 'docs' applies.
 //
 // excludePaths is a UNION of the baked-in defaults and any opts.excludePaths
 // — the defaults (CHANGELOG.md, docs/superpowers/, docs/decisions/) always
@@ -74,9 +81,17 @@ function effectiveExcludes(opts) {
 // (below), which replaces-when-provided, since a repo's deny-list is a
 // deliberate full override.
 async function listCandidateFiles(repoRoot, opts = {}) {
+  const docsRoot = opts.docsRoot ?? 'docs';
   const excludePaths = effectiveExcludes(opts);
-  const files = [...(await listMarkdown(repoRoot, 'docs')), 'CLAUDE.md'];
+  const files = [...(await listMarkdown(repoRoot, docsRoot)), 'CLAUDE.md'];
   return files.filter((f) => !isExcluded(f, excludePaths));
+}
+
+// Count-only wrapper around listCandidateFiles, for callers (audit.mjs's
+// Summary line) that need "how many files did the walk cover" without
+// re-implementing the walk. Same opts, same graceful missing-dir handling.
+export async function candidateFileCount(repoRoot, opts = {}) {
+  return (await listCandidateFiles(repoRoot, opts)).length;
 }
 
 // Candidate file set for a repo's wiki checkout: *.md under <wikiDir>/,
@@ -221,25 +236,28 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
 // ---- scanOrphanedDocs ---------------------------------------------------------
 
 export async function scanOrphanedDocs(repoRoot, opts = {}) {
-  const tocContent = await safeReadFile(join(repoRoot, 'docs', 'TOC.md'));
-  if (tocContent == null) return []; // no docs/TOC.md — nothing to check against
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const tocPath = `${docsRoot}/TOC.md`;
+  const tocContent = await safeReadFile(join(repoRoot, docsRoot, 'TOC.md'));
+  if (tocContent == null) return []; // no <docsRoot>/TOC.md — nothing to check against
 
   const candidates = await listCandidateFiles(repoRoot, opts);
-  const docs = candidates.filter((f) => f.startsWith('docs/') && f !== 'docs/TOC.md');
+  const docsPrefix = `${docsRoot}/`;
+  const docs = candidates.filter((f) => f.startsWith(docsPrefix) && f !== tocPath);
 
   const findings = [];
   for (const relPath of docs) {
-    // docs/TOC.md lives inside docs/ itself, so it commonly links siblings
-    // with a bare, docs-relative filename (e.g. `foo.md`) rather than the
-    // full repo-relative path (`docs/foo.md`). A doc counts as indexed if
-    // EITHER form appears in the TOC text.
-    const docsRelPath = relPath.startsWith('docs/') ? relPath.slice('docs/'.length) : relPath;
+    // <docsRoot>/TOC.md lives inside <docsRoot>/ itself, so it commonly links
+    // siblings with a bare, docsRoot-relative filename (e.g. `foo.md`) rather
+    // than the full repo-relative path (`<docsRoot>/foo.md`). A doc counts as
+    // indexed if EITHER form appears in the TOC text.
+    const docsRelPath = relPath.startsWith(docsPrefix) ? relPath.slice(docsPrefix.length) : relPath;
     if (!tocContent.includes(relPath) && !tocContent.includes(docsRelPath)) {
       findings.push({
         kind: 'orphaned-doc',
         ok: false,
         severity: 'info',
-        detail: `${relPath} is not referenced in docs/TOC.md`,
+        detail: `${relPath} is not referenced in ${tocPath}`,
       });
     }
   }
