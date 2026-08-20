@@ -79,6 +79,22 @@ async function listCandidateFiles(repoRoot, opts = {}) {
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
 
+// Candidate file set for a repo's wiki checkout: *.md under <wikiDir>/,
+// repo-relative forward-slash paths (matches listMarkdown's shape), minus
+// excludePaths. A falsy/absent wikiDir returns [] rather than walking the
+// repo root — a repo with no wiki must get an empty set, never a scan of
+// repoRoot itself. A wikiDir naming a directory that doesn't exist on disk
+// also returns [] (listMarkdown's readdir failure is caught and swallowed,
+// same as a missing docs/). Not called by any scanner yet — a later task
+// wires this into scanRetiredTokens only (ADR-0015 decision 2: scanBrokenLinks
+// and scanOrphanedDocs deliberately never see wiki files).
+export async function wikiCandidateFiles(repoRoot, wikiDir, opts = {}) {
+  if (!wikiDir) return [];
+  const excludePaths = effectiveExcludes(opts);
+  const files = await listMarkdown(repoRoot, wikiDir);
+  return files.filter((f) => !isExcluded(f, excludePaths));
+}
+
 async function safeReadFile(path) {
   try {
     return await fs.readFile(path, 'utf8');

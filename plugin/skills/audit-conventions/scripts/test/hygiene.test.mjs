@@ -5,7 +5,12 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from '../lib/hygiene.mjs';
+import {
+  scanRetiredTokens,
+  scanBrokenLinks,
+  scanOrphanedDocs,
+  wikiCandidateFiles,
+} from '../lib/hygiene.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'hygiene-test-'));
@@ -397,6 +402,66 @@ test('opts.retiredTokens REPLACES the defaults (does not merge) — a custom den
       !overriddenFindings.some((f) => f.detail.includes('genvid-dev:')),
       'the baked-in genvid-dev: token must not be matched once retiredTokens is overridden',
     );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// wikiCandidateFiles — not called by any scanner yet (a later task wires it
+// into scanRetiredTokens only, per ADR-0015 decision 2).
+// ---------------------------------------------------------------------------
+
+test('wikiCandidateFiles: lists .md files under wikiDir, including nested subdirectories', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/Home.md', '# Home\n');
+    await writeRepoFile(d, 'wiki/nested/Sub-Page.md', '# Sub\n');
+    await writeRepoFile(d, 'wiki/notes.txt', 'not markdown\n');
+  });
+  try {
+    const files = await wikiCandidateFiles(dir, 'wiki');
+    assert.deepEqual(
+      files.sort(),
+      ['wiki/Home.md', 'wiki/nested/Sub-Page.md'].sort(),
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wikiCandidateFiles: falsy/absent wikiDir returns [] rather than walking the repo root', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'CLAUDE.md', '# root doc\n');
+  });
+  try {
+    assert.deepEqual(await wikiCandidateFiles(dir, undefined), []);
+    assert.deepEqual(await wikiCandidateFiles(dir, ''), []);
+    assert.deepEqual(await wikiCandidateFiles(dir, null), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wikiCandidateFiles: wikiDir naming a directory that does not exist on disk returns []', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const files = await wikiCandidateFiles(dir, 'wiki');
+    assert.deepEqual(files, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wikiCandidateFiles: opts.excludePaths excludes a specific wiki page', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/Home.md', '# Home\n');
+    await writeRepoFile(d, 'wiki/Retired-Page.md', '# Retired\n');
+  });
+  try {
+    const files = await wikiCandidateFiles(dir, 'wiki', {
+      excludePaths: ['wiki/Retired-Page.md'],
+    });
+    assert.deepEqual(files, ['wiki/Home.md']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
