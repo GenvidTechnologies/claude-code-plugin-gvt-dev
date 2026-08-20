@@ -54,12 +54,34 @@ function isExcluded(relPath, excludePaths) {
   return excludePaths.some((entry) => relPath.startsWith(entry) || relPath.includes(entry));
 }
 
+// Resolved, anchored exclude entry for opts.rawDir (ADR-0015 decision 1's
+// `raw/` exemption), but ONLY when rawDir is actually nested inside one of
+// the walked roots (opts.docsRoot, defaulting to 'docs', or opts.wikiDir).
+// The default repo-root layout (rawDir: 'raw') is already outside every
+// walked root, so this returns [] for it — nothing to fold in, matching
+// ADR-0015 decision 1 unamended. The nested layout (e.g. rawDir:
+// 'docs/raw') IS inside the docs walk, so its resolved, anchored path is
+// added. CRITICAL: never fold in the bare directory name — isExcluded below
+// matches by `startsWith` OR `includes` (a substring test), so a bare
+// 'raw/' would also match 'docs/draw/' and any other path containing that
+// substring. Anchoring on the full resolved path (with a trailing slash)
+// avoids that trap.
+function rawDirExclude(opts) {
+  const rawDir = opts.rawDir;
+  if (!rawDir) return [];
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const roots = [docsRoot, opts.wikiDir].filter(Boolean);
+  const withinWalkedRoot = roots.some((root) => rawDir === root || rawDir.startsWith(`${root}/`));
+  return withinWalkedRoot ? [`${rawDir}/`] : [];
+}
+
 // Effective exclude-path set for a given opts: a UNION of the baked-in
-// defaults and any opts.excludePaths (see the union-vs-replace note on
-// listCandidateFiles below). Shared by listCandidateFiles and
-// configCandidateFiles so both scanners' notion of "excluded" stays in sync.
+// defaults, any opts.excludePaths, and the conditional rawDir guard above
+// (see the union-vs-replace note on listCandidateFiles below). Shared by
+// listCandidateFiles, configCandidateFiles, and wikiCandidateFiles so every
+// scanner's notion of "excluded" stays in sync.
 function effectiveExcludes(opts) {
-  return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+  return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? []), ...rawDirExclude(opts)];
 }
 
 // Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
@@ -100,9 +122,10 @@ export async function candidateFileCount(repoRoot, opts = {}) {
 // repo root — a repo with no wiki must get an empty set, never a scan of
 // repoRoot itself. A wikiDir naming a directory that doesn't exist on disk
 // also returns [] (listMarkdown's readdir failure is caught and swallowed,
-// same as a missing docs/). Not called by any scanner yet — a later task
-// wires this into scanRetiredTokens only (ADR-0015 decision 2: scanBrokenLinks
-// and scanOrphanedDocs deliberately never see wiki files).
+// same as a missing docs/). Called by scanRetiredTokens ONLY (ADR-0041,
+// ADR-0015 decision 2: scanBrokenLinks and scanOrphanedDocs deliberately
+// never see wiki files — see the call site below for why the token scan is
+// the one exception).
 export async function wikiCandidateFiles(repoRoot, wikiDir, opts = {}) {
   if (!wikiDir) return [];
   const excludePaths = effectiveExcludes(opts);
@@ -145,8 +168,20 @@ function configCandidateFiles(repoRoot, opts = {}) {
 
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
+  // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
+  // (ADR-0015 decision 2 / ADR-0041). scanBrokenLinks and scanOrphanedDocs
+  // deliberately never see wiki files: `maintain-wiki`'s own `lint` verb
+  // already owns dead-wiki-links and orphaned-page checks for `<wikiDir>/`,
+  // resolving OKF §6.1 bundle-absolute targets (`/page.md`) against
+  // `<wikiDir>/` itself — a second, differently-rooted link/orphan
+  // implementation here would just be wrong (plugin/skills/maintain-wiki/
+  // SKILL.md:265-273: "not wired into audit.mjs and must not be"). The token
+  // scan has no such owner: `lint` has no retired-token check at all (`grep
+  // -i token` over maintain-wiki/SKILL.md returns nothing), so token drift on
+  // the wiki tier is genuinely unowned unless this scanner reaches it.
   const files = [
     ...(await listCandidateFiles(repoRoot, opts)),
+    ...(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts)),
     ...configCandidateFiles(repoRoot, opts),
   ];
   const findings = [];

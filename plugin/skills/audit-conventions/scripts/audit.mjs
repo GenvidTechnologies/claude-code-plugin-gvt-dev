@@ -143,7 +143,18 @@ async function main() {
   }
 
   const hygiene = await loadHygieneConfig(configFilename);
-  const hygieneOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths, docsRoot };
+  // wikiDir/rawDir come from repoConfig's `wiki` block (already loaded above
+  // for wikiAdoption), not the `hygiene` block — same shared hygieneOpts
+  // object passed to all three scanners below, but only scanRetiredTokens
+  // reads wikiDir (see its call site in lib/hygiene.mjs); rawDir folds into
+  // effectiveExcludes for whichever scanners it's nested inside.
+  const hygieneOpts = {
+    retiredTokens: hygiene?.retiredTokens,
+    excludePaths: hygiene?.excludePaths,
+    docsRoot,
+    wikiDir: repoConfig?.wiki?.wikiDir,
+    rawDir: repoConfig?.wiki?.rawDir,
+  };
   findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));

@@ -586,3 +586,126 @@ test('wikiCandidateFiles: opts.excludePaths excludes a specific wiki page', asyn
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// scanRetiredTokens now reaches <wikiDir>/ (F3+F4, #366) — scanBrokenLinks and
+// scanOrphanedDocs deliberately do NOT (ADR-0015 decision 2 / ADR-0041):
+// `maintain-wiki`'s own `lint` verb already owns dead-wiki-links and
+// orphaned-page checks for <wikiDir>/. Every test below includes a mutation
+// control proving the relevant scanner is live and the wiki-side emptiness is
+// scope, not incapacity.
+// ---------------------------------------------------------------------------
+
+// T5. Baseline measured directly against the pre-widening code (git-stashed
+// and probed outside this suite, not asserted here since that code no longer
+// exists once this commit lands): scanRetiredTokens/scanBrokenLinks/
+// scanOrphanedDocs against this exact fixture with opts.wikiDir: 'wiki' all
+// returned 0 findings — wiki/other.md was simply never walked. After this
+// commit, scanRetiredTokens finds the token; the other two still don't.
+test('T5: scanRetiredTokens reaches wiki/other.md when opts.wikiDir is set; scanBrokenLinks/scanOrphanedDocs still do not', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/other.md', 'Use genvid-dev: to invoke.\n');
+  });
+  try {
+    const tokenFindings = await scanRetiredTokens(dir, { wikiDir: 'wiki' });
+    assert.equal(tokenFindings.length, 1);
+    assert.equal(tokenFindings[0].kind, 'retired-token');
+    assert.equal(tokenFindings[0].file, 'wiki/other.md');
+
+    const linkFindings = await scanBrokenLinks(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(linkFindings, []);
+
+    const orphanFindings = await scanOrphanedDocs(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(orphanFindings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// T6. scanBrokenLinks/scanOrphanedDocs never see wiki/ content, at any point
+// in this change — this is byte-identical on both sides of the widening,
+// since neither scanner's candidate walk changed. The docs/-side control
+// (byte-identical dead link, byte-identical unindexed doc) proves both
+// scanners are live, not merely silent because they're broken.
+test('T6: scanBrokenLinks/scanOrphanedDocs ignore wiki/dead.md and wiki/orphan.md, with a docs/-side control proving both scanners are live', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/dead.md', '[x](./nope.md)\n');
+    await writeRepoFile(d, 'wiki/orphan.md', 'content\n');
+    // Control: byte-identical dead link / unindexed doc, under docs/ where
+    // both scanners already walk. docs/dead.md is indexed in TOC so it
+    // contributes only to the broken-link count, not the orphan count.
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\n- [Dead](dead.md)\n');
+    await writeRepoFile(d, 'docs/dead.md', '[x](./nope.md)\n');
+    await writeRepoFile(d, 'docs/orphan.md', 'content\n');
+  });
+  try {
+    const linkFindings = await scanBrokenLinks(dir, { wikiDir: 'wiki' });
+    assert.equal(linkFindings.length, 1, 'exactly the docs/dead.md broken link — wiki/dead.md is not walked');
+    assert.match(linkFindings[0].detail, /docs\/dead\.md:1 broken link -> \.\/nope\.md/);
+    assert.ok(!linkFindings.some((f) => f.detail.startsWith('wiki/')), 'no wiki/-rooted broken-link finding');
+
+    const orphanFindings = await scanOrphanedDocs(dir, { wikiDir: 'wiki' });
+    assert.equal(orphanFindings.length, 1, 'exactly the docs/orphan.md orphan — wiki/orphan.md is not walked');
+    assert.match(orphanFindings[0].detail, /docs\/orphan\.md is not referenced in docs\/TOC\.md/);
+    assert.ok(!orphanFindings.some((f) => f.detail.startsWith('wiki/')), 'no wiki/-rooted orphaned-doc finding');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// <rawDir>/ guard (F3+F4, #366 / #360) — the default repo-root layout
+// (rawDir: 'raw') is already outside every walked root, so nothing to guard.
+// The nested layout (rawDir under the docs root) IS inside the walk and needs
+// the explicit exclusion added by effectiveExcludes' rawDirExclude.
+// ---------------------------------------------------------------------------
+
+// T7a. Default repo-root layout: raw/ is never inside opts.docsRoot ('docs')
+// or opts.wikiDir ('wiki'), so it was already unreached before this change —
+// this pins that it stays that way now that opts.rawDir exists as a concept.
+// The wiki/other.md control proves scanRetiredTokens is actually running
+// (with wikiDir wired) and not just vacuously silent.
+test('T7a: raw/capture.md (default repo-root layout) is never flagged; the identical token in wiki/other.md still fires', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'raw/capture.md', 'Uses genvid-dev: as captured source.\n');
+    await writeRepoFile(d, 'wiki/other.md', 'Uses genvid-dev: too.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, { wikiDir: 'wiki', rawDir: 'raw' });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'wiki/other.md');
+    assert.ok(
+      !findings.some((f) => f.file === 'raw/capture.md'),
+      'raw/capture.md must never be flagged under the default repo-root layout',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// T7b. Nested layout (rawDir under docsRoot). Baseline measured directly
+// against the pre-widening code (git-stashed and probed outside this suite,
+// not asserted here since that code no longer exists once this commit
+// lands): scanRetiredTokens found BOTH docs/raw/capture.md and docs/other.md
+// (token=2), and scanOrphanedDocs flagged docs/raw/capture.md as unindexed
+// (orphan=1) — docs/raw/ was walked like any other docs/ subdirectory. After
+// this commit, docs/raw/ is excluded: token=1 (docs/other.md survives, which
+// doubles as the control proving the docs/ walk itself is still live), and
+// orphan=0 (docs/raw/capture.md no longer a candidate to be unindexed).
+test('T7b: nested rawDir (docs/raw) is excluded from both scanRetiredTokens and scanOrphanedDocs; docs/other.md survives as the live-scan control', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\n- [Other](other.md)\n');
+    await writeRepoFile(d, 'docs/raw/capture.md', 'Uses genvid-dev: as captured source.\n');
+    await writeRepoFile(d, 'docs/other.md', 'Uses genvid-dev: too.\n');
+  });
+  try {
+    const tokenFindings = await scanRetiredTokens(dir, { rawDir: 'docs/raw' });
+    assert.equal(tokenFindings.length, 1);
+    assert.equal(tokenFindings[0].file, 'docs/other.md');
+
+    const orphanFindings = await scanOrphanedDocs(dir, { rawDir: 'docs/raw' });
+    assert.deepEqual(orphanFindings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
