@@ -54,6 +54,14 @@ function isExcluded(relPath, excludePaths) {
   return excludePaths.some((entry) => relPath.startsWith(entry) || relPath.includes(entry));
 }
 
+// Effective exclude-path set for a given opts: a UNION of the baked-in
+// defaults and any opts.excludePaths (see the union-vs-replace note on
+// listCandidateFiles below). Shared by listCandidateFiles and
+// configCandidateFiles so both scanners' notion of "excluded" stays in sync.
+function effectiveExcludes(opts) {
+  return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+}
+
 // Candidate file set shared by all three scanners: docs/**.md + repo-root
 // CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
 // listMarkdown's shape). Missing docs/ or CLAUDE.md are handled gracefully by
@@ -66,7 +74,7 @@ function isExcluded(relPath, excludePaths) {
 // (below), which replaces-when-provided, since a repo's deny-list is a
 // deliberate full override.
 async function listCandidateFiles(repoRoot, opts = {}) {
-  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+  const excludePaths = effectiveExcludes(opts);
   const files = [...(await listMarkdown(repoRoot, 'docs')), 'CLAUDE.md'];
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
@@ -94,7 +102,7 @@ async function pathExists(path) {
 // git repo, or git unavailable), the config scan is skipped ([]) — the
 // Markdown scan is unaffected. See ADR-0014.
 function configCandidateFiles(repoRoot, opts = {}) {
-  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+  const excludePaths = effectiveExcludes(opts);
   const tracked = gitTrackedFiles(repoRoot);
   if (tracked == null) return [];
   return RETIRED_TOKEN_CONFIG_CANDIDATES.filter(
