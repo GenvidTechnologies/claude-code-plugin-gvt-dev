@@ -20,6 +20,7 @@ import { spawnSync } from 'node:child_process';
 import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
 import { inferHostFromRemote } from './host-drift.mjs';
 import { listFiles, listMarkdown } from './fs-walk.mjs';
+import { resolveExpectationPath } from './path-overrides.mjs';
 
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
@@ -335,8 +336,14 @@ export async function planStaleConfig(repoRoot, pluginRoot) {
   await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
 
-  await pushScaffold(actions, repoRoot, TOC, await readSkeleton(pluginRoot, TOC),
-    `Scaffold ${TOC} with placeholder doc map`);
+  // Resolve the TOC scaffold target through the repo's own `paths` override
+  // (read from cfg, the same .genvid-agent.json this planner already loaded
+  // above per ADR-0012) before the skip-if-exists check, so --fix agrees with
+  // validate mode about where docs/TOC.md actually lives (issue found via
+  // call-site audit, no tracked issue number).
+  const tocTarget = resolveExpectationPath(cfg.paths, TOC);
+  await pushScaffold(actions, repoRoot, tocTarget, await readSkeleton(pluginRoot, TOC),
+    `Scaffold ${tocTarget} with placeholder doc map`);
 
   return { state: 'stale-config', actions };
 }

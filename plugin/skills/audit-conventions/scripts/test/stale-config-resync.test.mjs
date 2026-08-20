@@ -201,3 +201,40 @@ test('audit (plain, no --fix): stale-config repo with no root CONVENTIONS.md sta
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// planStaleConfig honours a `paths` override for docs/TOC.md (task F5): a
+// stale-config repo that overrides docs/TOC.md -> wiki/index.md must have
+// --fix's TOC scaffold target agree with validate mode's resolved path,
+// rather than always proposing to write the literal docs/TOC.md.
+// ---------------------------------------------------------------------------
+
+test('audit --fix (dry-run) on stale-config with a docs/TOC.md paths override and an existing wiki/index.md: '
+  + 'scaffolds nothing at docs/TOC.md and reports the resolved path SKIPPED', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'audit-stale-config-path-override-test-'));
+  try {
+    // .genvid-agent.json (the OLD/stale filename, per ADR-0012) carries the
+    // paths override — planStaleConfig must read `paths` from this file, not
+    // a hardcoded default.
+    await writeFile(
+      join(dir, '.genvid-agent.json'),
+      JSON.stringify({ project: { name: 'foo' }, paths: { 'docs/TOC.md': 'wiki/index.md' } }, null, 2),
+    );
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'index.md'), '# Index\n');
+
+    const dryRun = spawnAudit(['--fix'], dir);
+    assert.equal(dryRun.status, 0, `--fix failed:\n${dryRun.stderr}`);
+
+    const tocHits = (dryRun.stdout.match(/docs\/TOC\.md/g) || []).length;
+    assert.equal(tocHits, 0, `expected no docs/TOC.md mentions in the plan, found ${tocHits}:\n${dryRun.stdout}`);
+
+    assert.match(
+      dryRun.stdout,
+      /SKIPPED wiki\/index\.md — target already exists; keeping your copy/,
+      'plan should report the resolved path (wiki/index.md) as SKIPPED — ADR-0013 hand-edit protection at the resolved location',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
