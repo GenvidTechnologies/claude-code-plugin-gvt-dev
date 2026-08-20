@@ -19,7 +19,7 @@
     "plugin_root": "plugin"
   },
   "hygiene": {
-    "excludePaths": ["docs/plugin-authoring.md"]
+    "excludePaths": ["docs/plugin-authoring.md", "wiki/audit-conventions-as-proto-lint.md"]
   },
   "wiki": {
     "wikiDir": "wiki",

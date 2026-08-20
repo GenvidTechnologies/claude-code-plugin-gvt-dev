@@ -29,10 +29,11 @@ import {
 import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
-import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs } from './lib/hygiene.mjs';
+import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
+import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
-import { summarizeExpectations } from './lib/summary.mjs';
+import { summarizeExpectations, formatScanSummary } from './lib/summary.mjs';
 import { PILLARS, parsePillars } from './lib/pillars.mjs';
 import { detectWikiAdoption } from './lib/practice-detect.mjs';
 import { formatPracticeCoverage } from './lib/pillar-report.mjs';
@@ -84,21 +85,36 @@ async function main() {
   }
 
   const components = await walkComponents(PLUGIN_ROOT);
+
+  // Loaded here — before the expectation loop — because evaluateFile /
+  // evaluateConfig below need `paths` to resolve overrides as they walk each
+  // component's declared expectations. Reused (not reloaded) at the Practice
+  // Coverage read further down.
+  const repoConfig = await loadRepoConfig(configFilename);
+  const pathOverrides = repoConfig?.paths;
+  const { root: docsRoot, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
+
   const findings = [];
+  const declaredPaths = new Set();
   for (const component of components) {
     const expects = component.expects;
     if (!expects) continue;
 
     for (const entry of expects.files ?? []) {
-      findings.push(await evaluateFile(component, entry));
+      declaredPaths.add(entry.path);
+      findings.push(await evaluateFile(component, entry, pathOverrides));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry, configFilename));
+      findings.push(await evaluateConfig(component, entry, configFilename, pathOverrides));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
     }
   }
+  // Surfaces a `paths` key that doesn't match any declared expectation path
+  // (typo, retired path) or an unusable override value — otherwise a mistyped
+  // key is silently inert, which is the defect this wiring exists to fix.
+  findings.push(...overrideFindings(pathOverrides, declaredPaths));
 
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
@@ -127,21 +143,43 @@ async function main() {
   }
 
   const hygiene = await loadHygieneConfig(configFilename);
-  const hygieneOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
+  // wikiDir/rawDir come from repoConfig's `wiki` block (already loaded above
+  // for wikiAdoption), not the `hygiene` block — same shared hygieneOpts
+  // object passed to all three scanners below, but only scanRetiredTokens
+  // reads wikiDir (see its call site in lib/hygiene.mjs); rawDir folds into
+  // effectiveExcludes for whichever scanners it's nested inside.
+  const hygieneOpts = {
+    retiredTokens: hygiene?.retiredTokens,
+    excludePaths: hygiene?.excludePaths,
+    docsRoot,
+    wikiDir: repoConfig?.wiki?.wikiDir,
+    rawDir: repoConfig?.wiki?.rawDir,
+  };
   findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));
+
+  // Report-only figure for the Summary line below — NOT pushed into
+  // `findings` (that would render as a 13th Info bullet on this repo and
+  // desync the pinned bullet-count acceptance check). See formatScanSummary
+  // (lib/summary.mjs): it distinguishes "scanned N files and found nothing"
+  // from "found nothing because there was nothing to scan" — the exact
+  // false-green #384 reports for a relocated docs root.
+  const scanSummary = {
+    root: [`${docsRoot}/`, 'CLAUDE.md'],
+    unrepresentable: docsRootUnrepresentable,
+    fileCount: await candidateFileCount(REPO_ROOT, hygieneOpts),
+  };
 
   // Practice Coverage (epic #142): the plugin-side census is the same
   // `components` walk used for expectations above (each entry already
   // carries its parsed `pillar` field); the consumer-side adoption verdict
   // is currently wired for the `environment` pillar only (the wiki — the
   // only pillar with a detector today, per lib/practice-detect.mjs).
-  const repoConfig = await loadRepoConfig(configFilename);
   const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
   const practices = { environment: wikiAdoption.verdict };
 
-  const report = formatReport(state, findings, { cfgHasC3, pillarCensus: components, practices });
+  const report = formatReport(state, findings, { cfgHasC3, pillarCensus: components, practices, scanSummary });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
@@ -201,10 +239,11 @@ async function loadComponent(type, name, filePath) {
 // reported "file not found" no matter what was on disk — telling a repo that
 // HAD scaffolded docs/decisions/ that it hadn't, and (had any directory
 // expectation ever been marked required) failing the audit outright.
-async function evaluateFile(component, entry) {
+async function evaluateFile(component, entry, pathOverrides) {
   const required = entry.required !== false;
-  const path = join(REPO_ROOT, entry.path);
-  const isDir = entry.path.endsWith('/');
+  const resolvedPath = resolveExpectationPath(pathOverrides, entry.path);
+  const path = join(REPO_ROOT, resolvedPath);
+  const isDir = resolvedPath.endsWith('/');
   const exists = isDir ? await dirExists(path) : await fileExists(path);
 
   if (exists) {
@@ -222,9 +261,9 @@ async function evaluateFile(component, entry) {
   };
 }
 
-async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json') {
+async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json', pathOverrides) {
   const required = entry.required !== false;
-  const inFile = entry.in ?? configFilename;
+  const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
   const filePath = join(REPO_ROOT, inFile);
 
   let parsed;
@@ -455,7 +494,7 @@ function commandExists(cmd) {
 
 // ---- report ----------------------------------------------------------------
 
-function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], practices = {} } = {}) {
+function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], practices = {}, scanSummary = null } = {}) {
   const errors = findings.filter((f) => f.severity === 'error');
   const warnings = findings.filter((f) => f.severity === 'warning');
   const infos = findings.filter((f) => f.severity === 'info');
@@ -492,6 +531,9 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
   lines.push('### Summary');
   lines.push(`- required: ${requiredMet} of ${requiredTotal} satisfied.`);
   lines.push(`- optional: ${optionalMet} of ${optionalTotal} satisfied.`);
+  if (scanSummary) {
+    lines.push(`- ${formatScanSummary(scanSummary)}`);
+  }
   if (errors.length > 0) {
     lines.push(`- ${errors.length} required expectation${errors.length === 1 ? '' : 's'} unmet.`);
   }
@@ -525,8 +567,9 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
-  // orphaned-doc, readme-inventory, and principle-citation) aren't tied to a
-  // component/expectation — they carry a self-contained detail string.
+  // orphaned-doc, readme-inventory, principle-citation, and path-override)
+  // aren't tied to a component/expectation — they carry a self-contained
+  // detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
     'conventions-drift',
@@ -537,6 +580,7 @@ function formatFinding(f) {
     'readme-inventory',
     'principle-citation',
     'pillar-unknown',
+    'path-override',
   ];
   if (SELF_CONTAINED_KINDS.includes(f.kind)) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
@@ -546,17 +590,27 @@ function formatFinding(f) {
 // ---- --fix orchestration ---------------------------------------------------
 
 // Scans for the stale-report retired-token needles (see STALE_REPORT_TOKENS
-// above) and reduces the hits to CLAUDE.md / docs/ files only, in the same
-// { file, hint } shape formatDanglingReport expects. Report-only — no
-// rewriting.
-async function staleFollowup() {
-  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS });
+// above) and reduces the hits to CLAUDE.md / <docsRoot>/ files only, in the
+// same { file, hint } shape formatDanglingReport expects. Report-only — no
+// rewriting. docsRoot defaults to 'docs' (a repo with no `paths` override
+// behaves byte-identically); callers resolve it via resolveDocsRoot before
+// calling, same as main()'s hygieneOpts.
+async function staleFollowup(docsRoot = 'docs') {
+  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot });
   return hits
-    .filter((h) => h.file === 'CLAUDE.md' || h.file.startsWith('docs/'))
+    .filter((h) => h.file === 'CLAUDE.md' || h.file.startsWith(`${docsRoot}/`))
     .map((h) => ({ file: h.file, hint: `line ${h.line} uses retired token '${h.token}'` }));
 }
 
 async function runFix(state) {
+  // Mirrors main()'s STATE_STALE_CONFIG config-filename handling (a stale
+  // `.genvid-agent.json` carries the same schema as `.gvt-agent.json`) so a
+  // `paths` override in that legacy file is honored by staleFollowup below,
+  // the same as it would be in a plain audit run.
+  const fixConfigFilename = state === STATE_STALE_CONFIG ? '.genvid-agent.json' : '.gvt-agent.json';
+  const fixRepoConfig = await loadRepoConfig(fixConfigFilename);
+  const { root: fixDocsRoot } = resolveDocsRoot(fixRepoConfig?.paths);
+
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');
     console.error(`State: ${state}\n`);
@@ -582,7 +636,7 @@ async function runFix(state) {
 
   if (!APPLY_MODE) {
     console.log(formatPlanDryRun(plan));
-    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup()));
+    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
     savePreviewedPlan(REPO_ROOT, plan);
     process.exit(0);
   }
@@ -611,7 +665,7 @@ async function runFix(state) {
     console.log('\n' + formatDanglingReport(warnings));
   }
   if (plan.state === STATE_STALE_CONFIG) {
-    console.log('\n' + formatDanglingReport(await staleFollowup()));
+    console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
   }
 
   clearPreviewedPlan(REPO_ROOT);

@@ -54,10 +54,47 @@ function isExcluded(relPath, excludePaths) {
   return excludePaths.some((entry) => relPath.startsWith(entry) || relPath.includes(entry));
 }
 
-// Candidate file set shared by all three scanners: docs/**.md + repo-root
+// Resolved, anchored exclude entry for opts.rawDir (ADR-0015 decision 1's
+// `raw/` exemption), but ONLY when rawDir is actually nested inside one of
+// the walked roots (opts.docsRoot, defaulting to 'docs', or opts.wikiDir).
+// The default repo-root layout (rawDir: 'raw') is already outside every
+// walked root, so this returns [] for it — nothing to fold in, matching
+// ADR-0015 decision 1 unamended. The nested layout (e.g. rawDir:
+// 'docs/raw') IS inside the docs walk, so its resolved, anchored path is
+// added. CRITICAL: never fold in the bare directory name — isExcluded below
+// matches by `startsWith` OR `includes` (a substring test), so a bare
+// 'raw/' would also match 'docs/draw/' and any other path containing that
+// substring. Anchoring on the full resolved path (with a trailing slash)
+// avoids that trap.
+function rawDirExclude(opts) {
+  const rawDir = opts.rawDir;
+  if (!rawDir) return [];
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const roots = [docsRoot, opts.wikiDir].filter(Boolean);
+  const withinWalkedRoot = roots.some((root) => rawDir === root || rawDir.startsWith(`${root}/`));
+  return withinWalkedRoot ? [`${rawDir}/`] : [];
+}
+
+// Effective exclude-path set for a given opts: a UNION of the baked-in
+// defaults, any opts.excludePaths, and the conditional rawDir guard above
+// (see the union-vs-replace note on listCandidateFiles below). Shared by
+// listCandidateFiles, configCandidateFiles, and wikiCandidateFiles so every
+// scanner's notion of "excluded" stays in sync.
+function effectiveExcludes(opts) {
+  return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? []), ...rawDirExclude(opts)];
+}
+
+// Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
 // CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
-// listMarkdown's shape). Missing docs/ or CLAUDE.md are handled gracefully by
-// listMarkdown / safeReadFile respectively — this helper never throws.
+// listMarkdown's shape). Missing <docsRoot>/ or CLAUDE.md are handled gracefully
+// by listMarkdown / safeReadFile respectively — this helper never throws.
+//
+// opts.docsRoot relocates the walk root away from the 'docs' default — see
+// resolveDocsRoot (lib/path-overrides.mjs), which derives it from a
+// `docs/TOC.md` paths override and already guards the unrepresentable case
+// (a repo-root override would make this walk recurse the entire repo). A
+// repo with no override behaves byte-identically: opts.docsRoot is undefined
+// and the default 'docs' applies.
 //
 // excludePaths is a UNION of the baked-in defaults and any opts.excludePaths
 // — the defaults (CHANGELOG.md, docs/superpowers/, docs/decisions/) always
@@ -66,8 +103,33 @@ function isExcluded(relPath, excludePaths) {
 // (below), which replaces-when-provided, since a repo's deny-list is a
 // deliberate full override.
 async function listCandidateFiles(repoRoot, opts = {}) {
-  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
-  const files = [...(await listMarkdown(repoRoot, 'docs')), 'CLAUDE.md'];
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const excludePaths = effectiveExcludes(opts);
+  const files = [...(await listMarkdown(repoRoot, docsRoot)), 'CLAUDE.md'];
+  return files.filter((f) => !isExcluded(f, excludePaths));
+}
+
+// Count-only wrapper around listCandidateFiles, for callers (audit.mjs's
+// Summary line) that need "how many files did the walk cover" without
+// re-implementing the walk. Same opts, same graceful missing-dir handling.
+export async function candidateFileCount(repoRoot, opts = {}) {
+  return (await listCandidateFiles(repoRoot, opts)).length;
+}
+
+// Candidate file set for a repo's wiki checkout: *.md under <wikiDir>/,
+// repo-relative forward-slash paths (matches listMarkdown's shape), minus
+// excludePaths. A falsy/absent wikiDir returns [] rather than walking the
+// repo root — a repo with no wiki must get an empty set, never a scan of
+// repoRoot itself. A wikiDir naming a directory that doesn't exist on disk
+// also returns [] (listMarkdown's readdir failure is caught and swallowed,
+// same as a missing docs/). Called by scanRetiredTokens ONLY (ADR-0041,
+// ADR-0015 decision 2: scanBrokenLinks and scanOrphanedDocs deliberately
+// never see wiki files — see the call site below for why the token scan is
+// the one exception).
+export async function wikiCandidateFiles(repoRoot, wikiDir, opts = {}) {
+  if (!wikiDir) return [];
+  const excludePaths = effectiveExcludes(opts);
+  const files = await listMarkdown(repoRoot, wikiDir);
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
 
@@ -94,7 +156,7 @@ async function pathExists(path) {
 // git repo, or git unavailable), the config scan is skipped ([]) — the
 // Markdown scan is unaffected. See ADR-0014.
 function configCandidateFiles(repoRoot, opts = {}) {
-  const excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? [])];
+  const excludePaths = effectiveExcludes(opts);
   const tracked = gitTrackedFiles(repoRoot);
   if (tracked == null) return [];
   return RETIRED_TOKEN_CONFIG_CANDIDATES.filter(
@@ -106,8 +168,20 @@ function configCandidateFiles(repoRoot, opts = {}) {
 
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
+  // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
+  // (ADR-0015 decision 2 / ADR-0041). scanBrokenLinks and scanOrphanedDocs
+  // deliberately never see wiki files: `maintain-wiki`'s own `lint` verb
+  // already owns dead-wiki-links and orphaned-page checks for `<wikiDir>/`,
+  // resolving OKF §6.1 bundle-absolute targets (`/page.md`) against
+  // `<wikiDir>/` itself — a second, differently-rooted link/orphan
+  // implementation here would just be wrong (plugin/skills/maintain-wiki/
+  // SKILL.md:265-273: "not wired into audit.mjs and must not be"). The token
+  // scan has no such owner: `lint` has no retired-token check at all (`grep
+  // -i token` over maintain-wiki/SKILL.md returns nothing), so token drift on
+  // the wiki tier is genuinely unowned unless this scanner reaches it.
   const files = [
     ...(await listCandidateFiles(repoRoot, opts)),
+    ...(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts)),
     ...configCandidateFiles(repoRoot, opts),
   ];
   const findings = [];
@@ -197,25 +271,28 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
 // ---- scanOrphanedDocs ---------------------------------------------------------
 
 export async function scanOrphanedDocs(repoRoot, opts = {}) {
-  const tocContent = await safeReadFile(join(repoRoot, 'docs', 'TOC.md'));
-  if (tocContent == null) return []; // no docs/TOC.md — nothing to check against
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const tocPath = `${docsRoot}/TOC.md`;
+  const tocContent = await safeReadFile(join(repoRoot, docsRoot, 'TOC.md'));
+  if (tocContent == null) return []; // no <docsRoot>/TOC.md — nothing to check against
 
   const candidates = await listCandidateFiles(repoRoot, opts);
-  const docs = candidates.filter((f) => f.startsWith('docs/') && f !== 'docs/TOC.md');
+  const docsPrefix = `${docsRoot}/`;
+  const docs = candidates.filter((f) => f.startsWith(docsPrefix) && f !== tocPath);
 
   const findings = [];
   for (const relPath of docs) {
-    // docs/TOC.md lives inside docs/ itself, so it commonly links siblings
-    // with a bare, docs-relative filename (e.g. `foo.md`) rather than the
-    // full repo-relative path (`docs/foo.md`). A doc counts as indexed if
-    // EITHER form appears in the TOC text.
-    const docsRelPath = relPath.startsWith('docs/') ? relPath.slice('docs/'.length) : relPath;
+    // <docsRoot>/TOC.md lives inside <docsRoot>/ itself, so it commonly links
+    // siblings with a bare, docsRoot-relative filename (e.g. `foo.md`) rather
+    // than the full repo-relative path (`<docsRoot>/foo.md`). A doc counts as
+    // indexed if EITHER form appears in the TOC text.
+    const docsRelPath = relPath.startsWith(docsPrefix) ? relPath.slice(docsPrefix.length) : relPath;
     if (!tocContent.includes(relPath) && !tocContent.includes(docsRelPath)) {
       findings.push({
         kind: 'orphaned-doc',
         ok: false,
         severity: 'info',
-        detail: `${relPath} is not referenced in docs/TOC.md`,
+        detail: `${relPath} is not referenced in ${tocPath}`,
       });
     }
   }
