@@ -18,9 +18,14 @@
 // Usage:
 //   node hygiene-probe.mjs [repoPath] [--docs-root <dir>] [--wiki-dir <dir>]
 //
-// repoPath defaults to cwd. --wiki-dir additionally lists wiki candidates via
-// wikiCandidateFiles (landed in commit 10e4522) — not yet wired into any
-// scanner call.
+// repoPath defaults to cwd. --wiki-dir sets opts.wikiDir, which scanRetiredTokens
+// — and only scanRetiredTokens — folds into its scan set via wikiCandidateFiles
+// (wired in b7459d8, #366). scanBrokenLinks and scanOrphanedDocs deliberately
+// never reach <wikiDir>/: maintain-wiki's `lint` verb already owns dead-wiki-links
+// and orphaned pages there, and resolves OKF 6.1 bundle-absolute targets against
+// <wikiDir>/, which hygiene.mjs does not. See ADR-0041 and ADR-0015 decision 2.
+// The candidate list printed at the end is the set scanRetiredTokens actually
+// walked, not a preview.
 //
 // --docs-root: relocates the walk root the three scanners below actually use
 // (lib/hygiene.mjs's listCandidateFiles, via opts.docsRoot — landed in F2/
@@ -150,9 +155,12 @@ async function main() {
     for (const f of wikiCandidates) console.log(`  - ${f}`);
     console.log('');
     console.log(
-      'NOTE: wikiCandidateFiles is not wired into any scanner call above (ADR-0015 decision 2 /',
+      'NOTE: these files ARE scanned by scanRetiredTokens above. scanBrokenLinks and',
     );
-    console.log('commit 10e4522) — this only lists the candidate set it would produce.');
+    console.log(
+      'scanOrphanedDocs deliberately do not reach <wikiDir>/ — maintain-wiki\'s `lint`',
+    );
+    console.log('owns dead-wiki-links and orphaned pages there (ADR-0041, ADR-0015 dec. 2).');
     console.log('');
   }
 }
