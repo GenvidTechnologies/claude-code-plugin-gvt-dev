@@ -47,6 +47,7 @@ each, not as one policy.**
 | A counterfactual claim is unreachable by reading the tree | **#226**, at the `verify-at-implementation` bullet | #316 |
 | Verify a claim against the named subject; don't infer it from a nearby signal | **#187**, at the new emitting-time step | #321, at three sites |
 | A row the tree cannot settle is settled by executing it once and reverting | **#316**, in the Test Criteria item | #311 |
+| A named-subject claim also covers a **governing document** (an ADR, a documented convention, a `CLAUDE.md` rule) | **#187**'s owner site (`designer.md` step 9), widened by #359 | analyst.md, planner.md, `plan-task/SKILL.md`, `approval-and-audit.md` — see [ADR-0044](0044-criterion-integrity-binds-regardless-of-origin.md) |
 
 **#226 owns the counterfactual class** because its bullet — the
 `verify-at-implementation` bullet, which already carries the asserted-figure
@@ -121,6 +122,14 @@ deliberately — #239's design phase has not run, and pre-empting it would mint
 scope no issue in this change asked for. The commit that widened the
 behavioural axis (`0c016f1`) states this carve-out in its own message; this
 record is the durable pointer to it by issue number.
+
+**This reservation has expired — #239 is now closed.** The sentence was
+widened again for #359 along the behavioural axis this decision already
+covers (a governing document joining the named-subject list), not along
+#239's executable-command axis, which closed with no widening of its own
+landed against this sentence. See
+[ADR-0044](0044-criterion-integrity-binds-regardless-of-origin.md) for the
+current status and the reasoning for crossing this carve-out.
 
 **(5) `[point-in-time]` is cited by both new execute-shaped rules with a
 conditional trigger, not required unconditionally.** Requiring it
