@@ -183,6 +183,12 @@ byte-exact sentence is still a count, and a citation still moves it. T12c took
 the byte-exact-sentence form and inherited no floor with it. Closing that seam
 is filed separately; it is a one-clause change to `:92`, not a new rule.
 
+**Closed by ADR-0042.** #340 lands exactly that one-clause change: the
+byte-exact-sentence alternative under `:92` now pins each surviving sentence
+as **`≥1`, not `=1`**, so the floor this decision's remedy already gave the
+whole-file-count case now covers its individually-pinned alternative too —
+see that record for the change itself.
+
 **The meta-lesson is the one worth keeping:** a retro finding written up
 without re-reading the shipped rule it supposedly generalizes will overstate
 itself, and an ADR is exactly where that error compounds — every later
@@ -259,6 +265,11 @@ fit, then mirror-vs-capability-cut) is how a future rule decides whether it
 extends an existing lead, opens a new sub-bullet, or — only if it opens a
 genuinely new axis no existing group name covers — fires the sixth-group
 tripwire this record confirmed does not fire today.
+
+**Forward correction:** the 2/3/2/2/1 = 10 figure above is superseded.
+ADR-0042 records #367 as a new group-2 lead (2/4/2/2/1 = 11), and its
+companion record for #370 records a new group-5 lead (2/4/2/2/2 = 12) — see
+those records for the current distribution.
 
 The set-level coherence-check blind spot recorded in decision (7) is not
 fixed by this change — only the one row it broke was corrected. A future

@@ -198,3 +198,8 @@ sub-bullet of its own the way #305's did.
 editor to update together, per the cite-and-repeat convention ADR-0033 and
 ADR-0036 both already record for this cluster — this record adds no new site
 and removes none.
+
+**Forward correction:** the nine-bolded-lead distribution stated in Context
+above (2, 2, 2, 2, 1) is superseded. ADR-0038 first corrected it to
+2/3/2/2/1 = 10; ADR-0042 and its companion record for #370 carry it further,
+to 2/4/2/2/2 = 12 — see those records for the current figure.
