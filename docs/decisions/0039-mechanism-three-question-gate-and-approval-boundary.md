@@ -64,30 +64,34 @@ rule (see below) that already has three.
 **(2) #198's axis is owned by the mechanism gate itself, not by the "Classify
 each open question" block it was originally proposed against.** #198 proposed
 its rule as a bullet inside the open-questions classification step
-(`plugin/skills/plan-task/SKILL.md:218-222`). It landed instead as the third
-question of the mechanism gate (`SKILL.md:68`, mirrored at the shortcut,
-`SKILL.md:216`), with only a one-line pointer sub-bullet left at the
-classification block (`SKILL.md:223`: *"An issue with no open-questions
-section resolves this classification block trivially… That's exactly where
-the mechanism gate above earns its keep…"*). The blind spot #198 names is
-*observed* at the open-questions block — an absent section produces nothing
-to classify — but the *check* it calls for is a claim about the
-**mechanism's soundness**, not about the questions, so the gate is where the
-rule belongs and where it stays discoverable alongside Q1 (currency) and Q2
-(sufficiency).
+(`plugin/skills/plan-task/SKILL.md`'s "Classify each open question before
+resolving it" bullet). It landed instead as the third question of the
+mechanism gate (`SKILL.md:68`, mirrored at the shortcut, `SKILL.md`'s "The
+same three questions apply to a full proposal" bullet), with only a one-line
+pointer sub-bullet left at the classification block (`SKILL.md`'s *"An issue
+with no open-questions section resolves this classification block
+trivially… That's exactly where the mechanism gate above earns its
+keep…"*). The blind spot #198 names is *observed* at the open-questions
+block — an absent section produces nothing to classify — but the *check* it
+calls for is a claim about the **mechanism's soundness**, not about the
+questions, so the gate is where the rule belongs and where it stays
+discoverable alongside Q1 (currency) and Q2 (sufficiency).
 
 **(3) The full-proposal shortcut's duplicate mechanism-check clause was
 deleted, not sharpened.** Before this change, the mechanism-supersession
 check was stated once at Phase 1 and restated, near-verbatim, inside the
-shortcut's requirements-adoption bullet (`SKILL.md:210` era). Sharpening both
-copies in place would have left them free to drift again — which is
-precisely how #248 records the original gap survived (a Phase-1-only fix in
-an earlier change never reached the shortcut's copy). `a06ac1f` deletes the
-shortcut's inline restatement and replaces it with a new bullet
-(`SKILL.md:216`) that states the three questions once, at the shortcut, and
-closes with an explicit cross-reference to the Phase 1 gate rather than
-repeating its prose. Exactly two statements exist now, one per reading path
-(Phase 1 at `SKILL.md:68`, Shortcuts at `SKILL.md:216`), never three.
+shortcut's requirements-adoption bullet (the `SKILL.md`'s "issue that's
+already a full proposal" bullet era). Sharpening both copies in place would
+have left them free to drift again — which is precisely how #248 records
+the original gap survived (a Phase-1-only fix in an earlier change never
+reached the shortcut's copy). `a06ac1f` deletes the shortcut's inline
+restatement and replaces it with a new bullet (`SKILL.md`'s "The same three
+questions apply to a full proposal" bullet) that states the three questions
+once, at the shortcut, and closes with an explicit cross-reference to the
+Phase 1 gate rather than repeating its prose. Exactly two statements exist
+now, one per reading path (Phase 1 at `SKILL.md:68`, Shortcuts at
+`SKILL.md`'s "The same three questions apply to a full proposal" bullet),
+never three.
 
 ## Also recorded
 
@@ -175,9 +179,10 @@ again.
 
 A future editor extending the mechanism gate adds a fourth question (if one
 is ever needed) at both `SKILL.md:68` and its shortcut mirror at
-`SKILL.md:216`, keeping the two-statement, one-per-reading-path shape decision
-(3) establishes — a third copy anywhere is the drift this change was written
-to close. A future editor of the stale-mechanism corollary
+`SKILL.md`'s "The same three questions apply to a full proposal" bullet,
+keeping the two-statement, one-per-reading-path shape decision (3)
+establishes — a third copy anywhere is the drift this change was written to
+close. A future editor of the stale-mechanism corollary
 (`development-principles.md` principle #8) should not assume `plan-task`'s
 three questions are latent there; they are deliberately not, per decision
 (1), and the corollary's two other citers (`issue-triage-analyst.md`,
@@ -185,10 +190,12 @@ three questions are latent there; they are deliberately not, per decision
 concern from plan-time re-verification.
 
 A future editor touching plan/execution approval wording checks all four
-sites named above (`SKILL.md:114`'s Phase 3 checkpoint, `SKILL.md:208`'s
-simple-tasks shortcut note, `SKILL.md:224`'s full-proposal shortcut
-checkpoint, and `approval-and-audit.md:11`) rather than assuming one
-canonical statement suffices — the whole point of this change was that a
+sites named above (`SKILL.md`'s "Wait for explicit approval before saving"
+Phase 3 checkpoint, `SKILL.md`'s "The compressed checkpoint above
+authorizes Phase 4 only" simple-tasks shortcut note, `SKILL.md`'s "Present
+a combined design + plan in" full-proposal shortcut checkpoint, and
+`approval-and-audit.md:11`) rather than assuming one canonical statement
+suffices — the whole point of this change was that a
 reader on any one path meets the boundary before reaching the canonical
 statement under `## Execution (Post-Approval)`.
 

@@ -12,10 +12,10 @@ one from the working tree — it's clean by construction. `designer.md` and
 `planner.md` shipped guidance that nonetheless prescribed working-tree git
 commands as the capture mechanism; under that execution model those commands
 read an empty corpus, so any criterion built on them graded green without
-checking anything. `designer.md:98` was worse than a silent gap: it shipped
-the broken mechanism as the *worked example* for the `[point-in-time]`
-marker, so a designer following the example produced a vacuous criterion by
-design, not by accident.
+checking anything. `designer.md`'s "A row that already answers can it fail"
+bullet was worse than a silent gap: it shipped the broken mechanism as the
+*worked example* for the `[point-in-time]` marker, so a designer following
+the example produced a vacuous criterion by design, not by accident.
 
 Two commits on this branch fixed the guidance: `f0b70f4` (`designer.md`
 lines 97 and 98) and `9c396f4` (`planner.md` line 67). This record is the
@@ -25,8 +25,9 @@ them is transient (gitignored, local-only), per development principle #7.
 ## Decision
 
 **(1) Placement — Option A, chosen over Option B.** The capture mechanism now
-lives at `designer.md:97`, the corpus bullet; `:98` is command-free and keeps
-only the `[point-in-time]`/`[not-yet-due]` marking guidance. This is a
+lives at `designer.md`'s "A positive control evaluated against the" bullet
+(the corpus bullet); `:98` is command-free and keeps only the
+`[point-in-time]`/`[not-yet-due]` marking guidance. This is a
 category-error fix, not a rewording: `:98` is the *marking* bullet, so a
 mechanism parked there read as incidental colour and went unaudited across
 four releases before this issue caught it. Option B — leave the mechanism at
@@ -36,8 +37,9 @@ structural condition (mechanism prose living inside the marking bullet) that
 produced it, leaving the same trap for the next mechanism someone adds there.
 
 **(2) The mechanism is stated as a property set, not a command.**
-`designer.md:97` now states what any capture mechanism must achieve rather
-than prescribing one: (a) reconstruct the pre-change state of every path the
+`designer.md`'s "A positive control evaluated against the" bullet now states
+what any capture mechanism must achieve rather than prescribing one: (a)
+reconstruct the pre-change state of every path the
 capture reads, including paths the branch added — a pathspec restore adds
 and updates files but never deletes ones absent from the source tree (see
 `plugin/skills/split-branch/SKILL.md:136`), so it reconstructs the tree only
@@ -56,8 +58,9 @@ T2 row is **not** `[point-in-time]`. Under the old, broken mechanism the
 "before" was consumed by the act of restoring it — genuinely one-shot, so the
 marker was *correct for that mechanism*. Anchored to a commit instead (the
 new mechanism's property (c)), the "before" survives the branch and the row
-is re-runnable after merge, so per `designer.md:104`'s governing criterion
-("the anchor decides, not the row's shape") the marker no longer applies.
+is re-runnable after merge, so per `designer.md`'s "The same shape arrives
+as a" sub-bullet's governing criterion ("the anchor decides, not the row's
+shape") the marker no longer applies.
 **Repairing a vacuous mechanism invalidated the very marking the vacuous
 mechanism had justified.** This is worth recording explicitly, with its
 consequence: the single most likely future edit to this text is someone
@@ -98,16 +101,19 @@ planner-side ask — that the planner, holding the task list the designer
 never sees, is positioned to answer whether a task's own deliverable
 collides with a row's capture assumptions — was folded into this change
 because `planner.md:67` was already being rewritten to cite the corrected
-`designer.md:97` mechanism. #328 stays open for its remaining, broader
+`designer.md`'s "A positive control evaluated against the" bullet's
+mechanism. #328 stays open for its remaining, broader
 content; only the capture-mechanism-adjacent slice landed here.
 
 **(6) Owner vs. citer.** The one genuinely new statement this change makes is
 *a re-execution capture needs a reconstructed pre-change tree, and here are
 the properties it must satisfy*. Everything else is cited rather than
 restated, per ADR-0036's one-owner rule: `plan-task`'s Execution section
-(`SKILL.md:194`) for the structural-emptiness rule ("a bare `git diff` … is a
-check that cannot fail") and (`SKILL.md:181`) for the gate-where-its-moment-
-falls rule; `designer.md:104` for the anchor-decides-not-shape criterion;
+(`SKILL.md`'s "The union also invalidates any" bullet) for the
+structural-emptiness rule ("a bare `git diff` … is a check that cannot
+fail") and (`SKILL.md`'s "checked at the gate where its moment falls" clause)
+for the gate-where-its-moment-falls rule; `designer.md`'s "The same shape
+arrives as a" sub-bullet for the anchor-decides-not-shape criterion;
 `split-branch/SKILL.md:136` for the pathspec add-but-never-delete mechanic.
 `plugin/agents/validator.md` and `code-reviewer.md` were deliberately **not**
 touched — ADR-0035 Decision (2) already records that their corpus defaults
@@ -159,14 +165,16 @@ Alternatives considered and rejected:
 ## Consequences
 
 A future editor extending the capture-mechanism properties adds a fourth
-property at `designer.md:97` alongside (a)–(c), not as a new bullet at `:98`
-— decision (1)'s category-error fix means `:98` is reserved for marking
-guidance only, and a mechanism detail landing there again reproduces the
-exact defect this record exists to close.
+property at `designer.md`'s "A positive control evaluated against the"
+bullet alongside (a)–(c), not as a new bullet at `:98` — decision (1)'s
+category-error fix means `:98` is reserved for marking guidance only, and a
+mechanism detail landing there again reproduces the exact defect this record
+exists to close.
 
 A future editor touching the `[point-in-time]`/`[not-yet-due]` marking near
-the #227 T2 example re-derives the marker from the anchor (`designer.md:104`)
-rather than copying whatever marker a prior version of the text carried —
+the #227 T2 example re-derives the marker from the anchor (`designer.md`'s
+"The same shape arrives as a" sub-bullet) rather than copying whatever
+marker a prior version of the text carried —
 decision (3) is explicit that this example's own marker reversed once its
 mechanism was repaired, so the example is the one place in this cluster where
 "what it said last time" is not a safe default.
@@ -185,7 +193,7 @@ dimensions:
 
 | Dimension | Where it lands |
 |---|---|
-| Implementation | the agent bodies themselves (`designer.md:97`/`:98`, `planner.md:67`) — these *are* the runtime artifact |
+| Implementation | the agent bodies themselves (`designer.md`'s "A positive control evaluated against the" bullet and its `:98` marking sibling, `planner.md:67`) — these *are* the runtime artifact |
 | Design | this record — decision (1), Option A vs. Option B |
 | Architecture | this record — decision (6), the owner-vs-citer table |
 | Compromise | this record — Compromise items 1–6 (`git clean` refuted by measurement, the index-rewrite rejection, the group-3 line-shift hazard, `plan-task` Phase 2 declined, the marker-carryover trap, the blanket-rule trap) |

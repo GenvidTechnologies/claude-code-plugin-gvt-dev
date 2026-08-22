@@ -102,7 +102,19 @@ The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed
 
 The denominator is every row present in that **fetched section** — never your own enumeration of what the criteria "should" be, and never a count of literal `- [ ]` checklist syntax (this file's own body carries 20 unrelated checklist rows above; that's a different thing being counted). If the section cannot be fully fetched or fully read, report the checklist as incomplete and grade nothing — do not grade the readable portion and silently drop the rest.
 
+**Derive N by a command over the fetched body, not by eye.** Run a checkbox-agnostic count against the fetched section, e.g.:
+
+    gh issue view <canonical> --json body -q .body | grep -c '^- \[[ x]\] '
+
+Match **both** checkbox states — `[ ]` and `[x]` — in the same pattern. A run that instead greps only the unticked form silently undercounts a partly-worked checklist: on issue #198, `grep -c '^- \[ \] \*\*R'` returns **1** over a body where the checkbox-agnostic `grep -c '^- \[[ x]\] '` returns **26** — that gap is #352's own stated baseline, which had itself decayed for exactly the reason this fix exists.
+
+This does not contradict the sentence above forbidding "a count of literal `- [ ]` checklist syntax": that sentence forbids counting the syntax **in this file's own instructions** (the 20 unrelated rows above are a different thing being counted); the command here counts the syntax **in the fetched issue body**, a different corpus entirely — the one the checklist was actually fetched from. Both statements hold at once because they bind different corpora, not because either is weaker than it reads.
+
+If the emitted row count and the stated denominator ever disagree, the report is wrong — say so and re-derive the count, rather than shipping both numbers unreconciled.
+
 **Resolve the corpus before grading a single row — don't assume staged.** By the time this agent runs at the end of `plan-task` execution, every task is typically already committed, so `git diff --staged` resolves empty even though real changes exist on the branch. Follow the same fallback the **Review Process**'s first step already uses: try `git diff --staged` first, then `git diff HEAD~1` (or the wider range the diff spans, e.g. `git diff main...HEAD`) if nothing is staged. **A dispatch that names the comparison explicitly is honored over this default** — the orchestrator dispatching this review knows whether the work is staged or committed; its instruction wins over the staged-first assumption. State which comparison you actually used alongside the verdicts (e.g. "graded against `git diff main...HEAD`"), so a reader can tell what corpus produced them.
+
+**The resolved corpus must also match the scope the row asserts over — a second axis, orthogonal to which comparison resolves it.** Resolving staged-vs-committed settles *which diff*; it says nothing about whether that whole diff is the right thing to grade a given row against. A row naming a section, a heading's span, or one file inside a wider tree is graded over *that* named scope, not the entire resolved diff just because the diff is what's on hand. `designer.md` owns the authoring-side mirror of this rule; cite it, don't restate it. A row graded over a corpus **wider** than it asserts over is reported as **not establishing the row** — not shown, rather than shown false — the wider-corpus case is the one worth naming explicitly, because it fails in the safe-looking direction: more hits than the row asked for, comfortably over threshold, no reason to look twice.
 
 **An empty resolved corpus is reported, not graded.** If every fallback above still resolves to nothing — no staged changes, no diff on the named or fallback range — stop and report that; do not grade rows against it. This is the corpus-level counterpart to the **fetched-section denominator** rule two paragraphs up: that rule covers an Acceptance Criteria **section** that couldn't be fully fetched or read; this one covers a **diff** that resolved to nothing to check the rows against. The two are easy to conflate because both end in "report, don't grade" — but a missing section and an empty diff are different failures with different fixes, so name which one occurred. Left unreported, an empty corpus renders identically to a genuine clean pass — a full list of `satisfied` verdicts with nothing to back any of them — which is what makes it dangerous rather than merely unhelpful.
 
@@ -110,14 +122,18 @@ Independently check each row against the resolved diff and grade it into one of 
 
 - **satisfied** — the resolved diff demonstrates the row.
 - **not satisfied** — the resolved diff contradicts or omits the row.
-- **`unverifiable-as-written`** — the row's own text names evidence that cannot settle it: a zero-hit pass condition with no positive control (#218), or a `[point-in-time]` row whose moment has already passed. A row that cannot fail also cannot pass.
+- **`unverifiable-as-written`** — the row's own text names evidence that cannot settle it: a zero-hit pass condition with no positive control (#218), a `[point-in-time]` row whose moment has already passed, or a row whose expected value is an **empty collection** with **no mutation record** — no evidence the state the row forbids was ever constructed and observed to fail. `designer.md` owns the authoring-side remedy for this case (the bullet beginning "A behavioural assertion whose expected value is an empty collection", plus its before/after-comparison sub-bullet) — cite it, don't restate the fix here. A row that cannot fail also cannot pass.
 - **out of scope** — a `[not-yet-due]` row: it names an action outside this branch (a release, a tag, downstream coordination, answering the issue on `main`), so it is correctly unmet right now, and grading it unmet would be a false failure.
 
 Report every row's verdict under `### 📋 Acceptance Criteria` (see Output Format below) — never fold a row's verdict into 🔴/🟡/🟢/✅.
 
+**Report the measured value alongside the expected value.** A verdict word alone doesn't let a reader check your work — state what the row's own command or reading actually produced (the number returned, the match found, its confirmed absence) next to what the row expected. **A measurement that contradicts the expected value forces `not satisfied`** — never round a mismatched measurement up to `satisfied`, and never publish a verdict without the observation that produced it.
+
 `unverifiable-as-written` is distinct from the shipped `unevaluable` used author-side (`gvt-dev:designer` / `gvt-dev:planner`): `unevaluable` marks a control that cannot be demonstrated and is fixable by the author before the row ships; `unverifiable-as-written` marks a check that runs cleanly at review time but cannot discriminate pass from fail — you cannot fix it here, you report it.
 
 The fetched-section denominator is the half shared with `gvt-dev:validator`: both critics are bound to grade exactly the rows that arrived, not a remembered or reconstructed set. What's yours alone is where the verdicts land — your own `### 📋 Acceptance Criteria` output section, distinct from the validator's pass/fail gate.
+
+**Check your own findings against the rows you just graded before filing them.** Nothing above constrains this agent's own Warnings/Suggestions against the checklist it just graded — a finding proposing a change to a file the pledged checklist asserts against is checked against the graded rows before being filed. Where a proposal **would flip a graded** row — turn a `satisfied` verdict into one it would no longer earn — surface it as an explicit **conflict** for the orchestrator to arbitrate, not as a bare suggestion buried in Warnings or Suggestions. Per ADR-0017, the checklist is a fixed target both critics check against and it must not silently move; the failure this closes is the **silence**, not the suggestion — you are not forbidden from proposing the change, and you are not required to re-derive or edit the criteria yourself.
 
 ### Five-Dimension Coverage Check
 
@@ -157,7 +173,7 @@ Run these before flagging anything — especially before assigning **critical/bl
 Organize feedback by priority:
 
 ### 📋 Acceptance Criteria (N of N rows graded)
-Every row from the fetched section appears here exactly once, in its original order — the denominator arithmetic depends on it. N is the row count from that fetched section, never your own enumeration. If the section could not be fully fetched or fully read, say so here explicitly and grade nothing.
+Every row from the fetched section appears here exactly once, in its original order — the denominator arithmetic depends on it. N is the row count from that fetched section, never your own enumeration — derive it by the checkbox-agnostic command in Acceptance Criteria Verification above, not by eye. If the section could not be fully fetched or fully read, say so here explicitly and grade nothing.
 
 State each row's verdict: satisfied, not satisfied, `unverifiable-as-written`, or out of scope. Routing to the sections below follows a single rule, not a per-row judgment call:
 - An `unverifiable-as-written` row *additionally* files a 🟡 Warning naming the defect **in the criterion** — reportable independently of whether the implementation itself is correct.
