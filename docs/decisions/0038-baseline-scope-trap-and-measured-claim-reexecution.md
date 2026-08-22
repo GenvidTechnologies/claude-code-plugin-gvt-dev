@@ -50,32 +50,36 @@ transcription time already shipped at `plan-task/SKILL.md:98` in #330
 (*"'Verbatim' governs the row's wording, not its truth"*).
 
 **(2) The comparison-control rule is a SPECIALIZATION of `designer.md`'s
-empty-collection/mutation bullet (group 4, currently at `designer.md:103`),
-NOT a widening of the positive-control zero-hit bullet (group 1,
-`designer.md:83`).** This is the forward requirement for **#332**,
-deliberately sequenced behind this change so it has something to cite — the
-new sub-bullet at `designer.md:104` states only that a before/after
+empty-collection/mutation bullet (group 4, `designer.md`'s "A behavioural
+assertion whose expected value is an empty collection" bullet), NOT a
+widening of the positive-control zero-hit bullet (group 1, `designer.md:83`).**
+This is the forward requirement for **#332**, deliberately sequenced behind
+this change so it has something to cite — the new sub-bullet (`designer.md`'s
+"The same shape arrives as a" sub-bullet) states only that a before/after
 *comparison* asserted identical (an empty diff) fails the same two zero-hit
 remedies for the same reasons as the empty-collection case, and that its
 control is a mutation run once in a configuration known to differ. Three
 reasons `designer.md:83` was rejected as the extension point: (a) wrong axis
 — `:83` sits in group 1, *Is the pattern right?*, and a before/after
-comparison row has no pattern to be right or wrong about; (b) `designer.md:97`
-is the nearest neighbour in the file and steers the *opposite* way (*"Prefer
-the corpus form wherever it expresses the same intent"*), so citing `:83`
-would hand #332 an argument against its own row shape; (c) `:83` anchors a
-three-site byte-exact steer — `grep -c "Prefer the count" plugin/agents/designer.md`
-→ **3**, currently at `designer.md:83`/`:90`/`:98` — that ADR-0037 Decision (3)
-already pinned as churn-sensitive. `designer.md:103` already owns the exact
-epistemic position a comparison row shares — an empty result cannot
-distinguish "correctly absent" from "structurally incapable of being
-non-empty" — and already prescribes a mutation as the remedy; the new
-sub-bullet extends it rather than opening a parallel statement.
+comparison row has no pattern to be right or wrong about; (b) `designer.md`'s
+"A positive control evaluated against the" bullet is the nearest neighbour in
+the file and steers the *opposite* way (*"Prefer the corpus form wherever it
+expresses the same intent"*), so citing `:83` would hand #332 an argument
+against its own row shape; (c) `:83` anchors a three-site byte-exact steer —
+`grep -c "Prefer the count" plugin/agents/designer.md` → **3**, currently at
+`designer.md:83`/`:90`/`:98` — that ADR-0037 Decision (3) already pinned as
+churn-sensitive. `designer.md`'s "A behavioural assertion whose expected
+value is an empty collection" bullet already owns the exact epistemic
+position a comparison row shares — an empty result cannot distinguish
+"correctly absent" from "structurally incapable of being non-empty" — and
+already prescribes a mutation as the remedy; the new sub-bullet extends it
+rather than opening a parallel statement.
 
 **(3) `plan-task` is a citer site, not an owner site** (ADR-0036:156-158). Its
 three new passages — the Phase-1 mirror (`SKILL.md:72`), the full-proposal
-shortcut gate (`SKILL.md:207`), and the Phase-3 baseline/control cross-check
-(`SKILL.md:102`) — cite `designer.md`'s and `planner.md`'s owning bullets by
+shortcut gate (`SKILL.md`'s "Run the validator gate inline" bullet), and the
+Phase-3 baseline/control cross-check (`SKILL.md:102`) — cite `designer.md`'s
+and `planner.md`'s owning bullets by
 quoted text and mint no new general rule. The shortcut gate and the Phase-1
 mirror share one **byte-exact** steer sentence per the cite-and-repeat
 convention (ADR-0033(a)) — *"Structural precision is not evidence of
@@ -106,18 +110,21 @@ cluster. **Restate the pointer: a future editor touching `:25` still checks
 both #239 and #325 before assuming the item's current shape is final.**
 
 **(5) DELIBERATE CARVE-OUT — `designer.md`'s `git stash` worked example
-(currently at `designer.md:98`) is #332's to repair, not this change's.** It
-is the only `git stash` occurrence under `plugin/`
+(`designer.md`'s "A row that already answers can it fail" bullet) is #332's
+to repair, not this change's.** It is the only `git stash` occurrence under
+`plugin/`
 (`grep -c "git stash" plugin/agents/designer.md` → **1**), and this change's
 criteria pin it unchanged so an accidental absorption into the new
-comparison-control prose would be detectable. The new sub-bullet at
-`designer.md:104` says nothing about `git stash` vs. a merge-base anchor, and
-deliberately declines to pre-decide #332's `[point-in-time]` marking for a
-comparison row — handing #332 the anchor-survives-the-branch criterion
-instead, because `designer.md:103`'s closing caveat (a mutation is usually
-re-runnable after merge, so marking it `[point-in-time]` unconditionally would
-itself be a mismarking) interacts with #332's row, and that interaction is
-#332's to resolve, not this change's.
+comparison-control prose would be detectable. The new sub-bullet
+(`designer.md`'s "The same shape arrives as a" sub-bullet) says nothing about
+`git stash` vs. a merge-base anchor, and deliberately declines to pre-decide
+#332's `[point-in-time]` marking for a comparison row — handing #332 the
+anchor-survives-the-branch criterion instead, because `designer.md`'s "A
+behavioural assertion whose expected value is an empty collection" bullet's
+closing caveat (a mutation is usually re-runnable after merge, so marking it
+`[point-in-time]` unconditionally would itself be a mismarking) interacts
+with #332's row, and that interaction is #332's to resolve, not this
+change's.
 
 **(6) ADR-0037's fire test was applied and does NOT fire — no sixth group.**
 Both new rules extend an existing group's axis rather than opening a new one:
@@ -224,7 +231,8 @@ Alternatives considered and rejected:
    group 4**, rather than a nested sub-bullet under the existing
    empty-collection/mutation lead. Rejected: it restates the same epistemic
    position (an empty result proves nothing until shown able to fail) that
-   `designer.md:103` already states in full; a sub-bullet says only what is
+   `designer.md`'s "A behavioural assertion whose expected value is an empty
+   collection" bullet already states in full; a sub-bullet says only what is
    new — the comparison shape and its mutation form — without duplicating the
    shared reasoning.
 6. **Silently correcting T12c's unsatisfiable pinned-count row** rather than
