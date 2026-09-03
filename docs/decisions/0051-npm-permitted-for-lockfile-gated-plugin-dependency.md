@@ -239,7 +239,9 @@ boundary is drawn.
 **Chain dispositions**, each with a verdict:
 
 - **#457** — rescoped: publishes a **library, not a CLI**; unblocked by this record; still needs a human npm
-  bootstrap for the first publish, since nothing here automates that step.
+  bootstrap for the first publish, since nothing here automates that step. **None of the three prerequisites
+  below (#476, #477, #478) blocks it** — they all concern `plugin/`'s own consumption of a dependency, and the
+  leaf is a separate repo with its own scanners, its own manifest and its own CI.
 - **#458** — deliverable in ordered steps, only the last two of which need a leaf dependency at all: (1) the
   skip fix **#476**; (2) `plugin/package.json` plus a committed lockfile declaring `yaml` — **this step carries
   a version bump on its own merits**, being the first time `plugin/` gains a dependency; (3) the preflight
