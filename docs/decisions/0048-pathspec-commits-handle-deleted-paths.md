@@ -94,3 +94,52 @@ that the rule *as stated* was not the cause, since the rule already permits what
 forbade. If a mechanism explaining that repo's original error ever surfaces, it belongs in a follow-up
 record rather than a rewrite of this one, since this decision's scope is the falsified premise, not
 a diagnosis of that incident.
+
+## Amendment (2026-09-11, #480 / #490)
+
+**This record's evidence base has a hole exactly the shape of #480, and this section closes it
+additively — nothing above is rewritten.** The Context above enumerates six probed deletion
+scenarios: `git rm` of two files plus a modified third named together in one pathspec commit; a plain
+unstaged `rm`; `rm` followed by `git add -A`; a file committed earlier on the branch then deleted; a
+deletion emptying its parent directory; and the verbatim construct3-chef#207 invocation. **Every one
+of the six is a worktree deletion**, where the file's absence from disk is what the pathspec-scoped
+commit is asked to record. `git rm --cached X` — an index-only removal that leaves X on disk — was
+never probed. The "a deleted path is not an exception" conclusion above is correct exactly as far as
+it was measured, and silently over-general: it never reached index-only removal, which behaves in the
+opposite direction from every scenario this record actually tested.
+
+**Index-only removal is not committed by any pathspec-scoped commit, and the failure shape depends on
+whether the worktree still matches `HEAD`.** Re-probed on git 2.55.0.windows.5 — this record's own
+probes above ran on 2.55.0.windows.4, a patch-level difference stated here rather than papered over —
+in a throwaway repo. With `git rm --cached X` staged and X's worktree content unchanged from `HEAD`,
+`git commit -- X` exits **1** with `nothing to commit, working tree clean`, which reads as though the
+untracking already landed when it hasn't: X is still tracked. If X was also modified in the worktree,
+the same command exits **0** and **silently re-adds X** — the commit records the modification instead
+of the removal, reversing the untracking with nothing surfaced to flag it. Naming a co-staged sibling
+alongside X does not rescue this: measured against a 3-untracked/1-modified mix, `git commit -m M --
+secret.csv a.txt` exits 0, commits only `a.txt`'s modification, and restores all three others
+(including `secret.csv`) to the index.
+
+**No path-scoped primitive commits an index-only removal.** Against a staged
+`git rm --cached secret.csv` plus one unrelated co-staged sibling: `git commit -- secret.csv` and
+`git commit --only -- secret.csv` exit 1 identically (`--only` *is* the bare pathspec form, not a
+different mechanism); `git commit -i -- secret.csv` exits 128 with the same
+`error: pathspec 'secret.csv' did not match any file(s) known to git` this record's Context already
+attributes to a mistracked path — the wrong diagnosis for a case that has nothing to do with tracking;
+`git commit --pathspec-from-file=<f>` matches `--only`'s exit-1 behavior; and a bare `git commit` with
+no pathspec works but sweeps the sibling, which is the exact sweep the whole pathspec rule exists to
+prevent.
+
+**The shipped paragraph (`0db0d2e`) now carries one narrow, deliberate exception to "always pathspec
+the commit," scoped to this case alone: don't co-stage an untracking step.** Give it its own commit
+moment, taken only once `git status --porcelain` confirms the removal is the sole staged change, and
+commit that moment with no pathspec. This is not a reopening of the fallback rejected in Decision
+above — that fallback licensed a bare commit as a general escape whenever any pathspec was rejected;
+this exception is scoped to the one case where no scoped primitive exists at all, and it only fires
+after the index has been independently verified clean of everything else.
+
+**Cross-reference.** A third, unrelated cause of the same `pathspec ... did not match` symptom —
+option ordering relative to the `--` separator — is recorded separately in
+[ADR-0052](0052-option-ordering-in-pathspec-scoped-commits.md), which also carries its own bearing on
+the never-recoverable construct3-chef#207 diagnosis, stated there as a candidate explanation rather
+than a confirmed one.
