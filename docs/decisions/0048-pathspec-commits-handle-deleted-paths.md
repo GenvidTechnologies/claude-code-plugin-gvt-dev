@@ -113,7 +113,7 @@ whether the worktree still matches `HEAD`.** Re-probed on git 2.55.0.windows.5 �
 probes above ran on 2.55.0.windows.4, a patch-level difference stated here rather than papered over —
 in a throwaway repo. With `git rm --cached X` staged and X's worktree content unchanged from `HEAD`,
 `git commit -- X` exits **1** with `nothing to commit, working tree clean`, which reads as though the
-untracking already landed when it hasn't: X is still tracked. If X was also modified in the worktree,
+untracking already landed when it hasn't: the removal is still only staged, and X is still in `HEAD`. `git ls-files` does not catch this — it reads the index, where the removal *is* correctly staged, so it stops listing X while X remains in the committed tree; `git ls-tree HEAD` is the check that discriminates. If X was also modified in the worktree,
 the same command exits **0** and **silently re-adds X** — the commit records the modification instead
 of the removal, reversing the untracking with nothing surfaced to flag it. Naming a co-staged sibling
 alongside X does not rescue this: measured against a 3-untracked/1-modified mix, `git commit -m M --
