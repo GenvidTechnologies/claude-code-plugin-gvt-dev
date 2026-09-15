@@ -499,6 +499,36 @@ test('opts.docsRoot: an unrepresentable override falls back to root "docs" (reso
   }
 });
 
+// #454 (AC4, canonical): opts.docsIndex parameterises the index FILENAME,
+// independently of opts.docsRoot (which only moves the directory). Before
+// this task the filename half of the pair was hard-coded to 'TOC.md', so a
+// relocated repo whose index file is also renamed (documentation/INDEX.md)
+// had no way to tell the scanner where to look.
+test('scanOrphanedDocs: opts.docsIndex renames the index file, independently of opts.docsRoot', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'documentation/INDEX.md', '# Index\n\nNothing here.\n');
+    await writeRepoFile(d, 'documentation/foo.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, { docsRoot: 'documentation', docsIndex: 'INDEX.md' });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphaned-doc');
+    assert.match(findings[0].detail, /documentation\/foo\.md is not referenced in documentation\/INDEX\.md/);
+
+    // Mutation control, same fixture: omitting docsIndex falls back to the
+    // 'TOC.md' default, which doesn't exist in this fixture at all — so
+    // today (pre-Task-5) the scanner finds no index and returns [], the same
+    // "scanned and clean" vs. "scanned nothing" ambiguity #454 is about.
+    // Task 5 replaces this branch with a reported 'orphan-check-skipped'
+    // finding; when that lands, this expectation flips from [] to that
+    // finding and this comment should be updated alongside it.
+    const withoutIndex = await scanOrphanedDocs(dir, { docsRoot: 'documentation' });
+    assert.deepEqual(withoutIndex, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('candidateFileCount: counts the same candidate set listCandidateFiles produces (docs/**.md + CLAUDE.md)', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/a.md', 'x\n');

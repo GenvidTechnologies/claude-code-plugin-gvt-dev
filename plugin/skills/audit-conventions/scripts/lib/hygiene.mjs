@@ -256,9 +256,10 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
 
 export async function scanOrphanedDocs(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
-  const tocPath = `${docsRoot}/TOC.md`;
-  const tocContent = await safeReadFile(join(repoRoot, docsRoot, 'TOC.md'));
-  if (tocContent == null) return []; // no <docsRoot>/TOC.md — nothing to check against
+  const docsIndex = opts.docsIndex ?? 'TOC.md';
+  const tocPath = `${docsRoot}/${docsIndex}`;
+  const tocContent = await safeReadFile(join(repoRoot, tocPath));
+  if (tocContent == null) return []; // no <docsRoot>/<docsIndex> — nothing to check against
 
   const candidates = await listCandidateFiles(repoRoot, opts);
   const docsPrefix = `${docsRoot}/`;
