@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.24.0] - 2026-09-15
+
 ### Added
 
 - **A new decision record, `ADR-0051`, permits npm inside `plugin/` for a lockfile-gated dependency, overturning by name each of the three grounds ADR-0047's Compromise packed into a single sentence rejecting an npm dependency (#456).** The permitted shape is a real dependency, gated on a committed lockfile, installed by the host once per cached version — never `npx`, which the record rejects on granularity rather than cost, since ADR-0049 already draws the mechanism/policy boundary inside the evaluators at the granularity of a single existence check. `pointer-anchor`'s and `principle-citation`'s `error` severity is reaffirmed, conditional on a named prerequisite (the `node_modules` citing-corpus skip fix) landing first. Maintainer-facing decision record (repo-root `docs/decisions/`, not shipped) → CHANGELOG entry for traceability, no bump on its own.
