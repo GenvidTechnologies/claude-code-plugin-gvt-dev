@@ -93,7 +93,7 @@ async function main() {
   // Coverage read further down.
   const repoConfig = await loadRepoConfig(configFilename);
   const pathOverrides = repoConfig?.paths;
-  const { root: docsRoot, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
+  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
   const findings = [];
   const declaredPaths = new Set();
@@ -170,6 +170,7 @@ async function main() {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
     docsRoot,
+    docsIndex,
     wikiDir: repoConfig?.wiki?.wikiDir,
     rawDir: repoConfig?.wiki?.rawDir,
   };

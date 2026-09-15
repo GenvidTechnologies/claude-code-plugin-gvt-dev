@@ -322,13 +322,17 @@ test('scanOrphanedDocs: a doc under an excludePaths dir is NOT flagged', async (
   }
 });
 
-test('scanOrphanedDocs: no docs/TOC.md -> []', async () => {
+test('scanOrphanedDocs: a missing index reports a skip, not []', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/foo.md', 'content\n');
   });
   try {
     const findings = await scanOrphanedDocs(dir);
-    assert.deepEqual(findings, []);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphan-check-skipped');
+    assert.equal(findings[0].ok, false);
+    assert.equal(findings[0].severity, 'info');
+    assert.ok(findings[0].detail.includes('docs/TOC.md'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -516,14 +520,16 @@ test('scanOrphanedDocs: opts.docsIndex renames the index file, independently of 
     assert.match(findings[0].detail, /documentation\/foo\.md is not referenced in documentation\/INDEX\.md/);
 
     // Mutation control, same fixture: omitting docsIndex falls back to the
-    // 'TOC.md' default, which doesn't exist in this fixture at all — so
-    // today (pre-Task-5) the scanner finds no index and returns [], the same
-    // "scanned and clean" vs. "scanned nothing" ambiguity #454 is about.
-    // Task 5 replaces this branch with a reported 'orphan-check-skipped'
-    // finding; when that lands, this expectation flips from [] to that
-    // finding and this comment should be updated alongside it.
+    // 'TOC.md' default, which doesn't exist in this fixture at all — so the
+    // scanner finds no index and reports a skip rather than silently
+    // returning [], resolving the same "scanned and clean" vs. "scanned
+    // nothing" ambiguity #454 is about.
     const withoutIndex = await scanOrphanedDocs(dir, { docsRoot: 'documentation' });
-    assert.deepEqual(withoutIndex, []);
+    assert.equal(withoutIndex.length, 1);
+    assert.equal(withoutIndex[0].kind, 'orphan-check-skipped');
+    assert.equal(withoutIndex[0].ok, false);
+    assert.equal(withoutIndex[0].severity, 'info');
+    assert.ok(withoutIndex[0].detail.includes('documentation/TOC.md'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -645,8 +651,16 @@ test('T5: scanRetiredTokens reaches wiki/other.md when opts.wikiDir is set; scan
     const linkFindings = await scanBrokenLinks(dir, { wikiDir: 'wiki' });
     assert.deepEqual(linkFindings, []);
 
+    // This fixture has no docs/ tree at all, so the scanner's [] here was
+    // always the missing-index branch, not "scanned wiki/ and found nothing."
+    // The skip finding is now affirmative evidence of that decline, where []
+    // was ambiguous between "declined" and "scanned wiki/ clean."
     const orphanFindings = await scanOrphanedDocs(dir, { wikiDir: 'wiki' });
-    assert.deepEqual(orphanFindings, []);
+    assert.equal(orphanFindings.length, 1);
+    assert.equal(orphanFindings[0].kind, 'orphan-check-skipped');
+    assert.equal(orphanFindings[0].ok, false);
+    assert.equal(orphanFindings[0].severity, 'info');
+    assert.ok(orphanFindings[0].detail.includes('docs/TOC.md'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
