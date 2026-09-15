@@ -39,18 +39,21 @@ export function resolveExpectationPath(paths, declaredPath) {
 export function resolveDocsRoot(paths) {
   const override = resolveExpectationPath(paths, 'docs/TOC.md');
   if (override === 'docs/TOC.md') {
-    return { root: 'docs', unrepresentable: false };
+    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: false };
   }
 
   const slashAt = override.lastIndexOf('/');
   const root = slashAt === -1 ? '' : override.slice(0, slashAt);
+  const indexFile = override.slice(slashAt + 1);
   if (root === '' || root === '.') {
     // A repo-root override (e.g. "docs/TOC.md": "INDEX.md") would make a
     // directory walk recurse the entire repo — keep the safe default and let
-    // the caller report the problem instead.
-    return { root: 'docs', unrepresentable: true };
+    // the caller report the problem instead. The root fell back to "docs", so
+    // the filename falls back with it — pairing it with the override's own
+    // basename would describe a file ("docs/INDEX.md") that doesn't exist.
+    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: true };
   }
-  return { root, unrepresentable: false };
+  return { root, indexFile, unrepresentable: false };
 }
 
 export function overrideFindings(paths, declaredPaths) {

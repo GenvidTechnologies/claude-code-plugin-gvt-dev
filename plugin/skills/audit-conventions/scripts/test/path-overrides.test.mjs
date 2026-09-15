@@ -40,18 +40,33 @@ test('resolveExpectationPath: handles paths being undefined, null, or {}', () =>
 });
 
 test('resolveDocsRoot: defaults to "docs" when there is no override', () => {
-  assert.deepEqual(resolveDocsRoot({}), { root: 'docs', unrepresentable: false });
-  assert.deepEqual(resolveDocsRoot(undefined), { root: 'docs', unrepresentable: false });
+  assert.deepEqual(resolveDocsRoot({}), { root: 'docs', indexFile: 'TOC.md', unrepresentable: false });
+  assert.deepEqual(resolveDocsRoot(undefined), { root: 'docs', indexFile: 'TOC.md', unrepresentable: false });
 });
 
 test('resolveDocsRoot: relocates to the override\'s directory', () => {
   const r = resolveDocsRoot({ 'docs/TOC.md': 'documentation/INDEX.md' });
-  assert.deepEqual(r, { root: 'documentation', unrepresentable: false });
+  assert.deepEqual(r, { root: 'documentation', indexFile: 'INDEX.md', unrepresentable: false });
 });
 
 test('resolveDocsRoot: a repo-root override is unrepresentable, root stays "docs"', () => {
   const r = resolveDocsRoot({ 'docs/TOC.md': 'INDEX.md' });
-  assert.deepEqual(r, { root: 'docs', unrepresentable: true });
+  assert.deepEqual(r, { root: 'docs', indexFile: 'TOC.md', unrepresentable: true });
+});
+
+test('resolveDocsRoot: the unrepresentable fallback filename is unconditional, not the override\'s basename', () => {
+  // A second, differently-named repo-root override: the fallback must still be
+  // "TOC.md", so the pairing above isn't an artifact of that one input.
+  assert.deepEqual(resolveDocsRoot({ 'docs/TOC.md': 'README.md' }), {
+    root: 'docs',
+    indexFile: 'TOC.md',
+    unrepresentable: true,
+  });
+  assert.deepEqual(resolveDocsRoot({ 'docs/TOC.md': './INDEX.md' }), {
+    root: 'docs',
+    indexFile: 'TOC.md',
+    unrepresentable: true,
+  });
 });
 
 test('overrideFindings: flags a paths key matching nothing declared', () => {
