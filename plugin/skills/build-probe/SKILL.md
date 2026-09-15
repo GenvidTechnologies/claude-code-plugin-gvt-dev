@@ -52,6 +52,32 @@ there's no plugin-mandated probe language. A probe is allowed to be ugly:
 hardcoded paths, no error handling, no tests. It is disposable by
 construction, not production code that happens to be new.
 
+**The scratchpad is not part of your repo, so it inherits none of your repo's
+tooling config** — no `package.json`, no `tsconfig`, no module-format
+resolution — and it's this section's own rule that exposes the gap: a probe
+written into the repo tree would inherit that config and work, so the trap
+only appears when you follow the rule correctly.
+
+The TypeScript instance: name the probe **`.mts`**, which forces ESM
+regardless of the enclosing package. Without a `package.json`, `tsx` resolves
+the module format to CJS, and a probe using top-level `await` dies with:
+
+```
+ERROR: Top-level await is currently not supported with the "cjs" output format
+```
+
+This matters more than a syntax slip, since `await import()` of the module
+under test is the natural way to probe it — and that needs top-level `await`.
+
+Prefer `./node_modules/.bin/tsx` over `npx tsx` for invocation. `npx`
+**succeeds** — this is not a broken-tool case and not a hang — but a cold,
+first invocation can exceed a tool timeout and return no output at all, which
+is indistinguishable from a broken probe and sends you debugging the script
+instead of the launcher. (One machine measured `./node_modules/.bin/tsx` at
+1.5s against `npx tsx` at 40.4s for the same script; the absolute numbers are
+that machine's, the ordering isn't.) The per-invocation resolution overhead
+also quietly kills the edit-rerun loop that makes probes worth building.
+
 ## 3. Run it against the real system
 
 Execute the probe against the actual thing — real files on disk, real git
@@ -116,6 +142,47 @@ cost nothing. When mutating in place is unavoidable, require a clean tree
 first, revert **before** any commit, and confirm with `git status --porcelain`
 that the revert actually landed rather than assuming it. Never report a
 mutation result from a tree you have not re-confirmed clean.
+
+**A differential probe needs the pre-change implementation from git, not from
+memory.** `build-probe` covers probing a system as it currently stands; it has
+no shape yet for "did my change alter observable behavior?" — the question a
+refactor raises, and the one a test suite structurally cannot answer when the
+suite was rewritten in the same commit as the code. The shape: extract the
+pre-change implementation straight from git history —
+
+```
+git show <ref>:<path>
+```
+
+— then import both the old and new implementation by absolute file URL in one
+probe script, run both over a shared corpus, and compare verdicts and values.
+Extracting from git rather than hand-copying matters here specifically: a
+hand-reconstructed "old" implementation is a probe of your own memory, not of
+the code that actually shipped.
+
+**An equivalence claim is carried by its positive cases, not by its count of
+inputs.** Report the number of inputs that exercised the *accepting* path
+beside the agreement count; a differential result quoted without that number
+is not reported. Negative cases bound such a claim — they narrow what could be
+wrong — but they cannot establish it: one probe compared 20,036 inputs and
+returned `mismatches: 0`, but only 112 of those inputs (0.56%) were accepted
+by the pre-change implementation, so a `mismatches: 0` verdict is exactly what
+an implementation rejecting every input whatsoever would also produce.
+
+**Corpus size reads as rigor, which is what makes it a trap.**
+`20,036 inputs, 0 mismatches` is far more persuasive on the page than
+`36 inputs, 0 mismatches` — and the 20,000 fuzzed strings in that run added
+exactly 107 further accepted cases against 19,893 further matching
+rejections, barely moving the number that actually mattered. A corpus can
+always be scaled in the direction that establishes nothing, and doing so makes
+the check look stronger while it gets weaker. In that instance the fuzz
+alphabet was deliberately seeded with the delimiter and digits at short
+lengths so some strings would be well-formed; a letters-only alphabet would
+have produced zero accepted inputs, an identical clean `mismatches: 0`, and a
+transcript indistinguishable from a real result. This is the same family of
+failure as the claim-of-absence rule above — a check that silently measures
+nothing — by a different mechanism: there the listing never touched the real
+thing, here the corpus never touched the path that matters.
 
 ## 4. Report on-thread
 
