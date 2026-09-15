@@ -322,6 +322,11 @@ test('scanOrphanedDocs: a doc under an excludePaths dir is NOT flagged', async (
   }
 });
 
+// #454 AC5. The missing-index guard (guard 2, ADR-0053) reports a skip
+// rather than []. Positive control, same fixture directory: adding the index
+// afterward flips this exact call from a skip to a live orphan finding,
+// proving the scanner is reachable and the skip above is a genuine branch
+// rather than incapacity (e.g. a bug that always fails to find the index).
 test('scanOrphanedDocs: a missing index reports a skip, not []', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/foo.md', 'content\n');
@@ -333,6 +338,11 @@ test('scanOrphanedDocs: a missing index reports a skip, not []', async () => {
     assert.equal(findings[0].ok, false);
     assert.equal(findings[0].severity, 'info');
     assert.ok(findings[0].detail.includes('docs/TOC.md'));
+
+    await writeRepoFile(dir, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
+    const afterIndex = await scanOrphanedDocs(dir);
+    assert.equal(afterIndex.length, 1);
+    assert.equal(afterIndex[0].kind, 'orphaned-doc');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -749,6 +759,97 @@ test('T7b: nested rawDir (docs/raw) is excluded from both scanRetiredTokens and 
 
     const orphanFindings = await scanOrphanedDocs(dir, { rawDir: 'docs/raw' });
     assert.deepEqual(orphanFindings, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// scanOrphanedDocs — bundle-collapse decline (guard 1, ADR-0053 / #454). A
+// `docs/TOC.md` `paths` override can put opts.docsRoot equal to or nested
+// inside opts.wikiDir, delivering OKF bundle pages through the ordinary docs
+// walk. Orphan checking there belongs to `maintain-wiki lint`, not this
+// scanner, so guard 1 declines with a skip finding rather than silently
+// running (which would disagree with `lint`'s bundle-absolute/subdirectory-
+// index/reserved-page rules) or silently returning []. Every test below
+// includes a mutation control proving the empty orphaned-doc result is
+// reachable-but-suppressed, not structurally unreachable.
+// ---------------------------------------------------------------------------
+
+// #454 AC7. Equality case: docsRoot === wikiDir.
+test('scanOrphanedDocs: docsRoot === wikiDir declines with a skip naming maintain-wiki, not an orphaned-doc finding', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/index.md', '# Home\n');
+    await writeRepoFile(d, 'wiki/page.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, {
+      docsRoot: 'wiki',
+      wikiDir: 'wiki',
+      docsIndex: 'index.md',
+    });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphan-check-skipped');
+    assert.equal(findings[0].ok, false);
+    assert.equal(findings[0].severity, 'info');
+    assert.ok(findings[0].detail.includes('maintain-wiki'));
+    assert.equal(
+      findings.filter((f) => f.kind === 'orphaned-doc').length,
+      0,
+      'no orphaned-doc finding must slip through the guard',
+    );
+
+    // Mutation control, same fixture: a wikiDir that does NOT contain
+    // docsRoot never satisfies guard 1's containment test, so the normal
+    // walk runs and finds wiki/page.md unindexed — proving the [] above (via
+    // the 0-count assertion) is guard suppression, not a scanner that never
+    // produces orphaned-doc findings for this fixture shape at all.
+    const controlFindings = await scanOrphanedDocs(dir, {
+      docsRoot: 'wiki',
+      wikiDir: 'other',
+      docsIndex: 'index.md',
+    });
+    assert.equal(controlFindings.length, 1);
+    assert.equal(controlFindings[0].kind, 'orphaned-doc');
+    assert.match(controlFindings[0].detail, /wiki\/page\.md is not referenced in wiki\/index\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// #454 AC8. Containment case: docsRoot nested inside wikiDir
+// (wiki/docs inside wiki) — guard 1 must fire on nesting, not just on exact
+// equality (ADR-0053's nested-wikiDir example).
+test('scanOrphanedDocs: docsRoot nested inside wikiDir (containment, not just equality) also declines with a skip', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/docs/index.md', '# Docs Home\n');
+    await writeRepoFile(d, 'wiki/docs/page.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, {
+      docsRoot: 'wiki/docs',
+      wikiDir: 'wiki',
+      docsIndex: 'index.md',
+    });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphan-check-skipped');
+    assert.equal(
+      findings.filter((f) => f.kind === 'orphaned-doc').length,
+      0,
+      'no orphaned-doc finding must slip through the containment guard',
+    );
+
+    // Mutation control, same fixture: an unrelated wikiDir never contains
+    // docsRoot, so guard 1 doesn't fire and the normal walk finds
+    // wiki/docs/page.md unindexed.
+    const controlFindings = await scanOrphanedDocs(dir, {
+      docsRoot: 'wiki/docs',
+      wikiDir: 'other',
+      docsIndex: 'index.md',
+    });
+    assert.equal(controlFindings.length, 1);
+    assert.equal(controlFindings[0].kind, 'orphaned-doc');
+    assert.match(controlFindings[0].detail, /wiki\/docs\/page\.md is not referenced in wiki\/docs\/index\.md/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

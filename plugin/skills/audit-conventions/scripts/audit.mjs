@@ -586,9 +586,9 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
-  // orphaned-doc, readme-inventory, principle-citation, and path-override)
-  // aren't tied to a component/expectation — they carry a self-contained
-  // detail string.
+  // orphaned-doc/orphan-check-skipped, readme-inventory, principle-citation,
+  // and path-override) aren't tied to a component/expectation — they carry a
+  // self-contained detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
     'conventions-drift',
@@ -596,6 +596,7 @@ function formatFinding(f) {
     'retired-token',
     'broken-link',
     'orphaned-doc',
+    'orphan-check-skipped',
     'readme-inventory',
     'principle-citation',
     'pillar-unknown',

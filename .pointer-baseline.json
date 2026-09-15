@@ -828,13 +828,6 @@
       "digest": "134b83f13ac0"
     },
     {
-      "file": "plugin/skills/audit-conventions/scripts/lib/hygiene.mjs",
-      "pointer": "SKILL.md:265-273",
-      "occurrence": 0,
-      "kind": "pointer-ambiguous",
-      "digest": null
-    },
-    {
       "file": "plugin/skills/audit-conventions/scripts/lib/path-overrides.mjs",
       "pointer": "CONVENTIONS.md:82-83",
       "occurrence": 0,

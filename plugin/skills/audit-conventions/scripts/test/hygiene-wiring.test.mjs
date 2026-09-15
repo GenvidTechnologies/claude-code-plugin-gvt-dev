@@ -116,3 +116,51 @@ test('audit: hygiene config override (retiredTokens: []) suppresses the retired-
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// #454 AC10. withTempMigratedRepo's base fixture creates docs/ but never
+// docs/TOC.md, so scanOrphanedDocs' guard 2 (missing index, ADR-0053) fires
+// unconditionally here with no extra setup. This pins that the resulting
+// orphan-check-skipped finding renders through formatFinding's self-contained
+// branch (registered in SELF_CONTAINED_KINDS) rather than falling through to
+// the component branch, which would print `**undefined**` where a component
+// name goes since this finding carries no f.component.
+test('audit: a missing docs/TOC.md renders an orphan-check-skipped report line, never **undefined** (#454 AC10)', async () => {
+  const tmpDir = await withTempMigratedRepo();
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    const skipLine = result.stdout
+      .split('\n')
+      .find((line) => line.startsWith('- orphan check skipped'));
+    assert.ok(
+      skipLine,
+      `expected a report line starting "- orphan check skipped":\n${result.stdout}`,
+    );
+    assert.doesNotMatch(
+      skipLine,
+      /\*\*undefined\*\*/,
+      'the self-contained branch must render this finding, not the component branch with f.component undefined',
+    );
+
+    // Positive control, same report: a component-branch "expects" line is
+    // also present (e.g. plan-task's docs/TOC.md expectation, unmet in this
+    // same fixture) — proving that render path IS exercised in this exact
+    // output, so the absence of **undefined** above is specific to the
+    // orphan-check-skipped finding rather than vacuous because the component
+    // branch never fires at all.
+    assert.match(
+      result.stdout,
+      /\*\*[\w-]+\*\* expects/,
+      `expected at least one component-branch "expects" line in the same report:\n${result.stdout}`,
+    );
+
+    // Note: this fixture's absent docs/TOC.md ALSO trips an unrelated
+    // required-expectation failure (condense-lessons requires docs/TOC.md
+    // outright), so the exit code here is 1 for a reason that has nothing to
+    // do with the orphan-check-skipped finding (which is info-severity and
+    // never gates the exit code — see the two exit-0 tests above). This test
+    // is scoped to the rendering question only.
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
