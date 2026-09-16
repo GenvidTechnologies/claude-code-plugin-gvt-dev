@@ -16,14 +16,18 @@
 // scanner or walk logic.
 //
 // Usage:
-//   node hygiene-probe.mjs [repoPath] [--docs-root <dir>] [--wiki-dir <dir>]
+//   node hygiene-probe.mjs [repoPath] [--docs-root <dir>] [--wiki-dir <dir>] [--index-file <path>]
 //
 // repoPath defaults to cwd. --wiki-dir sets opts.wikiDir, which scanRetiredTokens
 // — and only scanRetiredTokens — folds into its scan set via wikiCandidateFiles
-// (wired in b7459d8, #366). scanBrokenLinks and scanOrphanedDocs deliberately
-// never reach <wikiDir>/: maintain-wiki's `lint` verb already owns dead-wiki-links
+// (wired in b7459d8, #366). This flag never widens scanBrokenLinks or
+// scanOrphanedDocs: maintain-wiki's `lint` verb already owns dead-wiki-links
 // and orphaned pages there, and resolves OKF 6.1 bundle-absolute targets against
 // <wikiDir>/, which hygiene.mjs does not. See ADR-0041 and ADR-0015 decision 2.
+// Note this is a statement about --wiki-dir, not about those two scanners: since
+// ADR-0053 they CAN be pointed at bundle content via --docs-root (or a paths
+// override), and when they are they decline it and report the decline — see the
+// note printed under the candidate list.
 // The candidate list printed at the end is the set scanRetiredTokens actually
 // walked, not a preview.
 //
@@ -35,6 +39,11 @@
 // helper (it accepts any directory, not just a wiki checkout) to show the
 // docsRoot candidate count next to the default-root one, without
 // reimplementing the walk.
+//
+// --index-file: passed through as opts.docsIndex to the scanOrphanedDocs call
+// only (scanOrphanedDocs resolves opts.docsIndex ?? 'TOC.md' — landed
+// alongside the OKF-bundle decline contract, ADR-0053). Use it to reproduce a
+// repo whose docs index lives somewhere other than <docsRoot>/TOC.md.
 
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -49,13 +58,15 @@ import {
 } from './lib/hygiene.mjs';
 
 function parseArgs(argv) {
-  const args = { repoPath: undefined, docsRoot: undefined, wikiDir: undefined };
+  const args = { repoPath: undefined, docsRoot: undefined, wikiDir: undefined, indexFile: undefined };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--docs-root') {
       args.docsRoot = argv[++i];
     } else if (arg === '--wiki-dir') {
       args.wikiDir = argv[++i];
+    } else if (arg === '--index-file') {
+      args.indexFile = argv[++i];
     } else if (!args.repoPath) {
       args.repoPath = arg;
     }
@@ -94,12 +105,13 @@ function printFindings(name, findings) {
 }
 
 async function main() {
-  const { repoPath, docsRoot, wikiDir } = parseArgs(process.argv.slice(2));
+  const { repoPath, docsRoot, wikiDir, indexFile } = parseArgs(process.argv.slice(2));
   const repoRoot = resolve(repoPath ?? process.cwd());
 
   const hygiene = await loadHygieneConfig(repoRoot);
   const baseOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
   const scanOpts = docsRoot ? { ...baseOpts, docsRoot } : baseOpts;
+  const orphanOpts = indexFile ? { ...scanOpts, docsIndex: indexFile } : scanOpts;
   const effectiveDocsRoot = docsRoot ?? 'docs';
 
   console.log('## hygiene-probe');
@@ -107,6 +119,7 @@ async function main() {
   console.log(`repo:      ${repoRoot}`);
   console.log(`docs-root: ${docsRoot ?? 'docs (default)'}`);
   console.log(`wiki-dir:  ${wikiDir ?? '(none)'}`);
+  console.log(`index-file: ${indexFile ?? 'TOC.md (default, only used by scanOrphanedDocs)'}`);
   console.log(`retiredTokens: ${JSON.stringify(scanOpts.retiredTokens ?? DEFAULT_RETIRED_TOKENS)}`);
   console.log(`excludePaths:  ${JSON.stringify([...DEFAULT_EXCLUDE_PATHS, ...(scanOpts.excludePaths ?? [])])}`);
   console.log('');
@@ -144,7 +157,7 @@ async function main() {
   const brokenLinkFindings = await scanBrokenLinks(repoRoot, scanOpts);
   printFindings('scanBrokenLinks', brokenLinkFindings);
 
-  const orphanedDocFindings = await scanOrphanedDocs(repoRoot, scanOpts);
+  const orphanedDocFindings = await scanOrphanedDocs(repoRoot, orphanOpts);
   printFindings('scanOrphanedDocs', orphanedDocFindings);
 
   if (wikiDir) {
@@ -155,12 +168,21 @@ async function main() {
     for (const f of wikiCandidates) console.log(`  - ${f}`);
     console.log('');
     console.log(
-      'NOTE: these files ARE scanned by scanRetiredTokens above. scanBrokenLinks and',
+      'NOTE: these files ARE scanned by scanRetiredTokens above. --wiki-dir itself is',
     );
     console.log(
-      'scanOrphanedDocs deliberately do not reach <wikiDir>/ — maintain-wiki\'s `lint`',
+      'not folded into scanBrokenLinks/scanOrphanedDocs candidate sets. But --docs-root',
     );
-    console.log('owns dead-wiki-links and orphaned pages there (ADR-0041, ADR-0015 dec. 2).');
+    console.log(
+      '(or a paths override) CAN point either scanner at OKF-bundle-collapsed content —',
+    );
+    console.log(
+      "and when it does, both scanners deliberately decline it rather than scanning it",
+    );
+    console.log(
+      "or silently passing, reporting an `orphan-check-skipped` / `link-check-skipped`",
+    );
+    console.log('finding instead (ADR-0053).');
     console.log('');
   }
 }
