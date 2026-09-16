@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -160,6 +160,43 @@ test('audit: a missing docs/TOC.md renders an orphan-check-skipped report line, 
     // do with the orphan-check-skipped finding (which is info-severity and
     // never gates the exit code — see the two exit-0 tests above). This test
     // is scoped to the rendering question only.
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// #454 AC21. A `docs/TOC.md` paths override collapsing docsRoot onto wikiDir
+// is a real, wireable repo shape (ADR-0053) — not just a lib/hygiene.mjs unit
+// scenario. This confirms scanBrokenLinks' link-check-skipped finding
+// actually reaches the rendered report through audit.mjs's real config load
+// (loadHygieneConfig / repoConfig.wiki), not only through a hand-built opts
+// object in the unit tests above.
+test('audit: a docsRoot-collapsed-onto-wikiDir repo renders a link-check-skipped report line (#454 AC21)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        {
+          project: { name: 'foo' },
+          commands: { validate: 'echo ok' },
+          wiki: { wikiDir: 'wiki' },
+          paths: { 'docs/TOC.md': 'wiki/TOC.md' },
+        },
+        null,
+        2,
+      ),
+    );
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'TOC.md'), '# TOC\n\n- [Page](page.md)\n');
+    await writeFile(join(dir, 'wiki', 'page.md'), '# Page\n\ncontent\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.ok(
+      result.stdout.includes('were not link-checked'),
+      `expected a link-check-skipped report line:\n${result.stdout}`,
+    );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

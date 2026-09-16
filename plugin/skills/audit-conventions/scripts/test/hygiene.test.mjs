@@ -854,3 +854,66 @@ test('scanOrphanedDocs: docsRoot nested inside wikiDir (containment, not just eq
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// scanBrokenLinks — bundle-resident decline (Task 6, ADR-0053 / #454). Unlike
+// scanOrphanedDocs' whole-scanner guard above, this decline is per-file: a
+// candidate is dropped only when IT is under wikiDir, because the candidate
+// set also includes repo-root CLAUDE.md, which is never bundle content.
+// ---------------------------------------------------------------------------
+
+// #454 AC19. Equality case: docsRoot === wikiDir. wiki/page.md's dead link is
+// declined; CLAUDE.md's byte-identical dead link is the mandatory mutation
+// control proving the empty wiki-side result is scope, not incapacity — a
+// scanner that had simply stopped working would drop the CLAUDE.md hit too.
+test('scanBrokenLinks: docsRoot === wikiDir declines wiki/page.md but still checks CLAUDE.md (mutation control)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/page.md', '[x](./missing.md)\n');
+    await writeRepoFile(d, 'CLAUDE.md', '[x](./missing.md)\n');
+  });
+  try {
+    const findings = await scanBrokenLinks(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+
+    const brokenLinks = findings.filter((f) => f.kind === 'broken-link');
+    assert.equal(brokenLinks.length, 1);
+    assert.ok(
+      brokenLinks[0].detail.startsWith('CLAUDE.md:'),
+      `expected the surviving broken-link to be CLAUDE.md's, got: ${brokenLinks[0].detail}`,
+    );
+    assert.equal(
+      findings.filter((f) => f.detail.startsWith('wiki/')).length,
+      0,
+      'no wiki/-rooted broken-link finding must slip through the decline',
+    );
+
+    const skipped = findings.filter((f) => f.kind === 'link-check-skipped');
+    assert.equal(skipped.length, 1);
+    assert.equal(skipped[0].ok, false);
+    assert.equal(skipped[0].severity, 'info');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// #454 AC20. Nested case: wikiDir nested inside a DIFFERENT docsRoot
+// (docs/wiki inside docs) — the row a whole-scanner decline would fail,
+// because docsRoot ('docs') is not inside wikiDir ('docs/wiki') here, so a
+// guard keyed on the override rather than on the file would never fire.
+test('scanBrokenLinks: wikiDir nested inside docsRoot declines only the nested bundle file', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/wiki/p.md', '[x](./missing.md)\n');
+    await writeRepoFile(d, 'docs/other.md', '[x](./missing.md)\n');
+  });
+  try {
+    const findings = await scanBrokenLinks(dir, { docsRoot: 'docs', wikiDir: 'docs/wiki' });
+
+    const brokenLinks = findings.filter((f) => f.kind === 'broken-link');
+    assert.equal(brokenLinks.length, 1);
+    assert.ok(brokenLinks[0].detail.startsWith('docs/other.md:'));
+
+    const skipped = findings.filter((f) => f.kind === 'link-check-skipped');
+    assert.equal(skipped.length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
