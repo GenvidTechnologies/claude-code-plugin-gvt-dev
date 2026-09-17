@@ -125,7 +125,7 @@
       "pointer": "plugin/skills/maintain-wiki/SKILL.md:29,159-163",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
-      "digest": "c35791e2536a"
+      "digest": "d5254e2c1fe1"
     },
     {
       "file": "docs/decisions/0022-okf-bundle-root-is-the-wiki-tier.md",
