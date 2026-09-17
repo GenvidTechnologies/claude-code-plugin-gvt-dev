@@ -109,7 +109,20 @@ async function main() {
   const repoRoot = resolve(repoPath ?? process.cwd());
 
   const hygiene = await loadHygieneConfig(repoRoot);
-  const baseOpts = { retiredTokens: hygiene?.retiredTokens, excludePaths: hygiene?.excludePaths };
+  // wikiDir goes into the scanners' opts, not just into the wikiCandidateFiles
+  // calls below. All three scanners read it, for two different purposes:
+  // scanRetiredTokens widens its walk to <wikiDir>/ (ADR-0041), while
+  // scanBrokenLinks and scanOrphanedDocs use it to decline bundle content and
+  // report the decline (ADR-0053). Omitting it here leaves both declines inert,
+  // so the probe would print the pre-ADR-0053 behaviour — broken-link and
+  // orphan findings over bundle pages that the real audit declines — while the
+  // note at the foot of this file claims the opposite. A diagnostic that
+  // disagrees with the thing it diagnoses is worse than no diagnostic.
+  const baseOpts = {
+    retiredTokens: hygiene?.retiredTokens,
+    excludePaths: hygiene?.excludePaths,
+    wikiDir,
+  };
   const scanOpts = docsRoot ? { ...baseOpts, docsRoot } : baseOpts;
   const orphanOpts = indexFile ? { ...scanOpts, docsIndex: indexFile } : scanOpts;
   const effectiveDocsRoot = docsRoot ?? 'docs';
