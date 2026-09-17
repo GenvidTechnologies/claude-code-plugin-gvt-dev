@@ -4,7 +4,7 @@ import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
-import { wikiPageCandidates, wikiIndexPaths } from '../lib/wiki-pages.mjs';
+import { wikiPageCandidates, wikiIndexPaths, wikiAllMarkdown } from '../lib/wiki-pages.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'wiki-pages-test-'));
@@ -175,6 +175,56 @@ test('returned paths are repo-relative and forward-slash regardless of platform 
       assert.ok(!c.includes('\\'), `${c} must not contain a backslash`);
       assert.ok(!c.startsWith('/'), `${c} must be repo-relative, not absolute`);
     }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// wikiAllMarkdown is the link-scan corpus: the same walk with nothing
+// subtracted. The pairing below is the whole point of having two functions —
+// a reserved file is exempt from orphan *candidacy*, not from having its own
+// links read, so the two sets must differ by exactly the reserved files.
+test('wikiAllMarkdown: includes reserved files that wikiPageCandidates excludes', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/index.md', '# Index\n');
+    await writeRepoFile(d, 'wiki/log.md', '# Log\n');
+    await writeRepoFile(d, 'wiki/concept.md', '# Concept\n');
+    await writeRepoFile(d, 'wiki/sub/index.md', '# Sub index\n');
+    await writeRepoFile(d, 'wiki/sub/log.md', '# Nested reserved\n');
+    await writeRepoFile(d, 'wiki/sub/deep.md', '# Deep\n');
+  });
+  try {
+    assert.deepEqual(await wikiAllMarkdown(dir, 'wiki'), [
+      'wiki/concept.md',
+      'wiki/index.md',
+      'wiki/log.md',
+      'wiki/sub/deep.md',
+      'wiki/sub/index.md',
+      'wiki/sub/log.md',
+    ]);
+    // Control: the candidate set over the identical fixture drops exactly the
+    // four reserved files, at both levels.
+    assert.deepEqual(await wikiPageCandidates(dir, 'wiki'), [
+      'wiki/concept.md',
+      'wiki/sub/deep.md',
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wikiAllMarkdown: degenerate wikiDir yields [] rather than walking the repo', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/concept.md', '# Concept\n');
+    await writeRepoFile(d, 'outside.md', '# Outside the bundle\n');
+  });
+  try {
+    for (const wd of [undefined, '', '.', '/', '..', dir]) {
+      assert.deepEqual(await wikiAllMarkdown(dir, wd), [], `wikiDir=${String(wd)}`);
+    }
+    // Control: the same fixture with a real wikiDir is non-empty, so the
+    // zeros above are refusal rather than a walk that never finds anything.
+    assert.deepEqual(await wikiAllMarkdown(dir, 'wiki'), ['wiki/concept.md']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

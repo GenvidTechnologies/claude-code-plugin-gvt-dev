@@ -74,6 +74,28 @@ function basenamePosix(relPosix) {
   return idx === -1 ? relPosix : relPosix.slice(idx + 1);
 }
 
+// Every markdown page in the bundle: `<wikiDir>/**/*.md`, with nothing
+// subtracted. This is the corpus for checks whose subject is the page's own
+// content — the link checks — as distinct from wikiPageCandidates below,
+// whose subject is which pages must be *listed* somewhere.
+//
+// The distinction is load-bearing. SKILL.md subtracts `index.md` and `log.md`
+// specifically from the *orphan candidate* set, because a reserved file is not
+// a concept page and so cannot be orphaned. It does not exempt them from
+// having their own links checked: a dead link written into `log.md` is a dead
+// link, and scoping the link scan to the orphan corpus would silently drop
+// every reserved file's links from the only check that looks at them.
+//
+// Same degenerate-wikiDir and missing-directory behaviour as the two functions
+// below.
+export async function wikiAllMarkdown(repoRoot, wikiDir) {
+  const rootAbs = safeWikiRootAbs(repoRoot, wikiDir);
+  if (!rootAbs) return [];
+
+  const files = await listMarkdownAbs(rootAbs);
+  return files.map((abs) => toRepoRelativePosix(repoRoot, abs)).sort();
+}
+
 // The concept-page candidate set: `<wikiDir>/**/*.md`, minus `index.md` and
 // `log.md` at any level (see this module's header). Returns repo-relative,
 // forward-slash paths, sorted, matching the shape audit-conventions'
