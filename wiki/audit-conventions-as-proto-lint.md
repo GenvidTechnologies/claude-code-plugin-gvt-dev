@@ -76,20 +76,30 @@ have been one generic lint engine into three non-overlapping owners:
   either scanner running content checks on an already-adopted practice.
 
 The wiki's two tiers (`wiki/`, `raw/`) deliberately live at the repo root
-rather than under `docs/`, specifically so they fall outside
-`listCandidateFiles`'s walk — `raw/` legitimately contains retired tokens and
+rather than under `docs/`, keeping them out of `listCandidateFiles`'s walk
+under the default layout — `raw/` legitimately contains retired tokens and
 dead links as part of its captured-source record, and `wiki/` pages churn on
-a different cadence than curated reference docs. That placement is why
-`audit-conventions` needed no new exclusion entries when `maintain-wiki`
-shipped: the wiki tiers were simply never in its candidate set to begin
-with. Only `docs/wiki-schema.md` itself — the curated maintenance-rules doc —
-stays under `docs/`, indexed in `docs/TOC.md`, and hygiene-covered like any
-other reference doc.
+a different cadence than curated reference docs. That placement was the
+mechanism, but it was never enforced: a `paths` override that points
+`docs/TOC.md` at the bundle's own index collapses `docsRoot` onto `wikiDir`,
+pulling bundle pages into the same walk by a different route.
+[ADR 0053](../docs/decisions/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
+closes that gap — `scanOrphanedDocs` and `scanBrokenLinks` now decline bundle
+content explicitly and report the decline as an `info` finding, rather than
+depending on placement alone to keep them out. `plugin/CONVENTIONS.md`'s
+scope-table cells for those two scanners still read `no` for `<wikiDir>/`:
+the guard enforces that published contract instead of changing it. Only
+`docs/wiki-schema.md` itself — the curated maintenance-rules doc — stays
+under `docs/`, indexed in `docs/TOC.md`, and hygiene-covered like any other
+reference doc.
 
-The practical effect: a repo can adopt the wiki practice, run `maintain-wiki
-lint` as often or as rarely as it likes, and its `audit-conventions` exit
-code is never affected by wiki content health — the two gates stay
-independent.
+The practical effect is unchanged: a repo can adopt the wiki practice, run
+`maintain-wiki lint` — now a mechanical checker,
+[`wiki-lint.mjs`](../docs/decisions/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md),
+rather than a human or an LLM turn working from the schema alone — as often
+or as rarely as it likes, and its `audit-conventions` exit code is never
+affected by wiki content health: the decline findings stay at `info`
+severity, so the two gates stay independent.
 
 ## Related
 
