@@ -125,7 +125,7 @@
       "pointer": "plugin/skills/maintain-wiki/SKILL.md:29,159-163",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
-      "digest": "c35791e2536a"
+      "digest": "d5254e2c1fe1"
     },
     {
       "file": "docs/decisions/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -826,13 +826,6 @@
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
       "digest": "134b83f13ac0"
-    },
-    {
-      "file": "plugin/skills/audit-conventions/scripts/lib/hygiene.mjs",
-      "pointer": "SKILL.md:265-273",
-      "occurrence": 0,
-      "kind": "pointer-ambiguous",
-      "digest": null
     },
     {
       "file": "plugin/skills/audit-conventions/scripts/lib/path-overrides.mjs",

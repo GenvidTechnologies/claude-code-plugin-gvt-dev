@@ -117,9 +117,18 @@ export async function candidateFileCount(repoRoot, opts = {}) {
 // repoRoot itself. A wikiDir naming a directory that doesn't exist on disk
 // also returns [] (listMarkdown's readdir failure is caught and swallowed,
 // same as a missing docs/). Called by scanRetiredTokens ONLY (ADR-0041,
-// ADR-0015 decision 2: scanBrokenLinks and scanOrphanedDocs deliberately
-// never see wiki files — see the call site below for why the token scan is
-// the one exception).
+// ADR-0015 decision 2). Neither scanBrokenLinks nor scanOrphanedDocs calls
+// this helper, so <wikiDir>/ never enters either one's candidate set via
+// THIS walk — but that does NOT mean either one is off wiki content
+// entirely: a `docs/TOC.md` `paths` override can put opts.docsRoot inside
+// (or equal to) opts.wikiDir, which delivers bundle pages through the
+// ORDINARY docs walk (listCandidateFiles) rather than through this helper.
+// Both scanners decline that content via an explicit guard at their own call
+// site instead (ADR-0053) — scanOrphanedDocs whole-scanner (its candidates
+// are already filtered to the docs prefix), scanBrokenLinks per-file (its
+// candidates also include repo-root CLAUDE.md, which is never bundle
+// content and must still be checked even when docsRoot collapses into
+// wikiDir). See each scanner's own call site for the reasoning.
 export async function wikiCandidateFiles(repoRoot, wikiDir, opts = {}) {
   if (!wikiDir) return [];
   const excludePaths = effectiveExcludes(opts);
@@ -163,16 +172,25 @@ function configCandidateFiles(repoRoot, opts = {}) {
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
   // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
-  // (ADR-0015 decision 2 / ADR-0041). scanBrokenLinks and scanOrphanedDocs
-  // deliberately never see wiki files: `maintain-wiki`'s own `lint` verb
+  // (ADR-0015 decision 2 / ADR-0041). `maintain-wiki`'s own `lint` verb
   // already owns dead-wiki-links and orphaned-page checks for `<wikiDir>/`,
   // resolving OKF §6.1 bundle-absolute targets (`/page.md`) against
   // `<wikiDir>/` itself — a second, differently-rooted link/orphan
   // implementation here would just be wrong (plugin/skills/maintain-wiki/
-  // SKILL.md:265-273: "not wired into audit.mjs and must not be"). The token
-  // scan has no such owner: `lint` has no retired-token check at all (`grep
-  // -i token` over maintain-wiki/SKILL.md returns nothing), so token drift on
-  // the wiki tier is genuinely unowned unless this scanner reaches it.
+  // SKILL.md: "not wired into audit.mjs and must not be"). Neither
+  // scanBrokenLinks nor scanOrphanedDocs calls wikiCandidateFiles, so
+  // <wikiDir>/ never enters either one's walk THROUGH THIS HELPER — but
+  // neither can lean on that omission as proof it never sees bundle content:
+  // a `docs/TOC.md` `paths` override can put opts.docsRoot inside (or equal
+  // to) opts.wikiDir, delivering bundle pages through the ORDINARY docs walk
+  // (listCandidateFiles) instead of through wikiCandidateFiles. Both decline
+  // that content with an explicit guard at their own call site instead
+  // (ADR-0053) — scanOrphanedDocs whole-scanner, scanBrokenLinks per-file
+  // (its candidates also include repo-root CLAUDE.md, which must still be
+  // checked even when docsRoot collapses into wikiDir). The token scan has
+  // no such owner: `lint` has no retired-token check at all (`grep -i token`
+  // over maintain-wiki/SKILL.md returns nothing), so token drift on the wiki
+  // tier is genuinely unowned unless this scanner reaches it.
   const files = [
     ...(await listCandidateFiles(repoRoot, opts)),
     ...(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts)),
@@ -209,8 +227,34 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
 // ---- scanBrokenLinks ---------------------------------------------------------
 
 export async function scanBrokenLinks(repoRoot, opts = {}) {
-  const files = await listCandidateFiles(repoRoot, opts);
+  const all = await listCandidateFiles(repoRoot, opts);
+  const wikiDir = opts.wikiDir;
+  // Per-file decline of OKF bundle-resident files (ADR-0053) — NOT a
+  // whole-scanner early return like scanOrphanedDocs' guard 1. listCandidateFiles
+  // is <docsRoot>/**.md PLUS repo-root CLAUDE.md, so when a `docs/TOC.md`
+  // `paths` override collapses docsRoot into (or nests it inside) wikiDir,
+  // CLAUDE.md is STILL a candidate here — and CLAUDE.md is neither a bundle
+  // page nor covered by `maintain-wiki lint` (whose own walk is <wikiDir>/
+  // only). A whole-scanner return would hand CLAUDE.md's links to nobody.
+  // scanOrphanedDocs can decline wholesale because it's a whole-corpus check
+  // that already filters its candidates down to the docs prefix; this check
+  // is per-file, so the decline is per-file too — one principle, two arities.
+  // Same containment idiom as rawDirExclude / scanOrphanedDocs' guard 1
+  // above: equality OR nested-prefix, never a substring test.
+  const inBundle = (f) => !!wikiDir && (f === wikiDir || f.startsWith(`${wikiDir}/`));
+  const files = all.filter((f) => !inBundle(f));
+  const declined = all.length - files.length;
   const findings = [];
+  // Reported rather than silently dropped, for the same reason scanOrphanedDocs'
+  // guards report a skip instead of returning [] — see ADR-0053.
+  if (declined > 0) {
+    findings.push({
+      kind: 'link-check-skipped',
+      ok: false,
+      severity: 'info',
+      detail: `${declined} file(s) under ${wikiDir}/ were not link-checked — OKF bundle pages resolve links against the bundle root, which /gvt-dev:maintain-wiki lint owns (ADR-0053). Run it for dead-link coverage of ${wikiDir}/.`,
+    });
+  }
 
   for (const relPath of files) {
     const content = await safeReadFile(join(repoRoot, relPath));
@@ -229,6 +273,14 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
         const strippedTarget = rawTarget.split('#')[0].trim(); // drop trailing #anchor
         if (!strippedTarget) continue; // was e.g. "./file.md#anchor" with nothing left — shouldn't happen, but be safe
 
+        // A leading '/' is resolved against repoRoot, which is only correct
+        // for a file OUTSIDE the OKF bundle — an OKF §6.1 bundle-absolute
+        // link is meant to resolve against the bundle root instead. That
+        // used to make every bundle-resident file's leading-'/' link a false
+        // positive; it's now correct-by-scope, because every file that still
+        // reaches this line has already survived the inBundle decline above.
+        // Bundle-rooted resolution belongs to /gvt-dev:maintain-wiki lint
+        // (ADR-0053) — do not "fix" this line to resolve against wikiDir.
         const containingDir = dirname(join(repoRoot, relPath));
         const absTarget = strippedTarget.startsWith('/')
           ? join(repoRoot, strippedTarget.slice(1))
@@ -256,9 +308,62 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
 
 export async function scanOrphanedDocs(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
-  const tocPath = `${docsRoot}/TOC.md`;
-  const tocContent = await safeReadFile(join(repoRoot, docsRoot, 'TOC.md'));
-  if (tocContent == null) return []; // no <docsRoot>/TOC.md — nothing to check against
+  const wikiDir = opts.wikiDir;
+
+  // Guard 1 — checked FIRST, before the index read (ADR-0053). When the
+  // resolved docs root is inside (or equal to) the OKF wiki bundle, orphan
+  // checking there belongs to `maintain-wiki lint`, which resolves
+  // bundle-absolute targets, honours subdirectory indexes, and skips the
+  // reserved index.md/log.md pages — none of which this scanner knows.
+  // Containment, not equality: this must fire both for docsRoot === wikiDir
+  // and for a docsRoot nested inside it (e.g. wiki/docs inside wiki), so it
+  // uses the same containment idiom as rawDirExclude's `root === X ||
+  // root.startsWith(`${X}/`)` test above rather than a bare `===`. Guarding
+  // on wikiDir being truthy first means a repo that declares no wikiDir at
+  // all always takes the normal path below.
+  //
+  // This is checked BEFORE the missing-index guard below on purpose: when
+  // both conditions hold (bundle collapse AND no index at the resolved
+  // path), "this belongs to lint" is the actionable message. "No index
+  // here" would be both wrong (there IS an index — the bundle's own) and
+  // misleading, since it isn't this scanner's index to read. A future
+  // "simplification" that reorders these two checks would silently regress
+  // to the wrong message in that overlap case.
+  //
+  // A returned finding beats `[]` here for the same reason guard 2 does:
+  // zero orphans and "never checked" must not render identically — that
+  // indistinguishability is the defect #454 exists to fix.
+  if (wikiDir && (docsRoot === wikiDir || docsRoot.startsWith(`${wikiDir}/`))) {
+    return [
+      {
+        kind: 'orphan-check-skipped',
+        ok: false,
+        severity: 'info',
+        detail: `orphan check skipped — the docs root '${docsRoot}/' is inside the wiki bundle '${wikiDir}/', where orphaned pages are owned by /gvt-dev:maintain-wiki lint, not this scan`,
+      },
+    ];
+  }
+
+  const docsIndex = opts.docsIndex ?? 'TOC.md';
+  const tocPath = `${docsRoot}/${docsIndex}`;
+  const tocContent = await safeReadFile(join(repoRoot, tocPath));
+  // Guard 2 — checked AFTER guard 1 (ADR-0053). No <docsRoot>/<docsIndex>
+  // found: report the skip rather than returning [], for the same
+  // zero-orphans-vs-never-checked reason as guard 1 above. This mirrors a
+  // rule `maintain-wiki`'s own `lint` verb already states one tier down for
+  // the bundle-root index: if it's absent, skip the check and report a
+  // single informational note, because reporting every page as an orphan
+  // would be a rejection in all but name.
+  if (tocContent == null) {
+    return [
+      {
+        kind: 'orphan-check-skipped',
+        ok: false,
+        severity: 'info',
+        detail: `orphan check skipped — no docs index found at ${tocPath}`,
+      },
+    ];
+  }
 
   const candidates = await listCandidateFiles(repoRoot, opts);
   const docsPrefix = `${docsRoot}/`;

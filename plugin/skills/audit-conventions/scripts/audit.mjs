@@ -93,7 +93,7 @@ async function main() {
   // Coverage read further down.
   const repoConfig = await loadRepoConfig(configFilename);
   const pathOverrides = repoConfig?.paths;
-  const { root: docsRoot, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
+  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
   const findings = [];
   const declaredPaths = new Set();
@@ -163,13 +163,16 @@ async function main() {
   const hygiene = await loadHygieneConfig(configFilename);
   // wikiDir/rawDir come from repoConfig's `wiki` block (already loaded above
   // for wikiAdoption), not the `hygiene` block — same shared hygieneOpts
-  // object passed to all three scanners below, but only scanRetiredTokens
-  // reads wikiDir (see its call site in lib/hygiene.mjs); rawDir folds into
-  // effectiveExcludes for whichever scanners it's nested inside.
+  // object passed to all three scanners below. scanRetiredTokens reads
+  // wikiDir to WALK <wikiDir>/ (ADR-0015 decision 2); scanBrokenLinks reads
+  // it to DECLINE bundle-resident candidates it already sees via docsRoot
+  // (ADR-0053) — see each scanner's own call site in lib/hygiene.mjs. rawDir
+  // folds into effectiveExcludes for whichever scanners it's nested inside.
   const hygieneOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
     docsRoot,
+    docsIndex,
     wikiDir: repoConfig?.wiki?.wikiDir,
     rawDir: repoConfig?.wiki?.rawDir,
   };
@@ -585,9 +588,9 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
 function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
-  // orphaned-doc, readme-inventory, principle-citation, and path-override)
-  // aren't tied to a component/expectation — they carry a self-contained
-  // detail string.
+  // orphaned-doc/orphan-check-skipped/link-check-skipped, readme-inventory,
+  // principle-citation, and path-override) aren't tied to a
+  // component/expectation — they carry a self-contained detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
     'conventions-drift',
@@ -595,6 +598,8 @@ function formatFinding(f) {
     'retired-token',
     'broken-link',
     'orphaned-doc',
+    'orphan-check-skipped',
+    'link-check-skipped',
     'readme-inventory',
     'principle-citation',
     'pillar-unknown',

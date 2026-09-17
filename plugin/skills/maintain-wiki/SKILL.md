@@ -24,6 +24,9 @@ metadata:
       - command: git
         required: false
         reason: Powers the optional raw/ immutability check in lint (git log --diff-filter=M against rawDir)
+      - command: node
+        required: false
+        reason: Runs the mechanical wiki-lint.mjs script (dead links, out-of-bundle links, orphaned pages, raw/ immutability); a repo relying only on the judgment-based lint checks doesn't need it
 ---
 
 # Maintain Wiki
@@ -189,10 +192,16 @@ mutates anything. Checks, run against `<wikiDir>/` (and optionally `<rawDir>/`):
   in **no** index. Candidates are `<wikiDir>/**/*.md` **minus `index.md` and
   `log.md` at any level** — the same reserved-file exclusion the conformance
   walk uses, so `lint` and the mechanical checker agree on the page set.
-  A page counts as listed if it appears in `<wikiDir>/index.md` **or** in the
-  `index.md` of its own subdirectory (§8 contemplates subdirectory indexes;
-  those carry **no** frontmatter — only the bundle-root index may carry
-  `okf_version`).
+  A page counts as listed when a link target in `<wikiDir>/index.md` **or** in
+  the `index.md` of its own subdirectory **resolves to that page** (§8
+  contemplates subdirectory indexes; those carry **no** frontmatter — only the
+  bundle-root index may carry `okf_version`). Resolution, not substring
+  containment: a page whose basename merely appears inside another page's
+  basename — `query-cache.md` inside a link to `cloudscript-query-cache.md` —
+  is not listed by that link unless resolving the link's target actually lands
+  on it. Resolving first is also the only rule consistent with the dead-link
+  check above: a target that doesn't resolve to anything is a dead link, not
+  evidence that some other page is unlisted.
   Separately (also advisory): a `<wikiDir>/<subdir>/index.md` that is itself
   not linked from `<wikiDir>/index.md` — an unreachable subtree, which the
   per-page rule above would otherwise miss.
@@ -213,6 +222,22 @@ mutates anything. Checks, run against `<wikiDir>/` (and optionally `<rawDir>/`):
   is a local convention of this three-tier layout, **not** an OKF requirement.
   Skipped gracefully if `git` isn't available or the repo has no history for
   the path.
+
+**A script implements the deterministic subset of this list.**
+`plugin/skills/maintain-wiki/scripts/wiki-lint.mjs`, run as
+`node <path-to-script> [repoPath]` (defaulting `repoPath` to the current
+directory), covers dead wiki-links, out-of-bundle links, orphaned pages and
+unreachable subtrees, and `raw/` immutability. Run it instead of re-deriving
+those five checks by hand. It **always exits 0** — this is required, not
+incidental, since OKF §11 forbids rejecting a bundle and `lint` must report
+without ever failing a build; there is deliberately no `--strict` flag yet.
+Its output distinguishes *checked and clean* from *could not check* (a
+missing bundle-root index, an absent bundle, git unavailable, no history
+under `raw/`), and that distinction is the point rather than a formatting
+nicety: a report that renders both as "0 findings" is the defect ADR-0053
+removed from the audit's own scanners. The script covers the mechanical
+checks only — staleness beyond a declared `stale_after` and any judgment
+about semantic drift stay yours; no script can make either call.
 
 Report findings as a list; `lint` never fixes anything itself — a finding that
 warrants a fix is a candidate for a follow-up `ingest` or a manual edit.
