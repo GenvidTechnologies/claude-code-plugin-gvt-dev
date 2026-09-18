@@ -4,7 +4,7 @@ import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
-import { listFiles, listMarkdown, listUnder } from '../lib/fs-walk.mjs';
+import { listFiles, listMarkdown, listUnder, WALK_COST_DIRS } from '../lib/fs-walk.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'fs-walk-test-'));
@@ -155,6 +155,100 @@ test('listUnder: nested paths are returned repo-relative with forward slashes', 
     const files = await listUnder(dir, ['docs'], (name) => name.endsWith('.md'));
     assert.deepEqual(files, ['docs/deep/deeper/deepest/n.md']);
     assert.ok(files.every((f) => !f.includes(sep)), 'paths must use forward slashes');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listFiles: node_modules at the top of the walked sub is excluded by default', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/node_modules/x.md', 'x\n');
+  });
+  try {
+    const files = await listFiles(dir, 'docs', (name) => name.endsWith('.md'));
+    assert.deepEqual(files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listFiles: node_modules several levels deep is also excluded by default', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/a/b/node_modules/c/x.md', 'x\n');
+  });
+  try {
+    const files = await listFiles(dir, 'docs', (name) => name.endsWith('.md'));
+    assert.deepEqual(files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listFiles: .git at depth is also excluded by default', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/a/b/.git/refs/x.md', 'x\n');
+  });
+  try {
+    const files = await listFiles(dir, 'docs', (name) => name.endsWith('.md'));
+    assert.deepEqual(files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listFiles: an explicit empty skipDirs opts out of the default exclusion', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/node_modules/x.md', 'x\n');
+  });
+  try {
+    const files = await listFiles(dir, 'docs', (name) => name.endsWith('.md'), { skipDirs: new Set() });
+    assert.deepEqual(files.sort(), ['docs/a.md', 'docs/node_modules/x.md'].sort());
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listFiles: a directory name that merely contains "node_modules" as a substring is still traversed', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/my-node_modules-backup/x.md', 'x\n');
+  });
+  try {
+    const files = await listFiles(dir, 'docs', (name) => name.endsWith('.md'));
+    assert.deepEqual(files, ['docs/my-node_modules-backup/x.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('WALK_COST_DIRS: exposes exactly .git and node_modules', () => {
+  assert.deepEqual([...WALK_COST_DIRS].sort(), ['.git', 'node_modules']);
+});
+
+test('listMarkdown: node_modules is excluded by default (inherits listFiles default)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/sub/node_modules/x.md', 'x\n');
+  });
+  try {
+    const files = await listMarkdown(dir, 'docs');
+    assert.deepEqual(files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listUnder: node_modules is excluded by default (inherits listFiles default)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'a\n');
+    await writeRepoFile(d, 'docs/sub/node_modules/x.md', 'x\n');
+  });
+  try {
+    const files = await listUnder(dir, ['docs'], (name) => name.endsWith('.md'));
+    assert.deepEqual(files, ['docs/a.md']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

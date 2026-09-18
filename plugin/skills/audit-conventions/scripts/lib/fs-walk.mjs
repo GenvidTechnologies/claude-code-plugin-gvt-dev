@@ -3,7 +3,14 @@
 import { promises as fs } from 'node:fs';
 import { join, relative } from 'node:path';
 
-export async function listFiles(repoRoot, sub, predicate) {
+// Directory names that are never worth descending into for a repo-content
+// walk: version-control internals and installed dependency trees. Excluded by
+// default at any depth, not just when they sit at the top of the walked sub.
+// Callers that genuinely need full traversal opt out with an explicit empty
+// set (`{ skipDirs: new Set() }`).
+export const WALK_COST_DIRS = new Set(['.git', 'node_modules']);
+
+export async function listFiles(repoRoot, sub, predicate, { skipDirs = WALK_COST_DIRS } = {}) {
   const out = [];
   async function walk(dir) {
     let entries;
@@ -13,6 +20,9 @@ export async function listFiles(repoRoot, sub, predicate) {
       return;
     }
     for (const entry of entries) {
+      if (entry.isDirectory() && skipDirs.has(entry.name)) {
+        continue;
+      }
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
@@ -26,18 +36,18 @@ export async function listFiles(repoRoot, sub, predicate) {
 }
 
 // Recursively list *.md files under <repoRoot>/<sub>, returned repo-relative.
-export async function listMarkdown(repoRoot, sub) {
-  return listFiles(repoRoot, sub, (name) => name.endsWith('.md'));
+export async function listMarkdown(repoRoot, sub, options) {
+  return listFiles(repoRoot, sub, (name) => name.endsWith('.md'), options);
 }
 
 // Recursively list files matching `predicate` under each of <repoRoot>/<sub> for
 // every sub in `subs`, returning the de-duplicated union as sorted repo-relative
 // posix paths. Overlapping roots yield each file once; a root that does not exist
 // contributes nothing rather than throwing.
-export async function listUnder(repoRoot, subs, predicate) {
+export async function listUnder(repoRoot, subs, predicate, options) {
   const seen = new Set();
   for (const sub of subs) {
-    for (const file of await listFiles(repoRoot, sub, predicate)) {
+    for (const file of await listFiles(repoRoot, sub, predicate, options)) {
       seen.add(file);
     }
   }
