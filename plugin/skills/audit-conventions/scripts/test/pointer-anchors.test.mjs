@@ -15,6 +15,7 @@ import {
   digestCitedRange,
   extractAnchor,
   findAnchorOccurrences,
+  isSkipped,
   listCitingFiles,
   listTargetCandidates,
   loadBaseline,
@@ -924,6 +925,26 @@ test('scanPointerAnchors: a pointer in a gitignored root document is never repor
   }
 });
 
+// ---- isSkipped ----------------------------------------------------------
+
+test('isSkipped: a skipped directory name in a non-first segment is skipped', () => {
+  assert.equal(isSkipped('plugin/skeleton/node_modules/pkg/index.js'), true);
+});
+
+test('isSkipped: the eval fixture directory in a non-first segment is skipped', () => {
+  // The walker's own depth-aware exclusion only covers `.git`/`node_modules`
+  // (walk cost); a nested `audit-conventions-evals` is this module's own
+  // policy exclusion, and it is the case the walker does not cover.
+  assert.equal(isSkipped('plugin/skills/foo/audit-conventions-evals/fixtures/x.md'), true);
+});
+
+test('isSkipped: a segment that only CONTAINS a skipped name is not skipped', () => {
+  // Segment equality, not substring — a sibling directory that merely embeds
+  // one of the skipped names must not be swept up with it.
+  assert.equal(isSkipped('vendor/my-node_modules-cache/x.js'), false);
+  assert.equal(isSkipped('tools/audit-conventions-evals-archive/x.md'), false);
+});
+
 test('listCitingFiles: excludes the eval fixture tree', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/notes.md', 'x\n');
@@ -950,6 +971,22 @@ test('listTargetCandidates: spans the whole repo but skips the eval fixture tree
       'docs/notes.md',
       'plugin/skeleton/.gvt-agent.json',
     ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('listTargetCandidates: skips a NESTED eval fixture tree, not only a root-level one', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/notes.md', 'x\n');
+    await writeRepoFile(
+      d,
+      'plugin/skills/triage-issues/audit-conventions-evals/fixtures/legacy/CLAUDE.md',
+      'x\n',
+    );
+  });
+  try {
+    assert.deepEqual(await listTargetCandidates(dir), ['docs/notes.md']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

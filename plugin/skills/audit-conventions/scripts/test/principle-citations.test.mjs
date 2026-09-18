@@ -223,6 +223,36 @@ test('scanPrincipleCitations: renumber simulation — principles doc trimmed to 
   }
 });
 
+// Pins the inheritance ADR-0055 relies on: scanPrincipleCitations calls
+// `listMarkdown(repoRoot, 'plugin')` with no options, so it inherits
+// listMarkdown's/listFiles' default `skipDirs` (fs-walk.mjs's
+// WALK_COST_DIRS, `.git` + `node_modules`) rather than filtering
+// node_modules itself. This test builds node_modules trees at two depths
+// (top-level under plugin/, and nested a/b/node_modules) each carrying an
+// out-of-range citation, and asserts they never surface as findings while a
+// legitimate file's valid citation still passes clean.
+test('scanPrincipleCitations: node_modules trees at any depth under plugin/ are excluded from the corpus (inherited from listMarkdown)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/docs/development-principles.md', principlesDoc(11));
+    // Legitimate file: valid citation, must still be scanned.
+    await writeRepoFile(d, 'plugin/skills/foo/SKILL.md', citingContent(7));
+    // Top-level node_modules under plugin/: invalid citation, must be skipped.
+    await writeRepoFile(d, 'plugin/node_modules/some-pkg/README.md', citingContent(99));
+    // Nested node_modules several levels deep: invalid citation, must be skipped.
+    await writeRepoFile(d, 'plugin/a/b/node_modules/other-pkg/README.md', citingContent(123));
+  });
+  try {
+    const findings = await scanPrincipleCitations(dir);
+    assert.deepEqual(
+      findings,
+      [],
+      'node_modules content (at any depth) must not contribute findings, and the legitimate file cites a valid number',
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanPrincipleCitations: an empty/unparseable principles doc produces EXACTLY ONE parse-failure finding, not one per citation', async () => {
   const dir = await withTempRepo(async (d) => {
     // No top-level ordered list at all -> parsePrincipleNumbers yields an
