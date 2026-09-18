@@ -53,18 +53,31 @@ import { iterateUnfencedLines } from './md-scan.mjs';
 export const CITING_ROOTS = ['docs', 'plugin'];
 export const CITING_EXTENSIONS = ['.md', '.mjs'];
 
-// Directories excluded from BOTH corpora. `audit-conventions-evals/` holds
-// fixture consuming-repos whose files carry contract filenames (`CLAUDE.md`,
-// `CONVENTIONS.md`, `docs/TOC.md`, …); counting them as resolution candidates
-// would turn correct, unambiguous citations of the real files into ambiguity
-// findings. `.git` and `node_modules` are excluded as walk cost, not policy.
+// Directories excluded from BOTH corpora, for two different reasons.
+// `audit-conventions-evals/` holds fixture consuming-repos whose files carry
+// contract filenames (`CLAUDE.md`, `CONVENTIONS.md`, `docs/TOC.md`, …);
+// counting them as resolution candidates would turn correct, unambiguous
+// citations of the real files into ambiguity findings. That one is a POLICY
+// exclusion owned by this module — the fixtures are real, walkable files, and
+// nothing about the shared walker knows this module's ambiguity concern.
+// `.git` and `node_modules` are walk COST, not policy, and that half of the
+// list is redundant with the shared walker's own default: `listUnder` (from
+// fs-walk.mjs) already skips both at any depth on every call this module
+// makes. They stay listed here anyway so `isSkipped` — which this module still
+// needs for `audit-conventions-evals` — treats all three uniformly, and so a
+// future reader of this list doesn't have to cross-check fs-walk.mjs to see
+// what is excluded from this module's corpora.
 export const SKIPPED_DIRS = ['.git', 'node_modules', 'audit-conventions-evals'];
 
 const SKIPPED_DIR_SET = new Set(SKIPPED_DIRS);
 
-function isSkipped(relPath) {
-  const top = relPath.split('/')[0];
-  return SKIPPED_DIR_SET.has(top);
+// A path is skipped when ANY of its segments — not only the first — is in
+// SKIPPED_DIR_SET. A nested fixture directory (a consuming-repo fixture
+// checked out a level or more below the corpus root) is exactly as much a
+// policy exclusion as a top-level one, and the walker's own depth-aware
+// exclusion only covers the walk-cost half of this list.
+export function isSkipped(relPath) {
+  return relPath.split('/').some((segment) => SKIPPED_DIR_SET.has(segment));
 }
 
 async function safeReadFile(path) {
@@ -91,7 +104,7 @@ export async function listTargetCandidates(repoRoot) {
     .map((e) => e.name);
   const nested = await listUnder(repoRoot, subs, () => true);
   const rootFiles = entries.filter((e) => e.isFile()).map((e) => e.name);
-  return [...new Set([...rootFiles, ...nested])].sort();
+  return [...new Set([...rootFiles, ...nested])].filter((f) => !isSkipped(f)).sort();
 }
 
 // The repo root's OWN citing files — `CLAUDE.md` and `README.md` in this repo.
