@@ -69,6 +69,24 @@ ERROR: Top-level await is currently not supported with the "cjs" output format
 This matters more than a syntax slip, since `await import()` of the module
 under test is the natural way to probe it — and that needs top-level `await`.
 
+**On Windows, that same `await import()` needs a `file://` URL, not a path.**
+A probe living outside the repo tree has to reach back into it by absolute
+path, and Node's ESM loader rejects a Windows absolute path outright —
+`import('C:/repo/lib/x.mjs')` throws
+`ERR_UNSUPPORTED_ESM_URL_SCHEME ... Received protocol 'c:'`, reading the drive
+letter as a URL scheme. Convert first:
+
+```js
+import { pathToFileURL } from 'node:url';
+const m = await import(pathToFileURL(abs).href);
+```
+
+Same trap as the `.mts` one above and for the same reason: it fires *because*
+the probe is correctly outside the repo. A probe written inside the tree
+imports by relative specifier and never meets it. Note a static
+`import ... from 'C:/...'` fails identically, so moving the import to the top
+of the file is not the fix.
+
 Prefer `./node_modules/.bin/tsx` over `npx tsx` for invocation. `npx`
 **succeeds** — this is not a broken-tool case and not a hang — but a cold,
 first invocation can exceed a tool timeout and return no output at all, which
