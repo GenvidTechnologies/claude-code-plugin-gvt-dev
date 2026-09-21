@@ -437,13 +437,6 @@
     },
     {
       "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
-      "pointer": ":93",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "42a61299701e"
-    },
-    {
-      "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
       "pointer": ":98",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
@@ -497,27 +490,6 @@
       "occurrence": 1,
       "kind": "pointer-anchor-missing",
       "digest": "471bc78125bf"
-    },
-    {
-      "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
-      "pointer": "designer.md:92",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "259e7dfe82a5"
-    },
-    {
-      "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
-      "pointer": "designer.md:93",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "42a61299701e"
-    },
-    {
-      "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
-      "pointer": "designer.md:93",
-      "occurrence": 1,
-      "kind": "pointer-anchor-missing",
-      "digest": "42a61299701e"
     },
     {
       "file": "docs/decisions/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
