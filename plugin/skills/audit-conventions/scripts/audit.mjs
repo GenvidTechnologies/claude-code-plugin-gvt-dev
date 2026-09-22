@@ -18,8 +18,9 @@ import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { extractFrontmatter } from './lib/frontmatter.mjs';
-import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
+import { walkComponents } from './lib/component-walk.mjs';
+import { evaluateFile, evaluateConfig, evaluateTool } from './lib/evaluate.mjs';
+import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
 import {
@@ -98,6 +99,19 @@ async function main() {
   const pathOverrides = repoConfig?.paths;
   const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
+  const resolveFile = (entry) => {
+    const resolved = resolveExpectationPath(pathOverrides, entry.path);
+    return {
+      path: join(REPO_ROOT, resolved),
+      probe: resolved.endsWith('/') ? 'directory' : 'file',
+      target: entry.path,
+    };
+  };
+  const resolveConfig = (entry) => {
+    const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
+    return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${inFile}` };
+  };
+
   const findings = [];
   const declaredPaths = new Set();
   for (const component of components) {
@@ -106,10 +120,10 @@ async function main() {
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
-      findings.push(await evaluateFile(component, entry, pathOverrides));
+      findings.push(await evaluateFile(component, entry, resolveFile));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry, configFilename, pathOverrides));
+      findings.push(await evaluateConfig(component, entry, resolveConfig));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
@@ -195,158 +209,26 @@ async function main() {
     fileCount: await candidateFileCount(REPO_ROOT, hygieneOpts),
   };
 
-  // Practice Coverage (epic #142): the plugin-side census is the same
-  // `components` walk used for expectations above (each entry already
-  // carries its parsed `pillar` field); the consumer-side adoption verdict
-  // is currently wired for the `environment` pillar only (the wiki — the
-  // only pillar with a detector today, per lib/practice-detect.mjs).
+  // Practice Coverage (epic #142): the plugin-side census is derived from the
+  // same `components` walk used for expectations above (pillarCensus below
+  // carries each entry's raw `metadata.pillar` scalar — computePluginCoverage
+  // parses it itself); the consumer-side adoption verdict is currently wired
+  // for the `environment` pillar only (the wiki — the only pillar with a
+  // detector today, per lib/practice-detect.mjs).
   const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
   const practices = { environment: wikiAdoption.verdict };
 
-  const report = formatReport(state, findings, { cfgHasC3, pillarCensus: components, practices, scanSummary });
+  const pillarCensus = components.map((c) => ({
+    name: c.name, type: c.type, pillar: c.frontmatter?.metadata?.pillar,
+  }));
+  const report = formatReport(state, findings, { cfgHasC3, pillarCensus, practices, scanSummary });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
   process.exit(hasErrors ? 1 : 0);
 }
 
-// ---- walk ------------------------------------------------------------------
-
-async function walkComponents(pluginRoot) {
-  const components = [];
-
-  const skillsDir = join(pluginRoot, 'skills');
-  if (await dirExists(skillsDir)) {
-    const skills = await fs.readdir(skillsDir, { withFileTypes: true });
-    for (const entry of skills) {
-      if (!entry.isDirectory()) continue;
-      const skillFile = join(skillsDir, entry.name, 'SKILL.md');
-      if (!(await fileExists(skillFile))) continue;
-      const component = await loadComponent('skill', entry.name, skillFile);
-      if (component) components.push(component);
-    }
-  }
-
-  const agentsDir = join(pluginRoot, 'agents');
-  if (await dirExists(agentsDir)) {
-    const agents = await fs.readdir(agentsDir, { withFileTypes: true });
-    for (const entry of agents) {
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-      const name = entry.name.replace(/\.md$/, '');
-      const component = await loadComponent('agent', name, join(agentsDir, entry.name));
-      if (component) components.push(component);
-    }
-  }
-
-  return components;
-}
-
-async function loadComponent(type, name, filePath) {
-  const content = await fs.readFile(filePath, 'utf8');
-  const descLen = descriptionLength(content);
-  const fm = extractFrontmatter(content);
-  if (!fm) return { type, name, expects: null, descLen, pillar: [] };
-  return {
-    type,
-    name,
-    expects: fm.metadata?.expects ?? null,
-    descLen,
-    pillar: parsePillars(fm.metadata?.pillar),
-  };
-}
-
 // ---- evaluate --------------------------------------------------------------
-
-// A trailing slash in the declared `path` marks a DIRECTORY expectation (e.g.
-// `docs/decisions/`, declared by create-adr, plan-task, and tech-writer).
-// fileExists() is isFile()-strict, so checking a directory through it always
-// reported "file not found" no matter what was on disk — telling a repo that
-// HAD scaffolded docs/decisions/ that it hadn't, and (had any directory
-// expectation ever been marked required) failing the audit outright.
-async function evaluateFile(component, entry, pathOverrides) {
-  const required = entry.required !== false;
-  const resolvedPath = resolveExpectationPath(pathOverrides, entry.path);
-  const path = join(REPO_ROOT, resolvedPath);
-  const isDir = resolvedPath.endsWith('/');
-  const exists = isDir ? await dirExists(path) : await fileExists(path);
-
-  if (exists) {
-    return { kind: 'file', component: component.name, target: entry.path, ok: true, required };
-  }
-  return {
-    kind: 'file',
-    component: component.name,
-    target: entry.path,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `${isDir ? 'directory' : 'file'} not found${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
-
-async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json', pathOverrides) {
-  const required = entry.required !== false;
-  const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
-  const filePath = join(REPO_ROOT, inFile);
-
-  let parsed;
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    return {
-      kind: 'config',
-      component: component.name,
-      target: `${entry.key} in ${inFile}`,
-      ok: false,
-      required,
-      severity: required ? 'error' : 'info',
-      detail: err.code === 'ENOENT' ? `${inFile} not found` : `${inFile} unreadable (${err.message})`,
-      reason: entry.reason,
-    };
-  }
-
-  const result = resolveKey(parsed, entry.key);
-  if (result.found) {
-    return {
-      kind: 'config',
-      component: component.name,
-      target: `${entry.key} in ${inFile}`,
-      ok: true,
-      required,
-    };
-  }
-  return {
-    kind: 'config',
-    component: component.name,
-    target: `${entry.key} in ${inFile}`,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `key not found (path broke at "${result.missingAt}")${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
-
-function evaluateTool(component, entry) {
-  const required = entry.required !== false;
-  const exists = commandExists(entry.command);
-
-  if (exists) {
-    return { kind: 'tool', component: component.name, target: entry.command, ok: true, required };
-  }
-  return {
-    kind: 'tool',
-    component: component.name,
-    target: entry.command,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `command not found on PATH${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
 
 // Cross-checks .gvt-agent.json `repo.host` against the actual git remote and
 // returns a non-fatal warning finding on mismatch (or null when there's nothing
@@ -416,13 +298,14 @@ function evaluateDescriptionLengths(components) {
   if (!AUDITING_PLUGIN_SOURCE) return [];
   const findings = [];
   for (const c of components) {
-    if (c.descLen > MAX_DESCRIPTION_CHARS) {
+    const descChars = descriptionLengthOf(c.frontmatter);
+    if (descChars > MAX_DESCRIPTION_CHARS) {
       findings.push({
         kind: 'desc-length',
         ok: false,
         severity: 'warning',
         detail:
-          `${c.type} \`${c.name}\` description is ${c.descLen} chars, over the ` +
+          `${c.type} \`${c.name}\` description is ${descChars} chars, over the ` +
           `${MAX_DESCRIPTION_CHARS}-char \`skillListingMaxDescChars\` cap — it is ` +
           `silently truncated in the skill listing. Trim it.`,
       });
@@ -440,7 +323,7 @@ function evaluatePillarDeclarations(components) {
   const validIds = new Set(PILLARS.map((p) => p.id));
   const findings = [];
   for (const c of components) {
-    for (const id of c.pillar ?? []) {
+    for (const id of parsePillars(c.frontmatter?.metadata?.pillar)) {
       if (validIds.has(id)) continue;
       findings.push({
         kind: 'pillar-unknown',
@@ -484,36 +367,12 @@ async function loadHygieneConfig(configFilename = '.gvt-agent.json') {
 
 // ---- helpers ---------------------------------------------------------------
 
-async function fileExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function dirExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 async function readFileOrNull(path) {
   try {
     return await fs.readFile(path, 'utf8');
   } catch {
     return null;
   }
-}
-
-function commandExists(cmd) {
-  const checker = process.platform === 'win32' ? 'where' : 'which';
-  const result = spawnSync(checker, [cmd], { stdio: 'pipe' });
-  return result.status === 0;
 }
 
 // ---- report ----------------------------------------------------------------
