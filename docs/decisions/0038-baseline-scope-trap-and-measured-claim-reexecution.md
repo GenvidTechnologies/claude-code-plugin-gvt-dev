@@ -33,7 +33,8 @@ otherwise have to re-derive from two issue threads and five commits.
 ## Decision
 
 **(1) The baseline-corpus scope trap gets a new owner: `designer.md` item 8,
-group 2 (*Is the expected value right?*), landed at `designer.md:93`.**
+group 2 (*Is the expected value right?*), landed in `designer.md` as the bullet
+opening "A baseline measured over a narrower corpus than the row asserts over".**
 Minting a new owner is ADR-0036's exception, not its default — the standing
 rule is cite-and-repeat. It applies here because anchored greps found **no**
 existing statement of the rule anywhere under `plugin/`: a baseline measured
@@ -129,7 +130,8 @@ change's.
 **(6) ADR-0037's fire test was applied and does NOT fire — no sixth group.**
 Both new rules extend an existing group's axis rather than opening a new one:
 the scope trap extends group 2's baseline chain (`designer.md:89` is *how* to
-measure a baseline; the new rule at `:93` is *over what corpus*), and the
+measure a baseline; the new rule, "A baseline measured over a narrower corpus
+than the row asserts over", is *over what corpus*), and the
 comparison-control rule extends group 4 as a sub-bullet under `designer.md`'s "A behavioural assertion whose expected value is an empty collection" bullet, not as a
 third top-level lead. Bolded-lead distribution moves from the measured
 baseline **2/2/2/2/1 = 9** (ADR-0037:22) to **2/3/2/2/1 = 10** — group 2 gains
@@ -150,7 +152,8 @@ criteria table's own pinned spans. One row, T12c, pinned
 `grep -c "Measure the baseline by running the row's own command against the pre-change tree"`
 over `designer.md` at **1** as a diff-hygiene survival assertion — while the
 scope-trap bullet this same plan inserts quotes that sentence **in full**
-(`designer.md:93`). The row was therefore **unsatisfiable by construction**:
+(`designer.md`'s "A baseline measured over a narrower corpus than the row
+asserts over" bullet). The row was therefore **unsatisfiable by construction**:
 the mirror of a vacuous row — a criterion that cannot pass rather than one
 that cannot fail — and *defective* (born wrong) rather than *decayed*. Caught
 during execution of Task 1, amended in the open on #324 to an expected **2**
@@ -162,7 +165,8 @@ during execution of Task 1, amended in the open on #324 to an expected **2**
 overstated the finding, and the correction is the more useful record.** It
 claimed a *generalizable new rule* was needed: "a set-level coherence check
 must screen new prose against every span the criteria table itself pins." That
-is not new. `designer.md:92` already rules on this exact shape and prescribes
+is not new. `designer.md`'s **A pinned total** bullet already rules on this
+exact shape and prescribes
 the remedy T12c failed to use:
 
 > **A pinned total** (`grep -c X` → 2, unchanged) — assert the **invariant**,
