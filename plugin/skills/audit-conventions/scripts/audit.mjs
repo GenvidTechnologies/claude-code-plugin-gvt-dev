@@ -18,8 +18,8 @@ import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { fileExists, dirExists, commandExists } from './lib/probes.mjs';
 import { walkComponents } from './lib/component-walk.mjs';
+import { evaluateFile, evaluateConfig, evaluateTool } from './lib/evaluate.mjs';
 import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
@@ -99,6 +99,19 @@ async function main() {
   const pathOverrides = repoConfig?.paths;
   const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
+  const resolveFile = (entry) => {
+    const resolved = resolveExpectationPath(pathOverrides, entry.path);
+    return {
+      path: join(REPO_ROOT, resolved),
+      probe: resolved.endsWith('/') ? 'directory' : 'file',
+      target: entry.path,
+    };
+  };
+  const resolveConfig = (entry) => {
+    const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
+    return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${inFile}` };
+  };
+
   const findings = [];
   const declaredPaths = new Set();
   for (const component of components) {
@@ -107,10 +120,10 @@ async function main() {
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
-      findings.push(await evaluateFile(component, entry, pathOverrides));
+      findings.push(await evaluateFile(component, entry, resolveFile));
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry, configFilename, pathOverrides));
+      findings.push(await evaluateConfig(component, entry, resolveConfig));
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
@@ -216,97 +229,6 @@ async function main() {
 }
 
 // ---- evaluate --------------------------------------------------------------
-
-// A trailing slash in the declared `path` marks a DIRECTORY expectation (e.g.
-// `docs/decisions/`, declared by create-adr, plan-task, and tech-writer).
-// fileExists() is isFile()-strict, so checking a directory through it always
-// reported "file not found" no matter what was on disk — telling a repo that
-// HAD scaffolded docs/decisions/ that it hadn't, and (had any directory
-// expectation ever been marked required) failing the audit outright.
-async function evaluateFile(component, entry, pathOverrides) {
-  const required = entry.required !== false;
-  const resolvedPath = resolveExpectationPath(pathOverrides, entry.path);
-  const path = join(REPO_ROOT, resolvedPath);
-  const isDir = resolvedPath.endsWith('/');
-  const exists = isDir ? await dirExists(path) : await fileExists(path);
-
-  if (exists) {
-    return { kind: 'file', component: component.name, target: entry.path, ok: true, required };
-  }
-  return {
-    kind: 'file',
-    component: component.name,
-    target: entry.path,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `${isDir ? 'directory' : 'file'} not found${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
-
-async function evaluateConfig(component, entry, configFilename = '.gvt-agent.json', pathOverrides) {
-  const required = entry.required !== false;
-  const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
-  const filePath = join(REPO_ROOT, inFile);
-
-  let parsed;
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    return {
-      kind: 'config',
-      component: component.name,
-      target: `${entry.key} in ${inFile}`,
-      ok: false,
-      required,
-      severity: required ? 'error' : 'info',
-      detail: err.code === 'ENOENT' ? `${inFile} not found` : `${inFile} unreadable (${err.message})`,
-      reason: entry.reason,
-    };
-  }
-
-  const result = resolveKey(parsed, entry.key);
-  if (result.found) {
-    return {
-      kind: 'config',
-      component: component.name,
-      target: `${entry.key} in ${inFile}`,
-      ok: true,
-      required,
-    };
-  }
-  return {
-    kind: 'config',
-    component: component.name,
-    target: `${entry.key} in ${inFile}`,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `key not found (path broke at "${result.missingAt}")${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
-
-function evaluateTool(component, entry) {
-  const required = entry.required !== false;
-  const exists = commandExists(entry.command);
-
-  if (exists) {
-    return { kind: 'tool', component: component.name, target: entry.command, ok: true, required };
-  }
-  return {
-    kind: 'tool',
-    component: component.name,
-    target: entry.command,
-    ok: false,
-    required,
-    severity: required ? 'error' : 'info',
-    detail: `command not found on PATH${required ? '' : ' (optional)'}`,
-    reason: entry.reason,
-  };
-}
 
 // Cross-checks .gvt-agent.json `repo.host` against the actual git remote and
 // returns a non-fatal warning finding on mismatch (or null when there's nothing
