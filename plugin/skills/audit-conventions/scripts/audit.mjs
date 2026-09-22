@@ -18,6 +18,7 @@ import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
+import { fileExists, dirExists, commandExists } from './lib/probes.mjs';
 import { extractFrontmatter } from './lib/frontmatter.mjs';
 import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
@@ -484,36 +485,12 @@ async function loadHygieneConfig(configFilename = '.gvt-agent.json') {
 
 // ---- helpers ---------------------------------------------------------------
 
-async function fileExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function dirExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 async function readFileOrNull(path) {
   try {
     return await fs.readFile(path, 'utf8');
   } catch {
     return null;
   }
-}
-
-function commandExists(cmd) {
-  const checker = process.platform === 'win32' ? 'where' : 'which';
-  const result = spawnSync(checker, [cmd], { stdio: 'pipe' });
-  return result.status === 0;
 }
 
 // ---- report ----------------------------------------------------------------
