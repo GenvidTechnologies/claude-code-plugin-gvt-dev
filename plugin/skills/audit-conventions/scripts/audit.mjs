@@ -19,8 +19,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { fileExists, dirExists, commandExists } from './lib/probes.mjs';
-import { extractFrontmatter } from './lib/frontmatter.mjs';
-import { descriptionLength, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
+import { walkComponents } from './lib/component-walk.mjs';
+import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { resolveKey } from './lib/config-resolve.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
 import {
@@ -196,64 +196,23 @@ async function main() {
     fileCount: await candidateFileCount(REPO_ROOT, hygieneOpts),
   };
 
-  // Practice Coverage (epic #142): the plugin-side census is the same
-  // `components` walk used for expectations above (each entry already
-  // carries its parsed `pillar` field); the consumer-side adoption verdict
-  // is currently wired for the `environment` pillar only (the wiki — the
-  // only pillar with a detector today, per lib/practice-detect.mjs).
+  // Practice Coverage (epic #142): the plugin-side census is derived from the
+  // same `components` walk used for expectations above (pillarCensus below
+  // carries each entry's raw `metadata.pillar` scalar — computePluginCoverage
+  // parses it itself); the consumer-side adoption verdict is currently wired
+  // for the `environment` pillar only (the wiki — the only pillar with a
+  // detector today, per lib/practice-detect.mjs).
   const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
   const practices = { environment: wikiAdoption.verdict };
 
-  const report = formatReport(state, findings, { cfgHasC3, pillarCensus: components, practices, scanSummary });
+  const pillarCensus = components.map((c) => ({
+    name: c.name, type: c.type, pillar: c.frontmatter?.metadata?.pillar,
+  }));
+  const report = formatReport(state, findings, { cfgHasC3, pillarCensus, practices, scanSummary });
   console.log(report);
 
   const hasErrors = findings.some((f) => f.severity === 'error');
   process.exit(hasErrors ? 1 : 0);
-}
-
-// ---- walk ------------------------------------------------------------------
-
-async function walkComponents(pluginRoot) {
-  const components = [];
-
-  const skillsDir = join(pluginRoot, 'skills');
-  if (await dirExists(skillsDir)) {
-    const skills = await fs.readdir(skillsDir, { withFileTypes: true });
-    for (const entry of skills) {
-      if (!entry.isDirectory()) continue;
-      const skillFile = join(skillsDir, entry.name, 'SKILL.md');
-      if (!(await fileExists(skillFile))) continue;
-      const component = await loadComponent('skill', entry.name, skillFile);
-      if (component) components.push(component);
-    }
-  }
-
-  const agentsDir = join(pluginRoot, 'agents');
-  if (await dirExists(agentsDir)) {
-    const agents = await fs.readdir(agentsDir, { withFileTypes: true });
-    for (const entry of agents) {
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-      const name = entry.name.replace(/\.md$/, '');
-      const component = await loadComponent('agent', name, join(agentsDir, entry.name));
-      if (component) components.push(component);
-    }
-  }
-
-  return components;
-}
-
-async function loadComponent(type, name, filePath) {
-  const content = await fs.readFile(filePath, 'utf8');
-  const descLen = descriptionLength(content);
-  const fm = extractFrontmatter(content);
-  if (!fm) return { type, name, expects: null, descLen, pillar: [] };
-  return {
-    type,
-    name,
-    expects: fm.metadata?.expects ?? null,
-    descLen,
-    pillar: parsePillars(fm.metadata?.pillar),
-  };
 }
 
 // ---- evaluate --------------------------------------------------------------
@@ -417,13 +376,14 @@ function evaluateDescriptionLengths(components) {
   if (!AUDITING_PLUGIN_SOURCE) return [];
   const findings = [];
   for (const c of components) {
-    if (c.descLen > MAX_DESCRIPTION_CHARS) {
+    const descChars = descriptionLengthOf(c.frontmatter);
+    if (descChars > MAX_DESCRIPTION_CHARS) {
       findings.push({
         kind: 'desc-length',
         ok: false,
         severity: 'warning',
         detail:
-          `${c.type} \`${c.name}\` description is ${c.descLen} chars, over the ` +
+          `${c.type} \`${c.name}\` description is ${descChars} chars, over the ` +
           `${MAX_DESCRIPTION_CHARS}-char \`skillListingMaxDescChars\` cap — it is ` +
           `silently truncated in the skill listing. Trim it.`,
       });
@@ -441,7 +401,7 @@ function evaluatePillarDeclarations(components) {
   const validIds = new Set(PILLARS.map((p) => p.id));
   const findings = [];
   for (const c of components) {
-    for (const id of c.pillar ?? []) {
+    for (const id of parsePillars(c.frontmatter?.metadata?.pillar)) {
       if (validIds.has(id)) continue;
       findings.push({
         kind: 'pillar-unknown',
