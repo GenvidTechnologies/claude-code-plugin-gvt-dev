@@ -1,5 +1,5 @@
 // Walks the plugin's installed skills/ and agents/ trees and loads each
-// component's frontmatter. Extracted from audit.mjs for the @genvidtech/audit-core
+// component's frontmatter. Extracted from audit.mjs for the audit-core
 // package split (#457); see ADR-0057 verdict B (plugin-root parameter, not a
 // "components directory") and verdict D (the loader returns parsed
 // frontmatter rather than pre-deriving policy fields from it).

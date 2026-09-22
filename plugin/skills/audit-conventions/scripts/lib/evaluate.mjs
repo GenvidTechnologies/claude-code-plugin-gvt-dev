@@ -1,6 +1,6 @@
 // Evaluates metadata.expects entries (files, config keys, tools) into
-// expectation findings. Extracted from audit.mjs for the @genvidtech/audit-core
-// package split (#457).
+// expectation findings. Extracted from audit.mjs for the audit-core package
+// split (#457).
 //
 // This module is repo-root-blind: it does no path resolution of its own. A
 // caller-supplied `resolve` closure does that work and hands back an

@@ -1,6 +1,6 @@
 // Filesystem/command existence probes used to evaluate metadata.expects
-// entries. Extracted verbatim from audit.mjs for the @genvidtech/audit-core
-// package split (#457).
+// entries. Extracted verbatim from audit.mjs for the audit-core package
+// split (#457).
 
 import { promises as fs } from 'node:fs';
 import { spawnSync } from 'node:child_process';
