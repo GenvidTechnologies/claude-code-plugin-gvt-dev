@@ -21,13 +21,29 @@ export const MAX_DESCRIPTION_CHARS = 1536;
 // Extract the rendered description string from a skill/agent file's
 // frontmatter, or null when there is no frontmatter or no description key.
 export function renderedDescription(content) {
-  const fm = extractFrontmatter(content);
-  const description = fm?.description;
-  return typeof description === 'string' ? description.trim() : null;
+  return renderedDescriptionOf(extractFrontmatter(content));
 }
 
 // Length of the rendered description, or 0 when there is none.
 export function descriptionLength(content) {
   const desc = renderedDescription(content);
+  return desc ? desc.length : 0;
+}
+
+// Same rendering/trimming adapter as renderedDescription, but starting from
+// an already-parsed frontmatter object rather than re-extracting it from raw
+// content. renderedDescription is defined in terms of this function, so the
+// two stay provably equivalent by construction rather than by duplicated
+// logic. Lets a caller that already parsed frontmatter (component-walk.mjs)
+// avoid a second parse of the same file.
+export function renderedDescriptionOf(fm) {
+  const description = fm?.description;
+  return typeof description === 'string' ? description.trim() : null;
+}
+
+// Length equivalent of descriptionLength, but starting from an already-parsed
+// frontmatter object (or null) instead of raw content.
+export function descriptionLengthOf(fm) {
+  const desc = renderedDescriptionOf(fm);
   return desc ? desc.length : 0;
 }
