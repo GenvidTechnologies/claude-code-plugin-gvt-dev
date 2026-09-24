@@ -53,7 +53,7 @@ files matching the pattern was **0**. With the exemption applied it is **0** aga
 are still scanned, since the exemption names two specific paths.
 
 **Decided: exempt `plugin/package.json` and `plugin/package-lock.json` by full path, on the `code_only` line
-only** — the `always` pattern (`C:/repos/|C:/Users/|fninoles`) is untouched, since it is a different concern
+only** — the `always` pattern (local Windows paths and the maintainer's username) is untouched, since it is a different concern
 run over all tracked files. A bare `':!package.json'` pathspec was considered and rejected: a git pathspec
 literal matches only the root-level path, so it would not exempt the nested `plugin/package.json` at all
 (measured). A wildcard exemption (e.g. `':!**/package.json'`) was also considered and rejected, because it
