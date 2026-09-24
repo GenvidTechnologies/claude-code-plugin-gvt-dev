@@ -5,10 +5,10 @@
     "languages": ["javascript"]
   },
   "commands": {
-    "test": "node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs && node --test plugin/skills/maintain-wiki/scripts/test/*.test.mjs",
+    "test": "npm ci --prefix plugin --ignore-scripts --no-audit --no-fund && node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs && node --test plugin/skills/maintain-wiki/scripts/test/*.test.mjs",
     "lint": "",
     "build": "",
-    "validate": "claude plugin validate plugin && node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs && node --test plugin/skills/maintain-wiki/scripts/test/*.test.mjs && node plugin/skills/audit-conventions/scripts/audit.mjs"
+    "validate": "npm ci --prefix plugin --ignore-scripts --no-audit --no-fund && claude plugin validate plugin && node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs && node --test plugin/skills/create-adr/scripts/test/*.test.mjs && node --test plugin/skills/maintain-wiki/scripts/test/*.test.mjs && node plugin/skills/audit-conventions/scripts/audit.mjs"
   },
   "repo": {
     "default_branch": "main",
