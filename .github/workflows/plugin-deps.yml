@@ -1,0 +1,37 @@
+name: plugin-deps
+
+# release-plugin runs only `claude plugin validate` — it never runs this
+# repo's commands.validate, which is the only place npm ci / the audit
+# preflight / the test suite are wired together. Without this workflow, a
+# plugin/package.json and plugin/package-lock.json drift (or a broken
+# dependency preflight) would ship undetected: Claude Code's own `npm ci`
+# install would then fail silently on every consumer, surfacing only as the
+# audit's preflight exiting 2. See issue #477 and ADR-0060.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: npm ci (drift gate)
+        run: npm ci --prefix plugin --ignore-scripts --no-audit --no-fund
+
+      - name: Run audit-conventions unit tests
+        run: node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
+
+      - name: Run audit-conventions against the plugin source
+        run: node plugin/skills/audit-conventions/scripts/audit.mjs
