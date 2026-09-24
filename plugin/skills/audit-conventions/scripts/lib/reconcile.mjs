@@ -91,7 +91,7 @@ export function clearPreviewedPlan(repoRoot) {
 
 export function diffPlans(previewed, current) {
   // Defensive: if previewed is null/undefined treat it as having no actions.
-  // The audit.mjs caller guards for null and skips the reconciliation message
+  // The audit-main.mjs caller guards for null and skips the reconciliation message
   // entirely, so this branch is belt-and-suspenders.
   const previewedActions = previewed?.actions ?? [];
   const currentActions = current?.actions ?? [];

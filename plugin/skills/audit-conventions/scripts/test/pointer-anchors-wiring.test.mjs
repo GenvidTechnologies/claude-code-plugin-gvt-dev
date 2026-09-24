@@ -1,5 +1,5 @@
 // Integration test: scanPointerAnchors (lib/pointer-anchors.mjs) is wired into
-// audit.mjs's AUDITING_PLUGIN_SOURCE block only — it must NOT fire when
+// audit-main.mjs's AUDITING_PLUGIN_SOURCE block only — it must NOT fire when
 // auditing a consuming repo. AUDITING_PLUGIN_SOURCE is path-derived from
 // PLUGIN_ROOT (this script's own install location) sitting inside REPO_ROOT
 // (the audited cwd); a temp-dir fixture repo is, by construction, never that,
