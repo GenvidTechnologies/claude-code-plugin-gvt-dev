@@ -282,6 +282,25 @@ test('formatPreflightFailure: no-lockfile — explains the host skips the instal
   assert.match(message, /skipped/);
 });
 
+// no-lockfile and lockfile-drift are packaging defects in the release, so their
+// cause and fix must differ from the install-state verdicts'. In particular,
+// the source-checkout fix must not be `npm ci`, which refuses to run on a
+// missing or drifted lockfile.
+for (const verdict of ['no-lockfile', 'lockfile-drift']) {
+  test(`formatPreflightFailure: ${verdict} — names a packaging cause and a fix that works for it`, () => {
+    const message = formatPreflightFailure({ ok: false, verdict });
+    assert.match(message, /Likely cause: this gvt-dev release was packaged/);
+    assert.match(message, /npm install --prefix plugin/);
+    assert.doesNotMatch(message, /^Fix:.*npm ci/m);
+  });
+}
+
+test('formatPreflightFailure: install-state verdicts keep the reinstall fix', () => {
+  const message = formatPreflightFailure({ ok: false, verdict: 'absent', dependency: DEP, version: '1.0.0' });
+  assert.match(message, /^Fix:.*npm ci --prefix plugin/m);
+  assert.doesNotMatch(message, /packaged without a usable lockfile/);
+});
+
 test('formatPreflightFailure: ok verdict -> empty string', () => {
   assert.equal(formatPreflightFailure({ ok: true, verdict: 'ok' }), '');
 });

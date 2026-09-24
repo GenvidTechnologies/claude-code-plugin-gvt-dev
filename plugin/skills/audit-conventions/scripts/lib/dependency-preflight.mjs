@@ -225,8 +225,20 @@ export async function checkPluginDependencies({ pluginRoot, importer = (spec) =>
   return { ok: true, verdict: 'ok', dependencies: Object.keys(dependencies) };
 }
 
+// Two fix hints, because the verdicts split into two classes. An install-state
+// verdict (absent, unusable, tree-incomplete, version-mismatch) means the
+// local install did not finish, so reinstalling fixes it. A packaging verdict
+// (no-lockfile, lockfile-drift) means the release itself shipped without a
+// usable lockfile. Reinstalling the same version reproduces that, and from a
+// source checkout `npm ci` refuses to run on it, so the fix is a newer release
+// or a regenerated lockfile.
 const FIX_HINT =
   'Fix: run `claude plugin update gvt-dev@gvt-plugins` to reinstall (or, from a source checkout, `npm ci --prefix plugin`).';
+const PACKAGING_CAUSE =
+  'Likely cause: this gvt-dev release was packaged without a usable lockfile. This is a defect in the plugin release, not in your install.';
+const PACKAGING_FIX_HINT =
+  'Fix: update to a newer gvt-dev release if one exists (`claude plugin update gvt-dev@gvt-plugins`) and report the problem to the gvt-dev maintainers. From a source checkout, regenerate the lockfile with `npm install --prefix plugin` and commit it.';
+const PACKAGING_VERDICTS = new Set(['no-lockfile', 'lockfile-drift']);
 const INSTALL_SKIPPED_CAUSE =
   "Likely cause: the plugin's dependency install did not complete or was skipped — Claude Code runs `npm ci` at plugin install, update, and session start, and does not block the plugin when it fails.";
 
@@ -283,7 +295,12 @@ export function formatPreflightFailure(verdict) {
     lines.push(`Underlying error: ${firstLineWithoutErrorCode(verdict.error)}`);
   }
 
-  lines.push(FIX_HINT);
+  if (PACKAGING_VERDICTS.has(verdict.verdict)) {
+    lines.push(PACKAGING_CAUSE);
+    lines.push(PACKAGING_FIX_HINT);
+  } else {
+    lines.push(FIX_HINT);
+  }
   lines.push(`Node ${process.version} (the plugin's dependencies require Node >= ${MIN_NODE_MAJOR}).`);
 
   return lines.join('\n');
