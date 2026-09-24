@@ -2,7 +2,7 @@
   "name": "gvt-dev",
   "private": true,
   "dependencies": {
-    "@genvidtech/audit-core": "0.2.0"
+    "@genvidtech/audit-core": "0.1.0"
   },
   "imports": {
     "#audit-core": "@genvidtech/audit-core"
