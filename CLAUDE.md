@@ -61,6 +61,9 @@ claude plugin install gvt-dev@gvt-plugins
 claude plugin update gvt-dev@gvt-plugins
 claude plugin details gvt-dev
 
+# Install the audit's own runtime dependency (needed for a git checkout; the Claude Code cache installs it automatically)
+npm ci --prefix plugin --ignore-scripts
+
 # Run audit-conventions tests
 node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
 
@@ -213,7 +216,7 @@ The marketplace catalog ([`claude-code-gvt-marketplace`](https://github.com/Genv
 
 ## Testing
 
-The plugin has no top-level test runner (no `package.json`, no npm). The audit-conventions skill ships its own unit tests using native `node --test`:
+The plugin has no top-level test runner script. `plugin/package.json` exists, but only to declare the audit's one runtime dependency (`@genvidtech/audit-core`, see ADR-0060) — it carries no `scripts` block. `commands.validate`/`commands.test` run `npm ci --prefix plugin` first to install that dependency, then hand off to native `node --test`, which is what the audit-conventions skill's own unit tests use:
 
 ```bash
 node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
