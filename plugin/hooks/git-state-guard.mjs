@@ -1,9 +1,8 @@
 // Git state-mutation guard — PreToolUse entry point.
 //
-// NOT wired into hooks.json yet (gvt-dev #557/#566): this ships the
-// classifier, the entry script, and its tests as a standalone unit so it can
-// be reviewed and exercised before it's added to the Bash matcher alongside
-// pre-commit-lint.js.
+// Wired in hooks.json as the second PreToolUse Bash hook, after
+// pre-commit-lint.js (gvt-dev #557/#566). It only ever denies a gvt-dev
+// subagent's call; main-thread commands carry no agent_id and pass through.
 //
 // Reads a PreToolUse Bash payload from stdin (`agent_id`, `agent_type`,
 // `tool_input.command`), classifies the command via

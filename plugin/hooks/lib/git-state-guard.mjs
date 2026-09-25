@@ -101,10 +101,10 @@ function denyResult(subcommand) {
     deny: true,
     reason:
       `Blocked: 'git ${subcommand}' mutates working-tree, index, or history state ` +
-      '(development-principles.md principle #14 — an orchestrated agent must never ' +
+      '(development-principles.md principle #14 — a gvt-dev agent must never ' +
       'stash, reset, checkout, switch, restore, clean, merge, rebase, cherry-pick, ' +
-      'revert, pull, or am, since that state may belong to a sibling task or the ' +
-      "orchestrator). Use a non-mutating alternative instead: 'git show <ref>:<path>' " +
+      'revert, pull, or am, since the index and working tree may hold a sibling ' +
+      "task's or the user's uncommitted work). Use a non-mutating alternative instead: 'git show <ref>:<path>' " +
       "to read prior content, 'git diff --staged' to inspect what's staged, or the " +
       'baseline already supplied in your dispatch brief. If you believe you ' +
       'mis-staged a file, report back to the orchestrator instead of mutating the ' +
