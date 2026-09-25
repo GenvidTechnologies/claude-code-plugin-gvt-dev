@@ -24,7 +24,10 @@ claude-code-plugin-gvt-dev/
 │   ├── agents/<name>.md              # Flat .md files (not directories)
 │   ├── hooks/
 │   │   ├── hooks.json                # Hook wiring (PreToolUse on Bash)
-│   │   └── pre-commit-lint.js        # The actual hook script
+│   │   ├── pre-commit-lint.js        # Lints commands.lint before every git commit
+│   │   ├── git-state-guard.mjs       # PreToolUse entry point: denies state-mutating git for gvt-dev:* subagents
+│   │   ├── lib/git-state-guard.mjs   # Pure, unit-tested classifier (dependency injected, testable with a stub parser)
+│   │   └── test/                     # node:test suite for the classifier
 │   ├── docs/
 │   │   └── development-principles.md # Shared reference imported by skills/agents
 │   └── skeleton/                     # Pristine placeholder files greenfield --fix writes (source of truth for the scaffold)

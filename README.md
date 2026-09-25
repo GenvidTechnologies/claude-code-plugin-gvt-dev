@@ -57,7 +57,7 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 
 `analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`, `wiki-librarian`.
 
-**Hook:** `pre-commit-lint` runs `commands.lint` from `.gvt-agent.json` before every `git commit` in the Bash tool.
+**Hooks:** `pre-commit-lint` runs `commands.lint` from `.gvt-agent.json` before every `git commit` in the Bash tool. `git-state-guard` blocks state-mutating git subcommands (`stash`, `reset`, `checkout`, `switch`, `restore`, `clean`, `merge`, `rebase`, `cherry-pick`, `revert`, `pull`, `am`) when a `gvt-dev:*` subagent runs them, per `development-principles.md` principle #14; main-thread commands are never affected, and it fails open.
 
 **Complementary official plugins:** gvt-dev stays focused on project-aware workflows and intentionally does *not* reimplement generic tooling. For standalone PR review use Anthropic's `/code-review` command (its `code-review` plugin); for quality-only refactor passes use the `code-simplifier` agent. The in-pipeline `gvt-dev:code-reviewer` agent is scoped to the `plan-task` review gate, not full PR review.
 
