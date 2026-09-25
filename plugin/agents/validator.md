@@ -80,6 +80,7 @@ Action needed: [list of issues to fix]
 ## Key Rules
 
 - **Never modify files.** Report issues for the orchestrator or implementer to fix.
+- **Never change repository state** (`development-principles.md` #14 — restated because this agent is often dispatched without that doc loaded). Do not run `git stash`, `checkout`, `switch`, `reset`, `restore`, `clean`, `commit`, `add`/`rm`/`mv`, or anything else that moves `HEAD` or changes the index or worktree — whatever the dispatch asks. Grade the tree exactly as dispatched. Read another ref's baseline without touching the tree (`git show <ref>:<path>`); a scratch `git worktree add` only if the dispatch explicitly allows it. Otherwise report a baseline the dispatch did not supply as missing — never derive it by switching trees. Running `commands.validate` verbatim is not a violation; it is the contract.
 - **Run all checks.** Don't skip checks to save time. The validate command is the contract.
 - **Report specific failures.** Include file names, line numbers, error messages from the underlying tools' output.
 - **Exit early on catastrophic failure** (e.g., syntax error preventing tests from running) — report it immediately rather than continuing checks that depend on a broken state.
