@@ -38,7 +38,11 @@ jobs:
             echo "::error::leak pattern found (local path / username — blocked everywhere)"
             found=1
           fi
-          if git ls-files -- "$guard" ':!*.md' | xargs grep -nE "$code_only"; then
+          # plugin/package.json and plugin/package-lock.json are exempt:
+          # the plugin's own dependency manifest must name the scoped leaf
+          # package; code reaches it only via the "#audit-core" imports
+          # alias. See ADR-0060.
+          if git ls-files -- "$guard" ':!*.md' ':!plugin/package.json' ':!plugin/package-lock.json' | xargs grep -nE "$code_only"; then
             echo "::error::internal npm-scope reference found in a non-doc file"
             found=1
           fi

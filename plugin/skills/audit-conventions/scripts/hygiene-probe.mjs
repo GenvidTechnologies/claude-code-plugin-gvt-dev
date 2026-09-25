@@ -74,7 +74,7 @@ function parseArgs(argv) {
   return args;
 }
 
-// Mirrors audit.mjs's own loadHygieneConfig (graceful — missing file, missing
+// Mirrors audit-main.mjs's own loadHygieneConfig (graceful — missing file, missing
 // key, or invalid JSON all resolve to undefined so the scanners fall back to
 // their own baked-in defaults).
 async function loadHygieneConfig(repoRoot) {

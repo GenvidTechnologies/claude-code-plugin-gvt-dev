@@ -135,7 +135,7 @@ A third example is the `wiki` block, configuring the LLM-wiki compounding-memory
 2. For each declared expectation (file, config key, or shell tool), checks whether the current repo satisfies it.
 3. Reports missing/mismatched expectations with the reason the skill needs them.
 
-Run with no arguments to validate. Exit code is `0` if satisfied, `1` if any required expectation is unmet, and `2` if the audit itself hits an unexpected error — a broken tool, not a failed check. `--fix` has its own exit semantics: `0` once a dry-run preview completes, `1` if `--apply` refuses a dirty working tree or an applied action fails.
+Run with no arguments to validate. Exit code is `0` if satisfied, `1` if any required expectation is unmet, and `2` if the audit could not run — an unexpected error in the audit itself, or its own dependency is unavailable — a broken tool, not a failed check. `--fix` has its own exit semantics: `0` once a dry-run preview completes, `1` if `--apply` refuses a dirty working tree or an applied action fails.
 
 **Fix mode** (`--fix`):
 1. Detects the repo's state — greenfield (no conventions yet), legacy (still on the old template-rendered system), or migrated.

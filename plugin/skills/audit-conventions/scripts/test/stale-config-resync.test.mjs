@@ -1,5 +1,5 @@
 // Integration test for the stale-config --fix "Manual follow-up" retired-token
-// report (staleFollowup / STALE_REPORT_TOKENS in audit.mjs).
+// report (staleFollowup / STALE_REPORT_TOKENS in audit-main.mjs).
 //
 // Deliberately report-only: this scan never rewrites anything in the repo, it
 // only surfaces CLAUDE.md / docs/ lines still mentioning the retired

@@ -6,7 +6,7 @@
 // ok: false, severity, detail }`, no `component`/`target`/`reason` fields since
 // these aren't tied to a component's metadata.expects declaration.
 //
-// Wired into audit.mjs's validate mode (main()) as info/warning findings.
+// Wired into audit-main.mjs's validate mode (main()) as info/warning findings.
 
 import { promises as fs } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';

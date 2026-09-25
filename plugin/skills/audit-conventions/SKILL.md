@@ -44,7 +44,7 @@ The script:
 3. **Parses each component's frontmatter** to collect `metadata.expects.{files,config,tools}`.
 4. **Evaluates each expectation** against the current working directory.
 5. **Prints a structured report** grouped by severity (errors for required-but-missing; warnings for non-fatal repo-health drift; info for optional-but-missing).
-6. **Exits non-zero** — `1` if any required expectation is unmet, `2` on an unexpected error in the audit itself — so the skill can be wired into CI.
+6. **Exits non-zero** — `1` if any required expectation is unmet, `2` if the audit could not run — an unexpected error in the audit itself, or its own dependency is unavailable — so the skill can be wired into CI.
 
 ### 2. Read the report
 
@@ -151,7 +151,7 @@ The fifth content scan, **pointer-anchor**, checks the repo's *positional* citat
 
 **Practice Coverage** is a report section rather than a content scan, and it carries no findings at all — it's purely advisory, and a pillar showing `not adopted` can never move the exit code, by construction rather than by policy (there's no severity to assign it in the first place). It maps the plugin's four practice pillars (Spec, Verify, Environment, Moldable — declared via the opt-in `metadata.pillar` frontmatter key documented in `CONVENTIONS.md`'s "Practice-layer pillar declaration" section) against two columns that answer two different questions: **Components** is the plugin-side census — which installed skills/agents declare `metadata.pillar` for that pillar — while **Adoption** is the consumer-side verdict for the repo actually being audited. Today only Environment has a working consumer-side detector (the wiki); every other pillar reports **`not evaluated`**, meaning no detector exists yet for that pillar, not that the repo failed one. `not detectable` and `n/a by design` are likewise deliberate states, not gaps to close: Verify is `not detectable` because `write-eval` never shipped (#160 — there's no consumer-side artifact to look for), and Moldable is `n/a by design` because `build-probe` intentionally ships no config block, doc, template, agent, or repo artifact to detect (ADR-0018). Neither should be read as "TODO" or "unimplemented." A `> Pillar gap:` line appears only when a pillar has zero components declaring it. A related author-time check, **pillar-unknown**, warns on an unrecognized `metadata.pillar` value; like the README-inventory and principle-citation checks, it's gated to runs against the plugin's own source tree and can never fire in a consuming repo's audit.
 
-Exit code: `0` if no errors (warnings alone keep it 0); `1` if any required expectation is unmet; `2` if the audit itself hits an unexpected error, not a validation failure. `--fix` has its own exit semantics, separate from validate mode: `0` once a dry-run preview completes; `1` if `--apply` refuses a dirty working tree or an applied action fails.
+Exit code: `0` if no errors (warnings alone keep it 0); `1` if any required expectation is unmet; `2` if the audit could not run — an unexpected error in the audit itself, or its own dependency is unavailable — not a validation failure. `--fix` has its own exit semantics, separate from validate mode: `0` once a dry-run preview completes; `1` if `--apply` refuses a dirty working tree or an applied action fails.
 
 ## CI integration
 
@@ -162,3 +162,5 @@ node /path/to/genvid/skills/audit-conventions/scripts/audit.mjs
 ```
 
 Outside Claude Code, `${CLAUDE_PLUGIN_ROOT}` isn't substituted. In CI, either resolve the plugin's install path at job setup, or check the script in as a wrapper that points at the installed plugin (the plugin install lives in `~/.claude/plugins/cache/...` for user-scope installs).
+
+The plugin itself now carries `plugin/package.json` and a committed lockfile declaring one runtime dependency (`@genvidtech/audit-core`). Inside a Claude Code install, the host installs it automatically; `audit.mjs` preflights it before loading the rest of the audit and exits `2` with a legible message naming the dependency if the install didn't complete. Running `audit.mjs` from a plain git checkout of this repo — outside the Claude Code plugin cache, e.g. in a maintainer's dev loop or a CI job that checks the repo out directly — needs `npm ci --prefix <plugin dir>` first, since nothing there has run the host install (see ADR-0060).

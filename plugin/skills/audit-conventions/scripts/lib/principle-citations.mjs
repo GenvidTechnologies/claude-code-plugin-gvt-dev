@@ -9,7 +9,7 @@
 // plus `file`/`line` here since every finding is anchored to a specific
 // citation site.
 //
-// Wired author-time-only from audit.mjs's AUDITING_PLUGIN_SOURCE block — a
+// Wired author-time-only from audit-main.mjs's AUDITING_PLUGIN_SOURCE block — a
 // consumer repo can't fix the plugin's own citations, so it never runs there.
 
 import { promises as fs } from 'node:fs';
