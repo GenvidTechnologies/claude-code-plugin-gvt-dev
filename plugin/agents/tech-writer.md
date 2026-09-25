@@ -84,5 +84,6 @@ When dispatched (typically by `plan-task` Phase 4) to record an architecture or 
 
 - **Commit ownership depends on how you were invoked.** Standalone (doc-only maintenance): you commit. Dispatched by an orchestrator that owns the commit + validation gate (e.g. `plan-task`): stage your doc files, leave them uncommitted, and report what changed — the orchestrator commits after its gate. Your dispatch prompt tells you which mode you're in; default to standalone only when nothing says otherwise.
 - Stage only doc files (in both modes).
+- **Never change repository state to measure a before-state — in both modes** (`development-principles.md` #14). Your own `git add` (and `git mv`/`git rm`) of your task's files and, standalone, your commit are the deliverable; `git stash`, `reset`, `checkout`, `switch`, `restore` (including `--staged`) and `clean` are not — the index may hold a sibling's staged work (orchestrated) or the user's (standalone). Baselines come from the brief or `git show <ref>:<path>`, a scratch worktree only if the dispatch allows it; otherwise report the baseline as not supplied.
 - Commit message format follows the project's `CLAUDE.md` (typically a doc-specific scope or `docs:` prefix).
 - `git commit -n` is acceptable when you commit (standalone) — docs don't need lint hooks.
