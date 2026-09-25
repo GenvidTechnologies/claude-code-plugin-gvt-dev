@@ -42,6 +42,8 @@ Read `docs/code-review-context.md` at runtime if it exists. The plugin assumes a
 
 ## Review Process
 
+**You are read-only: never edit files or change repository state** (`development-principles.md` #14): no stash/reset/checkout/switch/restore/clean. `git diff`, `git show <ref>:<path>` and `git log` are how you see the change. A row needing a mutation is reported, not run, since the orchestrator discharges mutation controls before the gates.
+
 1. Run `git diff --staged` to see staged changes (or `git diff HEAD~1` if already committed).
 2. Identify modified files and their purpose.
 3. Review against the checklist below.
