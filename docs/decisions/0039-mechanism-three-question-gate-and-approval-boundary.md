@@ -45,10 +45,11 @@ corollary's existing footprint —
 — returns **7 sites**. Two of them cite the corollary for a materially
 different purpose than the one this change addresses:
 `plugin/agents/issue-triage-analyst.md:54` (the `issue-triage-analyst`'s
-per-issue enrichment step) and `plugin/skills/triage-issues/SKILL.md:313-314`
-(the `triage-issues` mutation-recipe step) both cite it to **detect an issue
-body that prescribes a mechanism and offer to rewrite it to outcome +
-acceptance criteria** — a concern about how a *tracking item is written*.
+per-issue enrichment step) and `plugin/skills/triage-issues/SKILL.md:328-330`
+("dropping the prescribed mechanism") — its `triage-issues` mutation-recipe
+step — both cite it to **detect an issue body that prescribes a mechanism and
+offer to rewrite it to outcome + acceptance criteria** — a concern about how
+a *tracking item is written*.
 This change's three questions are a **plan-time re-verification technique**
 (read a dependency's shipped `dist` for call ordering; check a mechanism
 against the issue's own stated acceptance criteria; route an unweighed fork
@@ -143,11 +144,12 @@ Alternatives considered and rejected:
 
 1. **Promoting the three-question technique (or a pointer to it) into
    `development-principles.md`'s stale-mechanism corollary (principle #8).**
-   Rejected per decision (1): the corollary's other two citation sites
-   (`issue-triage-analyst.md:54`, `triage-issues/SKILL.md:313-314`) use it for
-   issue-authoring detection, not plan-time re-verification technique, and
-   widening it would hand two unrelated components prose they'd never read
-   for its stated purpose.
+   Rejected per decision (1): the corollary's other two citation sites —
+   `issue-triage-analyst.md:54` and `triage-issues/SKILL.md:328-330`
+   ("dropping the prescribed mechanism") — use it for issue-authoring
+   detection, not plan-time re-verification technique, and widening it would
+   hand two unrelated components prose they'd never read for its stated
+   purpose.
 2. **A one-sentence "C-lite" compromise** — naming the insufficiency in the
    shared corollary while leaving the technique in `plan-task/SKILL.md`.
    Rejected: it fragments the two sharpenings (#248's sufficiency check,

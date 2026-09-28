@@ -549,13 +549,6 @@
     },
     {
       "file": "docs/decisions/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "plugin/skills/triage-issues/SKILL.md:313-314",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "90d1e443f348"
-    },
-    {
-      "file": "docs/decisions/0039-mechanism-three-question-gate-and-approval-boundary.md",
       "pointer": "SKILL.md:68",
       "occurrence": 0,
       "kind": "pointer-ambiguous",
@@ -574,13 +567,6 @@
       "occurrence": 2,
       "kind": "pointer-ambiguous",
       "digest": null
-    },
-    {
-      "file": "docs/decisions/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "triage-issues/SKILL.md:313-314",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "90d1e443f348"
     },
     {
       "file": "docs/decisions/0040-capture-mechanism-property-prescription-and-self-reversing-marker.md",

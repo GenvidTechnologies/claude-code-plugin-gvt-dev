@@ -51,23 +51,32 @@ block in `.gvt-agent.json` (access mechanics).
 
 ## 0. Preconditions & scope
 
-1. **Resolve the conventions contract.** Locate `docs/issue-triage.md`, and
-   independently check for a **near-miss** — a hand-authored triage doc that
-   exists under a different name. This guards against a real failure mode
-   (issue #178): a repo can carry a doc written before the `triage-bugs` →
-   `triage-issues` rename, or under a typo'd name, and under exact-filename
-   resolution it reads as "absent" while the real, hand-authored contract sits
-   dead and unread.
+1. **Resolve the conventions contract.** Resolve the contract path first:
+   `paths['docs/issue-triage.md']` from `.gvt-agent.json` when set, else
+   `docs/issue-triage.md` — the runtime path resolution `CONVENTIONS.md`
+   describes (the same override `/gvt-dev:audit-conventions` itself uses).
+   Every later mention of the contract in this skill means this resolved
+   path. Locate it, and independently check for a **near-miss** — a
+   hand-authored triage doc that exists under a different name. This guards
+   against a real failure mode (issue #178): a repo can carry a doc written
+   before the `triage-bugs` → `triage-issues` rename, or under a typo'd name,
+   and under exact-filename resolution it reads as "absent" while the real,
+   hand-authored contract sits dead and unread.
 
-   **Scan the top level of `docs/` only — explicitly non-recursive.** This
-   repo is the proof case: a recursive scan would also match
-   `docs/superpowers/plans/` and `docs/superpowers/specs/`, frozen and
-   accurate historical design records from before the rename — files that must
-   never be touched or flagged as a live near-miss.
+   **Scan the top level of the resolved contract's parent directory, and the
+   top level of `docs/` — both explicitly non-recursive.** (With no override,
+   the resolved path's parent *is* `docs/`, and this is one scan.) This repo
+   is the proof case for the non-recursive constraint: a recursive scan would
+   also match `docs/superpowers/plans/` and `docs/superpowers/specs/`, frozen
+   and accurate historical design records from before the rename — files that
+   must never be touched or flagged as a live near-miss. Scanning `docs/` in
+   addition to the resolved parent catches a stale pre-migration copy of
+   `docs/issue-triage.md` left behind there after the contract moves
+   elsewhere (e.g. into a wiki bundle).
 
-   Either of these two independent signals qualifies a `docs/*.md` file as a
-   near-miss:
-   - **Filename glob:** `docs/*[Tt]riage*.md`.
+   Either of these two independent signals qualifies a `*.md` file found by
+   the scan above as a near-miss:
+   - **Filename glob:** `*[Tt]riage*.md`.
    - **Marker line:** the file contains the line the bundled templates emit
      (`Project conventions consumed by …triage-issues`), matched tolerantly of
      the pre-rename name this doc was renamed from and of any plugin
@@ -76,7 +85,7 @@ block in `.gvt-agent.json` (access mechanics).
 
    Combine detection with canonical-file presence into four outcomes,
    resolved **before any routing to §0b**:
-   - **Canonical, no near-miss** (`docs/issue-triage.md` present) → proceed to
+   - **Canonical, no near-miss** (the resolved path present) → proceed to
      step 2.
    - **Near-miss, no canonical** → route to §0b's "Near-miss found" branch.
    - **Absent** (neither present) → route to §0b's "No contract at all"
@@ -122,14 +131,15 @@ tracker's **existing label vocabulary** — no analyst dispatch, no
 - **Summarize** what changed.
 
 When the groom reveals a backlog large or bug-heavy enough to warrant the full
-taxonomy, stop and offer to scaffold `docs/issue-triage.md` (→ §0b)
-rather than grooming on.
+taxonomy, stop and offer to scaffold the contract at its resolved path
+(→ §0b) rather than grooming on.
 
 ### 0b. Establish the contract
 
-**Near-miss found.** Step 1 detected a `docs/*.md` file that looks like the
-triage contract under a different name, with no `docs/issue-triage.md`
-present. Report, for every candidate:
+**Near-miss found.** Step 1 detected a file (under the resolved contract's
+parent directory, or under `docs/`) that looks like the triage contract under
+a different name, with no canonical file at the resolved path present.
+Report, for every candidate:
 - its path,
 - its first line,
 - its heading list (`##`/`###` lines), and
@@ -140,16 +150,16 @@ present. Report, for every candidate:
 present all of them — never auto-pick one.
 
 Offer three options via `AskUserQuestion`:
-- **Rename it to `docs/issue-triage.md`** — the **default**. `git mv` the file
+- **Rename it to the resolved path** — the **default**. `git mv` the file
   when it is tracked, a plain filesystem move otherwise; this preserves every
   hand-authored word. Then fall through to step 3 as if the contract had
-  always lived at the canonical path.
+  always lived at the resolved path.
 - **Replace it with a fresh scaffold** — destructive. Enumerate exactly what
   gets discarded (the file's path, size, and heading list) and, per
   `development-principles.md` principle #6, **preview the plan in one turn and
   apply it in the next**, only after the user has seen it, before writing
   anything.
-- **Keep both** — the skill still reads only `docs/issue-triage.md`, so state
+- **Keep both** — the skill still reads only the resolved path, so state
   plainly that choosing to keep both files leaves the near-miss dead and
   unread, and carry it into the §5 closing summary as an outstanding item.
 
@@ -170,9 +180,9 @@ outcome without an unattended mutation of the user's file. With `--force`,
 take the documented default (rename), then §0c's required-headings check runs
 report-only and its TOC-index sub-block runs automatically.
 
-**No contract at all.** If `docs/issue-triage.md` is absent, offer to scaffold it — do
-not guess conventions. Two bundled templates exist; pick the one that matches the
-repo's label scheme:
+**No contract at all.** If the resolved path is absent, offer to scaffold it
+there — do not guess conventions. Two bundled templates exist; pick the one
+that matches the repo's label scheme:
 - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
   **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
 - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.flat.template.md` — the
@@ -189,8 +199,14 @@ a heuristic, not a verdict. Once scaffolded, remind the user to set the
 (the flat variant reuses `question` for needs-info). In `--non-interactive`, copy
 the detected default without asking.
 
-Once scaffolded, §0c's TOC-index sub-block indexes the new
-`docs/issue-triage.md` in `docs/TOC.md`.
+**Wiki-bundle target.** When the resolved path lies inside `wiki.wikiDir`
+(read from `.gvt-agent.json`, default `wiki`), the scaffolded file opens with
+a minimal OKF frontmatter block — `---`, `type: convention`, `---` — before
+the template body: the wiki bundle requires a non-empty `type` on every page
+(see `docs/wiki-schema.md`, OKF §4.1/§11.2).
+
+Once scaffolded, §0c's TOC-index sub-block indexes the new contract at its
+resolved path in `docs/TOC.md`.
 
 **If the user declines scaffolding, or a quick scan of the open backlog shows no
 bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
@@ -252,7 +268,7 @@ discover docs through the index.
 
 Once the contract is resolved (copied from a template, renamed from a
 near-miss, or already sitting at the canonical path), add a one-line entry
-for `docs/issue-triage.md` to `docs/TOC.md` under a **Process** heading
+for the resolved path to `docs/TOC.md` under a **Process** heading
 (create the heading if absent) — mirroring how `plan-task` indexes a
 scaffolded `docs/decisions/` record. Interactively, **offer** it; in
 `--non-interactive`, add it **automatically**. Make it idempotent (skip if
@@ -262,7 +278,7 @@ the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
 path is not the contract.
 
 **Stale duplicate.** Only on step 1's **both present** outcome, where a
-near-miss sits alongside a canonical `docs/issue-triage.md`. The canonical
+near-miss sits alongside a canonical file at the resolved path. The canonical
 file is the contract and the run proceeds normally; the near-miss is dead
 weight that may contradict it — and, having never been read, may be the older
 and more carefully written of the two. Report it by path, with its first line
@@ -276,11 +292,11 @@ In `--non-interactive`, defer and write nothing; under `--force`, take
 ## 1. Dispatch exploration (Phase 1)
 
 Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
-`bugTracker` block verbatim, and the path `docs/issue-triage.md`. It returns one
-structured triage report. **Do not fetch issue bodies yourself** — keeping them
-off this thread is the point of the split. Mode flags (`--non-interactive`,
-`--force`) govern only this thread's approval and write behavior; the analyst
-always runs read-only regardless.
+`bugTracker` block verbatim, and the resolved contract path (§0 step 1). It
+returns one structured triage report. **Do not fetch issue bodies
+yourself** — keeping them off this thread is the point of the split. Mode
+flags (`--non-interactive`, `--force`) govern only this thread's approval and
+write behavior; the analyst always runs read-only regardless.
 
 ## 2. Phase 1 review — cross-cutting findings (interactive)
 
@@ -300,7 +316,7 @@ For each action-set issue, gather its work from two places in the analyst's
 report: its **Per-issue enrichment** row, and any Phase 1 relational findings
 whose membership includes this issue's number (duplicate-cluster membership, an
 accepted dependency, an approved split). Present both together, then apply the
-approved changes using the **Mutation recipes** in `docs/issue-triage.md`:
+approved changes using the **Mutation recipes** in the resolved contract:
 
 - type / priority / field updates, label add/remove, body language fixes;
 - `needsInfoLabel` + a comment when a required field is missing (or let the
@@ -332,7 +348,7 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Near-miss contract resolution — rename to `docs/issue-triage.md`, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
+| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred** unless `--force`, which takes **remove** |
 | Field / label / priority / body / language | per-issue approval | auto-apply |
 | `needs-info` label + comment | approve | auto-apply |
