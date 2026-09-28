@@ -126,6 +126,14 @@ A third example is the `wiki` block, configuring the LLM-wiki compounding-memory
 
 `plan-task` reuses the existing `bugTracker` block — `readOne` to fetch the current issue body, plus the host-native issue-edit command (e.g. `gh issue edit --body-file`) — to read and write the plan's pre-committed `## Acceptance Criteria` checklist in the issue body. No new config block is introduced. For issue-less runs, the checklist falls back to a committed `docs/acceptance/<slug>.md` file. See ADR-0017. For a plan targeting more than one issue, only the **canonical** target (the lowest issue number among them) gets the checklist via that same `readOne` + issue-edit round-trip; each **sibling** target instead gets a pointer to the canonical issue via the host-native comment command (e.g. `gh issue comment {id} --body …` for `bugTracker.kind: github`) — no second checklist copy, and no new `bugTracker` field.
 
+### Runtime path resolution
+
+Any skill, agent, or script that consults a declared expectation path — the `path` a component declares in its `metadata.expects` — must resolve it through the same mechanism `.gvt-agent.json`'s `paths` override already provides: look up the declared path as the override key, and fall back to the declared path unchanged when no override is set. This is exactly how `/gvt-dev:audit-conventions` resolves expectations today (implemented by `resolveExpectationPath` in the audit's `path-overrides` library) — so skills, agents and scripts resolve a declared expectation path through the same override the audit uses, keeping every consumer of a declared path in agreement about where the file actually lives.
+
+- **Precedence**: the override wins when present; with no matching `paths` entry, resolution is byte-identical to the declared default.
+- **Key identity**: the override key is the component's declared path itself — one override name per location, never a second name for the same location, which would drift.
+- `triage-issues` and its `issue-triage-analyst` agent are the first adopters beyond the audit itself, resolving their `docs/issue-triage.md` expectation through this override. Further components are expected to adopt the same mechanism across the docs→wiki chain (#579).
+
 ## How `/gvt-dev:audit-conventions` works
 
 `audit-conventions` is the plugin's validator and migration tool.
