@@ -437,6 +437,156 @@ function findRepoRoot(startDir) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// New pure helpers for recursive/themed discovery, single-pass token rewrite
+// and frozen-path exclusion (added in #581 task 1). Exported for testing but
+// NOT YET WIRED into planRenumber/applyRenumber — that wiring lands in
+// #581 tasks 2-4 (F1-F3).
+// ---------------------------------------------------------------------------
+
+const DATE_NAMED_RE = /^\d{4}-\d{2}-\d{2}-/;
+
+/**
+ * Recursively discover ADR files under `dir`, skipping dot-directories and
+ * `node_modules`. An ADR is a basename matching `NNNN-slug.md` that is NOT
+ * date-shaped (`NNNN-NN-NN-...`) — that excludes date-stamped notes files.
+ * `index.md`, `README.md` and any other non-matching file are ignored.
+ *
+ * Returns `{ adrs, duplicates }`:
+ *   - `adrs`: every discovered ADR as one sequence sorted by `num` ascending,
+ *     each `{ num, name, slug, relDir, path }`. `relDir` is the POSIX-style
+ *     directory of the file relative to `dir` (`''` for a file directly in
+ *     `dir`, `'alpha'` for `dir/alpha/...`). `path` is the file's POSIX-style
+ *     path relative to `dir` (`relDir` joined with `name`).
+ *   - `duplicates`: `Map<num, path[]>` — only numbers that occur more than
+ *     once across the whole tree (e.g. across two themes).
+ *
+ * @param {string} dir
+ * @returns {{ adrs: Array<{num:number,name:string,slug:string,relDir:string,path:string}>, duplicates: Map<number,string[]> }}
+ */
+export function discoverAdrs(dir) {
+  const adrs = [];
+
+  function walk(current, relDir) {
+    let entries;
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (entry.name === 'node_modules') continue;
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full, relDir ? `${relDir}/${entry.name}` : entry.name);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (DATE_NAMED_RE.test(entry.name)) continue;
+      const m = ADR_FILENAME_RE.exec(entry.name);
+      if (!m) continue;
+      adrs.push({
+        num: parseInt(m[1], 10),
+        name: entry.name,
+        slug: m[2],
+        relDir,
+        path: relDir ? `${relDir}/${entry.name}` : entry.name,
+      });
+    }
+  }
+
+  walk(dir, '');
+  adrs.sort((a, b) => a.num - b.num);
+
+  const byNum = new Map();
+  for (const adr of adrs) {
+    if (!byNum.has(adr.num)) byNum.set(adr.num, []);
+    byNum.get(adr.num).push(adr.path);
+  }
+  const duplicates = new Map();
+  for (const [num, paths] of byNum) {
+    if (paths.length > 1) duplicates.set(num, paths);
+  }
+
+  return { adrs, duplicates };
+}
+
+/**
+ * Escape a string for literal use inside a RegExp alternation.
+ */
+function escapeForRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Build a single-pass whole-filename-token rewriter from a map of old
+ * basename -> new basename. Never chain per-name replaces (that mis-rewrites
+ * a shifted sequence, e.g. 0002-x.md -> 0003-x.md -> 0004-x.md).
+ *
+ * The returned function performs ONE regex pass over the input text, using a
+ * single alternation of every old basename (regex-escaped, longest first so
+ * a longer filename that embeds a shorter one — e.g.
+ * `0007-supersedes-0003-c.md` embedding `0003-c.md` — matches whole first),
+ * bounded by a lookbehind/lookahead that requires the match to be a whole
+ * filename token (not a substring of a longer token, an extension, or a
+ * trailing digit run).
+ *
+ * @param {Map<string,string>} oldToNew
+ * @returns {(text: string) => { text: string, hits: Array<{index:number, oldText:string, newText:string}> }}
+ */
+export function buildTokenRewriter(oldToNew) {
+  const names = [...oldToNew.keys()];
+  if (names.length === 0) {
+    return (text) => ({ text, hits: [] });
+  }
+  const alternation = [...names]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeForRegExp)
+    .join('|');
+  const tokenRe = new RegExp(
+    `(?<![A-Za-z0-9_.-])(?:${alternation})(?![A-Za-z0-9_-]|[.][A-Za-z0-9])`,
+    'g',
+  );
+
+  return function rewrite(text) {
+    const hits = [];
+    const rewritten = text.replace(tokenRe, (match, offset) => {
+      const newText = oldToNew.get(match);
+      hits.push({ index: offset, oldText: match, newText });
+      return newText;
+    });
+    return { text: rewritten, hits };
+  };
+}
+
+/**
+ * True when `rel` (a repo-relative POSIX path) is frozen history that a
+ * renumber sweep must scan-and-list but never rewrite:
+ *   - any `CHANGELOG.md` (by basename, any directory)
+ *   - anything under `docs/superpowers/`
+ *   - anything under `<cfg.rawDir ?? 'raw'>/`
+ *   - exactly `<cfg.wikiDir ?? 'wiki'>/log.md`
+ *   - exactly `.pointer-baseline.json` (repo root)
+ *
+ * @param {string} rel
+ * @param {{ rawDir?: string, wikiDir?: string }} [cfg]
+ * @returns {boolean}
+ */
+export function isFrozenPath(rel, cfg = {}) {
+  const normalized = rel.replace(/\\/g, '/').replace(/^\.\//, '');
+  const rawDir = cfg.rawDir ?? 'raw';
+  const wikiDir = cfg.wikiDir ?? 'wiki';
+  const basename = normalized.split('/').pop();
+
+  if (basename === 'CHANGELOG.md') return true;
+  if (normalized === 'docs/superpowers' || normalized.startsWith('docs/superpowers/')) return true;
+  if (normalized === rawDir || normalized.startsWith(`${rawDir}/`)) return true;
+  if (normalized === `${wikiDir}/log.md`) return true;
+  if (normalized === '.pointer-baseline.json') return true;
+  return false;
+}
+
 /**
  * Format a dry-run plan for stdout.
  */
