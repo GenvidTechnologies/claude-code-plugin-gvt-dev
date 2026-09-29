@@ -65,24 +65,6 @@ function walkTree(dir, base = dir, out = []) {
   return out;
 }
 
-// Patterns for AMBIGUOUS detection: bare ADR number references in text.
-// Matches: "ADR 6", "ADR 0006", "decision 0006", "// See ADR 0006", etc.
-function buildAmbiguousPatterns(movedNums) {
-  // For each moved number, build patterns
-  return movedNums.flatMap((n) => {
-    const padded = pad(n);
-    const bare = String(n);
-    return [
-      // "ADR 6" or "ADR 0006"
-      new RegExp(`\\bADR\\s+${bare}\\b`, 'gi'),
-      new RegExp(`\\bADR\\s+${padded}\\b`, 'gi'),
-      // "decision 0006"
-      new RegExp(`\\bdecision\\s+${padded}\\b`, 'gi'),
-      new RegExp(`\\bdecision\\s+${bare}\\b`, 'gi'),
-    ];
-  });
-}
-
 /**
  * True when `buf`'s first 8 KB contains a NUL byte — a cheap binary-file
  * heuristic used to exclude non-text files from the corpus scan.
@@ -164,9 +146,13 @@ function classifyTokenKind(text, index) {
  * Scan a single file for ambiguous (bare number) refs. Unambiguous
  * (whole-filename-token) refs are found separately, via buildTokenRewriter().
  *
- * ambiguous: bare patterns like "ADR 0006", "decision 0006" — report only.
+ * ambiguous: bare patterns like "ADR 0006", "decision 0006", and the hyphen
+ * form "ADR-0006"/"ADR-6" — report only, never rewritten (ADR-0011 rule).
+ * `reportFile` is the citing file's post-move path (a file that itself moved
+ * is reported at its new location); `file` keeps the pre-move relPath used to
+ * read the content, for compatibility with existing consumers.
  */
-function scanAmbiguous({ relPath, content, movedNums }) {
+function scanAmbiguous({ relPath, content, movedNums, reportFile }) {
   const ambiguous = [];
   const lines = content.split('\n');
 
@@ -174,28 +160,33 @@ function scanAmbiguous({ relPath, content, movedNums }) {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Ambiguous: bare "ADR N" / "ADR NNNN" / "decision NNNN" patterns
+    // Ambiguous: bare "ADR N" / "ADR NNNN" / "decision NNNN" / "ADR-N" /
+    // "ADR-NNNN" patterns — only for moved numbers.
     for (const n of movedNums) {
       const padded = pad(n);
       const bare = String(n);
-      // Check for "ADR N" patterns (case-insensitive)
-      const adrPatterns = [
-        new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
-        new RegExp(`\\bADR\\s+${padded}\\b`, 'i'),
-        new RegExp(`\\bdecision\\s+${padded}\\b`, 'i'),
-      ];
-      // Exclude bare==padded dup
-      const uniquePatterns = bare === padded
-        ? [new RegExp(`\\bADR\\s+${bare}\\b`, 'i'), new RegExp(`\\bdecision\\s+${bare}\\b`, 'i')]
-        : adrPatterns;
+      const patterns = bare === padded
+        ? [
+            new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bdecision\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bADR-${bare}\\b`, 'i'),
+          ]
+        : [
+            new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bADR\\s+${padded}\\b`, 'i'),
+            new RegExp(`\\bdecision\\s+${padded}\\b`, 'i'),
+            new RegExp(`\\bADR-${bare}\\b`, 'i'),
+            new RegExp(`\\bADR-${padded}\\b`, 'i'),
+          ];
 
       let matched = false;
-      for (const pat of uniquePatterns) {
+      for (const pat of patterns) {
         if (pat.test(line)) { matched = true; break; }
       }
       if (matched) {
         ambiguous.push({
           file: relPath,
+          reportFile: reportFile ?? relPath,
           line: lineNum,
           lineText: line,
           num: n,
@@ -326,10 +317,11 @@ export function planRenumber({ dir, insertAt }) {
     }
     if (isBinaryBuffer(raw)) continue;
     const content = raw.toString('utf8');
+    const frozen = isFrozenPath(relPath, wikiCfg);
 
     const { hits } = rewriter(content);
     if (hits.length > 0) {
-      if (isFrozenPath(relPath, wikiCfg)) {
+      if (frozen) {
         if (!excludedSeen.has(relPath)) {
           excludedSeen.add(relPath);
           excluded.push(relPath);
@@ -350,7 +342,12 @@ export function planRenumber({ dir, insertAt }) {
       }
     }
 
-    allAmbiguous.push(...scanAmbiguous({ relPath, content, movedNums }));
+    // Frozen paths are history: scan-and-list (via `excluded` above) but
+    // never included in the ambiguous report either.
+    if (!frozen) {
+      const reportFile = movedRelPathToNew.get(relPath) ?? relPath;
+      allAmbiguous.push(...scanAmbiguous({ relPath, content, movedNums, reportFile }));
+    }
   }
 
   return {

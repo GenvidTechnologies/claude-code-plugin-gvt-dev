@@ -755,7 +755,7 @@ test('#581 ADR-NNNN moved-only, report-only', () => {
     const hits = plan.ambiguous.filter((r) => r.file.includes('a.ts'));
     assert.ok(hits.some((r) => /ADR-0003/.test(r.lineText)), 'moved number 3 (hyphen form) is reported');
     assert.ok(!hits.some((r) => /ADR-0001\b/.test(r.lineText)), 'unmoved ADR-0001 is a control and must not be reported');
-    assert.ok(!hits.some((r) => /ADR 0002/.test(r.lineText)), 'space-separated form is not the ADR-NNNN pattern and must not be reported');
+    assert.ok(hits.some((r) => /ADR 0002/.test(r.lineText)), 'space-separated form of a moved number is still reported (control, #581 row 15; matches the pre-existing ADR 0006 test)');
   } finally {
     cleanup(root);
   }
