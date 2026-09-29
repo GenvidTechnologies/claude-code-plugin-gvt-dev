@@ -8,7 +8,8 @@
 //   planRenumber({ dir, insertAt })  -> plan object (pure, no fs writes)
 //   applyRenumber({ dir, insertAt }) -> performs moves + edits + prints report
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join, relative, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
@@ -833,9 +834,17 @@ function formatPlan(plan) {
 // CLI entry point
 // ---------------------------------------------------------------------------
 
-const isMain =
-  process.argv[1] &&
-  resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
+// Compare canonical real paths: a plain resolve() string compare misses the
+// same file reached through a Windows 8.3 short name (e.g. a TEMP path) or a
+// symlink, and the CLI then silently does nothing and exits 0.
+const isMain = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync.native(process.argv[1]) === realpathSync.native(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 
 if (isMain) {
   let values;
