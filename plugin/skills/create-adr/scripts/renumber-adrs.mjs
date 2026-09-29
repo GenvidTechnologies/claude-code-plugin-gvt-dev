@@ -20,36 +20,10 @@ import { parseArgs } from 'node:util';
 const ADR_FILENAME_RE = /^(\d{4})-(.+)\.md$/;
 
 /**
- * Parse ADR filename into { num, slug } or null.
- */
-function parseAdrName(name) {
-  const m = ADR_FILENAME_RE.exec(name);
-  if (!m) return null;
-  return { num: parseInt(m[1], 10), slug: m[2], name };
-}
-
-/**
  * Zero-pad a number to 4 digits.
  */
 function pad(n) {
   return String(n).padStart(4, '0');
-}
-
-/**
- * List all ADR files in dir, sorted by number ascending.
- * Returns [{ num, slug, name }]
- */
-function listAdrs(dir) {
-  let entries;
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return entries
-    .map(parseAdrName)
-    .filter(Boolean)
-    .sort((a, b) => a.num - b.num);
 }
 
 // ---------------------------------------------------------------------------
@@ -206,8 +180,30 @@ function scanFile({ relPath, content, oldToNew, movedOldNames, movedNums, adrDir
  * @returns {object} plan
  */
 export function planRenumber({ dir, insertAt }) {
-  const adrs = listAdrs(dir);
-  const highest = adrs.length > 0 ? adrs[adrs.length - 1].num : 0;
+  if (!Number.isInteger(insertAt) || insertAt < 1) {
+    const err = new Error(`--insert-at must be an integer >= 1, got: ${insertAt}`);
+    err.code = 'EINSERTAT';
+    throw err;
+  }
+
+  const { adrs, duplicates } = discoverAdrs(dir);
+
+  if (duplicates.size > 0) {
+    const parts = [...duplicates.entries()].map(
+      ([num, paths]) => `ADR ${pad(num)} used by: ${paths.join(', ')}`,
+    );
+    const err = new Error(`Duplicate ADR numbers found across theme directories: ${parts.join('; ')}`);
+    err.code = 'EDUPLICATE';
+    throw err;
+  }
+
+  if (adrs.length === 0) {
+    const err = new Error(`No ADR files found under ${dir}`);
+    err.code = 'ENOADRS';
+    throw err;
+  }
+
+  const highest = adrs[adrs.length - 1].num;
 
   // If N == H+1 or N > H, nothing to move (append / out-of-range)
   if (insertAt > highest) {
@@ -228,20 +224,27 @@ export function planRenumber({ dir, insertAt }) {
     if (!adr) continue; // gap in numbering — skip
     const oldNum = k;
     const newNum = k + 1;
-    const oldName = `${pad(oldNum)}-${adr.slug}.md`;
+    const oldName = adr.name;
     const newName = `${pad(newNum)}-${adr.slug}.md`;
+    const relDir = adr.relDir;
+    const oldPath = adr.path;
+    const newPath = relDir ? `${relDir}/${newName}` : newName;
     moves.push({
       oldNum,
       newNum,
       oldName,
       newName,
       slug: adr.slug,
+      relDir,
+      oldPath,
+      newPath,
     });
   }
 
   // Heading edits: for each moved file, update `# NNNN. ` heading
   const headingEdits = moves.map((m) => ({
     filename: m.newName, // the file after rename
+    path: m.newPath, // the file's post-move path relative to dir
     oldHeadingPrefix: `# ${pad(m.oldNum)}.`,
     newHeadingPrefix: `# ${pad(m.newNum)}.`,
   }));
@@ -337,11 +340,14 @@ export function applyRenumber({ dir, insertAt }) {
     return plan;
   }
 
-  // Perform git mv highest-down (moves are already in that order)
+  // Perform git mv highest-down (moves are already in that order). Use the
+  // move's relDir-aware oldPath/newPath (not the bare oldName/newName) so a
+  // themed move (file inside a theme subdirectory) resolves to its real
+  // location instead of a nonexistent direct child of `dir`.
   for (const move of plan.moves) {
-    const oldPath = join(dir, move.oldName);
-    const newPath = join(dir, move.newName);
-    const result = spawnSync('git', ['mv', oldPath, newPath], {
+    const fromPath = join(dir, move.oldPath ?? move.oldName);
+    const toPath = join(dir, move.newPath ?? move.newName);
+    const result = spawnSync('git', ['mv', fromPath, toPath], {
       cwd: repoRoot,
       encoding: 'utf8',
     });
@@ -642,28 +648,51 @@ const isMain =
   resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
 
 if (isMain) {
-  const { values } = parseArgs({
-    options: {
-      dir: { type: 'string' },
-      'insert-at': { type: 'string' },
-      apply: { type: 'boolean', default: false },
-    },
-  });
+  let values;
+  try {
+    ({ values } = parseArgs({
+      options: {
+        dir: { type: 'string' },
+        'insert-at': { type: 'string' },
+        apply: { type: 'boolean', default: false },
+      },
+    }));
+  } catch (err) {
+    console.error(`Error: invalid command-line arguments: ${String(err.message).split('\n')[0]}`);
+    process.exit(1);
+  }
 
   const dir = values['dir'];
-  const insertAt = parseInt(values['insert-at'], 10);
+  const insertAtRaw = values['insert-at'];
 
-  if (!dir || isNaN(insertAt)) {
+  if (!dir) {
     console.error('Usage: node renumber-adrs.mjs --dir <adr-dir> --insert-at <N> [--apply]');
+    process.exit(1);
+  }
+
+  if (!insertAtRaw || !/^\d+$/.test(insertAtRaw) || parseInt(insertAtRaw, 10) < 1) {
+    console.error(`Error: --insert-at must be a positive integer, got: ${insertAtRaw ?? '(missing)'}`);
+    process.exit(1);
+  }
+
+  const insertAt = parseInt(insertAtRaw, 10);
+
+  if (insertAt > 9999) {
+    console.error(`Error: --insert-at ${insertAt} exceeds the maximum ADR number 9999.`);
     process.exit(1);
   }
 
   const absDir = resolve(dir);
 
-  if (values['apply']) {
-    applyRenumber({ dir: absDir, insertAt });
-  } else {
-    const plan = planRenumber({ dir: absDir, insertAt });
-    console.log(formatPlan(plan));
+  try {
+    if (values['apply']) {
+      applyRenumber({ dir: absDir, insertAt });
+    } else {
+      const plan = planRenumber({ dir: absDir, insertAt });
+      console.log(formatPlan(plan));
+    }
+  } catch (err) {
+    console.error(`Error: ${String(err.message).split('\n')[0]}`);
+    process.exit(1);
   }
 }
