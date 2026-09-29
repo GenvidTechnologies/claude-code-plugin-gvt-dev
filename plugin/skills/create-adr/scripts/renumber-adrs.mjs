@@ -243,6 +243,16 @@ export function planRenumber({ dir, insertAt }) {
       headingEdits: [],
       unambiguous: [],
       ambiguous: [],
+      // Formatting-only additions (F4): discoveredCount/dir/repoRoot mirror
+      // the full-plan branch below so formatPlan() can render the same
+      // "Discovered N ADRs under <dir>" header and Summary line regardless
+      // of which branch produced the plan. excluded/excludedOccurrenceCount
+      // are always empty/zero here since no scan runs on this early exit.
+      discoveredCount: adrs.length,
+      dir,
+      repoRoot: findRepoRoot(dir) ?? dirname(dir),
+      excluded: [],
+      excludedOccurrenceCount: 0,
     };
   }
 
@@ -307,6 +317,11 @@ export function planRenumber({ dir, insertAt }) {
   const allAmbiguous = [];
   const excluded = [];
   const excludedSeen = new Set();
+  // Occurrence count (not file count) of frozen-path token hits — the `U`
+  // figure in the dry-run Summary line (F4). Counted here, alongside the
+  // existing `excluded` file-path list, rather than by re-scanning at
+  // format time.
+  let excludedOccurrenceCount = 0;
 
   for (const relPath of trackedFiles) {
     let raw;
@@ -326,6 +341,7 @@ export function planRenumber({ dir, insertAt }) {
           excludedSeen.add(relPath);
           excluded.push(relPath);
         }
+        excludedOccurrenceCount += hits.length;
       } else {
         const lineIndex = buildLineIndex(content);
         const newFile = movedRelPathToNew.get(relPath);
@@ -358,6 +374,8 @@ export function planRenumber({ dir, insertAt }) {
     unambiguous: allUnambiguous,
     ambiguous: allAmbiguous,
     excluded,
+    excludedOccurrenceCount,
+    discoveredCount: adrs.length,
     repoRoot,
     dir,
     oldToNew,
@@ -505,11 +523,13 @@ export function applyRenumber({ dir, insertAt }) {
     }
   }
 
-  // Print ambiguous report (never modified)
+  // Print ambiguous report (never modified), grouped by file — shares its
+  // rendering with the dry-run's ambiguous section (F4).
   if (plan.ambiguous.length > 0) {
     console.log('\n--- Ambiguous references (review manually, NOT auto-fixed) ---');
-    for (const ref of plan.ambiguous) {
-      console.log(`  ${ref.file}:${ref.line}: ${ref.lineText.trim()}`);
+    const groups = groupByFile(plan.ambiguous, (ref) => ref.reportFile ?? ref.file);
+    for (const line of formatGroupedByFile(groups, (ref) => ref.lineText.trim())) {
+      console.log(line);
     }
     console.log('--- End ambiguous report ---\n');
   }
@@ -691,46 +711,119 @@ export function isFrozenPath(rel, cfg = {}) {
 }
 
 /**
+ * Group an array of ref-like objects (each carrying a `.line`) by a citing
+ * path derived via `keyFn`, preserving first-seen file order. Shared by the
+ * dry-run reference-rewrite/ambiguous sections and the --apply ambiguous
+ * report, both of which render a "grouped by file" listing.
+ * @param {Array<object>} items
+ * @param {(item: object) => string} keyFn
+ * @returns {Map<string, object[]>}
+ */
+function groupByFile(items, keyFn) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return groups;
+}
+
+/**
+ * Render a grouped-by-file listing: one `path (N lines): Lx, Ly, …` header
+ * per file, followed by each affected line's detail (via `lineFormatter`).
+ * @param {Map<string, object[]>} groups
+ * @param {(item: object) => string} lineFormatter
+ * @returns {string[]}
+ */
+function formatGroupedByFile(groups, lineFormatter) {
+  const out = [];
+  for (const [file, items] of groups) {
+    const lineNums = items.map((item) => `L${item.line}`).join(', ');
+    out.push(`  ${file} (${items.length} lines): ${lineNums}`);
+    for (const item of items) {
+      out.push(`    L${item.line}: ${lineFormatter(item)}`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Compute the five Summary figures from a plan (#581 F4):
+ *   moves        — plan.moves.length
+ *   rewrites     — unambiguous reference-rewrite occurrences
+ *   rewriteFiles — distinct citing files among those occurrences
+ *   untouched    — frozen-path token occurrences left untouched
+ *   ambigLines   — distinct (file, line) pairs among ambiguous refs
+ * @param {object} plan
+ */
+function computeSummary(plan) {
+  const rewriteFiles = new Set(plan.unambiguous.map((r) => r.newFile ?? r.file));
+  const ambigLines = new Set(plan.ambiguous.map((r) => `${r.reportFile ?? r.file}:${r.line}`));
+  return {
+    moves: plan.moves.length,
+    rewrites: plan.unambiguous.length,
+    rewriteFiles: rewriteFiles.size,
+    untouched: plan.excludedOccurrenceCount ?? 0,
+    ambigLines: ambigLines.size,
+  };
+}
+
+function formatSummaryLine(s) {
+  return `Summary: ${s.moves} moves, ${s.rewrites} reference rewrites in ${s.rewriteFiles} files, ${s.untouched} left untouched, ${s.ambigLines} ambiguous lines`;
+}
+
+/**
  * Format a dry-run plan for stdout.
  */
 function formatPlan(plan) {
   const lines = ['--- ADR Renumber Dry-Run ---', ''];
+
+  const adrDirRel = plan.repoRoot ? relative(plan.repoRoot, plan.dir).replace(/\\/g, '/') : plan.dir;
+  lines.push(`Discovered ${plan.discoveredCount} ADRs under ${adrDirRel}`);
+
+  const summary = computeSummary(plan);
+
   if (plan.moves.length === 0) {
+    lines.push('');
     lines.push(`No moves needed: insert-at ${plan.insertAt} is beyond highest ADR ${plan.highest}.`);
+    lines.push('');
+    lines.push(formatSummaryLine(summary));
     return lines.join('\n');
   }
 
+  lines.push('');
   lines.push(`Insert slot at: ${plan.insertAt} (highest existing: ${plan.highest})`);
   lines.push('');
   lines.push('File moves (highest-down to avoid collisions):');
   for (const m of plan.moves) {
-    lines.push(`  ${m.oldName} -> ${m.newName}`);
-  }
-
-  if (plan.headingEdits.length > 0) {
-    lines.push('');
-    lines.push('Heading edits:');
-    for (const e of plan.headingEdits) {
-      lines.push(`  ${e.filename}: "${e.oldHeadingPrefix} ..." -> "${e.newHeadingPrefix} ..."`);
-    }
+    lines.push(`  ${joinRel(adrDirRel, m.oldPath ?? m.oldName)} -> ${joinRel(adrDirRel, m.newPath ?? m.newName)}`);
   }
 
   if (plan.unambiguous.length > 0) {
     lines.push('');
-    lines.push('Unambiguous reference rewrites (auto-fix in --apply):');
-    for (const r of plan.unambiguous) {
-      lines.push(`  ${r.file}:${r.line} [${r.kind}]: "${r.oldText}" -> "${r.newText}"`);
+    lines.push('Reference rewrites (grouped by file):');
+    const groups = groupByFile(plan.unambiguous, (r) => r.newFile ?? r.file);
+    lines.push(...formatGroupedByFile(groups, (r) => `[${r.kind}] "${r.oldText}" -> "${r.newText}"`));
+  }
+
+  if (plan.excluded.length > 0) {
+    lines.push('');
+    lines.push('Left untouched (frozen history — deliberately not rewritten):');
+    for (const f of plan.excluded) {
+      lines.push(`  ${f}`);
     }
   }
 
   if (plan.ambiguous.length > 0) {
     lines.push('');
     lines.push('Ambiguous references (review manually, never auto-fixed):');
-    for (const r of plan.ambiguous) {
-      lines.push(`  ${r.file}:${r.line}: ${r.lineText.trim()}`);
-    }
+    const groups = groupByFile(plan.ambiguous, (r) => r.reportFile ?? r.file);
+    lines.push(...formatGroupedByFile(groups, (r) => r.lineText.trim()));
   }
 
+  lines.push('');
+  lines.push(formatSummaryLine(summary));
   lines.push('');
   lines.push('Re-run with --apply to execute.');
   return lines.join('\n');
