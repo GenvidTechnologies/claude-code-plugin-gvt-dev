@@ -143,9 +143,25 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs \
   --dir <adr-dir> --insert-at <N>
 ```
 
-**Print the full output** (file moves, heading edits, unambiguous reference
-rewrites, ambiguous-reference list). Then **wait for user confirmation** before
-applying.
+The script discovers `NNNN-*.md` records **recursively at any depth** under
+`--dir` — theme subdirectories included — as **one** chronological sequence.
+`index.md`/`README.md` and date-named files (`NNNN-NN-NN-...`) are not ADRs and
+are skipped. It stops with exit 1, changing nothing, on: a duplicate number
+found anywhere under `--dir`, an `--insert-at` below 1 or non-integer, or no
+ADRs discovered at all.
+
+**Print the full output.** A dry run reports, in order: the discovered-ADR
+count; each move as a repo-relative `old -> new` path; unambiguous reference
+rewrites grouped by citing file; a "Left untouched" list (see §3f); the
+ambiguous-reference list, also grouped by file (see §3f); and a closing
+`Summary:` line tallying moves, reference rewrites, files touched, left-untouched
+occurrences, and ambiguous lines. The reference rewrite is a **single pass over
+every moved filename token**, in whatever path form it appears — a
+sibling-relative link, a cross-theme relative link, a root-absolute link, a
+`docs/TOC.md` row, a backticked bare or path-qualified `file.md` pointer, and
+occurrences inside `.json`/`.mjs` files.
+
+Then **wait for user confirmation** before applying.
 
 ### 3d. Apply on approval
 
@@ -153,6 +169,8 @@ applying.
 node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs \
   --dir <adr-dir> --insert-at <N> --apply
 ```
+
+Apply stages the renames and the heading and reference edits.
 
 ### 3e. Author the record at N
 
@@ -163,13 +181,46 @@ it to stage only — do not commit.
 
 ### 3f. Ambiguous-reference report
 
-Print the script's ambiguous-reference list (bare `ADR N` / `// See ADR N`
-matches in `.md` and source files). Tell the user:
+The scan flags bare mentions of a **moved** number in any tracked text file —
+`ADR N`, `ADR-NNNN`, and `decision N`. These are report-only and never
+rewritten; their context determines whether they point to the old or new
+number. Print the script's ambiguous-reference list, grouped by file. Tell the
+user:
 
 > These were not auto-fixed — their context determines whether they point to the
 > old or new number. Please review and update manually.
 
 This skill never blindly replaces ambiguous references.
+
+The dry run's "Left untouched" list reports that frozen history
+(`CHANGELOG.md`, `docs/superpowers/`, the wiki raw tree and `log.md`) and
+`.pointer-baseline.json` are deliberately not rewritten — triage those by hand
+if needed.
+
+### 3g. Pointer baseline
+
+Only when the ADR repo carries a `.pointer-baseline.json` (the pointer-anchor
+ratchet maintained by `audit-conventions`): re-key it before running
+`commands.validate`, since a renumber moves the very files the baseline's
+entries point at.
+
+1. Probe for a rename mode:
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/skills/audit-conventions/scripts/pointer-baseline.mjs --help
+   ```
+   If the help text lists `--rename`, pass it every `old -> new` move from the
+   dry run (`old=new`).
+2. Otherwise, run `--accept-new` **without** `--write` first and read its
+   output: confirm every newly-added entry pairs with a pruned entry under a
+   renamed path — evidence the renumber produced it, not unrelated drift. Only
+   once that's confirmed, re-run with `--write` added.
+
+`--accept-new` **also accepts any unrelated new debt** already present in the
+tree, not only the renumber's, takes fresh digests, and refuses — with no
+write — while any drift or broken pointer-anchor finding exists.
+
+A guard test naming an ADR path (this repo's pointer-baseline guard `CONTROL`)
+is rewritten by the renumber and stays red until the baseline is re-keyed.
 
 ## 4. First-use scaffold
 
@@ -207,5 +258,6 @@ per-file moves are safe. If running renumber steps manually, apply the same rule
    the staged set with `git status`.
 2. Commit using the project's commit format from `CLAUDE.md` (e.g.
    `docs: add ADR NNNN — <title>`; follow whatever the project uses).
-3. For an insertion: the renumber script's `git mv` operations are already staged;
-   tech-writer adds the new record; one commit covers both.
+3. For an insertion: the renumber's renames and its heading and reference edits are staged;
+   tech-writer adds the new record; one commit covers both. If §3g re-keyed
+   `.pointer-baseline.json`, stage it too.
