@@ -24,6 +24,7 @@ import {
   normalizeForMatch,
   parseLineSpec,
   parsePointersInLine,
+  renameExplainsDrift,
   scanPointerAnchors,
   stripEmphasisMarkers,
   verifyAnchor,
@@ -1530,6 +1531,79 @@ test('digestCitedRange: normalization-equivalent target text digests the same', 
   const dressed = linesOf('    When a refresh command exists, **do NOT treat** the copy as truth.');
   const cited = [{ start: 1, end: 1 }];
   assert.equal(digestCitedRange(plain, cited), digestCitedRange(dressed, cited));
+});
+
+// ---- renameExplainsDrift -------------------------------------------------------
+
+test('renameExplainsDrift: a target line naming the new basename explains drift against the old name', () => {
+  const before = linesOf('alpha', 'See analyst.md for the flow.', 'gamma');
+  const after = linesOf('alpha', 'See reviewer.md for the flow.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/reviewer.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [{ old: 'analyst.md', new: 'reviewer.md' }],
+  });
+  assert.equal(result, true);
+});
+
+test('renameExplainsDrift: a target line changed for reasons other than the rename is not explained', () => {
+  const before = linesOf('alpha', 'See analyst.md for the flow.', 'gamma');
+  const after = linesOf('alpha', 'See analyst.md for a completely different reason.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/analyst.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [{ old: 'analyst.md', new: 'reviewer.md' }],
+  });
+  assert.equal(result, false);
+});
+
+test('renameExplainsDrift: a rename chain reverse-maps both hops in one simultaneous pass', () => {
+  // a.md -> b.md, then b.md -> c.md. A sequential (rather than simultaneous)
+  // reverse-substitution would double-map the second hop's output back
+  // through the first hop's pattern; this fixture is built so that mistake
+  // produces a digest mismatch instead of a coincidentally-correct one.
+  const before = linesOf('alpha', 'See a.md and b.md together.', 'gamma');
+  const after = linesOf('alpha', 'See b.md and c.md together.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/c.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [
+      { old: 'a.md', new: 'b.md' },
+      { old: 'b.md', new: 'c.md' },
+    ],
+  });
+  assert.equal(result, true);
+});
+
+test('renameExplainsDrift: a same-basename directory move contributes no substitution', () => {
+  const target = linesOf('alpha', 'x.md content stays the same', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(target, ranges);
+  const pointer = ptr('wiki/decisions/t/x.md', '2');
+  const renames = [{ old: 'docs/decisions/x.md', new: 'wiki/decisions/t/x.md' }];
+
+  assert.equal(
+    renameExplainsDrift({ content: target, pointer, storedDigest, renames }),
+    true,
+  );
+
+  const changed = linesOf('alpha', 'x.md content is now different', 'gamma');
+  assert.equal(
+    renameExplainsDrift({ content: changed, pointer, storedDigest, renames }),
+    false,
+  );
 });
 
 // ---- the ratchet: fixtures ----------------------------------------------------

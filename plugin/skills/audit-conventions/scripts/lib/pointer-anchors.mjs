@@ -28,7 +28,7 @@
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { listUnder } from './fs-walk.mjs';
 import { gitTrackedFiles } from './git-info.mjs';
@@ -997,6 +997,46 @@ export function digestCitedRange(content, ranges) {
   }
   if (parts.length === 0) return null;
   return createHash('sha256').update(parts.join('\n')).digest('hex').slice(0, DIGEST_LENGTH);
+}
+
+// True iff `storedDigest` is what the cited range would have digested to
+// BEFORE `renames` happened — the read that turns a rename-only drift into an
+// explained one rather than "the content actually changed".
+//
+// Reverse-maps every renamed BASENAME (new -> old) over `content` in ONE
+// simultaneous pass, so a rename chain restores through every hop instead of
+// re-mapping what an earlier hop already produced. A pair whose old and new
+// basenames are equal (a same-basename directory move) contributes no
+// substitution. `pointer` is a baseline entry's raw pointer text; its cited
+// range is read the same way `parseLineSpec` reads any pointer's line spec —
+// the text after the pointer's last colon. Returns false for a null stored
+// digest, a line spec that doesn't parse, or a range outside `content`
+// (`digestCitedRange` returns null for that, which never equals a digest).
+export function renameExplainsDrift({ content, pointer, storedDigest, renames }) {
+  if (storedDigest == null) return false;
+
+  const colon = pointer.lastIndexOf(':');
+  if (colon === -1) return false;
+  const spec = pointer.slice(colon + 1);
+  if (!/^[0-9]+(?:-[0-9]+)?(?:,[0-9]+(?:-[0-9]+)?)*$/.test(spec)) return false;
+  const ranges = parseLineSpec(spec);
+
+  const reverse = new Map();
+  for (const { old, new: next } of renames) {
+    const oldBase = basename(old);
+    const newBase = basename(next);
+    if (oldBase !== newBase) reverse.set(newBase, oldBase);
+  }
+
+  let reconstructed = content;
+  if (reverse.size > 0) {
+    // Longest first, so a basename that is a prefix of another can't win the alternation.
+    const escaped = [...reverse.keys()].sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp(escaped.join('|'), 'g');
+    reconstructed = content.replace(pattern, (match) => reverse.get(match));
+  }
+
+  return digestCitedRange(reconstructed, ranges) === storedDigest;
 }
 
 // Reads the baseline. `{ present, entries }` — `present: false` for absent,
