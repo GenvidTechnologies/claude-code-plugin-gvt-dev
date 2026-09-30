@@ -75,10 +75,10 @@ export function anchoredDirEntry(value) {
   return `${v}/`;
 }
 
-// Resolved exclude entry for a `docs/TOC.md` `paths` override that relocates
+// Resolved exclude entry for a `docs/decisions/` `paths` override that relocates
 // the DECISIONS_DIR default itself (e.g. `{"docs/decisions/": "docs/adr/"}`
 // or, for a repo whose ADRs live in the wiki bundle, `"wiki/decisions/"`).
-// Unlike rawDirExclude above, this default already applies unconditionally —
+// Unlike rawDirExclude below, this default already applies unconditionally —
 // the override's job is to move WHERE it applies, not to add a new one from
 // nothing. Returns []: when there's no override (resolved === DECISIONS_DIR),
 // when the value can't be anchored as a directory (anchoredDirEntry above)
