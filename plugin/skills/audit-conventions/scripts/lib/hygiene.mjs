@@ -14,6 +14,7 @@ import { join, dirname, resolve } from 'node:path';
 import { listMarkdown } from './fs-walk.mjs';
 import { gitTrackedFiles } from './git-info.mjs';
 import { iterateUnfencedLines, maskInlineCode } from './md-scan.mjs';
+import { resolveExpectationPath } from './path-overrides.mjs';
 
 export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
@@ -45,7 +46,54 @@ const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 // ---- shared helpers ---------------------------------------------------------
 
 function isExcluded(relPath, excludePaths) {
-  return excludePaths.some((entry) => relPath.startsWith(entry) || relPath.includes(entry));
+  return excludePaths.some(
+    (entry) =>
+      typeof entry === 'string' &&
+      entry !== '' &&
+      (relPath.startsWith(entry) || relPath.includes(entry)),
+  );
+}
+
+const DECISIONS_DIR = 'docs/decisions/';
+
+// Normalizes an arbitrary `paths` override value into an anchored directory
+// entry (trailing slash, forward slashes, no leading './', no trailing '/'
+// noise) suitable for isExcluded's startsWith/includes test — or null when
+// the value can't safely name a directory at all. Guards the same class of
+// trap rawDirExclude already guards for opts.rawDir: a non-string, an empty/
+// dot-only value, an absolute path (POSIX or a drive letter), or any '..'
+// segment is rejected rather than silently exclude-everything or
+// exclude-nothing-useful.
+export function anchoredDirEntry(value) {
+  if (typeof value !== 'string') return null;
+  let v = value.trim().split(String.fromCharCode(92)).join('/');
+  while (v.startsWith('./')) v = v.slice(2);
+  while (v.endsWith('/')) v = v.slice(0, -1);
+  if (v === '' || v === '.') return null;
+  if (v.startsWith('/') || (v.length > 1 && v[1] === ':')) return null;
+  if (v.split('/').includes('..')) return null;
+  return `${v}/`;
+}
+
+// Resolved exclude entry for a `docs/TOC.md` `paths` override that relocates
+// the DECISIONS_DIR default itself (e.g. `{"docs/decisions/": "docs/adr/"}`
+// or, for a repo whose ADRs live in the wiki bundle, `"wiki/decisions/"`).
+// Unlike rawDirExclude above, this default already applies unconditionally —
+// the override's job is to move WHERE it applies, not to add a new one from
+// nothing. Returns []: when there's no override (resolved === DECISIONS_DIR),
+// when the value can't be anchored as a directory (anchoredDirEntry above)
+// or anchors straight back to DECISIONS_DIR, and when the anchored entry
+// names a walked root or one of its ancestors (opts.docsRoot/opts.wikiDir) —
+// excluding an entire walked root because its ADR subdir moved there would
+// silently blind every other scanner to that root's rank-and-file content.
+function decisionsExclude(opts) {
+  const resolved = resolveExpectationPath(opts.paths, DECISIONS_DIR);
+  if (resolved === DECISIONS_DIR) return [];
+  const entry = anchoredDirEntry(resolved);
+  if (!entry || entry === DECISIONS_DIR) return [];
+  const roots = [opts.docsRoot ?? 'docs', opts.wikiDir].filter(Boolean);
+  if (roots.some((root) => `${root}/`.startsWith(entry))) return [];
+  return [entry];
 }
 
 // Resolved, anchored exclude entry for opts.rawDir (ADR-0015 decision 1's
@@ -59,7 +107,9 @@ function isExcluded(relPath, excludePaths) {
 // matches by `startsWith` OR `includes` (a substring test), so a bare
 // 'raw/' would also match 'docs/draw/' and any other path containing that
 // substring. Anchoring on the full resolved path (with a trailing slash)
-// avoids that trap.
+// avoids that trap. (isExcluded's own startsWith/includes test additionally
+// guards against a bare '' entry, which would otherwise match every path —
+// see isExcluded above.)
 function rawDirExclude(opts) {
   const rawDir = opts.rawDir;
   if (!rawDir) return [];
@@ -70,12 +120,19 @@ function rawDirExclude(opts) {
 }
 
 // Effective exclude-path set for a given opts: a UNION of the baked-in
-// defaults, any opts.excludePaths, and the conditional rawDir guard above
-// (see the union-vs-replace note on listCandidateFiles below). Shared by
+// defaults, the conditional docs/decisions/ relocation guard above, any
+// opts.excludePaths, and the conditional rawDir guard above (see the
+// union-vs-replace note on listCandidateFiles below). Shared by
 // listCandidateFiles, configCandidateFiles, and wikiCandidateFiles so every
-// scanner's notion of "excluded" stays in sync.
-function effectiveExcludes(opts) {
-  return [...DEFAULT_EXCLUDE_PATHS, ...(opts.excludePaths ?? []), ...rawDirExclude(opts)];
+// scanner's notion of "excluded" stays in sync. Exported for direct testing
+// of the union/guard behavior, independent of any one scanner's candidate walk.
+export function effectiveExcludes(opts = {}) {
+  return [
+    ...DEFAULT_EXCLUDE_PATHS,
+    ...decisionsExclude(opts),
+    ...(opts.excludePaths ?? []),
+    ...rawDirExclude(opts),
+  ];
 }
 
 // Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
@@ -95,7 +152,11 @@ function effectiveExcludes(opts) {
 // apply, so a consuming repo customizing this list only needs to name what it
 // wants to ADD, not restate the defaults. This differs from retiredTokens
 // (below), which replaces-when-provided, since a repo's deny-list is a
-// deliberate full override.
+// deliberate full override. The docs/decisions/ default specifically also
+// follows a `docs/TOC.md` `paths` override on that key (decisionsExclude,
+// above effectiveExcludes): the resolved directory is excluded ALONGSIDE the
+// literal 'docs/decisions/' default, not instead of it, and a value that's
+// unusable or names a walked root (or an ancestor of one) adds nothing.
 async function listCandidateFiles(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
   const excludePaths = effectiveExcludes(opts);
