@@ -188,6 +188,7 @@ async function main() {
   const hygieneOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
+    paths: pathOverrides,
     docsRoot,
     docsIndex,
     wikiDir: repoConfig?.wiki?.wikiDir,
@@ -484,8 +485,8 @@ function formatFinding(f) {
 // rewriting. docsRoot defaults to 'docs' (a repo with no `paths` override
 // behaves byte-identically); callers resolve it via resolveDocsRoot before
 // calling, same as main()'s hygieneOpts.
-async function staleFollowup(docsRoot = 'docs') {
-  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot });
+async function staleFollowup(docsRoot = 'docs', paths = undefined) {
+  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot, paths });
   return hits
     .filter((h) => h.file === 'CLAUDE.md' || h.file.startsWith(`${docsRoot}/`))
     .map((h) => ({ file: h.file, hint: `line ${h.line} uses retired token '${h.token}'` }));
@@ -525,7 +526,7 @@ async function runFix(state) {
 
   if (!APPLY_MODE) {
     console.log(formatPlanDryRun(plan));
-    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
+    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot, fixRepoConfig?.paths)));
     savePreviewedPlan(REPO_ROOT, plan);
     process.exit(0);
   }
@@ -554,7 +555,7 @@ async function runFix(state) {
     console.log('\n' + formatDanglingReport(warnings));
   }
   if (plan.state === STATE_STALE_CONFIG) {
-    console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
+    console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot, fixRepoConfig?.paths)));
   }
 
   clearPreviewedPlan(REPO_ROOT);

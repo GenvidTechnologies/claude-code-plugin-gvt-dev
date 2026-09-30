@@ -161,6 +161,46 @@ test('audit --fix --apply on stale-config with a dirty git tree: refuses with th
   });
 });
 
+// #583 S1. A `docs/decisions/` paths override in the legacy .genvid-agent.json
+// must be honored by staleFollowup's Manual-follow-up retired-token scan
+// (opts.paths forwarded from the parsed config), same as validate mode. The
+// relocated ADR dir (docs/adr/) must be excluded; a plain docs/ file must
+// still be reported.
+test('audit --fix (dry-run) on stale-config with a docs/decisions/ paths override: Manual follow-up excludes the relocated ADR dir but still reports plain docs/ hits (#583)', async () => {
+  await withTempStaleConfigRepo(async (tmpDir) => {
+    await writeFile(
+      join(tmpDir, '.genvid-agent.json'),
+      JSON.stringify(
+        { project: { name: 'foo' }, paths: { 'docs/decisions/': 'docs/adr/' } },
+        null,
+        2,
+      ),
+    );
+    await mkdir(join(tmpDir, 'docs', 'adr'), { recursive: true });
+    await writeFile(
+      join(tmpDir, 'docs', 'adr', '0001-x.md'),
+      'This still uses genvid: as a namespace prefix.\n',
+    );
+    await writeFile(
+      join(tmpDir, 'docs', 'foo.md'),
+      'This still uses genvid: as a namespace prefix.\n',
+    );
+
+    const dryRun = spawnAudit(['--fix'], tmpDir);
+    assert.equal(dryRun.status, 0, `--fix failed:\n${dryRun.stderr}`);
+    assert.match(
+      dryRun.stdout,
+      /`docs\/foo\.md` — line 1 uses retired token 'genvid:'/,
+      `expected docs/foo.md's retired token to be reported:\n${dryRun.stdout}`,
+    );
+    assert.doesNotMatch(
+      dryRun.stdout,
+      /docs\/adr\/0001-x\.md/,
+      `docs/adr/0001-x.md should be excluded via the docs/decisions/ paths override:\n${dryRun.stdout}`,
+    );
+  });
+});
+
 // Sanity check that the plugin root resolved from this test's vantage point is
 // real, so planStaleConfig's scaffolding steps (CLAUDE.md/TOC.md skeleton
 // reads) have somewhere real to read from.

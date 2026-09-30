@@ -53,8 +53,8 @@ import {
   scanBrokenLinks,
   scanOrphanedDocs,
   wikiCandidateFiles,
+  effectiveExcludes,
   DEFAULT_RETIRED_TOKENS,
-  DEFAULT_EXCLUDE_PATHS,
 } from './lib/hygiene.mjs';
 
 function parseArgs(argv) {
@@ -74,13 +74,14 @@ function parseArgs(argv) {
   return args;
 }
 
-// Mirrors audit-main.mjs's own loadHygieneConfig (graceful — missing file, missing
-// key, or invalid JSON all resolve to undefined so the scanners fall back to
-// their own baked-in defaults).
-async function loadHygieneConfig(repoRoot) {
+// Mirrors audit-main.mjs's own loadRepoConfig (graceful — missing file, missing
+// key, or invalid JSON all resolve to undefined). Returns the WHOLE parsed
+// config, not just its `hygiene` block — main() below also reads `paths` off
+// it, the same cross-cutting read audit-main.mjs's hygieneOpts makes.
+async function loadRepoConfig(repoRoot) {
   try {
     const raw = await fs.readFile(join(repoRoot, '.gvt-agent.json'), 'utf8');
-    return JSON.parse(raw).hygiene;
+    return JSON.parse(raw);
   } catch {
     return undefined;
   }
@@ -108,7 +109,8 @@ async function main() {
   const { repoPath, docsRoot, wikiDir, indexFile } = parseArgs(process.argv.slice(2));
   const repoRoot = resolve(repoPath ?? process.cwd());
 
-  const hygiene = await loadHygieneConfig(repoRoot);
+  const cfg = await loadRepoConfig(repoRoot);
+  const hygiene = cfg?.hygiene;
   // wikiDir goes into the scanners' opts, not just into the wikiCandidateFiles
   // calls below. All three scanners read it, for two different purposes:
   // scanRetiredTokens widens its walk to <wikiDir>/ (ADR-0041), while
@@ -118,9 +120,14 @@ async function main() {
   // orphan findings over bundle pages that the real audit declines — while the
   // note at the foot of this file claims the opposite. A diagnostic that
   // disagrees with the thing it diagnoses is worse than no diagnostic.
+  //
+  // paths goes into opts too (F1/#583) — a `docs/decisions/` override in the
+  // repo's own `paths` block is what feeds effectiveExcludes' decisionsExclude
+  // guard (lib/hygiene.mjs), the same as audit-main.mjs's hygieneOpts.
   const baseOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
+    paths: cfg?.paths,
     wikiDir,
   };
   const scanOpts = docsRoot ? { ...baseOpts, docsRoot } : baseOpts;
@@ -134,7 +141,12 @@ async function main() {
   console.log(`wiki-dir:  ${wikiDir ?? '(none)'}`);
   console.log(`index-file: ${indexFile ?? 'TOC.md (default, only used by scanOrphanedDocs)'}`);
   console.log(`retiredTokens: ${JSON.stringify(scanOpts.retiredTokens ?? DEFAULT_RETIRED_TOKENS)}`);
-  console.log(`excludePaths:  ${JSON.stringify([...DEFAULT_EXCLUDE_PATHS, ...(scanOpts.excludePaths ?? [])])}`);
+  // effectiveExcludes(scanOpts) — not a hand-assembled DEFAULT_EXCLUDE_PATHS +
+  // opts.excludePaths union — so this printed line reflects the SAME set the
+  // scanners below actually use, including the paths-driven docs/decisions/
+  // relocation guard and the rawDir guard (lib/hygiene.mjs), neither of which
+  // a hand-assembled union would show.
+  console.log(`excludePaths:  ${JSON.stringify(effectiveExcludes(scanOpts))}`);
   console.log('');
 
   // Candidate-set sizes, so a zero-finding scanner below reads as "scanned
