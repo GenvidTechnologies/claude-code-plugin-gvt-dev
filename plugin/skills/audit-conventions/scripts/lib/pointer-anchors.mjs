@@ -1145,8 +1145,9 @@ export function applyBaseline(findings, baseline) {
       detail:
         `${BASELINE_FILE} accepts '${entry.pointer}' in ${entry.file}, but the current scan ` +
         'reports nothing there — the pointer was repaired or removed, so prune the entry with ' +
-        `\`node ${BASELINE_GENERATOR} --write\` (prune-only is that command's default), or ` +
-        'the ratchet will silently re-accept the next pointer that lands on the same key',
+        `\`node ${BASELINE_GENERATOR} --write\` (prune-only is that command's default), or, ` +
+        'if its citing file moved, re-key with `--rename <old>=<new>` — or the ratchet will ' +
+        'silently re-accept the next pointer that lands on the same key',
       file: entry.file,
       pointer: entry.pointer,
       occurrence: entry.occurrence,

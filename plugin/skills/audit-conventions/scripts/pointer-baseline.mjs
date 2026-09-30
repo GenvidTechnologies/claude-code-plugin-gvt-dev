@@ -11,10 +11,16 @@
 //
 // Usage:
 //   node pointer-baseline.mjs [repoPath] [--write] [--accept-new]
+//   node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...] [--write]
 //
 //   (bare)        Print the diff this run WOULD apply. Writes nothing.
 //   --write       Apply it.
 //   --accept-new  Also ADD entries for findings not already in the baseline.
+//   --rename      RE-KEY every baseline entry whose citing file is <old> onto
+//                 <new>, verbatim apart from `file`. Repeatable, for a
+//                 simultaneous batch of moves (chains and swaps both work).
+//                 Mutually exclusive with --accept-new. Dry run by default,
+//                 same as the modes above.
 //
 // PRUNE-ONLY IS THE DEFAULT, with or without --write: entries matching nothing
 // in the current scan are removed, and nothing is added. That default exists
@@ -42,8 +48,20 @@
 // --accept-new without complaint. This gate is not the defence against that; a
 // separate guard test pins the specific pointers that must never be baselined.
 //
+// --RENAME IS A PURE RE-KEY, not a prune or an accept: entries of files not
+// named in a --rename pair pass through untouched even when they are stale,
+// and the POINTER TEXT of a re-keyed entry is never rewritten — only its
+// `file` (the citing side) moves. It refuses, writing nothing, when a re-keyed
+// entry finds no current finding at its new key, when a stored digest and the
+// current one both exist and disagree (the target changed, not merely moved —
+// repair the citation or repeat the move without --rename), when a <new> path
+// already holds baseline entries of its own that are not themselves being
+// vacated, or when the whole run would re-key nothing at all (including an
+// absent or unreadable baseline, which this mode never creates or overwrites).
+// A zero-entry pair is not by itself a refusal — it is reported and skipped.
+//
 // Exit codes: 0 success (including a dry run with pending changes); 1 the
-// --accept-new refusal; 2 a usage error.
+// --accept-new refusal, or a --rename refusal; 2 a usage error.
 
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -64,10 +82,14 @@ const BLOCKING_KINDS = ['pointer-anchor-drift', 'pointer-anchor-broken'];
 
 const USAGE = [
   'Usage: node pointer-baseline.mjs [repoPath] [--write] [--accept-new]',
+  '       node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...] [--write]',
   '',
   '  (bare)        Print the diff this run would apply. Writes nothing.',
   '  --write       Apply it.',
   '  --accept-new  Also add entries for findings not already in the baseline.',
+  '  --rename      Re-key every baseline entry citing <old> onto <new>,',
+  '                verbatim apart from `file`. Repeatable. Mutually exclusive',
+  '                with --accept-new.',
   '  --help        Print this text.',
   '',
   'Prune-only is the default, with or without --write: entries matching nothing',
@@ -87,12 +109,22 @@ const USAGE = [
   'newly added pointer with no content anchor can still be accepted by',
   '--accept-new without complaint. A separate guard test, not this gate, pins',
   'the specific pointers that must never be baselined.',
+  '',
+  '--rename is a pure re-key, not a prune or an accept: other files pass',
+  'through untouched, and the POINTER TEXT of a re-keyed entry is never',
+  'rewritten, only its `file`. It refuses — writing nothing — when a re-keyed',
+  'entry finds no current finding at its new key, when a stored digest and the',
+  'current one disagree, when a <new> already holds entries of its own that are',
+  'not themselves being vacated, or when the whole run would re-key nothing at',
+  'all (an absent baseline included — this mode never creates or overwrites',
+  'one). A zero-entry pair is reported and skipped, not a refusal by itself.',
 ].join('\n');
 
 // One row per flag. --targets (#594) and any later addition slot in here.
 const OPTIONS = {
   write: { type: 'boolean' },
   'accept-new': { type: 'boolean' },
+  rename: { type: 'string', multiple: true },
   help: { type: 'boolean', short: 'h' },
 };
 
@@ -124,22 +156,84 @@ function parseCliArgs(argv) {
     return { error: `unexpected extra argument '${positionals[1]}'` };
   }
 
+  // A lone positional shaped like a --rename pair is a forgotten flag, not a
+  // repoPath — catch it before it is silently resolved as one.
+  if (positionals[0] !== undefined && positionals[0].includes('=')) {
+    return {
+      error: `positional argument '${positionals[0]}' looks like a --rename pair — did you forget --rename?`,
+    };
+  }
+
+  const renameTokens = values.rename ?? [];
+  if (renameTokens.length > 0 && values['accept-new']) {
+    return { error: '--rename cannot be combined with --accept-new' };
+  }
+
+  let renames = null;
+  if (renameTokens.length > 0) {
+    const parsed = parseRenameTokens(renameTokens);
+    if (parsed.error) return { error: parsed.error };
+    renames = parsed.renames;
+  }
+
   return {
     repoPath: positionals[0],
     write: values.write ?? false,
     acceptNew: values['accept-new'] ?? false,
+    renames,
     help: values.help ?? false,
   };
 }
 
 // Normalizes a repoPath-shaped token for path comparison against the citing
 // corpus: backslashes to forward slashes, leading './' components stripped
-// repeatedly. Not wired to anything yet — a later task (e.g. #594's
-// --targets) is the first caller.
+// repeatedly.
 function normalizeRepoPath(value) {
   let out = String(value).replace(/\\/g, '/');
   while (out.startsWith('./')) out = out.slice(2);
   return out;
+}
+
+// Parses and validates every --rename token into `[{ old, new }]`, both sides
+// normalized. Each token must be a single non-empty <old>=<new> pair whose
+// sides differ once normalized; an <old> or a <new> may each appear at most
+// once across the whole batch — the "two pairs onto one <new>" and "renamed
+// twice" cases are usage errors, not something planRename has to notice, and
+// planRename's own ontoExisting refusal only has to guard a <new> that is NOT
+// itself part of the batch.
+function parseRenameTokens(tokens) {
+  const renames = [];
+  const seenOld = new Set();
+  const seenNew = new Set();
+
+  for (const token of tokens) {
+    const parts = token.split('=');
+    if (parts.length !== 2) {
+      return { error: `--rename '${token}' is not a single <old>=<new> pair` };
+    }
+    const [rawOld, rawNew] = parts;
+    if (rawOld === '' || rawNew === '') {
+      return { error: `--rename '${token}' is missing its <old> or <new> side` };
+    }
+
+    const from = normalizeRepoPath(rawOld);
+    const to = normalizeRepoPath(rawNew);
+    if (from === to) {
+      return { error: `--rename '${token}' names the same path on both sides` };
+    }
+    if (seenOld.has(from)) {
+      return { error: `--rename names '${from}' as <old> more than once` };
+    }
+    if (seenNew.has(to)) {
+      return { error: `--rename names '${to}' as <new> more than once` };
+    }
+
+    seenOld.add(from);
+    seenNew.add(to);
+    renames.push({ old: from, new: to });
+  }
+
+  return { renames };
 }
 
 // The identity fields plus the digest — taken straight off a finding, because a
@@ -203,16 +297,198 @@ function planBaseline(findings, baseline, { acceptNew = false } = {}) {
   };
 }
 
+// Computes what a --rename run would apply: a SIMULTANEOUS re-key of every
+// baseline entry whose `file` is an <old> in `renames`, onto the paired
+// <new>. Pure — the caller owns the scan, the load, and the write.
+//
+// `renames` is `[{ old, new }]`, both sides already normalized. `allowances`
+// is accepted for signature parity with a later task (an --allow-drift token
+// authorizing one drifted re-key to re-take its current digest) and is not
+// yet consulted here — every drift refuses in this task.
+//
+// All <old> paths are vacated in ONE pass before anything is re-keyed, which
+// is what makes a chain (a=b, b=c) and a swap (a=b, b=a) both land correctly:
+// a <new> that is itself being vacated by another pair is never mistaken for
+// an occupied target.
+//
+// Four refusal categories, collected together rather than stopping at the
+// first:
+//   - ontoExisting  — a <new> already holds entries of its own that are not
+//                     themselves part of this batch;
+//   - noFinding     — a re-keyed entry's new key matches no current finding;
+//   - drift         — a re-keyed entry's stored digest and the current
+//                     digest at its new key are both non-null and disagree;
+//   - nothingToRekey — the whole run would re-key 0 entries, including an
+//                     absent or unreadable baseline (never created here).
+//
+// A re-keyed entry whose stored digest is non-null but whose current digest
+// is null (the target became ambiguous or unresolved under the move) passes
+// through VERBATIM — that is not drift, because there is nothing to compare.
+function planRename(findings, baseline, renames, allowances = []) {
+  const renameMap = new Map(renames.map(({ old: from, new: to }) => [from, to]));
+  const vacated = new Set(renameMap.keys());
+
+  const current = new Map();
+  for (const finding of findings) {
+    const key = baselineKey(finding);
+    if (!current.has(key)) current.set(key, finding);
+  }
+
+  const occupied = new Set(
+    baseline.entries.filter((entry) => !vacated.has(entry.file)).map((entry) => entry.file),
+  );
+  const ontoExisting = [...new Set(renameMap.values())].filter((to) => occupied.has(to));
+
+  const rekeyedCountByOld = new Map([...vacated].map((from) => [from, 0]));
+  const untouched = [];
+  const rekeyed = [];
+  const noFinding = [];
+  const drift = [];
+
+  for (const entry of baseline.entries) {
+    const to = renameMap.get(entry.file);
+    if (to === undefined) {
+      untouched.push(entry);
+      continue;
+    }
+    rekeyedCountByOld.set(entry.file, rekeyedCountByOld.get(entry.file) + 1);
+
+    const moved = { ...entry, file: to };
+    const finding = current.get(baselineKey(moved));
+    if (!finding) {
+      noFinding.push(moved);
+      continue;
+    }
+
+    const currentDigest = finding.digest ?? null;
+    if (entry.digest != null && currentDigest != null && entry.digest !== currentDigest) {
+      drift.push({ ...moved, storedDigest: entry.digest, currentDigest });
+      continue;
+    }
+
+    rekeyed.push(moved);
+  }
+
+  // Entries NOT part of this batch whose own key no longer matches anything
+  // current — a citing file moved without a --rename pair naming it. A pure
+  // re-key does not prune them; it only warns, since the operator may not
+  // have finished the sequence of --rename calls yet.
+  const leftBehind = untouched.filter((entry) => !current.has(baselineKey(entry)));
+
+  const totalRekeyed = rekeyed.length;
+  const nothingToRekey = !baseline.present || totalRekeyed === 0;
+  const refused =
+    ontoExisting.length > 0 || noFinding.length > 0 || drift.length > 0 || nothingToRekey;
+
+  return {
+    refused,
+    nothingToRekey,
+    ontoExisting,
+    noFinding,
+    drift,
+    rekeyedCountByOld,
+    leftBehind,
+    untouched,
+    rekeyed,
+    entries: sortEntries([...untouched, ...rekeyed]),
+  };
+}
+
 const describeEntry = (entry) =>
   `${entry.file}  ${entry.pointer}  #${entry.occurrence}  (${entry.kind ?? 'unknown'})`;
 
-function printEntries(prefix, entries, limit = 25) {
-  for (const entry of entries.slice(0, limit)) console.log(`  ${prefix} ${describeEntry(entry)}`);
-  if (entries.length > limit) console.log(`  ${prefix} … and ${entries.length - limit} more`);
+function printEntries(prefix, entries, limit = 25, log = console.log) {
+  for (const entry of entries.slice(0, limit)) log(`  ${prefix} ${describeEntry(entry)}`);
+  if (entries.length > limit) log(`  ${prefix} … and ${entries.length - limit} more`);
 }
 
 function serialize(entries) {
   return JSON.stringify({ version: 1, entries }, null, 2) + '\n';
+}
+
+function printRenameRefusal(plan) {
+  console.error('REFUSED');
+  console.error('');
+  if (plan.ontoExisting.length > 0) {
+    console.error(
+      `${plan.ontoExisting.length} rename target${plan.ontoExisting.length === 1 ? '' : 's'} already ` +
+        'hold baseline entries and are not themselves being renamed away:',
+    );
+    for (const file of plan.ontoExisting) console.error(`  - ${file}`);
+    console.error('');
+  }
+  if (plan.noFinding.length > 0) {
+    console.error(
+      `${plan.noFinding.length} re-keyed entr${
+        plan.noFinding.length === 1 ? 'y matches' : 'ies match'
+      } no current finding at its new key:`,
+    );
+    printEntries('-', plan.noFinding, 25, console.error);
+    console.error('');
+  }
+  if (plan.drift.length > 0) {
+    console.error(
+      `${plan.drift.length} re-keyed entr${
+        plan.drift.length === 1 ? 'y has' : 'ies have'
+      } drifted — the stored digest no longer matches the current one:`,
+    );
+    for (const entry of plan.drift) {
+      console.error(
+        `  - ${describeEntry(entry)}  ${entry.storedDigest} -> ${entry.currentDigest}`,
+      );
+    }
+    console.error('');
+  }
+  if (plan.nothingToRekey) {
+    console.error('nothing to re-key — this run would re-key 0 entries.');
+    console.error('');
+  }
+  console.error('Nothing was written.');
+}
+
+// Runs a --rename plan: prints the refusal and exits 1, or prints the plan
+// and applies it under --write. Split out of main() only because the two
+// modes (accept/prune vs. rename) share nothing past the header lines.
+async function runRename({ findings, baseline, renames, write, baselinePath }) {
+  const plan = planRename(findings, baseline, renames);
+
+  if (plan.refused) {
+    printRenameRefusal(plan);
+    process.exit(1);
+  }
+
+  for (const { old: from, new: to } of renames) {
+    const count = plan.rekeyedCountByOld.get(from) ?? 0;
+    console.log(
+      count === 0
+        ? `  ${from}=${to}: no baseline entries — nothing to re-key`
+        : `  ${from}=${to}: ${count} entr${count === 1 ? 'y' : 'ies'} re-keyed`,
+    );
+  }
+  console.log('');
+
+  if (plan.leftBehind.length > 0) {
+    console.log(
+      `### ${plan.leftBehind.length} entr${
+        plan.leftBehind.length === 1 ? 'y is' : 'ies are'
+      } left behind — not renamed, and no current finding matches their key:`,
+    );
+    printEntries('!', plan.leftBehind);
+    console.log('');
+  }
+
+  console.log(
+    `${plan.entries.length} entr${plan.entries.length === 1 ? 'y' : 'ies'} after this run ` +
+      `(${plan.rekeyed.length} re-keyed, 0 re-keyed with allowed drift, ${plan.untouched.length} untouched).`,
+  );
+
+  if (!write) {
+    console.log('Dry run — nothing written. Re-run with --write to apply.');
+    return;
+  }
+
+  await fs.writeFile(baselinePath, serialize(plan.entries), 'utf8');
+  console.log(`Wrote ${BASELINE_FILE}.`);
 }
 
 async function main() {
@@ -251,11 +527,17 @@ async function main() {
     }`,
   );
   console.log(
-    `mode:     ${args.acceptNew ? 'prune + accept-new' : 'prune-only'}, ${
-      args.write ? 'write' : 'dry run'
-    }`,
+    `mode:     ${
+      args.renames ? `rename (${args.renames.length} pair${args.renames.length === 1 ? '' : 's'})`
+      : args.acceptNew ? 'prune + accept-new'
+      : 'prune-only'
+    }, ${args.write ? 'write' : 'dry run'}`,
   );
   console.log('');
+
+  if (args.renames) {
+    return runRename({ findings, baseline, renames: args.renames, write: args.write, baselinePath });
+  }
 
   // The refusal is checked BEFORE any plan is computed or printed, so a run
   // that cannot legitimately accept anything says only that.
