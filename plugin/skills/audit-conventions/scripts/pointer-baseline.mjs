@@ -47,6 +47,7 @@
 
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 
 import {
   BASELINE_FILE,
@@ -88,17 +89,57 @@ const USAGE = [
   'the specific pointers that must never be baselined.',
 ].join('\n');
 
-function parseArgs(argv) {
-  const args = { repoPath: undefined, write: false, acceptNew: false, help: false };
-  for (const arg of argv) {
-    if (arg === '--write') args.write = true;
-    else if (arg === '--accept-new') args.acceptNew = true;
-    else if (arg === '--help' || arg === '-h') args.help = true;
-    else if (arg.startsWith('-')) return { error: `unknown option '${arg}'` };
-    else if (args.repoPath === undefined) args.repoPath = arg;
-    else return { error: `unexpected extra argument '${arg}'` };
+// One row per flag. --targets (#594) and any later addition slot in here.
+const OPTIONS = {
+  write: { type: 'boolean' },
+  'accept-new': { type: 'boolean' },
+  help: { type: 'boolean', short: 'h' },
+};
+
+function parseCliArgs(argv) {
+  let values;
+  let positionals;
+  try {
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: OPTIONS,
+      allowPositionals: true,
+      strict: true,
+    }));
+  } catch (err) {
+    // Map by err.code, not message text — node:util's wording is not a
+    // contract this script owns.
+    if (err.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') {
+      const match = /Unknown option '([^']+)'/.exec(err.message);
+      const token = match ? match[1] : argv.find((arg) => arg.startsWith('-'));
+      return { error: `unknown option '${token}'` };
+    }
+    if (err.code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+      return { error: err.message.split('\n')[0] };
+    }
+    throw err;
   }
-  return args;
+
+  if (positionals.length > 1) {
+    return { error: `unexpected extra argument '${positionals[1]}'` };
+  }
+
+  return {
+    repoPath: positionals[0],
+    write: values.write ?? false,
+    acceptNew: values['accept-new'] ?? false,
+    help: values.help ?? false,
+  };
+}
+
+// Normalizes a repoPath-shaped token for path comparison against the citing
+// corpus: backslashes to forward slashes, leading './' components stripped
+// repeatedly. Not wired to anything yet — a later task (e.g. #594's
+// --targets) is the first caller.
+function normalizeRepoPath(value) {
+  let out = String(value).replace(/\\/g, '/');
+  while (out.startsWith('./')) out = out.slice(2);
+  return out;
 }
 
 // The identity fields plus the digest — taken straight off a finding, because a
@@ -175,7 +216,7 @@ function serialize(entries) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseCliArgs(process.argv.slice(2));
   if (args.error) {
     console.error(`pointer-baseline: ${args.error}`);
     console.error('');
