@@ -572,8 +572,10 @@ function printRenameRefusal(plan) {
   console.error('');
   if (plan.ontoExisting.length > 0) {
     console.error(
-      `${plan.ontoExisting.length} rename target${plan.ontoExisting.length === 1 ? '' : 's'} already ` +
-        'hold baseline entries and are not themselves being renamed away:',
+      plan.ontoExisting.length === 1
+        ? '1 rename target already holds baseline entries and is not itself being renamed away:'
+        : `${plan.ontoExisting.length} rename targets already hold baseline entries and are not ` +
+          'themselves being renamed away:',
     );
     for (const file of plan.ontoExisting) console.error(`  - ${file}`);
     console.error('');
