@@ -97,7 +97,7 @@ One scope caution for the `bugTracker` block: keep its `actionQuery` covering th
 A second example is `audit-conventions`' optional `hygiene` block, tuning its advisory repo-hygiene scanners (retired-token deny-list, broken intra-repo doc links, orphaned-doc check — see the skill for what each check does). Two optional keys, each with baked-in defaults so the block can be omitted entirely:
 
 - `retiredTokens` (array) — **replaces** the default deny-list (`genvid:`, `genvid-dev:`, `genvid-c3`) when provided, since a repo's deny-list is a deliberate full override.
-- `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. Applies to whichever candidate set a scanner walks (see the scope table below). This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan, plus one `<wikiDir>/` page from the same scan (see the next paragraph).
+- `excludePaths` (array) — **unioned** with the default exclusions (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/`) when provided, so a repo only needs to name what it wants to *add*. The `docs/decisions/` default follows a `paths` override of that key: the resolved decisions directory is excluded as well, alongside the literal default (an empty or unusable value, or one naming a walked root, adds nothing). Applies to whichever candidate set a scanner walks (see the scope table below). This repo's own `.gvt-agent.json` uses it to exclude `docs/plugin-authoring.md` (maintainer-only notes) from the token scan, plus one `<wikiDir>/` page from the same scan (see the next paragraph).
 
 The three scanners do not share one walk — scope is per-scanner (ADR-0041):
 
@@ -132,7 +132,7 @@ Any skill, agent, or script that consults a declared expectation path — the `p
 
 - **Precedence**: the override wins when present; with no matching `paths` entry, resolution is byte-identical to the declared default.
 - **Key identity**: the override key is the component's declared path itself — one override name per location, never a second name for the same location, which would drift.
-- `triage-issues` and its `issue-triage-analyst` agent are the first adopters beyond the audit itself, resolving their `docs/issue-triage.md` expectation through this override. Further components are expected to adopt the same mechanism across the docs→wiki chain (#579).
+- `triage-issues` and its `issue-triage-analyst` agent are the first adopters beyond the audit itself, resolving their `docs/issue-triage.md` expectation through this override. Further components are expected to adopt the same mechanism across the docs→wiki chain (#579). Within the audit, the hygiene scanners' `docs/decisions/` default exclusion also resolves through it (#583).
 
 ## How `/gvt-dev:audit-conventions` works
 
