@@ -11,7 +11,8 @@
 //
 // Usage:
 //   node pointer-baseline.mjs [repoPath] [--write] [--accept-new]
-//   node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...] [--write]
+//   node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...]
+//       [--allow-drift <new-file>@<pointer>#<occurrence>=<current-digest> ...] [--write]
 //
 //   (bare)        Print the diff this run WOULD apply. Writes nothing.
 //   --write       Apply it.
@@ -21,6 +22,13 @@
 //                 simultaneous batch of moves (chains and swaps both work).
 //                 Mutually exclusive with --accept-new. Dry run by default,
 //                 same as the modes above.
+//   --allow-drift Names ONE re-keyed entry — by its <new-file>, <pointer>,
+//                 <occurrence> and its CURRENT digest — and authorizes that
+//                 one entry to re-take the current digest instead of
+//                 refusing on drift. Requires --rename. Repeatable. Usable
+//                 only within the SAME run that re-keys the entry; a token
+//                 whose digest is stale, or that names no drifting entry at
+//                 all, refuses as an unused allowance.
 //
 // PRUNE-ONLY IS THE DEFAULT, with or without --write: entries matching nothing
 // in the current scan are removed, and nothing is added. That default exists
@@ -31,10 +39,14 @@
 // separate, explicit act.
 //
 // A KEPT ENTRY IS PASSED THROUGH VERBATIM, digest included. Re-taking a digest
-// is neither an add nor a prune, so this script never does it: a
+// is neither an add nor a prune, so this script never does it on its own: a
 // pointer-baseline-drifted finding means the target moved under an accepted
 // pointer, and resolving it is a decision — repair the citation, or delete the
-// entry and re-accept it deliberately — not a regeneration.
+// entry and re-accept it deliberately — not a regeneration. The ONE exception
+// is --rename --allow-drift, which narrows that same delete-and-re-accept
+// hatch to a single reviewed entry: the operator names the exact current
+// digest by hand, so the re-take is still a deliberate decision, just
+// expressed as one token instead of a delete-and-regenerate round trip.
 //
 // --accept-new REFUSES, with a non-zero exit and no write, while any
 // pointer-anchor-drift or pointer-anchor-broken finding exists. Those two kinds
@@ -53,12 +65,19 @@
 // and the POINTER TEXT of a re-keyed entry is never rewritten — only its
 // `file` (the citing side) moves. It refuses, writing nothing, when a re-keyed
 // entry finds no current finding at its new key, when a stored digest and the
-// current one both exist and disagree (the target changed, not merely moved —
-// repair the citation or repeat the move without --rename), when a <new> path
+// current one both exist and disagree AND no --allow-drift token names that
+// entry with its current digest (repair the citation, repeat the move without
+// --rename, or supply the token — see --allow-drift above), when a <new> path
 // already holds baseline entries of its own that are not themselves being
-// vacated, or when the whole run would re-key nothing at all (including an
-// absent or unreadable baseline, which this mode never creates or overwrites).
-// A zero-entry pair is not by itself a refusal — it is reported and skipped.
+// vacated, when an --allow-drift token matches no drifting entry or names the
+// wrong digest (an unused allowance), or when the whole run would re-key
+// nothing at all (including an absent or unreadable baseline, which this mode
+// never creates or overwrites). A zero-entry pair is not by itself a refusal
+// — it is reported and skipped. A drift refusal is ANNOTATED: it checks
+// whether the drift is fully explained by the rename itself (a
+// cross-reference to the citing file's old basename, rewritten to the new
+// one in the same batch) and, when it is, prints a ready --allow-drift token
+// to re-run with.
 //
 // Exit codes: 0 success (including a dry run with pending changes); 1 the
 // --accept-new refusal, or a --rename refusal; 2 a usage error.
@@ -70,7 +89,9 @@ import { parseArgs } from 'node:util';
 import {
   BASELINE_FILE,
   baselineKey,
+  DIGEST_LENGTH,
   loadBaseline,
+  renameExplainsDrift,
   scanPointerAnchors,
 } from './lib/pointer-anchors.mjs';
 
@@ -82,7 +103,8 @@ const BLOCKING_KINDS = ['pointer-anchor-drift', 'pointer-anchor-broken'];
 
 const USAGE = [
   'Usage: node pointer-baseline.mjs [repoPath] [--write] [--accept-new]',
-  '       node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...] [--write]',
+  '       node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...]',
+  '           [--allow-drift <new-file>@<pointer>#<occurrence>=<current-digest> ...] [--write]',
   '',
   '  (bare)        Print the diff this run would apply. Writes nothing.',
   '  --write       Apply it.',
@@ -90,6 +112,9 @@ const USAGE = [
   '  --rename      Re-key every baseline entry citing <old> onto <new>,',
   '                verbatim apart from `file`. Repeatable. Mutually exclusive',
   '                with --accept-new.',
+  '  --allow-drift Re-keys ONE drifted entry, naming its current digest,',
+  '                instead of refusing on that entry. Requires --rename.',
+  '                Repeatable.',
   '  --help        Print this text.',
   '',
   'Prune-only is the default, with or without --write: entries matching nothing',
@@ -98,7 +123,9 @@ const USAGE = [
   'would silently re-accept every finding introduced since the last run.',
   '',
   'A kept entry is passed through verbatim, digest included. This script never',
-  're-takes a digest: a drifted acceptance is a decision to make by hand.',
+  're-takes a digest on its own: a drifted acceptance is a decision to make by',
+  'hand — except within --rename --allow-drift, which narrows that same',
+  'delete-and-re-accept decision to one named, reviewed entry.',
   '',
   '--accept-new refuses, with a non-zero exit and no write, while any',
   'pointer-anchor-drift or pointer-anchor-broken finding exists — baselining a',
@@ -114,10 +141,14 @@ const USAGE = [
   'through untouched, and the POINTER TEXT of a re-keyed entry is never',
   'rewritten, only its `file`. It refuses — writing nothing — when a re-keyed',
   'entry finds no current finding at its new key, when a stored digest and the',
-  'current one disagree, when a <new> already holds entries of its own that are',
-  'not themselves being vacated, or when the whole run would re-key nothing at',
-  'all (an absent baseline included — this mode never creates or overwrites',
-  'one). A zero-entry pair is reported and skipped, not a refusal by itself.',
+  'current one disagree and no --allow-drift token names that entry with its',
+  'current digest, when a <new> already holds entries of its own that are not',
+  'themselves being vacated, when an --allow-drift token matches no drifting',
+  'entry or names the wrong digest (an unused allowance), or when the whole',
+  'run would re-key nothing at all (an absent baseline included — this mode',
+  'never creates or overwrites one). A zero-entry pair is reported and',
+  'skipped, not a refusal by itself. A drift refusal says whether the rename',
+  'itself explains it and, when it does, prints a ready --allow-drift token.',
 ].join('\n');
 
 // One row per flag. --targets (#594) and any later addition slot in here.
@@ -125,6 +156,7 @@ const OPTIONS = {
   write: { type: 'boolean' },
   'accept-new': { type: 'boolean' },
   rename: { type: 'string', multiple: true },
+  'allow-drift': { type: 'string', multiple: true },
   help: { type: 'boolean', short: 'h' },
 };
 
@@ -169,6 +201,14 @@ function parseCliArgs(argv) {
     return { error: '--rename cannot be combined with --accept-new' };
   }
 
+  // Checked before either token list is parsed for its own grammar, so a
+  // malformed --allow-drift token given without --rename still reports the
+  // mode error, not a grammar error about a token that can never be used.
+  const allowDriftTokens = values['allow-drift'] ?? [];
+  if (allowDriftTokens.length > 0 && renameTokens.length === 0) {
+    return { error: '--allow-drift requires --rename' };
+  }
+
   let renames = null;
   if (renameTokens.length > 0) {
     const parsed = parseRenameTokens(renameTokens);
@@ -176,11 +216,19 @@ function parseCliArgs(argv) {
     renames = parsed.renames;
   }
 
+  let allowances = [];
+  if (allowDriftTokens.length > 0) {
+    const parsed = parseAllowDriftTokens(allowDriftTokens);
+    if (parsed.error) return { error: parsed.error };
+    allowances = parsed.allowances;
+  }
+
   return {
     repoPath: positionals[0],
     write: values.write ?? false,
     acceptNew: values['accept-new'] ?? false,
     renames,
+    allowances,
     help: values.help ?? false,
   };
 }
@@ -234,6 +282,75 @@ function parseRenameTokens(tokens) {
   }
 
   return { renames };
+}
+
+// A digest is exactly DIGEST_LENGTH lowercase hex characters — the same
+// alphabet digestCitedRange (lib/pointer-anchors.mjs) writes, so a token
+// naming a digest the lib could never have produced is rejected at parse
+// time rather than silently failing to match anything later.
+const ALLOW_DRIFT_DIGEST_RE = new RegExp(`^[0-9a-f]{${DIGEST_LENGTH}}$`);
+
+// Parses one --allow-drift token, `<new-file>@<pointer>#<occurrence>=<current-digest>`,
+// from the RIGHT: the last `=` splits off the digest, the last `#` before
+// that splits off the occurrence, and the last `@` before THAT splits the
+// file from the pointer. This relies on the pointer grammar
+// (PATH_SOURCE/LINESPEC_SOURCE in lib/pointer-anchors.mjs) never containing
+// an `@`, `#` or `=` of its own. If a future pointer form ever did, a token
+// would split at the wrong boundary and match no baseline key — which fails
+// SAFE: an unused allowance refuses the run, it can never silently authorize
+// a drift it was not meant to.
+function parseAllowDriftToken(token) {
+  const eq = token.lastIndexOf('=');
+  if (eq === -1) {
+    return { error: `--allow-drift '${token}' is missing '=<current-digest>'` };
+  }
+  const digest = token.slice(eq + 1);
+  if (!ALLOW_DRIFT_DIGEST_RE.test(digest)) {
+    return {
+      error: `--allow-drift '${token}' has a malformed digest — expected ${DIGEST_LENGTH} lowercase hex characters`,
+    };
+  }
+
+  const hash = token.lastIndexOf('#', eq - 1);
+  if (hash === -1) {
+    return { error: `--allow-drift '${token}' is missing '#<occurrence>'` };
+  }
+  const occurrenceText = token.slice(hash + 1, eq);
+  if (!/^[0-9]+$/.test(occurrenceText)) {
+    return { error: `--allow-drift '${token}' has a non-integer occurrence '${occurrenceText}'` };
+  }
+
+  const at = token.lastIndexOf('@', hash - 1);
+  if (at === -1) {
+    return { error: `--allow-drift '${token}' is missing '@<pointer>'` };
+  }
+  const rawFile = token.slice(0, at);
+  const pointer = token.slice(at + 1, hash);
+  if (rawFile === '') {
+    return { error: `--allow-drift '${token}' is missing its <new-file>` };
+  }
+  if (pointer === '') {
+    return { error: `--allow-drift '${token}' is missing its <pointer>` };
+  }
+
+  return {
+    allowance: {
+      file: normalizeRepoPath(rawFile),
+      pointer,
+      occurrence: Number(occurrenceText),
+      digest,
+    },
+  };
+}
+
+function parseAllowDriftTokens(tokens) {
+  const allowances = [];
+  for (const token of tokens) {
+    const parsed = parseAllowDriftToken(token);
+    if (parsed.error) return { error: parsed.error };
+    allowances.push(parsed.allowance);
+  }
+  return { allowances };
 }
 
 // The identity fields plus the digest — taken straight off a finding, because a
@@ -302,28 +419,40 @@ function planBaseline(findings, baseline, { acceptNew = false } = {}) {
 // <new>. Pure — the caller owns the scan, the load, and the write.
 //
 // `renames` is `[{ old, new }]`, both sides already normalized. `allowances`
-// is accepted for signature parity with a later task (an --allow-drift token
-// authorizing one drifted re-key to re-take its current digest) and is not
-// yet consulted here — every drift refuses in this task.
+// is `[{ file, pointer, occurrence, digest }]` — parsed --allow-drift tokens,
+// each naming ONE re-keyed entry (by its <new-file>/<pointer>/<occurrence>)
+// and the CURRENT digest it authorizes that entry to re-take instead of
+// refusing on drift.
 //
 // All <old> paths are vacated in ONE pass before anything is re-keyed, which
 // is what makes a chain (a=b, b=c) and a swap (a=b, b=a) both land correctly:
 // a <new> that is itself being vacated by another pair is never mistaken for
 // an occupied target.
 //
-// Four refusal categories, collected together rather than stopping at the
+// Five refusal categories, collected together rather than stopping at the
 // first:
 //   - ontoExisting  — a <new> already holds entries of its own that are not
 //                     themselves part of this batch;
 //   - noFinding     — a re-keyed entry's new key matches no current finding;
 //   - drift         — a re-keyed entry's stored digest and the current
-//                     digest at its new key are both non-null and disagree;
-//   - nothingToRekey — the whole run would re-key 0 entries, including an
-//                     absent or unreadable baseline (never created here).
+//                     digest at its new key are both non-null and disagree,
+//                     and no allowance names that entry with that current
+//                     digest;
+//   - unusedAllowance — an --allow-drift token that matched no drifting
+//                     entry at all, or named a digest other than the current
+//                     one. Fails SAFE: an allowance that cannot be matched
+//                     exactly refuses rather than silently doing nothing;
+//   - nothingToRekey — the whole run would re-key 0 entries (allowed drift
+//                     counted as re-keyed), including an absent or
+//                     unreadable baseline (never created here).
 //
 // A re-keyed entry whose stored digest is non-null but whose current digest
 // is null (the target became ambiguous or unresolved under the move) passes
 // through VERBATIM — that is not drift, because there is nothing to compare.
+//
+// A drift entry MATCHED by an allowance is the one place this script ever
+// re-takes a digest: it re-keys with the CURRENT digest, `kind` verbatim,
+// same as any other re-key — see the header comment's one exception.
 function planRename(findings, baseline, renames, allowances = []) {
   const renameMap = new Map(renames.map(({ old: from, new: to }) => [from, to]));
   const vacated = new Set(renameMap.keys());
@@ -339,9 +468,15 @@ function planRename(findings, baseline, renames, allowances = []) {
   );
   const ontoExisting = [...new Set(renameMap.values())].filter((to) => occupied.has(to));
 
+  const allowanceByKey = new Map(
+    allowances.map((allowance) => [baselineKey(allowance), allowance]),
+  );
+  const usedAllowanceKeys = new Set();
+
   const rekeyedCountByOld = new Map([...vacated].map((from) => [from, 0]));
   const untouched = [];
   const rekeyed = [];
+  const allowedDrift = [];
   const noFinding = [];
   const drift = [];
 
@@ -354,7 +489,8 @@ function planRename(findings, baseline, renames, allowances = []) {
     rekeyedCountByOld.set(entry.file, rekeyedCountByOld.get(entry.file) + 1);
 
     const moved = { ...entry, file: to };
-    const finding = current.get(baselineKey(moved));
+    const key = baselineKey(moved);
+    const finding = current.get(key);
     if (!finding) {
       noFinding.push(moved);
       continue;
@@ -362,7 +498,22 @@ function planRename(findings, baseline, renames, allowances = []) {
 
     const currentDigest = finding.digest ?? null;
     if (entry.digest != null && currentDigest != null && entry.digest !== currentDigest) {
-      drift.push({ ...moved, storedDigest: entry.digest, currentDigest });
+      const allowance = allowanceByKey.get(key);
+      if (allowance && allowance.digest === currentDigest) {
+        usedAllowanceKeys.add(key);
+        allowedDrift.push({ ...moved, digest: currentDigest });
+        continue;
+      }
+      // `target` rides along only to let the caller ANNOTATE this refusal
+      // (renameExplainsDrift, in runRename) — it resolves through the same
+      // finding attachDigests already resolved it for, never re-derived.
+      // It is not itself part of the written entry shape.
+      drift.push({
+        ...moved,
+        storedDigest: entry.digest,
+        currentDigest,
+        target: finding.target ?? null,
+      });
       continue;
     }
 
@@ -375,10 +526,18 @@ function planRename(findings, baseline, renames, allowances = []) {
   // have finished the sequence of --rename calls yet.
   const leftBehind = untouched.filter((entry) => !current.has(baselineKey(entry)));
 
-  const totalRekeyed = rekeyed.length;
+  const unusedAllowance = allowances.filter(
+    (allowance) => !usedAllowanceKeys.has(baselineKey(allowance)),
+  );
+
+  const totalRekeyed = rekeyed.length + allowedDrift.length;
   const nothingToRekey = !baseline.present || totalRekeyed === 0;
   const refused =
-    ontoExisting.length > 0 || noFinding.length > 0 || drift.length > 0 || nothingToRekey;
+    ontoExisting.length > 0 ||
+    noFinding.length > 0 ||
+    drift.length > 0 ||
+    unusedAllowance.length > 0 ||
+    nothingToRekey;
 
   return {
     refused,
@@ -386,11 +545,13 @@ function planRename(findings, baseline, renames, allowances = []) {
     ontoExisting,
     noFinding,
     drift,
+    unusedAllowance,
     rekeyedCountByOld,
     leftBehind,
     untouched,
     rekeyed,
-    entries: sortEntries([...untouched, ...rekeyed]),
+    allowedDrift,
+    entries: sortEntries([...untouched, ...rekeyed, ...allowedDrift]),
   };
 }
 
@@ -436,6 +597,26 @@ function printRenameRefusal(plan) {
       console.error(
         `  - ${describeEntry(entry)}  ${entry.storedDigest} -> ${entry.currentDigest}`,
       );
+      if (entry.explained) {
+        console.error(
+          `    explained by this rename — re-run with --allow-drift '${entry.allowDriftToken}' to accept it`,
+        );
+      } else {
+        console.error('    not explained by this rename — its content actually changed');
+      }
+    }
+    console.error('');
+  }
+  if (plan.unusedAllowance.length > 0) {
+    console.error(
+      `${plan.unusedAllowance.length} --allow-drift token${
+        plan.unusedAllowance.length === 1 ? '' : 's'
+      } matched no drifting entry at its current digest — unused allowance:`,
+    );
+    for (const allowance of plan.unusedAllowance) {
+      console.error(
+        `  - unused allowance ${allowance.file}@${allowance.pointer}#${allowance.occurrence}=${allowance.digest}`,
+      );
     }
     console.error('');
   }
@@ -446,13 +627,52 @@ function printRenameRefusal(plan) {
   console.error('Nothing was written.');
 }
 
+// Reads `path` under `repoRoot`, or null on any error — the same "degenerate
+// input contributes nothing" discipline lib/pointer-anchors.mjs's own
+// safeReadFile applies, kept local since that one is not exported.
+async function safeReadFile(path) {
+  try {
+    return await fs.readFile(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+// Attaches an `explained`/`allowDriftToken` verdict to each still-refused
+// drift entry, reading its TARGET once — the same path attachDigests already
+// resolved for the finding this entry drifted against (see planRename), so
+// this never re-derives resolution. An unreadable or unresolved target (no
+// single match) can never be explained: there is nothing to reconstruct
+// against, so it reports unexplained rather than guessing.
+async function annotateDrift(driftEntries, renames, repoRoot) {
+  for (const entry of driftEntries) {
+    let explained = false;
+    if (entry.target != null) {
+      const content = await safeReadFile(join(repoRoot, entry.target));
+      if (content != null) {
+        explained = renameExplainsDrift({
+          content,
+          pointer: entry.pointer,
+          storedDigest: entry.storedDigest,
+          renames,
+        });
+      }
+    }
+    entry.explained = explained;
+    entry.allowDriftToken = explained
+      ? `${entry.file}@${entry.pointer}#${entry.occurrence}=${entry.currentDigest}`
+      : null;
+  }
+}
+
 // Runs a --rename plan: prints the refusal and exits 1, or prints the plan
 // and applies it under --write. Split out of main() only because the two
 // modes (accept/prune vs. rename) share nothing past the header lines.
-async function runRename({ findings, baseline, renames, write, baselinePath }) {
-  const plan = planRename(findings, baseline, renames);
+async function runRename({ findings, baseline, renames, allowances, write, baselinePath, repoRoot }) {
+  const plan = planRename(findings, baseline, renames, allowances);
 
   if (plan.refused) {
+    if (plan.drift.length > 0) await annotateDrift(plan.drift, renames, repoRoot);
     printRenameRefusal(plan);
     process.exit(1);
   }
@@ -479,7 +699,8 @@ async function runRename({ findings, baseline, renames, write, baselinePath }) {
 
   console.log(
     `${plan.entries.length} entr${plan.entries.length === 1 ? 'y' : 'ies'} after this run ` +
-      `(${plan.rekeyed.length} re-keyed, 0 re-keyed with allowed drift, ${plan.untouched.length} untouched).`,
+      `(${plan.rekeyed.length} re-keyed, ${plan.allowedDrift.length} re-keyed with allowed drift, ` +
+      `${plan.untouched.length} untouched).`,
   );
 
   if (!write) {
@@ -536,7 +757,15 @@ async function main() {
   console.log('');
 
   if (args.renames) {
-    return runRename({ findings, baseline, renames: args.renames, write: args.write, baselinePath });
+    return runRename({
+      findings,
+      baseline,
+      renames: args.renames,
+      allowances: args.allowances,
+      write: args.write,
+      baselinePath,
+      repoRoot,
+    });
   }
 
   // The refusal is checked BEFORE any plan is computed or printed, so a run
