@@ -167,13 +167,16 @@ async function main() {
     // consuming repos also have, because `create-adr` scaffolds it. Run
     // ungated, this check would impose the content-anchor convention on every
     // consumer's ADRs and fail their `commands.validate` over prose the plugin
-    // does not own.
+    // does not own. The citing corpus also now reaches the repo-root `wiki/`
+    // tree, which a consumer likewise has once `maintain-wiki` scaffolds one —
+    // so the same exposure applies there too.
     //
     // What makes `error` safe is therefore the gate itself, not the scanner's
     // reach: AUDITING_PLUGIN_SOURCE is derived from the AUDITED repo (`relative(
     // REPO_ROOT, PLUGIN_ROOT)` above), so inside this block "repo-root
-    // `docs/decisions/`" can only ever mean *this* repo's own ADRs. Move this
-    // call outside the block and the severity stops being defensible.
+    // `docs/decisions/`" — and, since the corpus widened, "repo-root `wiki/`" —
+    // can only ever mean *this* repo's own trees. Move this call outside the
+    // block and the severity stops being defensible.
     findings.push(...(await scanPointerAnchors(REPO_ROOT)));
   }
 

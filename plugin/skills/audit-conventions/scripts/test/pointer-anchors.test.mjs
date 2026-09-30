@@ -831,9 +831,9 @@ test('collectPointers: an orphan continuation is not also reported anchor-missin
 
 // ---- corpus scoping ----------------------------------------------------------
 
-test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the changelog', async () => {
+test('listCitingFiles: takes .md and .mjs under docs/, plugin/ and wiki/, including the changelog', async () => {
   // No `git init` here, so the repo-root half contributes nothing and this
-  // stays a test of the two citing TREES alone — `examples/CLAUDE.md` is out
+  // stays a test of the three citing TREES alone — `examples/CLAUDE.md` is out
   // because `examples/` is not a citing root, and the root `CLAUDE.md` is out
   // because there is no index to prove it tracked (asserted directly below).
   const dir = await withTempRepo(async (d) => {
@@ -841,6 +841,9 @@ test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the
     await writeRepoFile(d, 'plugin/CHANGELOG.md', 'x\n');
     await writeRepoFile(d, 'plugin/skills/s/scripts/lib/thing.mjs', 'x\n');
     await writeRepoFile(d, 'plugin/skills/s/config.json', '{}\n');
+    await writeRepoFile(d, 'wiki/page.md', 'x\n');
+    await writeRepoFile(d, 'wiki/sub/x.mjs', 'x\n');
+    await writeRepoFile(d, 'wiki/data.json', '{}\n');
     await writeRepoFile(d, 'CLAUDE.md', 'x\n');
     await writeRepoFile(d, 'examples/CLAUDE.md', 'x\n');
   });
@@ -849,6 +852,8 @@ test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the
       'docs/notes.md',
       'plugin/CHANGELOG.md',
       'plugin/skills/s/scripts/lib/thing.mjs',
+      'wiki/page.md',
+      'wiki/sub/x.mjs',
     ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -1002,6 +1007,39 @@ test('collectPointers: a target inside the eval fixture tree is not a resolution
     const { pointers, findings } = await collectPointers(dir);
     assert.deepEqual(findings, []);
     assert.equal(pointers[0].target, 'plugin/CONVENTIONS.md');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// #583: the wiki/ tree joined the citing corpus, but resolution itself is
+// unchanged — a cited path is still matched against the WHOLE repo-relative
+// candidate list (`matchCandidates`), never against the citing file's own
+// directory. A path written as if `wiki/` were a bundle root of its own (a
+// leading slash) therefore does NOT resolve, while the same path written
+// relative to the repo root does.
+test('#583 collectPointers: a repo-root-relative pointer under wiki/ resolves; a leading-slash form does not', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/decisions/0001-x.md', numberedLines(5));
+    await writeRepoFile(
+      d,
+      'wiki/page.md',
+      `Bundle-style ${cite('/decisions/0001-x.md', '3')} ("line 3").\n` +
+        `Repo-relative ${cite('decisions/0001-x.md', '3')} ("line 3").\n`,
+    );
+  });
+  try {
+    const findings = await scanPointerAnchors(dir);
+    // The leading-slash form matches nothing: candidates never carry a leading
+    // slash, so the suffix check never lines up. Its sibling one line below,
+    // written relative to the repo root, resolves against
+    // `wiki/decisions/0001-x.md` cleanly — this is the ONLY finding, so the
+    // relative form is proven to report nothing by elimination.
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'pointer-unresolved');
+    assert.equal(findings[0].severity, 'error');
+    assert.equal(findings[0].file, 'wiki/page.md');
+    assert.equal(findings[0].line, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

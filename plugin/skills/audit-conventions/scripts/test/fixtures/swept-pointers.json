@@ -2,8 +2,8 @@
   "why_this_file_is_json": [
     "These pointer strings live in JSON, not in the test source, on purpose. The",
     "pointer scanner's citing corpus is CITING_EXTENSIONS ['.md', '.mjs'] under",
-    "CITING_ROOTS ['docs', 'plugin'] — so the guard test itself, a .mjs file under",
-    "plugin/, is a citing file. Spelling any of these strings as a literal there",
+    "the module's declared CITING_ROOTS — so the guard test itself, a .mjs file",
+    "under plugin/, is a citing file. Spelling any of these strings as a literal there",
     "would mint a live pointer finding in this repo, and that finding could not be",
     "baselined away, because the guard forbids exactly these strings from entering",
     "the baseline. Unresolvable by construction. '.json' is not a citing",

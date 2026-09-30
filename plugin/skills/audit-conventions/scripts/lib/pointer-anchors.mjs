@@ -38,8 +38,8 @@ import { iterateUnfencedLines } from './md-scan.mjs';
 
 // CITING files — where a pointer may be WRITTEN.
 //
-// `.md` and `.mjs` under the repo-root `docs/` and `plugin/` trees, plus the
-// tracked files of the repo root ITSELF (see `listRootCitingFiles`). Two
+// `.md` and `.mjs` under the repo-root `docs/`, `plugin/` and `wiki/` trees,
+// plus the tracked files of the repo root ITSELF (see `listRootCitingFiles`). Two
 // scoping decisions here are load-bearing:
 //
 //   - `plugin/CHANGELOG.md` is deliberately INCLUDED, unlike the corpus
@@ -50,7 +50,7 @@ import { iterateUnfencedLines } from './md-scan.mjs';
 //     JSON — the ratchet baseline below, test fixtures — precisely so that
 //     recording a pointer does not mint a new one, and so the baseline cannot
 //     scan itself.
-export const CITING_ROOTS = ['docs', 'plugin'];
+export const CITING_ROOTS = ['docs', 'plugin', 'wiki'];
 export const CITING_EXTENSIONS = ['.md', '.mjs'];
 
 // Directories excluded from BOTH corpora, for two different reasons.
@@ -124,9 +124,9 @@ export async function listTargetCandidates(repoRoot) {
 // Unresolvable by construction. Tracking is the line between the repo's own
 // prose and a local scratch file.
 //
-// Only the root's own entries are listed, never a walk from it: the two citing
-// TREES above are already walked whole, and re-deriving them here would just
-// duplicate that.
+// Only the root's own entries are listed, never a walk from it: the three
+// citing TREES above are already walked whole, and re-deriving them here would
+// just duplicate that.
 //
 // A null from `gitTrackedFiles` — not a git repo, or git unavailable —
 // contributes nothing, the same graceful degradation hygiene.mjs applies to
