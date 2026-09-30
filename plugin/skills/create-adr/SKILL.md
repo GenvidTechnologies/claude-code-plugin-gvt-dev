@@ -208,8 +208,31 @@ entries point at.
    ```bash
    node ${CLAUDE_PLUGIN_ROOT}/skills/audit-conventions/scripts/pointer-baseline.mjs --help
    ```
-   If the help text lists `--rename`, pass it every `old -> new` move from the
-   dry run (`old=new`).
+   If the help text lists `--rename`, build one `--rename old=new` for
+   **every** `old -> new` line in the renumber's dry-run "File moves" output —
+   a move whose file holds no baseline entries is reported per-pair as
+   `no baseline entries — nothing to re-key` and simply skipped, no special
+   handling needed. Run the full set as a dry run first (no `--write`):
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/skills/audit-conventions/scripts/pointer-baseline.mjs \
+     --rename <old1>=<new1> --rename <old2>=<new2> …
+   ```
+   Then branch on the result:
+   - **Clean** (no `REFUSED`) — show the dry run, wait for the user's
+     confirmation, then re-run the identical command with `--write` added, and
+     stage `.pointer-baseline.json`.
+   - **Refused, with drift `explained by this rename`** — the tool prints a
+     ready `--allow-drift '…'` argument for each explained entry. An explained
+     drift is a cited line the renumber's own token rewrite changed, and the
+     allowance pins the reviewed current digest. Copy the printed
+     `--allow-drift` arguments onto the command and dry-run again.
+   - **Refused, with drift not explained by this rename** — stop and report:
+     the cited content actually changed independently of the move, so the
+     citation needs repair. Never reach for `--accept-new` to get past this.
+   - **Refused with `nothing to re-key`** (the whole-run refusal, not a
+     per-pair line) — no moved file holds baseline entries; continue on to
+     `commands.validate`.
+   - **Any other refusal** — stop and report it.
 2. Otherwise, run `--accept-new` **without** `--write` first and read its
    output: confirm every newly-added entry pairs with a pruned entry under a
    renamed path — evidence the renumber produced it, not unrelated drift. Only

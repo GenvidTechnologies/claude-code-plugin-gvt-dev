@@ -88,6 +88,7 @@ node plugin/skills/audit-conventions/scripts/audit.mjs --fix --apply  # apply
 # Maintain the pointer-anchor ratchet (.pointer-baseline.json) — never hand-edit it
 node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs                  # prune-only dry run: drops entries matching nothing, adds none
 node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs --write --accept-new  # also accept new debt; refuses, with no write, while any pointer is provably wrong
+node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs --rename <old>=<new>   # re-key a moved citing file's entries (dry run; add --write to apply)
 ```
 
 **On Windows, run the audit via the Bash tool, not PowerShell.** The audit checks each skill's declared tools against `PATH`; `cleanup-initiative` expects `grep`, which isn't on the PowerShell `PATH`, so a pwsh run falsely reports `1 required expectation unmet: cleanup-initiative expects grep — not found on PATH` (exit 1). git-bash has `grep`, so the same audit exits 0 there. If you see only that `grep` line as "unmet", it's an environment artifact, not a widened contract — re-run under bash to confirm.
