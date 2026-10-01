@@ -50,7 +50,11 @@ Decision Records row and a breadcrumb.
 created without an explicit instruction.** `create-adr` asks which theme when run interactively;
 run headless with no theme named, it infers the best-matching *existing* theme and reports the
 inference rather than guessing silently. `plan-task` proposes the theme at its existing plan
-checkpoint rather than adding a new question to the flow.
+checkpoint rather than adding a new question to the flow. A new theme inside the wiki is linked
+from the decisions root index **and** from the bundle-root `<wikiDir>/index.md`: `maintain-wiki`'s
+lint counts a subdirectory index as reachable only when the bundle root links it directly, so a
+theme reachable only through the decisions index would be reported as an unreachable subtree. Making
+that check follow nested indexes instead is left to `maintain-wiki` (#598).
 
 **5. Declined: an audit warning for a `CLAUDE.md`-declared location with no matching `paths`
 override.** The same 10-repo sample that showed 0/10 affected by the tier's retirement would also

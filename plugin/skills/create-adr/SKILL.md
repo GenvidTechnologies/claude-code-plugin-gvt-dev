@@ -77,7 +77,10 @@ Gather from the user before proceeding:
    - **New theme:** create a kebab-case subdirectory under `dir` and an
      `index.md` in it from
      `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md`;
-     inside the wiki, also add a theme row to `<dir>/index.md`. **Never create
+     inside the wiki, also add a theme row to `<dir>/index.md` **and** a link
+     to the new theme index from `<wikiDir>/index.md` (skip if absent) —
+     `maintain-wiki`'s lint reports any subdirectory `index.md` the bundle-root
+     index doesn't link as an unreachable subtree. **Never create
      a new theme without an explicit instruction to do so** — a
      non-interactive run with no theme supplied falls to the next bullet
      instead of creating one.
@@ -90,7 +93,7 @@ Gather from the user before proceeding:
    | Case | File | Register in | Frontmatter | First-use scaffold |
    |---|---|---|---|---|
    | Outside the wiki (flat or themed) | `<dir>[/<theme>]/NNNN-slug.md` | `docs/TOC.md` Decision Records row (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + TOC row (§4) |
-   | Inside the wiki, theme chosen | `<dir>/<theme>/NNNN-slug.md` | `<dir>/<theme>/index.md` (created from `decisions-index.template.md` if absent; theme row added to `<dir>/index.md`) | Yes | — |
+   | Inside the wiki, theme chosen | `<dir>/<theme>/NNNN-slug.md` | `<dir>/<theme>/index.md` (created from `decisions-index.template.md` if absent; theme row added to `<dir>/index.md` and a link to it from `<wikiDir>/index.md`) | Yes | — |
    | Inside the wiki, flat or empty themed root | `<dir>/NNNN-slug.md` | `<dir>/index.md`; if that's absent, whichever index already lists sibling ADRs; if neither exists, create `<dir>/index.md` | Yes | `<dir>/index.md` (no frontmatter) + link from `<wikiDir>/index.md` (skip if absent) + one idempotent TOC Decision Records pointer row (skip if `docs/TOC.md` absent). **No README.** (§4) |
 
    Inside the wiki: no per-record TOC row beyond the single pointer row above;
