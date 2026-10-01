@@ -8,4 +8,4 @@ This directory contains Architecture Decision Records (ADRs) in **MADR-lite** fo
 
 **Retroactive records:** a record may be **backfilled retroactively** — its number reflects chronological *decision* order, not authorship order. Such a record distinguishes **Originally decided** (derived from git history) from **Recorded** (when the file was written), so readers don't mistake the write date for the decision date.
 
-**Index:** all records are listed in [`docs/TOC.md`](../TOC.md) under the **Decision Records** heading.
+**Index:** all records are listed in [`docs/TOC.md`](<toc-link>) under the **Decision Records** heading.

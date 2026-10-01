@@ -1,6 +1,6 @@
 ---
 name: create-adr
-description: Adds or chronologically inserts an Architecture Decision Record into the repo's docs/decisions/ (or its declared ADR location). On append, dispatches gvt-dev:tech-writer to scaffold and fill the next-numbered record from the shared MADR-lite template, back-link the issue, and self-index the TOC row. On chronological or retroactive insertion, runs a clean-tree gate and the renumber-adrs script to shift later records up, dispatches tech-writer at the explicit inserted number, and sweeps cross-references. Use when recording a non-trivial architecture or trade-off decision on demand, outside a full plan-task run, or when back-filling or inserting a decision into the historical sequence.
+description: Adds or chronologically inserts an Architecture Decision Record into the repo's resolved decisions location (paths['docs/decisions/'] in .gvt-agent.json, default docs/decisions/). On append, dispatches gvt-dev:tech-writer to scaffold and fill the next-numbered record from the shared MADR-lite template, back-link the issue, and self-index it. On chronological or retroactive insertion, runs a clean-tree gate and the renumber-adrs script to shift later records up, dispatches tech-writer at the explicit inserted number, and sweeps cross-references. Use when recording a non-trivial architecture or trade-off decision on demand, outside a full plan-task run, or when back-filling or inserting a decision into the historical sequence.
 metadata:
   expects:
     files:
@@ -9,10 +9,10 @@ metadata:
         reason: Home for ADR files; scaffolded on first use if absent
       - path: docs/TOC.md
         required: false
-        reason: Decision-Records index this skill self-indexes into and rewrites on renumber
+        reason: Decision Records index this skill self-indexes into outside the wiki, and rewrites on renumber
       - path: CLAUDE.md
         required: false
-        reason: Read for commit format and any project-declared ADR location that overrides docs/decisions/
+        reason: Read for commit format
     tools:
       - command: git
         reason: Clean-tree gate (git status --porcelain), per-file git mv for renumber, and git-history date derivation
@@ -43,36 +43,101 @@ Gather from the user before proceeding:
 - **Consequences** — what becomes easier or harder as a result
 - **Issue ref** — GitHub `#N` or Bitbucket URL to back-link (optional)
 - **Placement** — `append` (default) or `insert-at N` / `retroactive`
+- **Theme** — optional. Only meaningful when the resolved location (§1) lays
+  records out under theme subdirectories; interactive runs are offered a
+  choice there, non-interactive runs may pass one up front to skip inference.
 
-## 1. Resolve the ADR location
+## 1. Resolve the ADR location and the next number
 
-1. Read `CLAUDE.md`. If it declares an ADR location, use that; otherwise use
-   `docs/decisions/`.
-2. List `NNNN-*.md` files in the ADR directory, sorted numerically. Record the
-   **highest existing N** (0 if the directory is empty or absent).
-3. If no ADR files exist yet, offer the first-use scaffold (§4) before proceeding.
+1. Run from the repo root:
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs --next
+   ```
+   This resolves `paths['docs/decisions/']` from `.gvt-agent.json` (falling
+   back to `docs/decisions/` when unset) the way CONVENTIONS.md's Runtime path
+   resolution describes — the same override `/gvt-dev:audit-conventions`
+   itself uses. **Nothing in this skill reads an ADR location from
+   `CLAUDE.md`.** It prints one JSON object: `dir`, `resolvedFrom`, `wiki`,
+   `wikiDir`, `layout` (`flat`/`themed`/`mixed`/`empty`/`missing`), `themes`
+   (each with `name`, `count`, and whether an `index.md` exists), `highest`,
+   `next`, `nextPadded`, `rootIndex`, `rootReadme`, and `records` — every
+   discovered ADR, recursively across theme subdirectories, as `{ num, path }`.
+   If it reports a `warning` (e.g. an unusable `paths` override), surface it to
+   the user before continuing.
+
+   **Every later mention of "the ADR directory" in this skill means this
+   resolved `dir`.**
+2. If `layout` is `missing` or `empty`, offer the first-use scaffold (§4)
+   before proceeding.
+3. **Theme choice** — only relevant when `layout` is `themed` or `mixed`, or
+   the user asked for one. Candidates are the `themes` array from step 1,
+   plus, for a `mixed` layout, the root itself.
+   - **Interactive:** route to `AskUserQuestion` with the existing themes, the
+     root (mixed layout only), and a "new theme" option.
+   - **New theme:** create a kebab-case subdirectory under `dir` and an
+     `index.md` in it from
+     `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md`;
+     inside the wiki, also add a theme row to `<dir>/index.md`. **Never create
+     a new theme without an explicit instruction to do so** — a
+     non-interactive run with no theme supplied falls to the next bullet
+     instead of creating one.
+   - **Non-interactive, no theme supplied:** pick the best-matching
+     **existing** theme (by title/keyword overlap with §0's Title/Context) and
+     report the choice; never invent one.
+4. **Regime** — where the record is written and registered is keyed on `wiki`;
+   `layout` (and the theme chosen above) decides placement within it:
+
+   | Case | File | Register in | Frontmatter | First-use scaffold |
+   |---|---|---|---|---|
+   | Outside the wiki (flat or themed) | `<dir>[/<theme>]/NNNN-slug.md` | `docs/TOC.md` Decision Records row (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + TOC row (§4) |
+   | Inside the wiki, theme chosen | `<dir>/<theme>/NNNN-slug.md` | `<dir>/<theme>/index.md` (created from `decisions-index.template.md` if absent; theme row added to `<dir>/index.md`) | Yes | — |
+   | Inside the wiki, flat or empty themed root | `<dir>/NNNN-slug.md` | `<dir>/index.md`; if that's absent, whichever index already lists sibling ADRs; if neither exists, create `<dir>/index.md` | Yes | `<dir>/index.md` (no frontmatter) + link from `<wikiDir>/index.md` (skip if absent) + one idempotent TOC Decision Records pointer row (skip if `docs/TOC.md` absent). **No README.** (§4) |
+
+   Inside the wiki: no per-record TOC row beyond the single pointer row above;
+   no `<wikiDir>/log.md` entry (the log is ingest-scoped — git already records
+   authorship); honor any stricter local indexing rule stated in the repo's
+   `CLAUDE.md` or wiki schema over the defaults above.
+
+   **Entry shape:** mirror whatever shape the target index already uses for
+   its existing entries; a fresh index uses
+   `* [<Title>](NNNN-slug.md) - <description>` — title without the ADR number,
+   since renumbering can rewrite file names but never rewrites link text.
+
+   **Frontmatter** (the "Yes" rows above only): mirror sibling ADRs' existing
+   key set and `type` when siblings exist in that location; otherwise use the
+   default block documented in
+   `${CLAUDE_PLUGIN_ROOT}/docs/decision-record.template.md`'s leading comment
+   — single-quoted `title` (no number), single-quoted `description`,
+   `tags: [decisions, <theme>]` (or `[decisions]` with no theme), and `status`
+   mapped from this skill's MADR Status field: proposed → draft, accepted →
+   stable, superseded → deprecated. The body heading `# NNNN. Title` stays in
+   every case.
 
 ## 2. Append path (common case)
 
 Use this path when placement is `append`. For `insert-at N` or `retroactive`,
 go to §3.
 
-1. N = highest existing N + 1.
+1. N = the `next`/`nextPadded` value §1 already resolved. If meaningful time
+   has passed since §1 ran (e.g. after a scaffold or theme decision), re-run
+   `--next` to confirm N still holds.
 2. Dispatch **`gvt-dev:tech-writer`** with:
    - The §0 content (title, date, Context, Decision, Compromise, Consequences,
      issue ref)
    - Template: `${CLAUDE_PLUGIN_ROOT}/docs/decision-record.template.md`
-   - ADR directory and target number N
+   - The resolved ADR directory (`dir`), target number N, the chosen theme (if
+     any), and whether the location is inside the wiki (`wiki`)
    - Instruction: **stage the file but do not commit** — this skill owns the commit
 3. tech-writer names the file `NNNN-kebab-title.md`, fills the template, and
-   self-indexes a TOC row under **Decision Records** in `docs/TOC.md`. It is
-   the sole write owner; this skill does not duplicate those steps.
+   registers it per §1's regime table — self-indexing a `docs/TOC.md` row
+   outside the wiki, or indexing into the theme/root wiki index inside it. It
+   is the sole write owner; this skill does not duplicate those steps.
 4. Proceed to §6 (commit).
 
 ## 2b. From-empty chronological backfill (multiple records at once)
 
-Use this path only when the ADR directory is **empty** (highest existing N = 0,
-per §1 step 2) and you're seeding **several** past decisions at once from git
+Use this path only when the ADR directory is **empty** (§1's `--next` reports
+`highest: 0`) and you're seeding **several** past decisions at once from git
 history, rather than authoring one new record going forward (§2) or inserting
 into an existing sequence (§3).
 
@@ -105,20 +170,24 @@ into an existing sequence (§3).
    comes first — never fabricate an ordering.
 6. **Dispatch `gvt-dev:tech-writer` once per record**, each at its explicit
    assigned number, reusing the same content contract as §2 step 2 (template,
-   target number, stage-only instruction). Do not let tech-writer compute
-   next-highest — pass the number explicitly, as in §3e.
-7. **Write the `docs/TOC.md` Decision-Records index once, centrally,** after
-   all records are drafted — not as N parallel per-record writes, which would
-   race the same file. This skill (not tech-writer) owns this single index
-   pass for the batch.
+   resolved dir, target number, theme, wiki flag, stage-only instruction). Do
+   not let tech-writer compute next-highest — pass the number explicitly, as in
+   §3e.
+7. **Register the whole batch once, centrally** — per §1's regime table (the
+   `docs/TOC.md` Decision Records index outside the wiki; the resolved wiki
+   index inside it) — not as N parallel per-record writes, which would race the
+   same file. This skill (not tech-writer) owns this single registration pass
+   for the batch.
 8. **Land the whole backfill as one commit** covering all N records plus the
-   single TOC update, per §6.
+   single index update, per §6.
 
 ## 3. Chronological / retroactive insertion path
 
 ### 3a. Determine insertion number N
 
-1. Read the `Date:` field from each existing ADR.
+1. Use §1's `--next` output: its `records` list is the full existing sequence,
+   discovered recursively across theme subdirectories. Read the `Date:` field
+   (or frontmatter date) from each.
 2. Place the new decision's date in the chronological sequence; N is the slot to
    open (the number the new record will bear).
 3. **On a date tie (same month/year, exact day unknown):** ask the user which
@@ -140,15 +209,15 @@ If output is non-empty, **abort** with a clear message:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs \
-  --dir <adr-dir> --insert-at <N>
+  --dir <dir> --insert-at <N>
 ```
 
-The script discovers `NNNN-*.md` records **recursively at any depth** under
-`--dir` — theme subdirectories included — as **one** chronological sequence.
-`index.md`/`README.md` and date-named files (`NNNN-NN-NN-...`) are not ADRs and
-are skipped. It stops with exit 1, changing nothing, on: a duplicate number
-found anywhere under `--dir`, an `--insert-at` below 1 or non-integer, or no
-ADRs discovered at all.
+`<dir>` is the location §1 resolved. The script discovers `NNNN-*.md` records
+**recursively at any depth** under `--dir` — theme subdirectories included —
+as **one** chronological sequence. `index.md`/`README.md` and date-named files
+(`NNNN-NN-NN-...`) are not ADRs and are skipped. It stops with exit 1,
+changing nothing, on: a duplicate number found anywhere under `--dir`, an
+`--insert-at` below 1 or non-integer, or no ADRs discovered at all.
 
 **Print the full output.** A dry run reports, in order: the discovered-ADR
 count; each move as a repo-relative `old -> new` path; unambiguous reference
@@ -167,17 +236,18 @@ Then **wait for user confirmation** before applying.
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs \
-  --dir <adr-dir> --insert-at <N> --apply
+  --dir <dir> --insert-at <N> --apply
 ```
 
 Apply stages the renames and the heading and reference edits.
 
 ### 3e. Author the record at N
 
-Dispatch **`gvt-dev:tech-writer`** with the same content as §2 step 2, plus the
-explicit target number N. tech-writer honors an explicitly supplied number rather
-than computing next-highest (see tech-writer decision-records step 2). Instruct
-it to stage only — do not commit.
+Dispatch **`gvt-dev:tech-writer`** with the same content as §2 step 2 — the
+resolved dir, theme, and wiki flag included — plus the explicit target number
+N. tech-writer honors an explicitly supplied number rather than computing
+next-highest (see tech-writer decision-records step 2). Instruct it to stage
+only — do not commit.
 
 ### 3f. Ambiguous-reference report
 
@@ -247,22 +317,33 @@ is rewritten by the renumber and stays red until the baseline is re-keyed.
 
 ## 4. First-use scaffold
 
-If `docs/decisions/README.md` is **absent**, scaffold it from:
-`${CLAUDE_PLUGIN_ROOT}/skills/create-adr/README.breadcrumb.template.md`
+Triggered from §1 step 2, when `layout` is `missing` or `empty`. Branch on
+§1's `wiki` flag — never hard-code the unresolved default directory name here,
+only the resolved `dir`:
 
+**Outside the wiki:** if `<dir>/README.md` is absent, scaffold it from
+`${CLAUDE_PLUGIN_ROOT}/skills/create-adr/README.breadcrumb.template.md`,
+filling its `<toc-link>` placeholder with the relative path from `<dir>` to
+`docs/TOC.md` (which renders `../TOC.md` for the default `docs/decisions/`).
 Then **self-index it in `docs/TOC.md`** under the **Decision Records** heading
 (create the heading if absent). An unindexed scaffolded doc is invisible to
 planning and triage skills that discover docs via the index — the same gap
 `triage-issues` §0 addresses for `docs/issue-triage.md` (plugin issue #90).
+Idempotent: skip if `<dir>/README.md` already exists; skip gracefully if
+`docs/TOC.md` is absent.
 
-This step is **idempotent**: skip if `docs/decisions/README.md` already exists;
-skip gracefully if `docs/TOC.md` is absent.
+**Inside the wiki:** no README. If `<dir>/index.md` is absent, create it from
+`${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md` (no
+frontmatter) and link it from `<wikiDir>/index.md` (skip if absent). Add one
+idempotent Decision Records pointer row to `docs/TOC.md` naming the wiki index
+— a single row pointing at the index, never a per-record row — skipping if
+`docs/TOC.md` is absent. Idempotent: skip if `<dir>/index.md` already exists.
 
 ## 5. Windows / git safety
 
 The renumber script performs **per-file `git mv OLD NEW`** for each renamed
-record — it never runs `git mv` on the `docs/decisions/` directory itself. On
-Windows, a `git mv` of a watched directory fails with Permission Denied (`EBUSY`);
+record — it never runs `git mv` on the ADR directory itself. On Windows, a
+`git mv` of a watched directory fails with Permission Denied (`EBUSY`);
 per-file moves are safe. If running renumber steps manually, apply the same rule.
 
 ## 6. Commit ownership
@@ -284,3 +365,5 @@ per-file moves are safe. If running renumber steps manually, apply the same rule
 3. For an insertion: the renumber's renames and its heading and reference edits are staged;
    tech-writer adds the new record; one commit covers both. If §3g re-keyed
    `.pointer-baseline.json`, stage it too.
+4. Report to the user: the resolved ADR directory (`dir`), whether it's inside
+   the wiki, and the theme chosen (if any).
