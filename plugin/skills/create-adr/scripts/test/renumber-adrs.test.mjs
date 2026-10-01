@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 
 import { planRenumber, applyRenumber } from '../renumber-adrs.mjs';
 import { discoverAdrs, buildTokenRewriter, isFrozenPath } from '../renumber-adrs.mjs';
+import { resolveDecisionsDir, describeAdrDir } from '../renumber-adrs.mjs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -770,6 +771,261 @@ test('#581 report cites post-move path', () => {
     assert.ok(hit, 'the ADR-0004 mention inside the moved beta file is reported');
     assert.equal(hit.reportFile, 'decisions/beta/0003-b.md', 'reportFile cites the post-move path, not the pre-move 0002-b.md');
     assert.ok(!hit.reportFile.includes('0002-b.md'), 'reportFile must not cite the stale pre-move name');
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #582 — resolveDecisionsDir / describeAdrDir ("--next") → task T1
+// ---------------------------------------------------------------------------
+
+function makeRepo(prefix) {
+  return mkdtempSync(join(tmpdir(), prefix));
+}
+
+test('#582 describeAdrDir: flat layout, exclusions folded in', () => {
+  const root = makeRepo('renumber-next-flat-');
+  try {
+    writeFileAt(root, 'docs/decisions/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/0003-c.md', '# 0003. C\n');
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+    writeFileAt(root, 'docs/decisions/README.md', '# readme\n');
+    writeFileAt(root, 'docs/decisions/2026-01-01-notes.md', '# notes\n');
+    writeFileAt(root, 'docs/decisions/.hidden/0099-ignored.md', '# 0099\n');
+    writeFileAt(root, 'docs/decisions/node_modules/0098-ignored.md', '# 0098\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'flat', 'root-only records with no theme subdirs is flat');
+    assert.equal(summary.count, 3, 'index.md, README.md, the date-named file, the dot dir and node_modules are all excluded');
+    assert.equal(summary.highest, 3);
+    assert.equal(summary.next, 4);
+    assert.equal(summary.nextPadded, '0004');
+    assert.equal(summary.exists, true);
+    assert.equal(summary.rootIndex, true);
+    assert.equal(summary.rootReadme, true);
+    assert.deepEqual(summary.themes, []);
+    assert.deepEqual(
+      summary.records.map((r) => r.path),
+      ['0001-a.md', '0002-b.md', '0003-c.md'],
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: themed layout, global max+1 across themes', () => {
+  const root = makeRepo('renumber-next-themed-');
+  try {
+    writeFileAt(root, 'docs/decisions/alpha/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/alpha/0003-c.md', '# 0003. C\n');
+    writeFileAt(root, 'docs/decisions/alpha/index.md', '# alpha\n');
+    writeFileAt(root, 'docs/decisions/beta/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/2026-02-02-notes.md', '# notes\n');
+    writeFileAt(root, 'docs/decisions/.hidden/0097-ignored.md', '# 0097\n');
+    writeFileAt(root, 'docs/decisions/node_modules/0096-ignored.md', '# 0096\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'themed', 'no root records, two theme subdirs');
+    assert.equal(summary.count, 3);
+    assert.equal(summary.highest, 3, 'highest is the global max across both themes');
+    assert.equal(summary.next, 4);
+    const byName = Object.fromEntries(summary.themes.map((t) => [t.name, t]));
+    assert.equal(byName.alpha.count, 2);
+    assert.equal(byName.alpha.index, true);
+    assert.equal(byName.beta.count, 1);
+    assert.equal(byName.beta.index, false);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: mixed layout (root records AND a theme)', () => {
+  const root = makeRepo('renumber-next-mixed-');
+  try {
+    writeFileAt(root, 'docs/decisions/0005-root.md', '# 0005. Root\n');
+    writeFileAt(root, 'docs/decisions/alpha/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/alpha/0002-b.md', '# 0002. B\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'mixed');
+    assert.equal(summary.count, 3);
+    assert.equal(summary.highest, 5);
+    assert.equal(summary.next, 6);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: empty (exists, no records)', () => {
+  const root = makeRepo('renumber-next-empty-');
+  try {
+    mkdirSync(join(root, 'docs', 'decisions'), { recursive: true });
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.exists, true);
+    assert.equal(summary.layout, 'empty');
+    assert.equal(summary.count, 0);
+    assert.equal(summary.highest, 0);
+    assert.equal(summary.next, 1);
+    assert.equal(summary.nextPadded, '0001');
+    assert.deepEqual(summary.themes, []);
+    assert.deepEqual(summary.records, []);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 --next CLI: missing ADR directory exits 0 with next=1 (CLI subprocess)', () => {
+  const root = makeRepo('renumber-next-missing-');
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT_PATH, '--next'], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, `--next on a repo with no docs/decisions/ must exit 0, stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.resolvedFrom, 'default');
+    assert.equal(parsed.exists, false);
+    assert.equal(parsed.layout, 'missing');
+    assert.equal(parsed.next, 1);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: empty-themed-root (only index.md + empty theme dirs)', () => {
+  const root = makeRepo('renumber-next-etr-');
+  try {
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+    writeFileAt(root, 'docs/decisions/alpha/index.md', '# alpha\n');
+    writeFileAt(root, 'docs/decisions/beta/index.md', '# beta\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.exists, true);
+    assert.equal(summary.count, 0, 'no ADR records exist anywhere yet');
+    assert.equal(summary.layout, 'themed', 'theme subdirectories are present even though empty, so this is not the flat/empty case');
+    assert.equal(summary.highest, 0);
+    assert.equal(summary.next, 1);
+    assert.equal(summary.themes.length, 2);
+    assert.equal(summary.rootIndex, true);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: duplicate ADR number across themes throws EDUPLICATE', () => {
+  const root = makeRepo('renumber-next-dup-');
+  try {
+    writeFileAt(root, 'docs/decisions/alpha/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/beta/0002-z.md', '# 0002. Z\n');
+
+    assert.throws(
+      () => describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' }),
+      (err) => {
+        assert.equal(err.code, 'EDUPLICATE', 'same error code planRenumber raises');
+        assert.match(err.message, /0002-b\.md/);
+        assert.match(err.message, /0002-z\.md/);
+        return true;
+      },
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: paths override resolved, wiki true', () => {
+  const root = makeRepo('renumber-next-override-');
+  try {
+    writeFileAt(
+      root,
+      '.gvt-agent.json',
+      JSON.stringify({ paths: { 'docs/decisions/': 'wiki/decisions/' } }, null, 2),
+    );
+    writeFileAt(root, 'wiki/decisions/0001-a.md', '# 0001. A\n');
+
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'wiki/decisions/');
+    assert.equal(resolved.resolvedFrom, 'paths');
+    assert.equal(resolved.warning, undefined);
+
+    const summary = describeAdrDir({ repoRoot: root, dir: resolved.dir });
+    assert.equal(summary.wiki, true, 'wiki/decisions/ is inside the default wikiDir');
+    assert.equal(summary.wikiDir, 'wiki');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: no config falls back to the default', () => {
+  const root = makeRepo('renumber-next-default-');
+  try {
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'docs/decisions/');
+    assert.equal(resolved.resolvedFrom, 'default');
+    assert.equal(resolved.warning, undefined);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: malformed JSON and an empty override value both fall back with a warning', () => {
+  const malformedRoot = makeRepo('renumber-next-malformed-');
+  const emptyValRoot = makeRepo('renumber-next-emptyval-');
+  try {
+    writeFileAt(malformedRoot, '.gvt-agent.json', '{ not valid json');
+    const malformed = resolveDecisionsDir(malformedRoot);
+    assert.equal(malformed.dir, 'docs/decisions/');
+    assert.equal(malformed.resolvedFrom, 'default');
+    assert.ok(malformed.warning, 'malformed .gvt-agent.json reports a warning');
+
+    writeFileAt(
+      emptyValRoot,
+      '.gvt-agent.json',
+      JSON.stringify({ paths: { 'docs/decisions/': '   ' } }, null, 2),
+    );
+    const emptyVal = resolveDecisionsDir(emptyValRoot);
+    assert.equal(emptyVal.dir, 'docs/decisions/');
+    assert.equal(emptyVal.resolvedFrom, 'default');
+    assert.ok(emptyVal.warning, 'a whitespace-only override value reports a warning');
+  } finally {
+    cleanup(malformedRoot);
+    cleanup(emptyValRoot);
+  }
+});
+
+test('#582 describeAdrDir: wiki boundary — wiki-old/ is not inside wiki/, a custom wikiDir is honored', () => {
+  const root = makeRepo('renumber-next-wikiboundary-');
+  try {
+    writeFileAt(root, 'wiki-old/decisions/0001-a.md', '# 0001. A\n');
+    const notWiki = describeAdrDir({ repoRoot: root, dir: 'wiki-old/decisions/' });
+    assert.equal(notWiki.wiki, false, 'wiki-old/ is a sibling prefix, not inside wiki/');
+
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ wiki: { wikiDir: 'bundle' } }, null, 2));
+    writeFileAt(root, 'bundle/decisions/0001-a.md', '# 0001. A\n');
+    const customWiki = describeAdrDir({ repoRoot: root, dir: 'bundle/decisions/' });
+    assert.equal(customWiki.wiki, true, 'a custom wiki.wikiDir is honored');
+    assert.equal(customWiki.wikiDir, 'bundle');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 --next CLI: combined with --insert-at exits 1 and makes no fs change (CLI subprocess)', () => {
+  const root = makeRepo('renumber-next-combined-');
+  try {
+    writeFileAt(root, 'docs/decisions/0001-a.md', '# 0001. A\n');
+    const before = readdirSync(join(root, 'docs', 'decisions')).sort();
+
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT_PATH, '--next', '--insert-at', '5'],
+      { cwd: root, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 1, '--next combined with --insert-at must exit 1');
+    assert.equal(result.stdout.trim(), '', 'no JSON summary is printed');
+
+    const after = readdirSync(join(root, 'docs', 'decisions')).sort();
+    assert.deepEqual(after, before, 'the ADR directory is untouched');
   } finally {
     cleanup(root);
   }

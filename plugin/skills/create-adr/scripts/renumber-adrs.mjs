@@ -1,18 +1,31 @@
 #!/usr/bin/env node
 // Renumber ADR files by opening a slot at position N, shifting every ADR
 // numbered >= N up by one. Supports dry-run (default) and apply modes.
+// Also reports the next free ADR number and the shape of the ADR directory.
 //
 // CLI: node renumber-adrs.mjs --dir <adr-dir> --insert-at <N> [--apply]
+//      node renumber-adrs.mjs --next [--dir <adr-dir>]
 //
 // Exports for testing:
 //   planRenumber({ dir, insertAt })  -> plan object (pure, no fs writes)
 //   applyRenumber({ dir, insertAt }) -> performs moves + edits + prints report
+//   resolveDecisionsDir(repoRoot)    -> { dir, resolvedFrom, warning? } for --next
+//   describeAdrDir({ repoRoot, dir })-> JSON summary object printed by --next
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
+import {
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  realpathSync,
+  existsSync,
+  statSync,
+} from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
+import { resolveExpectationPath } from '../../audit-conventions/scripts/lib/path-overrides.mjs';
 
 // ---------------------------------------------------------------------------
 // ADR file discovery
@@ -25,6 +38,21 @@ const ADR_FILENAME_RE = /^(\d{4})-(.+)\.md$/;
  */
 function pad(n) {
   return String(n).padStart(4, '0');
+}
+
+/**
+ * Build the EDUPLICATE error raised when two ADR files across theme
+ * directories share a number. Shared by planRenumber and describeAdrDir so
+ * both report the exact same message.
+ * @param {Map<number,string[]>} duplicates
+ */
+function duplicateError(duplicates) {
+  const parts = [...duplicates.entries()].map(
+    ([num, paths]) => `ADR ${pad(num)} used by: ${paths.join(', ')}`,
+  );
+  const err = new Error(`Duplicate ADR numbers found across theme directories: ${parts.join('; ')}`);
+  err.code = 'EDUPLICATE';
+  return err;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,12 +247,7 @@ export function planRenumber({ dir, insertAt }) {
   const { adrs, duplicates } = discoverAdrs(dir);
 
   if (duplicates.size > 0) {
-    const parts = [...duplicates.entries()].map(
-      ([num, paths]) => `ADR ${pad(num)} used by: ${paths.join(', ')}`,
-    );
-    const err = new Error(`Duplicate ADR numbers found across theme directories: ${parts.join('; ')}`);
-    err.code = 'EDUPLICATE';
-    throw err;
+    throw duplicateError(duplicates);
   }
 
   if (adrs.length === 0) {
@@ -636,6 +659,173 @@ export function discoverAdrs(dir) {
   return { adrs, duplicates };
 }
 
+// ---------------------------------------------------------------------------
+// --next: resolve the ADR directory and describe its contents (#582)
+// ---------------------------------------------------------------------------
+
+const DECISIONS_DIR_KEY = 'docs/decisions/';
+
+/**
+ * Normalize a directory string to forward slashes with exactly one trailing
+ * slash, e.g. `wiki\decisions` -> `wiki/decisions/`.
+ */
+function normalizeDirSlash(value) {
+  const slashed = value.replace(/\\/g, '/');
+  return slashed.endsWith('/') ? slashed : `${slashed}/`;
+}
+
+/**
+ * Resolve the ADR directory for `--next`, honoring `.gvt-agent.json`'s
+ * `paths['docs/decisions/']` override (CONVENTIONS.md precedence: `paths` is
+ * consulted; the `docs/decisions/` default applies only when it isn't set).
+ * Missing or malformed config, or an unusable override value, falls back to
+ * the default and reports why via `warning`.
+ * @param {string} repoRoot
+ * @returns {{ dir: string, resolvedFrom: 'paths'|'default', warning?: string }}
+ */
+export function resolveDecisionsDir(repoRoot) {
+  let raw;
+  try {
+    raw = readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8');
+  } catch {
+    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
+  }
+
+  let cfg;
+  try {
+    cfg = JSON.parse(raw);
+  } catch {
+    return {
+      dir: DECISIONS_DIR_KEY,
+      resolvedFrom: 'default',
+      warning: '.gvt-agent.json is not valid JSON — using the default ADR directory',
+    };
+  }
+
+  const resolved = resolveExpectationPath(cfg.paths, DECISIONS_DIR_KEY);
+
+  if (resolved === DECISIONS_DIR_KEY) {
+    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
+  }
+
+  if (typeof resolved !== 'string' || resolved.trim() === '') {
+    return {
+      dir: DECISIONS_DIR_KEY,
+      resolvedFrom: 'default',
+      warning: `paths['${DECISIONS_DIR_KEY}'] override value is empty or unusable — using the default ADR directory`,
+    };
+  }
+
+  return { dir: normalizeDirSlash(resolved), resolvedFrom: 'paths' };
+}
+
+/**
+ * Read `.gvt-agent.json`'s `wiki.wikiDir` (default `wiki`), used only to
+ * decide whether `dir` lives inside the wiki bundle.
+ * @param {string} repoRoot
+ * @returns {string}
+ */
+function readWikiDir(repoRoot) {
+  try {
+    const cfg = JSON.parse(readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8'));
+    if (typeof cfg.wiki?.wikiDir === 'string' && cfg.wiki.wikiDir.trim() !== '') {
+      return cfg.wiki.wikiDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    }
+  } catch {
+    // Missing or malformed config — fall through to the default below.
+  }
+  return 'wiki';
+}
+
+/**
+ * Describe the ADR directory at `dir` (repo-root-relative, e.g.
+ * `docs/decisions/`) for `--next`. Pure fs reads — no writes. Reuses
+ * discoverAdrs()'s exclusions (index.md, README.md, date-named files, dot
+ * directories, node_modules). Throws the same EDUPLICATE error as
+ * planRenumber when two records across themes share a number.
+ *
+ * `layout` is missing (dir absent) | empty (exists, no root records and no
+ * theme subdirectories) | flat (root records, no theme subdirectories) |
+ * themed (no root records, one or more theme subdirectories — whether or
+ * not those subdirectories hold records yet) | mixed (root records AND one
+ * or more theme subdirectories).
+ *
+ * @param {{ repoRoot: string, dir: string }} opts
+ * @returns {object} summary — `resolvedFrom` is NOT included; the caller
+ *   (the `--next` CLI handler) fills it in from resolveDecisionsDir()/`--dir`.
+ */
+export function describeAdrDir({ repoRoot, dir }) {
+  const normDirSlash = normalizeDirSlash(dir);
+  const bareDir = normDirSlash.slice(0, -1);
+  const absDir = resolve(repoRoot, bareDir);
+
+  const wikiDir = readWikiDir(repoRoot);
+  const wiki = bareDir === wikiDir || bareDir.startsWith(`${wikiDir}/`);
+
+  const exists = existsSync(absDir) && statSync(absDir).isDirectory();
+  if (!exists) {
+    return {
+      dir: normDirSlash,
+      wiki,
+      wikiDir,
+      exists: false,
+      layout: 'missing',
+      count: 0,
+      highest: 0,
+      next: 1,
+      nextPadded: pad(1),
+      themes: [],
+      rootIndex: false,
+      rootReadme: false,
+      records: [],
+    };
+  }
+
+  const { adrs, duplicates } = discoverAdrs(absDir);
+  if (duplicates.size > 0) {
+    throw duplicateError(duplicates);
+  }
+
+  const themeNames = readdirSync(absDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules')
+    .map((e) => e.name)
+    .sort();
+
+  const themes = themeNames.map((name) => ({
+    name,
+    count: adrs.filter((a) => a.relDir === name || a.relDir.startsWith(`${name}/`)).length,
+    index: existsSync(join(absDir, name, 'index.md')),
+  }));
+
+  const rootCount = adrs.filter((a) => a.relDir === '').length;
+  const layout = rootCount > 0 && themeNames.length > 0
+    ? 'mixed'
+    : themeNames.length > 0
+      ? 'themed'
+      : rootCount > 0
+        ? 'flat'
+        : 'empty';
+
+  const highest = adrs.length ? adrs[adrs.length - 1].num : 0;
+  const next = highest + 1;
+
+  return {
+    dir: normDirSlash,
+    wiki,
+    wikiDir,
+    exists: true,
+    layout,
+    count: adrs.length,
+    highest,
+    next,
+    nextPadded: pad(next),
+    themes,
+    rootIndex: existsSync(join(absDir, 'index.md')),
+    rootReadme: existsSync(join(absDir, 'README.md')),
+    records: adrs.map((a) => ({ num: a.num, path: a.path })),
+  };
+}
+
 /**
  * Escape a string for literal use inside a RegExp alternation.
  */
@@ -854,6 +1044,7 @@ if (isMain) {
         dir: { type: 'string' },
         'insert-at': { type: 'string' },
         apply: { type: 'boolean', default: false },
+        next: { type: 'boolean', default: false },
       },
     }));
   } catch (err) {
@@ -861,11 +1052,54 @@ if (isMain) {
     process.exit(1);
   }
 
+  if (values['next']) {
+    if (values['insert-at'] !== undefined || values['apply']) {
+      console.error('Error: --next cannot be combined with --insert-at or --apply.');
+      process.exit(1);
+    }
+
+    const repoRoot = process.cwd();
+    const dirArg = values['dir'];
+    const dirInfo = dirArg
+      ? { dir: normalizeDirSlash(dirArg), resolvedFrom: '--dir' }
+      : resolveDecisionsDir(repoRoot);
+
+    let summary;
+    try {
+      summary = describeAdrDir({ repoRoot, dir: dirInfo.dir });
+    } catch (err) {
+      console.error(`Error: ${String(err.message).split('\n')[0]}`);
+      process.exit(1);
+    }
+
+    const output = {
+      dir: summary.dir,
+      resolvedFrom: dirInfo.resolvedFrom,
+      ...(dirInfo.warning ? { warning: dirInfo.warning } : {}),
+      wiki: summary.wiki,
+      wikiDir: summary.wikiDir,
+      exists: summary.exists,
+      layout: summary.layout,
+      count: summary.count,
+      highest: summary.highest,
+      next: summary.next,
+      nextPadded: summary.nextPadded,
+      themes: summary.themes,
+      rootIndex: summary.rootIndex,
+      rootReadme: summary.rootReadme,
+      records: summary.records,
+    };
+
+    console.log(JSON.stringify(output, null, 2));
+    process.exit(0);
+  }
+
   const dir = values['dir'];
   const insertAtRaw = values['insert-at'];
 
   if (!dir) {
     console.error('Usage: node renumber-adrs.mjs --dir <adr-dir> --insert-at <N> [--apply]');
+    console.error('       node renumber-adrs.mjs --next [--dir <adr-dir>]');
     process.exit(1);
   }
 
