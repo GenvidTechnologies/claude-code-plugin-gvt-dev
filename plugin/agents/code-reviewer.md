@@ -143,7 +143,7 @@ For the concepts this diff introduces or changes, verify it doesn't leave a docu
 
 - Walk each dimension and check whether a touched doc covers it, or the change is trivial enough that the dimension genuinely doesn't apply.
 - **Default severity: Warning, not Critical.** Apply the False-Positive Guardrails below before flagging — do **not** flag trivial changes (typo fixes, mechanical refactors) for "missing design/architecture docs." Only flag a dimension when the diff actually changed something that dimension should now describe.
-- **Architecture/compromise** rationale belongs in a committed decision record (`docs/decisions/`), not code comments or the transient `plan.md`. If this diff makes a non-trivial architectural or trade-off decision and no decision record accompanies it, flag it (Warning).
+- **Architecture/compromise** rationale belongs in a committed decision record in the repo's resolved decisions location (`paths['docs/decisions/']` in `.gvt-agent.json`, default `docs/decisions/`), not code comments or the transient `plan.md`. If this diff makes a non-trivial architectural or trade-off decision and no decision record accompanies it, flag it (Warning).
 - When a doc is updated, it should **link the originating issue** rather than paste the full bug/purpose narrative.
 
 ### Deletion Completeness

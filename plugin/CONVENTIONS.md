@@ -132,7 +132,8 @@ Any skill, agent, or script that consults a declared expectation path — the `p
 
 - **Precedence**: the override wins when present; with no matching `paths` entry, resolution is byte-identical to the declared default.
 - **Key identity**: the override key is the component's declared path itself — one override name per location, never a second name for the same location, which would drift.
-- `triage-issues` and its `issue-triage-analyst` agent are the first adopters beyond the audit itself, resolving their `docs/issue-triage.md` expectation through this override. Further components are expected to adopt the same mechanism across the docs→wiki chain (#579). Within the audit, the hygiene scanners' `docs/decisions/` default exclusion also resolves through it (#583).
+- `triage-issues` and its `issue-triage-analyst` agent are the first adopters beyond the audit itself, resolving their `docs/issue-triage.md` expectation through this override. Further components are expected to adopt the same mechanism across the docs→wiki chain (#579). Within the audit, the hygiene scanners' `docs/decisions/` default exclusion also resolves through it (#583). `create-adr`, `gvt-dev:tech-writer` and `plan-task` are adopters for the decisions location: each resolves `paths['docs/decisions/']` via `renumber-adrs.mjs --next` (falling back to `docs/decisions/` when unset), which reports the resolved directory alongside the next ADR number — the same `resolveExpectationPath` mechanism, applied once per run rather than re-read ad hoc (#582).
+- An ADR location stated only in a repo's `CLAUDE.md` is not consulted by these components: it is prose, not a declared expectation path, so no script or skill reads it. Set `paths['docs/decisions/']` in `.gvt-agent.json` instead (#582).
 
 ## How `/gvt-dev:audit-conventions` works
 
