@@ -18,7 +18,7 @@
 // (the pointer-anchor scanner's corpus) — these trees exist only on disk at
 // runtime, under a mkdtemp()'d directory this module also cleans up.
 
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -230,7 +230,7 @@ Decisions about the beta subsystem's storage layer.
   write(root, 'wiki/decisions/beta/0002-use-sqlite-for-local-storage.md', `---
 type: decision-record
 title: 'Use SQLite for local beta storage'
-description: 'Chose SQLite over flat files for the beta subsystem's local storage'
+description: 'Chose SQLite over flat files for local storage in the beta subsystem'
 tags: [decisions, beta]
 status: stable
 ---
@@ -418,7 +418,12 @@ export function buildFixture(variant, { tmpRoot } = {}) {
     throw new Error(`Unknown create-adr-evals variant: ${variant} (expected one of ${VARIANTS.join(', ')})`);
   }
 
-  const root = mkdtempSync(join(tmpRoot ?? tmpdir(), `create-adr-eval-${variant.replace(/[^A-Za-z0-9]/g, '')}-`));
+  // realpathSync.native expands a Windows 8.3 short name (e.g. FABIEN~1) in
+  // os.tmpdir(): Claude Code's permission layer treats writes under a short
+  // path as suspicious and denies them in a headless run, which made runs
+  // fail for reasons unrelated to the skill under test.
+  const base = realpathSync.native(tmpRoot ?? tmpdir());
+  const root = mkdtempSync(join(base, `create-adr-eval-${variant.replace(/[^A-Za-z0-9]/g, '')}-`));
 
   let meta;
   if (variant === 'B') {
