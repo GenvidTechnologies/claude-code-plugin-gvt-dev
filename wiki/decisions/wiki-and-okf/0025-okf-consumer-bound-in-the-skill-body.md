@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'The OKF §11 tolerant-consumer bound lives in `maintain-wiki`''s `lint` section, with a bidirectional pointer to the schema docs'
+description: 'The OKF tolerant-consumer bound is written in maintain-wiki''s skill body rather than the schema doc or a new plugin-owned doc.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0025. The OKF §11 tolerant-consumer bound lives in `maintain-wiki`'s `lint` section, with a bidirectional pointer to the schema docs
 
 - **Status:** accepted

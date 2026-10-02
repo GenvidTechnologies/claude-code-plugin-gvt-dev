@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Two-sided pillar coverage via an opt-in scalar `metadata.pillar`'
+description: 'Pillar coverage uses an opt-in metadata.pillar scalar on named components, reported as a zero-finding section that never moves the exit code.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0027. Two-sided pillar coverage via an opt-in scalar `metadata.pillar`
 
 - **Status:** accepted

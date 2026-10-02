@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Grader-default and orchestrator-dispatch both own corpus resolution'
+description: 'Fixing the staged-diff-reads-empty defect needs both a grader-side resolve-before-grade default and explicit orchestrator corpus naming.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0035. Grader-default and orchestrator-dispatch both own corpus resolution
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Walk-cost exclusion moves into the shared walker, applied at any depth and on by default; policy exclusion stays at the consumer'
+description: 'Walk-cost exclusion moves into the shared walker as a default-on set applied at every path segment, rather than an opt-in parameter.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0055. Walk-cost exclusion moves into the shared walker, applied at any depth and on by default; policy exclusion stays at the consumer
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Widening `scanRetiredTokens` to `<wikiDir>/` amends ADR-0015''s wiki limb only; `raw/` stays unamended'
+description: 'The retired-token scan widens to the wiki directory, amending only ADR-0015''s wiki limb while leaving raw and decision 2 unamended.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0041. Widening `scanRetiredTokens` to `<wikiDir>/` amends ADR-0015's wiki limb only; `raw/` stays unamended
 
 - **Status:** accepted

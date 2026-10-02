@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'OKF v0.2 dogfood migration semantics: provenance dates, pruned `sources[]`, and a standing out-of-bundle advisory'
+description: 'The dogfood wiki''s OKF v0.2 migration dates generated.at from content production and prunes sources to claim-supporting captures.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0026. OKF v0.2 dogfood migration semantics: provenance dates, pruned `sources[]`, and a standing out-of-bundle advisory
 
 - **Status:** accepted

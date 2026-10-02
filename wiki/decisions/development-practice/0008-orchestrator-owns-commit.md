@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Orchestrator owns the commit; gate before commit'
+description: 'Dispatched implementers stage but never commit, and the validator gate runs before the orchestrator''s own commit.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0008. Orchestrator owns the commit; gate before commit
 
 - **Status:** accepted

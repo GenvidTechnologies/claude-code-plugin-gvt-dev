@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`renumber-adrs`: recursive theme discovery, single-pass whole-filename token rewrite, and frozen-history exclusion'
+description: 'renumber-adrs discovers ADRs recursively as one chronological sequence and rewrites every citing form in a single whole-filename-token pass.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0063. `renumber-adrs`: recursive theme discovery, single-pass whole-filename token rewrite, and frozen-history exclusion
 
 - **Status:** accepted

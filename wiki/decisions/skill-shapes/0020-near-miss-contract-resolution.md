@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Near-miss contract resolution in `triage-issues`'
+description: 'triage-issues detects a near-miss conventions doc and resolves it to one of four outcomes rather than auto-renaming it.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0020. Near-miss contract resolution in `triage-issues`
 
 - **Status:** accepted

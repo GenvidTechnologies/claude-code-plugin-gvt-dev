@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Proposal-vs-artifact cross-check gate'
+description: 'A full proposal''s claims are cross-checked against the artifact it modifies via a shared principle cited at both plan-task entry points.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0021. Proposal-vs-artifact cross-check gate
 
 - **Status:** accepted

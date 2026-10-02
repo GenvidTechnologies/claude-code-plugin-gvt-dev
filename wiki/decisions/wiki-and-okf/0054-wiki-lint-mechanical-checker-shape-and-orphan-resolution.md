@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`wiki-lint`''s mechanical checker: no cross-skill imports, a `lib/` shape, and resolution-based orphan matching'
+description: 'wiki-lint''s modules re-implement fence and link masking rather than importing it, and the checker always exits 0 per the tolerant-consumer bound.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0054. `wiki-lint`'s mechanical checker: no cross-skill imports, a `lib/` shape, and resolution-based orphan matching
 
 - **Status:** accepted

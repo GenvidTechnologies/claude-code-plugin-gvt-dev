@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Frontmatter parsing consolidates on one block-scalar-aware walker; the duplicate description extractor is retired'
+description: 'The shared frontmatter parser learns YAML block-scalar consume-and-skip, closing a junk-top-level-key defect from a bare-indicator description.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0056. Frontmatter parsing consolidates on one block-scalar-aware walker; the duplicate description extractor is retired
 
 - **Status:** accepted

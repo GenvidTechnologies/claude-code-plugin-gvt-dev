@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Three general rules, three distinct owners, in one criterion cluster'
+description: 'Three new Test Criteria rules each get a single distinct owning issue rather than one shared rule or three parallel ones.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0036. Three general rules, three distinct owners, in one criterion cluster
 
 - **Status:** accepted

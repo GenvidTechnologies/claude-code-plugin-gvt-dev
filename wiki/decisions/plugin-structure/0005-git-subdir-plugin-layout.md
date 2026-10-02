@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Publish the plugin from a `plugin/` subdir via git-subdir'
+description: 'The plugin lives under plugin/ and ships to the marketplace via git-subdir rather than at the repo root.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0005. Publish the plugin from a `plugin/` subdir via git-subdir
 
 - **Status:** accepted

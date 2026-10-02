@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`designer.md` item 8 group 2 gains a fifth lead for self-referential criteria (#452), mirrored in `planner.md` item 12; ADR-0037''s tripwire holds'
+description: 'designer.md item 8 group 2 gains a fifth lead guarding a criteria row that asserts over text the issue body already contains.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0050. `designer.md` item 8 group 2 gains a fifth lead for self-referential criteria (#452), mirrored in `planner.md` item 12; ADR-0037's tripwire holds
 
 - **Status:** accepted

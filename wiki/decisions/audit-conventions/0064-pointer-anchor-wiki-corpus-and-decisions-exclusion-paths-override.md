@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Pointer-anchor corpus includes `wiki/`; hygiene decisions exclusion follows `paths`'
+description: 'pointer-anchor''s citing corpus gains the wiki directory at error severity, and the decisions exclusion now unions a paths override.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0064. Pointer-anchor corpus includes `wiki/`; hygiene decisions exclusion follows `paths`
 
 - **Status:** accepted

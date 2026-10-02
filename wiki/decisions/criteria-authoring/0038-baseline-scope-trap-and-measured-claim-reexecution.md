@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A measured figure is re-derived by executing it — the baseline-corpus scope trap and the full-proposal measured-claims gap'
+description: 'The baseline-corpus scope trap gets a new designer group-2 owner, and the comparison-control rule specializes an existing group-4 bullet.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0038. A measured figure is re-derived by executing it — the baseline-corpus scope trap and the full-proposal measured-claims gap
 
 - **Status:** accepted

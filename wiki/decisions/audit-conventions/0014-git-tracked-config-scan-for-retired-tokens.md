@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Scan retired tokens in git-tracked config files, not by presence alone'
+description: 'The retired-token scanner''s config coverage is intersected with git-tracked files so untracked local overrides can''t trip false positives.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0014. Scan retired tokens in git-tracked config files, not by presence alone
 
 - **Status:** accepted

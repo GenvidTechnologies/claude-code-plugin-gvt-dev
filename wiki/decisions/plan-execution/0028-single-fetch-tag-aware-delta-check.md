@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`plan-next-issue`''s unreleased-delta check reuses §1''s fetch by making it tag-aware, not by adding a second fetch'
+description: 'plan-next-issue''s unreleased-delta check uses a whole-remote fetch instead of a second explicit-refspec fetch, skipping silently on fallback.'
+tags: [decisions, plan-execution]
+status: stable
+---
 # 0028. `plan-next-issue`'s unreleased-delta check reuses §1's fetch by making it tag-aware, not by adding a second fetch
 
 - **Status:** accepted

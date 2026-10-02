@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'The whole-table prose screen extends group 5, not a sixth group — and the planner mirror was folded in by decision, not declined'
+description: 'The criteria table is screened against the change''s own planned prose as an extension of an existing group rather than a new one.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0045. The whole-table prose screen extends group 5, not a sixth group — and the planner mirror was folded in by decision, not declined
 
 - **Status:** accepted

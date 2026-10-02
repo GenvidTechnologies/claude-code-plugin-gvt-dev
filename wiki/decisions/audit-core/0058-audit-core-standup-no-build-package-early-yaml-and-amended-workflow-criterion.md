@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`audit-core` stands up as a no-build `.mjs` package with `yaml` declared at standup; the CI-workflow acceptance criterion is amended in the open once the shared templates prove to carry a dead `uses:` path'
+description: 'The newly-created audit-core package ships plain JS sources with a hand-maintained type file and no build step.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0058. `audit-core` stands up as a no-build `.mjs` package with `yaml` declared at standup; the CI-workflow acceptance criterion is amended in the open once the shared templates prove to carry a dead `uses:` path
 
 - **Status:** accepted

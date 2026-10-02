@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Three deferrals from #457''s prep-refactor: the `reconcile-mcp-pin` gap stays accepted, the YAML swap stays in #458, and the remaining duplicate probes stay unmerged'
+description: 'Three gaps surfaced by the audit-core prep refactor are accepted as deferrals rather than closed as mechanism choices.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0059. Three deferrals from #457's prep-refactor: the `reconcile-mcp-pin` gap stays accepted, the YAML swap stays in #458, and the remaining duplicate probes stay unmerged
 
 - **Status:** accepted

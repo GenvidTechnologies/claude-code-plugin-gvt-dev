@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Skills, agents and scripts resolve declared expectation paths through the existing `paths` override'
+description: 'Skills and agents resolve a declared expectation path through the same paths override the audit already uses.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0062. Skills, agents and scripts resolve declared expectation paths through the existing `paths` override
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`audit-conventions` declines OKF bundle content to `maintain-wiki lint`, enforcing a boundary it previously only assumed'
+description: 'The orphan and broken-link scanners decline OKF bundle content and report the decline as a new info finding instead of misfiring.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0053. `audit-conventions` declines OKF bundle content to `maintain-wiki lint`, enforcing a boundary it previously only assumed
 
 - **Status:** accepted

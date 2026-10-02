@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'maintain-wiki design boundaries: repo-root placement, standalone lint, thin ingest'
+description: 'maintain-wiki''s wiki and raw tiers live at the repo root, lint stays a standalone verb, and ingest is a new thin verb.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0015. maintain-wiki design boundaries: repo-root placement, standalone lint, thin ingest
 
 - **Status:** accepted

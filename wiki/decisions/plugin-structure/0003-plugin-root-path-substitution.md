@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`${CLAUDE_PLUGIN_ROOT}` for shared-reference docs'
+description: 'Shared reference docs are cited via a plugin-root substitution path instead of absolute or relative paths.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0003. `${CLAUDE_PLUGIN_ROOT}` for shared-reference docs
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`run-retro`''s cache-lags-source gate stays skill-local, with a bidirectional `CLAUDE.md` pointer'
+description: 'run-retro''s cache-lags-source verification gate stays skill-local, with a bidirectional pointer from CLAUDE.md''s dogfooding caveat.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0023. `run-retro`'s cache-lags-source gate stays skill-local, with a bidirectional `CLAUDE.md` pointer
 
 - **Status:** accepted

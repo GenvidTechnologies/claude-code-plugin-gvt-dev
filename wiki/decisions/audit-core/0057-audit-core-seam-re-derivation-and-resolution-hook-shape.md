@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'The audit-core seam survives its own re-derivation; the resolution hook returns three values, the library never throws for an expected condition, and it declines the `mcp` kind'
+description: 'The audit-core package''s mechanism and policy seam returns a caller-supplied resolution hook with three values rather than one.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0057. The audit-core seam survives its own re-derivation; the resolution hook returns three values, the library never throws for an expected condition, and it declines the `mcp` kind
 
 - **Status:** accepted
@@ -18,7 +25,7 @@ The trigger for re-opening rather than inheriting ADR-0049's mechanism category 
 (#535) taught this repo's `lib/frontmatter.mjs` YAML block-scalar consume-and-skip, growing it from 138 to 253
 lines, while `gvt-construct3`'s copy of the same file is unchanged at 138 lines (confirmed directly against
 `gvt-construct3`'s `origin/main` at commit `6ba383b1f` — see the pinned-commit note under Q1 below). ADR-0049's
-own text anticipates exactly this: `0049-audit-core-mechanism-policy-boundary.md:377` ("this record's premise")
+own text anticipates exactly this: `0049-audit-core-mechanism-policy-boundary.md:384` ("this record's premise")
 states that if the two copies "ever diverge *intentionally*, this record's premise — that they are the same
 code — fails, and the mechanism category must be re-derived rather than inherited." This record performs that
 re-derivation, and states the result rather than assuming it.
@@ -32,7 +39,7 @@ all — confirmed directly against `origin/main` at `6ba383b1f`, where `evaluate
 fileExists(path);` unconditionally, never `dirExists`. This repo's own `evaluateFile` instead branches on
 `resolvedPath.endsWith('/')` and calls `dirExists` or `fileExists` accordingly. The two implementations
 **disagree** on how a directory expectation is probed, which is exactly the resolution divergence ADR-0049
-already named: `0049-audit-core-mechanism-policy-boundary.md:61` ("Resolution is therefore a") reads in full
+already named: `0049-audit-core-mechanism-policy-boundary.md:68` ("Resolution is therefore a") reads in full
 "Resolution is therefore a **policy hook the plugin supplies**; evaluation … is mechanism."
 
 What this record adds is naming an equivocation on the word "contract" that ADR-0049 leaves latent. ADR-0049's
@@ -57,7 +64,7 @@ handle correctly onto the policy side, where it does not belong — `walkCompone
 function that already discriminates the two.
 
 ADR-0051's own load-bearing clause uses "components directory" as an incidental noun in a sentence making a
-different argument: `0051-npm-permitted-for-lockfile-gated-plugin-dependency.md:134` ("shared tool takes a
+different argument: `0051-npm-permitted-for-lockfile-gated-plugin-dependency.md:141` ("shared tool takes a
 components directory as an argument and derives nothing from its own location") is there to establish that the
 library takes an argument at all, rather than deriving anything from `import.meta.url` — not to specify the
 argument's shape. Read narrowly for what it actually decided, the passage constrains *derivation*, not the
@@ -77,7 +84,7 @@ resolves: a hook returning which probe ran lets a shared `evaluateFile` render `
 reproduce `gvt-construct3`'s current string byte-for-byte on every file-shaped entry it has today.
 
 Treat `detail` as ADR-0049 treated `target`: mandatory in the contract, its exact text unfixed, and consumers
-must not parse it — `0049-audit-core-mechanism-policy-boundary.md:135` ("Both audits compute") sits in the
+must not parse it — `0049-audit-core-mechanism-policy-boundary.md:142` ("Both audits compute") sits in the
 paragraph ratifying exit codes on the same "converged, ratify as-is" logic this record extends to `detail`'s
 three already-matching strings.
 
@@ -95,7 +102,7 @@ that frontmatter needs to live inside the loader to stay policy-side.
 This is the most consequential content in the record, because ADR-0049 makes the instruction to re-derive
 **unconditional** on an intentional divergence — not conditional on the divergence being large, or on it being
 anything other than additive. Reasoning "the divergence is only additive, so the category survives unexamined"
-would be exactly the shortcut the instruction at `0049-audit-core-mechanism-policy-boundary.md:377` ("this
+would be exactly the shortcut the instruction at `0049-audit-core-mechanism-policy-boundary.md:384` ("this
 record's premise") exists to forbid. So the re-derivation is performed and shown, not assumed:
 
 `lib/frontmatter.mjs`'s +115 lines (138 → 253, per commit `ed60c81` / #535) add exactly one capability — YAML
@@ -152,7 +159,7 @@ rather than by design. This is **explicitly deferred to #458**, which is where t
 wiring — and therefore the fix — belongs.
 
 **Consequence:** the library has no process of its own and therefore no exit codes to own. The ratified
-`0`/`1`/`2` exit contract — `0049-audit-core-mechanism-policy-boundary.md:135` ("Both audits compute")
+`0`/`1`/`2` exit contract — `0049-audit-core-mechanism-policy-boundary.md:142` ("Both audits compute")
 `hasErrors` from `findings.some((f) => f.severity === 'error')` and exits accordingly — survives as an
 obligation on the **calling entrypoint**, i.e. on `audit.mjs` in each plugin, never on the library.
 
@@ -164,7 +171,7 @@ Three independent, individually sufficient grounds:
    expectation kind at all. Generalizing a kind against exactly one caller produces an interface shaped like
    that caller, the same failure `RESERVED_PATH_KEYS` already demonstrated in this codebase per ADR-0049.
 2. `gvt-construct3`'s `evaluateMcp` shells out to `npx` for reachability — the exact process boundary ADR-0051
-   rejects by name, at the exact granularity ADR-0051 calls out: `0051-npm-permitted-for-lockfile-gated-plugin-dependency.md:168`
+   rejects by name, at the exact granularity ADR-0051 calls out: `0051-npm-permitted-for-lockfile-gated-plugin-dependency.md:175`
    ("must never become a flag, argument, or environment variable") sits in the paragraph naming the standing
    directive against assertability creep, and the surrounding section is where `npx` is rejected as "a process
    boundary at the granularity of a single existence probe."
@@ -178,7 +185,7 @@ function ADR-0049 already ratified. `where`/`which` is local and network-free; `
 registry. The refusal here rests on the network boundary, not on process-spawning in general.
 
 **What remains true:** the kind set stays **open**. Declining to implement `mcp` in the shared library does not
-narrow it — `0049-audit-core-mechanism-policy-boundary.md:176` ("never the enumeration of") makes this explicit
+narrow it — `0049-audit-core-mechanism-policy-boundary.md:183` ("never the enumeration of") makes this explicit
 already: the contract "fixes the *shape* of an expectation finding, never the enumeration of kinds." A plugin
 is free to add its own expectation kinds via its own evaluators; `gvt-construct3` keeps emitting `mcp` findings
 from its own policy layer, and they remain fully contract-conformant.
@@ -205,7 +212,7 @@ outweigh it.
 alternative reading would have kept ADR-0049's "duplicated for now" verdict standing until the library ships
 code, on the theory that a decision-only record should not itself retire a prior decision. That reading is
 rejected because ADR-0049 states its own expiry condition in the text this record cites
-(`0049-audit-core-mechanism-policy-boundary.md:377`, "this record's premise") — the condition already fired, and
+(`0049-audit-core-mechanism-policy-boundary.md:384`, "this record's premise") — the condition already fired, and
 deferring its acknowledgment to a later, code-shipping record would mean carrying a premise everyone can see is
 false for one more release cycle.
 

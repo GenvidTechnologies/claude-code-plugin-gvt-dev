@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'build-probe adopts a pure-discipline shape, deviating from the five-part pattern'
+description: 'build-probe ships as a pure-discipline skill with no analyst subagent and no bundled generic probes.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0018. build-probe adopts a pure-discipline shape, deviating from the five-part pattern
 
 - **Status:** accepted

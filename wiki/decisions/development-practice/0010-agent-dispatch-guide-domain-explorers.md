@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Agent-Dispatch-Guide for domain-specific explorers'
+description: 'plan-task Phase 1 prefers a repo''s named domain explorer over the generic analyst when one is declared.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0010. Agent-Dispatch-Guide for domain-specific explorers
 
 - **Status:** accepted

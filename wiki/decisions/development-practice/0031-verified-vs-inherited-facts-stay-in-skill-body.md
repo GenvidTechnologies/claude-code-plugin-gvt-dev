@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Verified-vs-inherited dispatch-brief labeling lands in `plan-task`''s skill body, not a new principle'
+description: 'The verified-vs-inherited dispatch-brief labeling rule is defined once in plan-task''s skill body and cited by name elsewhere.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0031. Verified-vs-inherited dispatch-brief labeling lands in `plan-task`'s skill body, not a new principle
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Grader verdict vocabulary: third unverifiable case, measured-value reporting, and scope-match'
+description: 'The grader verdict vocabulary''s unverifiable-as-written gains a third case, stated in both graders since no single owner existed.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0043. Grader verdict vocabulary: third unverifiable case, measured-value reporting, and scope-match
 
 - **Status:** accepted

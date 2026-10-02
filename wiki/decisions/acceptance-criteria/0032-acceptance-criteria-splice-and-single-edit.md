@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Acceptance-criteria writeback: tolerant-match/canonical-heading, one section per body, and the write is the body''s only scheduled edit'
+description: 'Acceptance-criteria writeback matches tolerantly on input but always writes the canonical heading, splicing on matched headings only.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0032. Acceptance-criteria writeback: tolerant-match/canonical-heading, one section per body, and the write is the body's only scheduled edit
 
 - **Status:** accepted

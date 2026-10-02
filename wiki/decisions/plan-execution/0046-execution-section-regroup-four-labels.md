@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`plan-task`''s `## Execution (Post-Approval)` section regrouped into four named labels, on density rather than an axis trigger'
+description: 'plan-task''s Execution section gains four named labels as an insertion-only regroup, with no heading added.'
+tags: [decisions, plan-execution]
+status: stable
+---
 # 0046. `plan-task`'s `## Execution (Post-Approval)` section regrouped into four named labels, on density rather than an axis trigger
 
 - **Status:** accepted

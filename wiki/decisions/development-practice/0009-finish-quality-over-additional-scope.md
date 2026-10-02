@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Finish-quality over additional scope (principle #8)'
+description: 'Finish-quality of touched code is part of a change''s definition of done and cannot be deferred.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0009. Finish-quality over additional scope (principle #8)
 
 - **Status:** accepted

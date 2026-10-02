@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Scope the `audit-conventions --fix` CONVENTIONS.md resync to the migrated state only'
+description: 'The fix-mode CONVENTIONS.md resync is scoped to the migrated state only, leaving other states'' skip-if-exists behavior intact.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0013. Scope the `audit-conventions --fix` CONVENTIONS.md resync to the migrated state only
 
 - **Status:** accepted

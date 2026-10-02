@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'The shared audit core is bounded by plugin-blind decidability: contract ratified, mechanism shareable, policy never'
+description: 'A shared audit core is bounded by whether a capability''s correctness is decidable without knowing which plugin is asking.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0049. The shared audit core is bounded by plugin-blind decidability: contract ratified, mechanism shareable, policy never
 
 - **Status:** accepted

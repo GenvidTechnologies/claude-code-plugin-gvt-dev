@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`designer.md` item 8 group 2 gains a fourth lead (#367) and three extensions (#328/#340/#371); ADR-0037''s tripwire holds'
+description: 'designer.md item 8''s group 2 gains three in-place extensions plus one new bolded lead rather than a new sixth group.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0042. `designer.md` item 8 group 2 gains a fourth lead (#367) and three extensions (#328/#340/#371); ADR-0037's tripwire holds
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Analyst → designer → planner pipeline with user checkpoints'
+description: 'plan-task runs analyst, designer, and planner as separate agents with a user checkpoint between each phase.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0004. Analyst → designer → planner pipeline with user checkpoints
 
 - **Status:** accepted

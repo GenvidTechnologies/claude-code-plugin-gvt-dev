@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Positional pointers are checked for a content anchor, at `error` severity behind the audited-repo gate, ratcheted by a repo-private baseline'
+description: 'The positional-pointer checker verifies a re-derivable content anchor rather than range-checking, running at error severity behind a gate.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0047. Positional pointers are checked for a content anchor, at `error` severity behind the audited-repo gate, ratcheted by a repo-private baseline
 
 - **Status:** accepted

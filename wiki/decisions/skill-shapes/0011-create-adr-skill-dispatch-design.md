@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'create-adr skill: dispatch to tech-writer, shared template, and third-writer safety'
+description: 'create-adr delegates all writes to tech-writer, moves the ADR template to plugin docs, and gates renumbering with a clean-tree dry run.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0011. create-adr skill: dispatch to tech-writer, shared template, and third-writer safety
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'ADR-0047''s npm rejection is overturned for a lockfile-gated leaf; the shared audit core ships as a library, never a CLI'
+description: 'npm is now permitted for a lockfile-gated dependency inside plugin/, overturning ADR-0047''s prior npm-rejection grounds.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0051. ADR-0047's npm rejection is overturned for a lockfile-gated leaf; the shared audit core ships as a library, never a CLI
 
 - **Status:** accepted

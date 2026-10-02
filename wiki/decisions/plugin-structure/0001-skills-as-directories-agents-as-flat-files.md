@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Skills as directories, agents as flat files'
+description: 'Skills live as directories while agents stay single flat files, matching the plugin loader''s discovery rules.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0001. Skills as directories, agents as flat files
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Self-declaring skill contract via `metadata.expects`'
+description: 'Skills and agents declare their prerequisites in metadata.expects, and the audit aggregates them with a required-false lever.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0002. Self-declaring skill contract via `metadata.expects`
 
 - **Status:** accepted

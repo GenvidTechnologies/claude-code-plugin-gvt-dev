@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'An option placed after `--` in a pathspec-scoped commit is parsed as a pathspec, not consumed as a flag'
+description: 'An option written after double-dash in a pathspec-scoped commit is parsed as a pathspec rather than consumed as a flag.'
+tags: [decisions, plan-execution]
+status: stable
+---
 # 0052. An option placed after `--` in a pathspec-scoped commit is parsed as a pathspec, not consumed as a flag
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Two-surface pattern for external-system config'
+description: 'External-system config splits across a JSON block, a prose doc, a bundled template, and an exploration agent.'
+tags: [decisions, plugin-structure]
+status: stable
+---
 # 0006. Two-surface pattern for external-system config
 
 - **Status:** accepted

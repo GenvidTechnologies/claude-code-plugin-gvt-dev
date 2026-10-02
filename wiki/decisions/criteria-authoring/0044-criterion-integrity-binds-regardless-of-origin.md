@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A criterion''s integrity obligations bind regardless of who authored it or when'
+description: 'A criterion''s integrity obligations attach to the criterion itself rather than to the path that produced it.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0044. A criterion's integrity obligations bind regardless of who authored it or when
 
 - **Status:** accepted

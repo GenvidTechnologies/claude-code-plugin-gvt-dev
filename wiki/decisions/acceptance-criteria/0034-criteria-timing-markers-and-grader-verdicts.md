@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Test-criteria timing markers and matched grader verdicts, split onto two orthogonal axes'
+description: 'Criterion timing and grading outcome split onto two orthogonal axes with a two-word verdict vocabulary, and the commit gate stays binary.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0034. Test-criteria timing markers and matched grader verdicts, split onto two orthogonal axes
 
 - **Status:** accepted

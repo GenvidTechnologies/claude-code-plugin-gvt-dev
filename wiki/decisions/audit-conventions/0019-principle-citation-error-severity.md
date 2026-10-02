@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Principle-citation findings are `error` severity, deviating from the all-`warning` author-time family'
+description: 'principle-citation runs at error severity, unlike the all-warning author-time family, and an unparseable principles doc yields one finding.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0019. Principle-citation findings are `error` severity, deviating from the all-`warning` author-time family
 
 - **Status:** accepted

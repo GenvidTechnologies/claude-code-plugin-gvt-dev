@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Pre-committed Acceptance Criteria for plan-task'
+description: 'plan-task pins an Acceptance Criteria checklist to the GitHub issue body before implementation, reusing the existing gate.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0017. Pre-committed Acceptance Criteria for plan-task
 
 - **Status:** accepted

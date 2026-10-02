@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Verify authored prose claims against their structured source, guarded inline in the skill body'
+description: 'Prose-claim verification lands as two adjacent paragraphs in plan-task''s skill body rather than a new development-principles principle.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0030. Verify authored prose claims against their structured source, guarded inline in the skill body
 
 - **Status:** accepted

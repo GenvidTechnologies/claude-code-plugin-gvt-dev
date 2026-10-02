@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename'
+description: 'The audit-conventions state detector gets a distinct stale-config state for the pre-rebrand genvid-agent.json filename.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0012. A distinct `stale-config` state for the pre-rebrand `.genvid-agent.json` filename
 
 - **Status:** accepted

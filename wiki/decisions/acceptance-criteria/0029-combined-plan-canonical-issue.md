@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A combined plan pledges its acceptance criteria to one canonical issue, with a pointer comment on each sibling'
+description: 'A combined plan''s acceptance-criteria checklist is pledged to the lowest-numbered target issue only, with a pointer comment on each sibling.'
+tags: [decisions, acceptance-criteria]
+status: stable
+---
 # 0029. A combined plan pledges its acceptance criteria to one canonical issue, with a pointer comment on each sibling
 
 - **Status:** accepted

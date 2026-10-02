@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Five-dimension documentation + decision-record (ADR) convention'
+description: 'Durable architecture and compromise rationale is recorded in a committed decision record rather than the transient plan.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0007. Five-dimension documentation + decision-record (ADR) convention
 
 - **Status:** accepted

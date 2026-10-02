@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A new development-principles principle (#14) forbids state-mutating git in agent dispatches; a PreToolUse hook backstops it for `gvt-dev:*` subagents'
+description: 'A new principle forbidding state-mutating git in agent dispatches is restated in four agent bodies and backstopped by a scoped PreToolUse hook.'
+tags: [decisions, development-practice]
+status: stable
+---
 # 0061. A new development-principles principle (#14) forbids state-mutating git in agent dispatches; a PreToolUse hook backstops it for `gvt-dev:*` subagents
 
 - **Status:** accepted

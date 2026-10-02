@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A prescribed mechanism gets three questions, reaches every ticket type, and plan approval is distinguished from execution approval'
+description: 'The prescribed-mechanism check''s three-question technique stays in plan-task''s skill body rather than becoming a shared principle.'
+tags: [decisions, plan-execution]
+status: stable
+---
 # 0039. A prescribed mechanism gets three questions, reaches every ticket type, and plan approval is distinguished from execution approval
 
 - **Status:** accepted

@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'ADR authoring resolves the decisions location through `paths`; the `CLAUDE.md`-declared location is retired'
+description: 'ADR authoring resolves the decisions location and next number through the renumber-adrs script, retiring the informal CLAUDE.md fallback.'
+tags: [decisions, skill-shapes]
+status: stable
+---
 # 0066. ADR authoring resolves the decisions location through `paths`; the `CLAUDE.md`-declared location is retired
 
 - **Status:** accepted

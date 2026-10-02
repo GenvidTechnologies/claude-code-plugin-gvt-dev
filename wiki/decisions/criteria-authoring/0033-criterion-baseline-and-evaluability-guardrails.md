@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Test-criteria authoring guardrails inline in `designer`/`planner`, #298 folded into #272, and #298''s diff-checked invariant subordinated to a corpus floor'
+description: 'designer and planner''s test-criteria baseline and evaluability guardrails are inlined in both agent bodies rather than a shared principle.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0033. Test-criteria authoring guardrails inline in `designer`/`planner`, #298 folded into #272, and #298's diff-checked invariant subordinated to a corpus floor
 
 - **Status:** accepted

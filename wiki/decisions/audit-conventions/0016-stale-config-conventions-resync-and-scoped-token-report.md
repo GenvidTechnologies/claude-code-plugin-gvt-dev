@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Extend CONVENTIONS.md resync to stale-config via a shared helper; scope the stale-config token report locally'
+description: 'The migrated-state CONVENTIONS.md resync is extracted into a shared helper and reused for the stale-config state and its token report.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0016. Extend CONVENTIONS.md resync to stale-config via a shared helper; scope the stale-config token report locally
 
 - **Status:** accepted

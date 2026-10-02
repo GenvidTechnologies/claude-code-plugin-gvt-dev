@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'A deleted path is not an exception to `plan-task`''s explicit-pathspec commit rule'
+description: 'A deleted path does not make plan-task''s explicit-pathspec commit rule mechanically impossible, per six probed deletion scenarios.'
+tags: [decisions, plan-execution]
+status: stable
+---
 # 0048. A deleted path is not an exception to `plan-task`'s explicit-pathspec commit rule
 
 - **Status:** accepted

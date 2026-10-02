@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '`designer.md` item 8 regrouped into five named question-groups, and #305''s placement fork resolved to the designer/planner pair'
+description: 'The deferred restructure tripwire fires on an axis test rather than a count test, superseding the prior three-group scheme.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0037. `designer.md` item 8 regrouped into five named question-groups, and #305's placement fork resolved to the designer/planner pair
 
 - **Status:** accepted

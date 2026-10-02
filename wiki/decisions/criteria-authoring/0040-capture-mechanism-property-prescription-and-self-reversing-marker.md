@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Capture-mechanism relocation, property-based prescription, and the self-reversing point-in-time marker'
+description: 'The re-execution capture mechanism moves to the corpus bullet and is stated as three properties rather than a prescribed command.'
+tags: [decisions, criteria-authoring]
+status: stable
+---
 # 0040. Capture-mechanism relocation, property-based prescription, and the self-reversing point-in-time marker
 
 - **Status:** accepted

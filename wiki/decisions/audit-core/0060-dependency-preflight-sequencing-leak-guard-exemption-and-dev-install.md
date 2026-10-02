@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: '#477/#478 land as de-risking ahead of #458; the leaf pin needs no direct `yaml`; `leak-guard` gets a two-file exemption; the audit gains a bootstrap split and an exit-2 preflight'
+description: 'Two dependency-preflight issues land ahead of the leaf extraction as deliberate de-risking, and the leak-guard gets a lockfile exemption.'
+tags: [decisions, audit-core]
+status: stable
+---
 # 0060. #477/#478 land as de-risking ahead of #458; the leaf pin needs no direct `yaml`; `leak-guard` gets a two-file exemption; the audit gains a bootstrap split and an exit-2 preflight
 
 - **Status:** accepted

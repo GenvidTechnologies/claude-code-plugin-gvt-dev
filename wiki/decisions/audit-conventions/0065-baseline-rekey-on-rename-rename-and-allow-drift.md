@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'Baseline re-key on rename: `--rename` and `--allow-drift`'
+description: 'pointer-baseline.mjs gains a rename re-key mode, and allow-drift narrows the ratchet to one reviewed entry per run.'
+tags: [decisions, audit-conventions]
+status: stable
+---
 # 0065. Baseline re-key on rename: `--rename` and `--allow-drift`
 
 - **Status:** accepted

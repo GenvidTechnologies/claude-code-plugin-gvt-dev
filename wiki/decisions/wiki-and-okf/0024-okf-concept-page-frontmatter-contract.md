@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'OKF v0.2 concept-page frontmatter contract: full key set, `## Sources` dropped, `wiki.decay` retired'
+description: 'The concept-page frontmatter emits the full OKF v0.2 key set, drops the Sources section, and retires wiki.decay for per-page stale_after.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0024. OKF v0.2 concept-page frontmatter contract: full key set, `## Sources` dropped, `wiki.decay` retired
 
 - **Status:** accepted

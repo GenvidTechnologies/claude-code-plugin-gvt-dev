@@ -1,3 +1,10 @@
+---
+type: decision-record
+title: 'OKF v0.2 bundle root: the wiki/ tier, with raw/ outside the bundle'
+description: 'The OKF v0.2 bundle root is the wiki directory, leaving the raw directory outside the bundle so the immutability rule stands unamended.'
+tags: [decisions, wiki-and-okf]
+status: stable
+---
 # 0022. OKF v0.2 bundle root: the wiki/ tier, with raw/ outside the bundle
 
 - **Status:** accepted
