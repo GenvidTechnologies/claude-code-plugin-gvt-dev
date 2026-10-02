@@ -16,7 +16,8 @@
   },
   "features": {},
   "paths": {
-    "plugin_root": "plugin"
+    "plugin_root": "plugin",
+    "docs/decisions/": "wiki/decisions/"
   },
   "hygiene": {
     "excludePaths": ["docs/plugin-authoring.md", "wiki/audit-conventions-as-proto-lint.md"]

@@ -70,7 +70,7 @@ wiki pattern in mind:
   accumulated lessons-learned entries into something more durable — both are
   a fold-new-material-into-existing-knowledge motion, which is what
   `ingest` formalizes for the `raw/` → `wiki/` tier. Per
-  [ADR 0015](../docs/decisions/0015-maintain-wiki-design-boundaries.md),
+  [ADR 0015](decisions/wiki-and-okf/0015-maintain-wiki-design-boundaries.md),
   `ingest` is a distinct, thin verb rather than a rewrite of either skill:
   they operate on different tiers (the live session and
   `docs/lessons-learned.md`, respectively) and stay in place, gaining only an
