@@ -84,11 +84,11 @@ wiki pattern in mind:
   See [`audit-conventions` as proto-lint](/audit-conventions-as-proto-lint.md)
   for the detail and where the boundary between the two now sits.
   That scoping is now enforced rather than merely assumed:
-  [ADR 0053](../docs/decisions/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
+  [ADR 0053](decisions/wiki-and-okf/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
   closes a route by which a relocated `docsRoot` could pull bundle pages into
   these two scanners' own walk, and `maintain-wiki lint` gained a mechanical
   checker of its own,
-  [`wiki-lint.mjs`](../docs/decisions/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md).
+  [`wiki-lint.mjs`](decisions/wiki-and-okf/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md).
 
 ## Why this mapping matters
 

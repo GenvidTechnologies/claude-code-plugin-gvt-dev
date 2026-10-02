@@ -24,7 +24,7 @@ Three tiers, in order:
 3. **This schema** (`docs/wiki-schema.md`) — the rules the `maintain-wiki`
    skill follows to keep the first two in sync.
 
-Pages under `wiki/` follow the [Open Knowledge Format (OKF) v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md), pinned at upstream commit `3fcbb9f828c2f23d109c855ee403c3a4c81f3a96` (see [ADR-0022](decisions/0022-okf-bundle-root-is-the-wiki-tier.md)). A later spec revision obliges different things depending on its scope:
+Pages under `wiki/` follow the [Open Knowledge Format (OKF) v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md), pinned at upstream commit `3fcbb9f828c2f23d109c855ee403c3a4c81f3a96` (see [ADR-0022](../wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md)). A later spec revision obliges different things depending on its scope:
 
 - **MINOR / backward-compatible revision** — update the declared version and the pinned commit SHA above; no migration owed.
 - **MAJOR / breaking revision** — a tracked migration, a `plugin/CHANGELOG.md` entry, and a plugin `version` bump.
@@ -229,12 +229,10 @@ documented trade-off for the rare page that genuinely needs to point outside
 the bundle (e.g. to this schema doc or an ADR) — not as a pattern to reach
 for by default.
 
-This bundle has **two** such links, both deliberate and both permanent: each
-concept page cites `../docs/decisions/0015-…`, the record that draws the
-`audit-conventions` / `maintain-wiki lint` boundary the pages analyse, and no
-in-bundle page states that boundary. They surface as two `lint` out-of-bundle
-advisories on **every** run — a known and accepted floor, not a backlog item
-(ADR-0026). They are also the only real-data exercise of that check.
+This bundle has **no** such links. The concept pages' citations of the
+decision records were the out-of-bundle floor ADR-0026 accepted; they became
+in-bundle links when the records moved into `wiki/decisions/` (#584), so the
+check no longer has a standing real-data exercise here.
 
 Consumers **must tolerate broken links** (§6.1): a link whose target doesn't
 exist yet is not malformed — it may simply be knowledge not yet written.

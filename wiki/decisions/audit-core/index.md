@@ -1,0 +1,14 @@
+# Audit core
+
+Decisions about extracting and standing up the shared audit-core package.
+
+## Records
+
+* [The shared audit core is bounded by plugin-blind decidability: contract ratified, mechanism shareable, policy never](0049-audit-core-mechanism-policy-boundary.md) - A shared audit core is bounded by whether a capability's correctness is decidable without knowing which plugin is asking.
+* [ADR-0047's npm rejection is overturned for a lockfile-gated leaf; the shared audit core ships as a library, never a CLI](0051-npm-permitted-for-lockfile-gated-plugin-dependency.md) - npm is now permitted for a lockfile-gated dependency inside plugin/, overturning ADR-0047's prior npm-rejection grounds.
+* [Walk-cost exclusion moves into the shared walker, applied at any depth and on by default; policy exclusion stays at the consumer](0055-walk-cost-exclusion-in-the-shared-walker.md) - Walk-cost exclusion moves into the shared walker as a default-on set applied at every path segment, rather than an opt-in parameter.
+* [Frontmatter parsing consolidates on one block-scalar-aware walker; the duplicate description extractor is retired](0056-frontmatter-block-scalar-consolidation.md) - The shared frontmatter parser learns YAML block-scalar consume-and-skip, closing a junk-top-level-key defect from a bare-indicator description.
+* [The audit-core seam survives its own re-derivation; the resolution hook returns three values, the library never throws for an expected condition, and it declines the `mcp` kind](0057-audit-core-seam-re-derivation-and-resolution-hook-shape.md) - The audit-core package's mechanism and policy seam returns a caller-supplied resolution hook with three values rather than one.
+* [`audit-core` stands up as a no-build `.mjs` package with `yaml` declared at standup; the CI-workflow acceptance criterion is amended in the open once the shared templates prove to carry a dead `uses:` path](0058-audit-core-standup-no-build-package-early-yaml-and-amended-workflow-criterion.md) - The newly-created audit-core package ships plain JS sources with a hand-maintained type file and no build step.
+* [Three deferrals from #457's prep-refactor: the `reconcile-mcp-pin` gap stays accepted, the YAML swap stays in #458, and the remaining duplicate probes stay unmerged](0059-audit-core-prep-refactor-accepted-gaps-and-deferrals.md) - Three gaps surfaced by the audit-core prep refactor are accepted as deferrals rather than closed as mechanism choices.
+* [#477/#478 land as de-risking ahead of #458; the leaf pin needs no direct `yaml`; `leak-guard` gets a two-file exemption; the audit gains a bootstrap split and an exit-2 preflight](0060-dependency-preflight-sequencing-leak-guard-exemption-and-dev-install.md) - Two dependency-preflight issues land ahead of the leaf extraction as deliberate de-risking, and the leak-guard gets a lockfile exemption.

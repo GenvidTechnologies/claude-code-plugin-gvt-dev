@@ -50,7 +50,7 @@ former.
 ## Consequences
 
 Reference content can be centralized and linked rather than copied; this is the mechanism
-the [five-dimension / decision-record convention](0007-five-dimension-doc-and-adr-convention.md)
+the [five-dimension / decision-record convention](../development-practice/0007-five-dimension-doc-and-adr-convention.md)
 and the numbered development principles rely on to stay single-sourced. It also made the
 [`plugin/` subdir move](0005-git-subdir-plugin-layout.md) transparent to every existing
 reference — `${CLAUDE_PLUGIN_ROOT}` simply re-resolved.

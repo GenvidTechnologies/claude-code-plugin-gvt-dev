@@ -61,7 +61,7 @@ don't block — is exactly what `docs/wiki-schema.md` describes for the
 
 ## Where the boundary sits
 
-[ADR 0015](../docs/decisions/0015-maintain-wiki-design-boundaries.md) drew
+[ADR 0015](decisions/wiki-and-okf/0015-maintain-wiki-design-boundaries.md) drew
 the line explicitly when `maintain-wiki` was designed, splitting what could
 have been one generic lint engine into three non-overlapping owners:
 
@@ -83,7 +83,7 @@ a different cadence than curated reference docs. That placement was the
 mechanism, but it was never enforced: a `paths` override that points
 `docs/TOC.md` at the bundle's own index collapses `docsRoot` onto `wikiDir`,
 pulling bundle pages into the same walk by a different route.
-[ADR 0053](../docs/decisions/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
+[ADR 0053](decisions/wiki-and-okf/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
 closes that gap — `scanOrphanedDocs` and `scanBrokenLinks` now decline bundle
 content explicitly and report the decline as an `info` finding, rather than
 depending on placement alone to keep them out. `plugin/CONVENTIONS.md`'s
@@ -95,7 +95,7 @@ reference doc.
 
 The practical effect is unchanged: a repo can adopt the wiki practice, run
 `maintain-wiki lint` — now a mechanical checker,
-[`wiki-lint.mjs`](../docs/decisions/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md),
+[`wiki-lint.mjs`](decisions/wiki-and-okf/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md),
 rather than a human or an LLM turn working from the schema alone — as often
 or as rarely as it likes, and its `audit-conventions` exit code is never
 affected by wiki content health: the decline findings stay at `info`

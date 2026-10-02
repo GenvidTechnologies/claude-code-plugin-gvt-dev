@@ -2,13 +2,6 @@
   "version": 1,
   "entries": [
     {
-      "file": "docs/TOC.md",
-      "pointer": "approval-and-audit.md:25",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "df8f34369900"
-    },
-    {
       "file": "plugin/agents/designer.md",
       "pointer": "planner.md:68",
       "occurrence": 0,
