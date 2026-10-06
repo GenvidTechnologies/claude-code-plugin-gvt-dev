@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `docs/wiki-schema.md` for
 the full maintenance schema.
 
+## 2026-10-06
+
+* **Migration**: Moved the long maintainer sections of `CLAUDE.md` into six
+  `maintainer/` pages for #586, registered them in `maintainer/index.md`, and
+  replaced them in `CLAUDE.md` with a `## Knowledge base` routing list. Not an
+  ingest; no `raw/` source drove it.
+
 ## 2026-10-05
 
 * **Migration**: Moved the issue-triage conventions to `process/issue-triage.md`
