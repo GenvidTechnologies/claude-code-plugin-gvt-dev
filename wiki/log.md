@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `docs/wiki-schema.md` for
 the full maintenance schema.
 
+## 2026-10-05
+
+* **Migration**: Moved the issue-triage conventions to `process/issue-triage.md`
+  and the plugin-authoring notes to `maintainer/plugin-authoring.md` for #585,
+  gave each OKF frontmatter, added the `process/` and `maintainer/` indexes, and
+  linked them from `index.md`. Not an ingest; no `raw/` source drove it.
+
 ## 2026-10-01
 
 * **Migration**: Moved the repo's decision records from `docs/decisions/` into

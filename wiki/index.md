@@ -23,6 +23,14 @@ any page listed in **no** index — here, or in a subdirectory's own
   content-lint over docs/** and CLAUDE.md, and where the boundary with
   maintain-wiki lint sits per ADR-0015.
 
+## Process
+
+- [Process](process/index.md) — How this repo runs its own working process: the issue-tracking rules its maintainers follow.
+
+## Maintainer notes
+
+- [Maintainer notes](maintainer/index.md) — Notes for people working on the plugin itself, not for its consuming repos.
+
 ## Decision records
 
 - [Decision Records](decisions/index.md) — This repo's architecture decision records, grouped by theme and numbered in one chronological sequence across themes.
