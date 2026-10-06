@@ -17,10 +17,11 @@
   "features": {},
   "paths": {
     "plugin_root": "plugin",
-    "docs/decisions/": "wiki/decisions/"
+    "docs/decisions/": "wiki/decisions/",
+    "docs/issue-triage.md": "wiki/process/issue-triage.md"
   },
   "hygiene": {
-    "excludePaths": ["docs/plugin-authoring.md", "wiki/audit-conventions-as-proto-lint.md"]
+    "excludePaths": ["wiki/maintainer/plugin-authoring.md", "wiki/audit-conventions-as-proto-lint.md"]
   },
   "wiki": {
     "wikiDir": "wiki",
