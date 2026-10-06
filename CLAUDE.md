@@ -129,7 +129,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 2. Avoid skill names containing `claude` or `anthropic` (reserved by Anthropic's validator).
 3. Prefer verb-noun names that read alone (`commit-changes`, not `commit`) — avoids collisions with built-in Claude Code skills.
 4. Verify with `claude plugin validate plugin`.
-5. **Run the audit** — `node plugin/skills/audit-conventions/scripts/audit.mjs` (exit 0) — to confirm any new `required: false` expectations stayed optional and didn't widen the aggregated contract (see [Testing](#testing)). Read [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md) before trusting the exit code.
+5. **Run the audit** — `node plugin/skills/audit-conventions/scripts/audit.mjs` (exit 0) — to confirm any new `required: false` expectations stayed optional and didn't widen the aggregated contract (see [`wiki/maintainer/testing-the-audit.md`](wiki/maintainer/testing-the-audit.md)). Read [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md) before trusting the exit code.
 6. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` entry. A new invocable skill is consumer-visible surface, so it needs a version bump and a changelog note.
 7. **`docs/TOC.md`** — add a one-line Components entry for discoverability (especially orchestrators or skills carrying notable config — the `triage-issues` line is the precedent).
 8. Smoke-test by updating the local install (`claude plugin update gvt-dev@gvt-plugins`) and checking `claude plugin details gvt-dev`.
