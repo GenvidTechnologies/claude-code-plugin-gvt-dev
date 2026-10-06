@@ -1,3 +1,10 @@
+---
+type: convention
+title: 'Issue Triage Conventions'
+description: 'Issue taxonomy, priorities, labels, required fields, split, duplicate and dependency policy, and the gh mutation recipes for this repo.'
+tags: [process, triage]
+status: stable
+---
 # Issue Triage Conventions
 
 > Project conventions consumed by `/gvt-dev:triage-issues`. Copy this file to

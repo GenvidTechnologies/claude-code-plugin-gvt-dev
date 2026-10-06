@@ -1,3 +1,10 @@
+---
+type: practice-note
+title: 'Authoring Genvid Plugins'
+description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, and example naming.'
+tags: [maintainer, plugin-authoring]
+status: stable
+---
 # Authoring Genvid Plugins
 
 Cross-cutting gotchas for building Genvid Claude Code plugins — things that cost
