@@ -7,8 +7,10 @@ status: stable
 ---
 # Issue Triage Conventions
 
-> Project conventions consumed by `/gvt-dev:triage-issues`. Copy this file to
-> `docs/issue-triage.md` and edit it for your tracker and taxonomy. The companion
+> Project conventions consumed by `/gvt-dev:triage-issues`. This repo keeps
+> them in its wiki bundle at `wiki/process/issue-triage.md`, resolved through
+> `paths['docs/issue-triage.md']` in `.gvt-agent.json`; with no override the
+> skill reads `docs/issue-triage.md`. The companion
 > **access mechanics** (fetch queries, label names) live in the `bugTracker`
 > block of `.gvt-agent.json` — see the skill's SKILL.md for that block.
 >
