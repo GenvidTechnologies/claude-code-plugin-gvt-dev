@@ -9,10 +9,11 @@ read and update.
 ## Plugin contract & guidance
 
 - [`../plugin/CONVENTIONS.md`](../plugin/CONVENTIONS.md) — the public convention contract consuming repos satisfy (canonical source)
-- [`../CLAUDE.md`](../CLAUDE.md) — maintainer guide: repo layout, commands, how to add skills/agents, release flow
+- [`../CLAUDE.md`](../CLAUDE.md) — maintainer guide: repo layout, commands, how to add and rename skills and agents, the release entry point, and a `## Knowledge base` routing list into the maintainer notes
 - [`../README.md`](../README.md) — plugin overview and install instructions
 - [`../plugin/docs/development-principles.md`](../plugin/docs/development-principles.md) — the philosophy behind the analysis → design → planning pipeline (incl. principle #7: five-dimension doc coverage + decision records)
 - [`../wiki/maintainer/plugin-authoring.md`](../wiki/maintainer/plugin-authoring.md) — cross-plugin authoring gotchas (shipping MCP servers via `plugin.json`; `npx` package-name resolution; version pinning)
+- [`../wiki/maintainer/index.md`](../wiki/maintainer/index.md) — index of the maintainer notes: the pages `CLAUDE.md`'s `## Knowledge base` list routes to, plus the cross-plugin authoring notes
 
 ## Process
 
