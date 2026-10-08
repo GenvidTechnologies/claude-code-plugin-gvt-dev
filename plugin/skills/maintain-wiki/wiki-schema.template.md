@@ -1,7 +1,7 @@
 # Wiki Maintenance Schema
 
-> Project conventions consumed by `/gvt-dev:maintain-wiki`. Copy this file to
-> `docs/wiki-schema.md` and edit it for your project. This is the **maintenance
+> Project conventions consumed by `/gvt-dev:maintain-wiki`, which copies this
+> file to `<wikiDir>/schema.md`; edit it for your project. This is the **maintenance
 > schema** for the three-tier wiki: `raw/` (immutable captured sources) →
 > `<wikiDir>/` (LLM-maintained pages, `index.md`, `log.md`) → this schema (the rules
 > that govern how the first two are kept in sync).
@@ -16,7 +16,7 @@ Pages under `<wikiDir>/` follow the [Open Knowledge Format (OKF) v0.2](https://g
 
 OKF has already shipped one breaking revision within v0.x: v0.1's body `# Citations` list was superseded by frontmatter `sources`, and `timestamp` became `generated.at`. Upstream declares v0.x provisional, so without a declared pin the next revision would be silent drift.
 
-**Bundle root.** The OKF bundle root is `<wikiDir>/` — the directory named by `.gvt-agent.json` `wiki.wikiDir`. Write it as `<wikiDir>/`, never hardcoded `wiki/`, because a consuming repo may set it to something else. `<rawDir>/` is **outside** the bundle — captures are not concept documents, so §11's frontmatter requirement never reaches them and the `raw/` immutability convention (below) stands unamended.
+**Bundle root.** The OKF bundle root is `<wikiDir>/` — the directory named by `.gvt-agent.json` `wiki.wikiDir`. Write it as `<wikiDir>/`, never hardcoded `wiki/`, because a consuming repo may set it to something else. `<rawDir>/` is **outside** the bundle — captures are not concept documents, so §11's frontmatter requirement never reaches them and the `raw/` immutability convention (below) stands unamended. This schema itself lives **inside** the bundle, at `<wikiDir>/schema.md`, so the bundle describes itself; a repo still on the older layout keeps it at `docs/wiki-schema.md`, and the skill finds it there.
 
 ## Page format
 
@@ -57,7 +57,7 @@ fits. A claim drawn from a source carries a footnote keyed to that source's
 
 - **`type`** — the only always-required key (§4.1); must be non-empty
   (§11.2). Starter vocabulary shipped here — extend or replace it freely for
-  your project: `practice-note`, `reference`, `decision-context`, `incident`.
+  your project: `practice-note`, `reference`, `decision-context`, `incident`, `convention`.
   §11 forbids a consumer rejecting an unknown `type` value, so an open-but-recommended
   set is both routable and conformant.
 - **`title`, `description`, `tags`** — recommended keys (§4.1). `description`
@@ -195,13 +195,14 @@ forms are legal (§6.1):
 - **Ordinary relative** — `./other-page.md` for a sibling page in the same
   directory, `../<subdir>/other-page.md` for a page in another subdirectory.
 
-A link that escapes the bundle root entirely — e.g. to `../docs/wiki-schema.md`
-or `../docs/decisions/0001-*.md` — remains legal per §6.1 as an ordinary
+A link that escapes the bundle root entirely — e.g. to `../CLAUDE.md` or
+`../docs/decisions/0001-*.md` — remains legal per §6.1 as an ordinary
 relative link, but it is **unresolvable to an external OKF consumer** that
 only receives the `<wikiDir>/` bundle on its own. Treat this as a deliberate,
 documented trade-off for the rare page that genuinely needs to point outside
-the bundle (e.g. to this schema doc or an ADR) — not as a pattern to reach
-for by default.
+the bundle (e.g. to the repo's `CLAUDE.md` or an ADR kept under `docs/`) —
+not as a pattern to reach for by default. This schema is not such a target:
+it sits inside the bundle, so a page links it as `/schema.md`.
 
 Consumers **must tolerate broken links** (§6.1): a link whose target doesn't
 exist yet is not malformed — it may simply be knowledge not yet written.

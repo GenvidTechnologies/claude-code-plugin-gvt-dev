@@ -661,13 +661,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "wiki-schema.template.md:3-11",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "b8d193bcde1a"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:77-78",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
