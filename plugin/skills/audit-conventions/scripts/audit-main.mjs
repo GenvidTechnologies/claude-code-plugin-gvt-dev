@@ -35,6 +35,8 @@ import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
+import { expectationCandidates } from './lib/expect-prefer.mjs';
+import { fileExists, dirExists } from './lib/probes.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
@@ -99,13 +101,22 @@ async function main() {
   const pathOverrides = repoConfig?.paths;
   const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
-  const resolveFile = (entry) => {
-    const resolved = resolveExpectationPath(pathOverrides, entry.path);
-    return {
-      path: join(REPO_ROOT, resolved),
-      probe: resolved.endsWith('/') ? 'directory' : 'file',
+  // Picks the location that satisfies a files entry (ADR-0070): the paths
+  // override alone when set, else the entry's `prefer` location when it
+  // exists, else the declared path. evaluateFile (audit-core) still probes
+  // exactly one path; the choice among candidates is policy, made here.
+  const resolveFile = async (entry) => {
+    const { candidates } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
+    const located = (candidate) => ({
+      path: join(REPO_ROOT, candidate),
+      probe: candidate.endsWith('/') ? 'directory' : 'file',
       target: entry.path,
-    };
+    });
+    for (const candidate of candidates.slice(0, -1)) {
+      const r = located(candidate);
+      if (await (r.probe === 'directory' ? dirExists(r.path) : fileExists(r.path))) return { ...r, candidates };
+    }
+    return { ...located(candidates[candidates.length - 1]), candidates };
   };
   const resolveConfig = (entry) => {
     const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
@@ -120,7 +131,9 @@ async function main() {
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
-      findings.push(await evaluateFile(component, entry, resolveFile));
+      const where = await resolveFile(entry);
+      const finding = await evaluateFile(component, entry, () => where);
+      findings.push(where.candidates.length > 1 ? { ...finding, candidates: where.candidates } : finding);
     }
     for (const entry of expects.config ?? []) {
       findings.push(await evaluateConfig(component, entry, resolveConfig));
@@ -477,7 +490,8 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
+  const shown = f.candidates ? f.candidates.map((c) => `\`${c}\``).join(' or ') : `\`${f.target}\``;
+  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : shown} — ${f.detail}.${reason}`;
 }
 
 // ---- --fix orchestration ---------------------------------------------------

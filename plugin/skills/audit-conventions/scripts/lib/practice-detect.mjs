@@ -4,14 +4,21 @@
 // audit because it would risk a non-zero audit exit driven by wiki content
 // issues rather than plugin-contract violations. Do not add directory
 // listing or file-content calls, or import anything from maintain-wiki,
-// here — presence only, via stat-style existence checks.
+// here — presence only, via stat-style existence checks. The one sibling
+// import is ./expect-prefer.mjs, a pure path-list helper (ADR-0070): it
+// expands an expectation into the locations to stat and reads nothing.
 
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 
+import { expectationCandidates } from './expect-prefer.mjs';
+
 const DEFAULT_WIKI_DIR = 'wiki';
 const DEFAULT_RAW_DIR = 'raw';
-const SCHEMA_DOC = 'docs/wiki-schema.md';
+// The schema expectation exactly as maintain-wiki's SKILL.md frontmatter
+// declares it (ADR-0070). practice-detect.test.mjs pins this object against
+// that frontmatter, so the two cannot drift apart silently.
+export const SCHEMA_EXPECTATION = Object.freeze({ path: 'docs/wiki-schema.md', prefer: '<wikiDir>/schema.md' });
 
 export const VERDICT_ABSENT = 'absent';
 export const VERDICT_PARTIAL = 'partial';
@@ -27,7 +34,7 @@ export async function detectWikiAdoption(repoRoot, config) {
       fileExists(join(repoRoot, wikiDir, 'index.md')),
       fileExists(join(repoRoot, wikiDir, 'log.md')),
       dirExists(join(repoRoot, rawDir)),
-      fileExists(join(repoRoot, SCHEMA_DOC)),
+      firstExisting(repoRoot, expectationCandidates(SCHEMA_EXPECTATION, { paths: config?.paths, wikiDir }).candidates),
     ]);
 
   const signals = {
@@ -48,6 +55,15 @@ export async function detectWikiAdoption(repoRoot, config) {
         : VERDICT_PARTIAL;
 
   return { signals, verdict };
+}
+
+// True when any candidate exists. The candidate list already encodes the
+// order and the override's no-fallthrough rule, so presence is all this needs.
+async function firstExisting(repoRoot, candidates) {
+  for (const candidate of candidates) {
+    if (await fileExists(join(repoRoot, candidate))) return true;
+  }
+  return false;
 }
 
 async function fileExists(path) {
