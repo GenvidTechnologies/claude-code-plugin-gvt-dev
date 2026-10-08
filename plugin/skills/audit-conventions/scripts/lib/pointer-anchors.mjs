@@ -28,7 +28,7 @@
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { listUnder } from './fs-walk.mjs';
 import { gitTrackedFiles } from './git-info.mjs';
@@ -38,8 +38,8 @@ import { iterateUnfencedLines } from './md-scan.mjs';
 
 // CITING files — where a pointer may be WRITTEN.
 //
-// `.md` and `.mjs` under the repo-root `docs/` and `plugin/` trees, plus the
-// tracked files of the repo root ITSELF (see `listRootCitingFiles`). Two
+// `.md` and `.mjs` under the repo-root `docs/`, `plugin/` and `wiki/` trees,
+// plus the tracked files of the repo root ITSELF (see `listRootCitingFiles`). Two
 // scoping decisions here are load-bearing:
 //
 //   - `plugin/CHANGELOG.md` is deliberately INCLUDED, unlike the corpus
@@ -50,7 +50,7 @@ import { iterateUnfencedLines } from './md-scan.mjs';
 //     JSON — the ratchet baseline below, test fixtures — precisely so that
 //     recording a pointer does not mint a new one, and so the baseline cannot
 //     scan itself.
-export const CITING_ROOTS = ['docs', 'plugin'];
+export const CITING_ROOTS = ['docs', 'plugin', 'wiki'];
 export const CITING_EXTENSIONS = ['.md', '.mjs'];
 
 // Directories excluded from BOTH corpora, for two different reasons.
@@ -124,9 +124,9 @@ export async function listTargetCandidates(repoRoot) {
 // Unresolvable by construction. Tracking is the line between the repo's own
 // prose and a local scratch file.
 //
-// Only the root's own entries are listed, never a walk from it: the two citing
-// TREES above are already walked whole, and re-deriving them here would just
-// duplicate that.
+// Only the root's own entries are listed, never a walk from it: the three
+// citing TREES above are already walked whole, and re-deriving them here would
+// just duplicate that.
 //
 // A null from `gitTrackedFiles` — not a git repo, or git unavailable —
 // contributes nothing, the same graceful degradation hygiene.mjs applies to
@@ -999,6 +999,46 @@ export function digestCitedRange(content, ranges) {
   return createHash('sha256').update(parts.join('\n')).digest('hex').slice(0, DIGEST_LENGTH);
 }
 
+// True iff `storedDigest` is what the cited range would have digested to
+// BEFORE `renames` happened — the read that turns a rename-only drift into an
+// explained one rather than "the content actually changed".
+//
+// Reverse-maps every renamed BASENAME (new -> old) over `content` in ONE
+// simultaneous pass, so a rename chain restores through every hop instead of
+// re-mapping what an earlier hop already produced. A pair whose old and new
+// basenames are equal (a same-basename directory move) contributes no
+// substitution. `pointer` is a baseline entry's raw pointer text; its cited
+// range is read the same way `parseLineSpec` reads any pointer's line spec —
+// the text after the pointer's last colon. Returns false for a null stored
+// digest, a line spec that doesn't parse, or a range outside `content`
+// (`digestCitedRange` returns null for that, which never equals a digest).
+export function renameExplainsDrift({ content, pointer, storedDigest, renames }) {
+  if (storedDigest == null) return false;
+
+  const colon = pointer.lastIndexOf(':');
+  if (colon === -1) return false;
+  const spec = pointer.slice(colon + 1);
+  if (!/^[0-9]+(?:-[0-9]+)?(?:,[0-9]+(?:-[0-9]+)?)*$/.test(spec)) return false;
+  const ranges = parseLineSpec(spec);
+
+  const reverse = new Map();
+  for (const { old, new: next } of renames) {
+    const oldBase = basename(old);
+    const newBase = basename(next);
+    if (oldBase !== newBase) reverse.set(newBase, oldBase);
+  }
+
+  let reconstructed = content;
+  if (reverse.size > 0) {
+    // Longest first, so a basename that is a prefix of another can't win the alternation.
+    const escaped = [...reverse.keys()].sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp(escaped.join('|'), 'g');
+    reconstructed = content.replace(pattern, (match) => reverse.get(match));
+  }
+
+  return digestCitedRange(reconstructed, ranges) === storedDigest;
+}
+
 // Reads the baseline. `{ present, entries }` — `present: false` for absent,
 // unreadable, malformed, or structurally wrong, all of which suppress nothing.
 //
@@ -1105,8 +1145,9 @@ export function applyBaseline(findings, baseline) {
       detail:
         `${BASELINE_FILE} accepts '${entry.pointer}' in ${entry.file}, but the current scan ` +
         'reports nothing there — the pointer was repaired or removed, so prune the entry with ' +
-        `\`node ${BASELINE_GENERATOR} --write\` (prune-only is that command's default), or ` +
-        'the ratchet will silently re-accept the next pointer that lands on the same key',
+        `\`node ${BASELINE_GENERATOR} --write\` (prune-only is that command's default), or, ` +
+        'if its citing file moved, re-key with `--rename <old>=<new>` — or the ratchet will ' +
+        'silently re-accept the next pointer that lands on the same key',
       file: entry.file,
       pointer: entry.pointer,
       occurrence: entry.occurrence,

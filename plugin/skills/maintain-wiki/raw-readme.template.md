@@ -9,5 +9,5 @@ captured.
 it as a new file rather than modifying the existing one — the old capture
 stays as the historical record of what was true when it was captured.
 
-See `docs/wiki-schema.md` for the full maintenance schema (page format,
+See `<schemaDoc>` for the full maintenance schema (page format,
 ingest/query/lint verbs, and the decay policy).

@@ -36,7 +36,7 @@ The stakes exceed a wasted cycle: source may have been rewritten into wording *s
 
 ## 2. Documentation Improvements
 
-Start from the project's documentation index (`docs/TOC.md`) and the repo's `CLAUDE.md`. **If `docs/TOC.md` is absent** (a greenfield consumer that hasn't scaffolded the contract, or the plugin repo itself), don't dead-end — discover the doc surface directly instead: glob `docs/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
+Start from the project's documentation index (`docs/TOC.md`) and the repo's `CLAUDE.md`. **If `docs/TOC.md` is absent** (a greenfield consumer that hasn't scaffolded the contract), don't dead-end — discover the doc surface directly instead: glob `docs/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
 
 For each doc that's adjacent to what this session worked on, decide:
 
@@ -53,7 +53,7 @@ Common files to check (vary by project — consult `docs/TOC.md`, or the glob ab
 - `docs/runbook.md` — operations procedures
 - `docs/lessons-learned.md` — accumulated insights (if the project uses one)
 
-**Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `plugin/CONVENTIONS.md`, `CLAUDE.md`, `plugin/docs/development-principles.md`, and the `plugin/skills/*/SKILL.md` / `plugin/agents/*.md` bodies. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
+**Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `plugin/CONVENTIONS.md`, `CLAUDE.md` and the `wiki/maintainer/` pages its `## Knowledge base` list routes to, `plugin/docs/development-principles.md`, and the `plugin/skills/*/SKILL.md` / `plugin/agents/*.md` bodies. A lesson that refines a rule already on a `wiki/maintainer/` page is edited on that page, not added back to `CLAUDE.md`. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
 
 ## 3. Claude Configuration Improvements
 
@@ -80,7 +80,7 @@ If a skill improvement applies to **all consuming repos** (not just this one), i
 - `CONVENTIONS.md` itself needs a refinement
 
 Note the change as a proposed plugin PR and follow the workflow in the plugin repo's CONTRIBUTING/README.
-If the repo maintains a wiki (`docs/wiki-schema.md` present), `/gvt-dev:maintain-wiki ingest` is the wiki tier's ingest — route durable, compounding insights there instead of (or alongside) a structured doc.
+If the repo maintains a wiki (a schema doc resolves: `paths['docs/wiki-schema.md']`, else `<wikiDir>/schema.md`, else `docs/wiki-schema.md`, per `/gvt-dev:maintain-wiki` §0 step 1), `/gvt-dev:maintain-wiki ingest` is the wiki tier's ingest — route durable, compounding insights there instead of (or alongside) a structured doc.
 
 ## 4. Output Format
 

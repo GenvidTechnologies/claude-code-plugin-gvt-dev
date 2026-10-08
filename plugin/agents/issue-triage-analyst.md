@@ -36,13 +36,13 @@ The dispatch prompt gives you:
 
 - **Scope** — the resolved action set: a query, a label, or an explicit list of issue IDs.
 - **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `triagedLabel`, `needsInfoLabel`.
-- **Conventions path** — `docs/issue-triage.md`.
+- **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
 
 If the conventions doc is missing, say so in the report and fall back to generic triage judgement.
 
 ## Process
 
-1. **Read conventions.** Read `docs/issue-triage.md`, sections *above* "Mutation recipes" — Types, Priorities, Labels, Required fields, Splitting, Duplicates, Dependencies. These are the rules you reason with. Ignore "Mutation recipes" — that is the main thread's concern.
+1. **Read conventions.** Read the conventions doc at the conventions path you were dispatched with (defaulting to `docs/issue-triage.md`), sections *above* "Mutation recipes" — Types, Priorities, Labels, Required fields, Splitting, Duplicates, Dependencies. These are the rules you reason with. Ignore "Mutation recipes" — that is the main thread's concern.
 2. **Fetch the action set.** Run the resolved scope command (default `actionQuery`, minus `triagedLabel` if the query does not already encode it). This is the set you propose changes for.
 3. **Fetch the comparison set.** Run `comparisonQuery` for the wider read-only corpus (already-triaged + recently-closed). You compare against it but never propose changes to its issues.
 4. **Read full bodies** for action-set issues — and for any comparison issue a finding hinges on — via `readOne` (substitute `{id}`).

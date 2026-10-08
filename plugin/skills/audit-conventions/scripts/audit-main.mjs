@@ -35,6 +35,8 @@ import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
+import { expectationCandidates } from './lib/expect-prefer.mjs';
+import { fileExists, dirExists } from './lib/probes.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
@@ -99,13 +101,22 @@ async function main() {
   const pathOverrides = repoConfig?.paths;
   const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
-  const resolveFile = (entry) => {
-    const resolved = resolveExpectationPath(pathOverrides, entry.path);
-    return {
-      path: join(REPO_ROOT, resolved),
-      probe: resolved.endsWith('/') ? 'directory' : 'file',
+  // Picks the location that satisfies a files entry (ADR-0070): the paths
+  // override alone when set, else the entry's `prefer` location when it
+  // exists, else the declared path. evaluateFile (audit-core) still probes
+  // exactly one path; the choice among candidates is policy, made here.
+  const resolveFile = async (entry) => {
+    const { candidates } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
+    const located = (candidate) => ({
+      path: join(REPO_ROOT, candidate),
+      probe: candidate.endsWith('/') ? 'directory' : 'file',
       target: entry.path,
-    };
+    });
+    for (const candidate of candidates.slice(0, -1)) {
+      const r = located(candidate);
+      if (await (r.probe === 'directory' ? dirExists(r.path) : fileExists(r.path))) return { ...r, candidates };
+    }
+    return { ...located(candidates[candidates.length - 1]), candidates };
   };
   const resolveConfig = (entry) => {
     const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
@@ -120,7 +131,9 @@ async function main() {
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
-      findings.push(await evaluateFile(component, entry, resolveFile));
+      const where = await resolveFile(entry);
+      const finding = await evaluateFile(component, entry, () => where);
+      findings.push(where.candidates.length > 1 ? { ...finding, candidates: where.candidates } : finding);
     }
     for (const entry of expects.config ?? []) {
       findings.push(await evaluateConfig(component, entry, resolveConfig));
@@ -167,13 +180,16 @@ async function main() {
     // consuming repos also have, because `create-adr` scaffolds it. Run
     // ungated, this check would impose the content-anchor convention on every
     // consumer's ADRs and fail their `commands.validate` over prose the plugin
-    // does not own.
+    // does not own. The citing corpus also now reaches the repo-root `wiki/`
+    // tree, which a consumer likewise has once `maintain-wiki` scaffolds one —
+    // so the same exposure applies there too.
     //
     // What makes `error` safe is therefore the gate itself, not the scanner's
     // reach: AUDITING_PLUGIN_SOURCE is derived from the AUDITED repo (`relative(
     // REPO_ROOT, PLUGIN_ROOT)` above), so inside this block "repo-root
-    // `docs/decisions/`" can only ever mean *this* repo's own ADRs. Move this
-    // call outside the block and the severity stops being defensible.
+    // `docs/decisions/`" — and, since the corpus widened, "repo-root `wiki/`" —
+    // can only ever mean *this* repo's own trees. Move this call outside the
+    // block and the severity stops being defensible.
     findings.push(...(await scanPointerAnchors(REPO_ROOT)));
   }
 
@@ -188,6 +204,7 @@ async function main() {
   const hygieneOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
+    paths: pathOverrides,
     docsRoot,
     docsIndex,
     wikiDir: repoConfig?.wiki?.wikiDir,
@@ -473,7 +490,8 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : `\`${f.target}\``} — ${f.detail}.${reason}`;
+  const shown = f.candidates ? f.candidates.map((c) => `\`${c}\``).join(' or ') : `\`${f.target}\``;
+  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : shown} — ${f.detail}.${reason}`;
 }
 
 // ---- --fix orchestration ---------------------------------------------------
@@ -484,8 +502,8 @@ function formatFinding(f) {
 // rewriting. docsRoot defaults to 'docs' (a repo with no `paths` override
 // behaves byte-identically); callers resolve it via resolveDocsRoot before
 // calling, same as main()'s hygieneOpts.
-async function staleFollowup(docsRoot = 'docs') {
-  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot });
+async function staleFollowup(docsRoot = 'docs', paths = undefined) {
+  const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot, paths });
   return hits
     .filter((h) => h.file === 'CLAUDE.md' || h.file.startsWith(`${docsRoot}/`))
     .map((h) => ({ file: h.file, hint: `line ${h.line} uses retired token '${h.token}'` }));
@@ -525,7 +543,7 @@ async function runFix(state) {
 
   if (!APPLY_MODE) {
     console.log(formatPlanDryRun(plan));
-    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
+    if (state === STATE_STALE_CONFIG) console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot, fixRepoConfig?.paths)));
     savePreviewedPlan(REPO_ROOT, plan);
     process.exit(0);
   }
@@ -554,7 +572,7 @@ async function runFix(state) {
     console.log('\n' + formatDanglingReport(warnings));
   }
   if (plan.state === STATE_STALE_CONFIG) {
-    console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot)));
+    console.log('\n' + formatDanglingReport(await staleFollowup(fixDocsRoot, fixRepoConfig?.paths)));
   }
 
   clearPreviewedPlan(REPO_ROOT);

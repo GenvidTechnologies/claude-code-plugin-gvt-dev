@@ -55,7 +55,7 @@ const distinct = (entries) => new Set(entries.map((e) => e.pointer));
 // `digest: null`. That is supported, not malformed, so the control asserts the
 // null rather than tolerating it.
 const CONTROL = {
-  file: 'docs/decisions/0022-okf-bundle-root-is-the-wiki-tier.md',
+  file: 'wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md',
   pointer: 'SKILL.md' + ':' + '159',
   occurrence: 0,
   kind: 'pointer-ambiguous',

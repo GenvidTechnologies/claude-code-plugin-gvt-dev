@@ -1,11 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 
 import { planRenumber, applyRenumber } from '../renumber-adrs.mjs';
+import { discoverAdrs, buildTokenRewriter, isFrozenPath } from '../renumber-adrs.mjs';
+import { resolveDecisionsDir, describeAdrDir } from '../renumber-adrs.mjs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Fixture builder
@@ -311,5 +315,718 @@ test('planRenumber: headingEdits map old prefix to new prefix correctly', () => 
     assert.equal(kappaEdit.newHeadingPrefix, '# 0011.', 'new heading for kappa');
   } finally {
     cleanup(dir);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #581 — themed fixture builder + small D/E fixtures, and the CLI script path
+// ---------------------------------------------------------------------------
+
+const SCRIPT_PATH = fileURLToPath(new URL('../renumber-adrs.mjs', import.meta.url));
+
+function writeFileAt(base, relPath, content) {
+  const full = join(base, relPath);
+  mkdirSync(dirname(full), { recursive: true });
+  writeFileSync(full, content, 'utf8');
+}
+
+function gitInitAt(dir) {
+  const opts = { cwd: dir, encoding: 'utf8', stdio: 'pipe' };
+  spawnSync('git', ['init', '-q'], opts);
+  spawnSync('git', ['config', 'user.email', 'test@example.com'], opts);
+  spawnSync('git', ['config', 'user.name', 'Test'], opts);
+  spawnSync('git', ['config', 'core.autocrlf', 'false'], opts);
+  spawnSync('git', ['add', '-A'], opts);
+  spawnSync('git', ['commit', '-q', '-m', 'initial'], opts);
+}
+
+/**
+ * Themed fixture: two themes (alpha, beta) plus an empty theme, a
+ * decisions/index.md, theme index.md's, a README.md, a date-named notes
+ * file, every link form (sibling, cross-theme, bundle-absolute, theme-index,
+ * root TOC, backtick bare pointer, backtick path pointer), boundary traps
+ * (a filename prefix and a filename-plus-extension lookalike), a slug that
+ * embeds another ADR's whole filename, a .json and a .mjs reference, the 5
+ * frozen paths, a shared-slug pair across themes, and ADR-NNNN mentions
+ * (moved, unmoved, and a space-separated non-hyphen form).
+ *
+ * One sequence 0001..0007 across both themes (highest = 7); 0001 never
+ * moves under insert-at 2 and is used throughout as the "stays unchanged"
+ * control.
+ */
+function buildThemedFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'renumber-adrs-themed-'));
+  const decisionsDir = join(root, 'decisions');
+
+  writeFileAt(root, 'decisions/index.md', '# Decisions\n\n- [alpha](alpha/index.md)\n- [beta](beta/index.md)\n');
+  writeFileAt(root, 'decisions/alpha/index.md', '# alpha\n\n- [0001](0001-a.md)\n- [0003](0003-c.md)\n');
+  writeFileAt(root, 'decisions/alpha/README.md', '# readme\n');
+  writeFileAt(root, 'decisions/empty/index.md', '# empty theme\n');
+  writeFileAt(root, 'decisions/2026-09-28-notes.md', '# notes\n');
+  writeFileAt(root, 'decisions/beta/index.md', '# beta\n\n- [0002](0002-b.md)\n- [0004](0004-d.md)\n');
+  writeFileAt(
+    root,
+    'decisions/alpha/0001-a.md',
+    '# 0001. A\n\nSibling [C](0003-c.md). Cross [B](../beta/0002-b.md). Abs [D](/decisions/beta/0004-d.md).\n',
+  );
+  writeFileAt(
+    root,
+    'decisions/alpha/0003-c.md',
+    '# 0003. C\n\nCross [D](../beta/0004-d.md). Self `' + '0003-c.md' + ':' + '3' + '`.\n',
+  );
+  writeFileAt(
+    root,
+    'decisions/alpha/0005-x.md',
+    '# 0005. X\n\nSame slug other theme [X6](../beta/0006-x.md).\n',
+  );
+  writeFileAt(
+    root,
+    'decisions/alpha/0007-supersedes-0003-c.md',
+    '# 0007. S\n\nSupersedes [C](0003-c.md).\n',
+  );
+  writeFileAt(
+    root,
+    'decisions/beta/0002-b.md',
+    '# 0002. B\n\nSibling [D](0004-d.md). Cross [A](../alpha/0001-a.md). Pointer `' + '0003-c.md' + ':' + '12' + '`. ADR-0004 discussed here.\n',
+  );
+  writeFileAt(root, 'decisions/beta/0004-d.md', '# 0004. D\n\nCross [C](../alpha/0003-c.md).\n');
+  writeFileAt(root, 'decisions/beta/0006-x.md', '# 0006. X\n\nSame slug [X5](../alpha/0005-x.md).\n');
+  writeFileAt(
+    root,
+    'docs/TOC.md',
+    '- [`decisions/alpha/0001-a.md`](decisions/alpha/0001-a.md)\n- [`decisions/beta/0002-b.md`](decisions/beta/0002-b.md)\n',
+  );
+  writeFileAt(
+    root,
+    'notes.md',
+    'Backticked: `' + 'decisions/alpha/0003-c.md' + ':' + '7' + '`.\nFull name: 0007-supersedes-0003-c.md is superseded further.\n',
+  );
+  writeFileAt(root, 'shared.md', 'First [X6a](0006-x.md) then [X6b](0006-x.md) again.\n');
+  writeFileAt(root, 'traps.md', 'x0003-c.md and 0003-c.md.bak and (0003-c.md)\n');
+  writeFileAt(root, 'test/fx.json', '{ "file": "decisions/alpha/0003-c.md" }\n');
+  writeFileAt(root, 'test/t.mjs', "const F = 'decisions/alpha/0003-c.md';\n");
+  writeFileAt(root, 'CHANGELOG.md', '- shipped: decisions/alpha/0003-c.md\n');
+  writeFileAt(root, 'raw/r.md', 'raw decisions/alpha/0003-c.md\n');
+  writeFileAt(root, 'wiki/log.md', 'log decisions/alpha/0003-c.md\n');
+  writeFileAt(root, 'docs/superpowers/s.md', 'sp decisions/alpha/0003-c.md\n');
+  writeFileAt(root, '.pointer-baseline.json', '{ "file": "decisions/alpha/0003-c.md" }\n');
+  writeFileAt(root, 'src/a.ts', '// ADR-0003 moved\n// ADR-0001 unmoved\n// ADR 0002 moved\n');
+
+  gitInitAt(root);
+
+  return { root, decisionsDir };
+}
+
+/**
+ * Duplicate-number-across-themes fixture (D): 0002-b.md in alpha and
+ * 0002-z.md in beta share the number 2.
+ */
+function buildDuplicateFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'renumber-adrs-dup-'));
+  const decisionsDir = join(root, 'decisions');
+  writeFileAt(root, 'decisions/alpha/0001-a.md', '# 0001. A\n');
+  writeFileAt(root, 'decisions/alpha/0002-b.md', '# 0002. B\n');
+  writeFileAt(root, 'decisions/beta/0002-z.md', '# 0002. Z\n');
+  gitInitAt(root);
+  return { root, decisionsDir };
+}
+
+/**
+ * No-ADRs fixture (E): a decisions/ dir that exists but holds no ADR files.
+ */
+function buildEmptyFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'renumber-adrs-empty-'));
+  const decisionsDir = join(root, 'decisions');
+  writeFileAt(root, 'decisions/index.md', '# none\n');
+  gitInitAt(root);
+  return { root, decisionsDir };
+}
+
+// ---------------------------------------------------------------------------
+// #581 tests 1-6 — discovery / errors / CLI validation → task 2 (F1)
+// ---------------------------------------------------------------------------
+
+test('#581 discovery recursive-across-themes', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const plan = planRenumber({ dir: decisionsDir, insertAt: 2 });
+    assert.equal(plan.moves.length, 6, 'moves across both themes for insert-at 2 (highest 7, one sequence)');
+
+    const byOldNum = new Map(plan.moves.map((m) => [m.oldNum, m]));
+    const seven = byOldNum.get(7);
+    assert.equal(seven?.relDir, 'alpha', 'relDir is preserved for the alpha-theme move');
+    assert.equal(seven?.oldPath, 'alpha/0007-supersedes-0003-c.md', 'oldPath is the pre-move path relative to dir');
+    assert.equal(seven?.newPath, 'alpha/0008-supersedes-0003-c.md', 'newPath is the post-move path relative to dir');
+
+    const six = byOldNum.get(6);
+    assert.equal(six?.relDir, 'beta', 'relDir is preserved for the beta-theme move');
+
+    for (const m of plan.moves) {
+      assert.ok(m.oldNum >= 2, `only ADRs >= 2 are moved, got ${m.oldNum}`);
+    }
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 index/README/date-named excluded', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const plan = planRenumber({ dir: decisionsDir, insertAt: 1 });
+    assert.equal(plan.highest, 7, 'index.md, README.md and the date-named file are excluded from discovery');
+
+    // Supplementary direct check of the pure helper itself.
+    const { adrs, duplicates } = discoverAdrs(decisionsDir);
+    assert.equal(adrs.length, 7, 'discoverAdrs finds all 7 themed ADRs directly');
+    assert.equal(duplicates.size, 0, 'no duplicate numbers in the themed fixture');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 empty theme', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const plan = planRenumber({ dir: decisionsDir, insertAt: 8 });
+    assert.equal(plan.highest, 7, 'an empty theme directory contributes no ADRs and no error');
+    assert.equal(plan.moves.length, 0, 'insert-at beyond highest is a no-op even with an empty theme present');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 duplicate throws before change', () => {
+  const { root, decisionsDir } = buildDuplicateFixture();
+  try {
+    assert.throws(
+      () => planRenumber({ dir: decisionsDir, insertAt: 2 }),
+      (err) => {
+        assert.equal(err.code, 'EDUPLICATE', 'duplicate ADR number raises EDUPLICATE');
+        assert.match(err.message, /0002-b\.md/, 'error names the first duplicate path');
+        assert.match(err.message, /0002-z\.md/, 'error names the second duplicate path');
+        return true;
+      },
+    );
+
+    const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+    assert.equal(status.stdout.trim(), '', 'no change is made before the duplicate is raised');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 insert-at 0/-1/non-integer rejected (CLI rc 1, no node:internal in stderr)', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    for (const bad of ['0', '-1', '3abc']) {
+      const result = spawnSync(
+        process.execPath,
+        [SCRIPT_PATH, '--dir', decisionsDir, '--insert-at', bad],
+        { encoding: 'utf8' },
+      );
+      assert.equal(result.status, 1, `--insert-at ${bad} must exit 1`);
+      assert.doesNotMatch(result.stderr, /node:internal/, `--insert-at ${bad} must not print a stack trace`);
+      const lines = result.stderr.trim().split('\n').filter(Boolean);
+      assert.equal(lines.length, 1, `--insert-at ${bad} must print exactly one stderr line, got:\n${result.stderr}`);
+    }
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 no ADRs is an error', () => {
+  const { root, decisionsDir } = buildEmptyFixture();
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT_PATH, '--dir', decisionsDir, '--insert-at', '1'],
+      { encoding: 'utf8' },
+    );
+    assert.equal(result.status, 1, 'no ADRs in dir must exit 1');
+
+    const missingDir = join(root, 'decisions', 'does-not-exist');
+    const result2 = spawnSync(
+      process.execPath,
+      [SCRIPT_PATH, '--dir', missingDir, '--insert-at', '1'],
+      { encoding: 'utf8' },
+    );
+    assert.equal(result2.status, 1, 'a missing dir must also exit 1');
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #581 tests 7-12, 15 — token rewrite, moved-file links, shared slug,
+// boundaries, .json/.mjs, frozen paths, staging → task 3 (F2)
+// ---------------------------------------------------------------------------
+
+test('#581 per-link-form positive controls', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const alphaOne = readFileSync(join(decisionsDir, 'alpha', '0001-a.md'), 'utf8');
+    assert.match(alphaOne, /Sibling \[C\]\(0004-c\.md\)/, 'sibling link rewritten');
+    assert.match(alphaOne, /Cross \[B\]\(\.\.\/beta\/0003-b\.md\)/, 'cross-theme link rewritten');
+    assert.match(alphaOne, /Abs \[D\]\(\/decisions\/beta\/0005-d\.md\)/, 'bundle-absolute link rewritten');
+
+    const alphaIndex = readFileSync(join(decisionsDir, 'alpha', 'index.md'), 'utf8');
+    assert.match(alphaIndex, /\[0003\]\(0004-c\.md\)/, 'theme index link rewritten');
+    assert.match(alphaIndex, /\[0001\]\(0001-a\.md\)/, 'unmoved 0001-a.md reference is a control and stays unchanged');
+
+    const toc = readFileSync(join(root, 'docs', 'TOC.md'), 'utf8');
+    assert.match(toc, /decisions\/beta\/0003-b\.md/, 'root TOC backtick-path link rewritten');
+    assert.match(toc, /decisions\/alpha\/0001-a\.md/, 'unmoved TOC row is a control and stays unchanged');
+
+    const notes = readFileSync(join(root, 'notes.md'), 'utf8');
+    assert.match(notes, /decisions\/alpha\/0004-c\.md:7/, 'backtick bare pointer rewritten');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 links inside moved files', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const movedC = readFileSync(join(decisionsDir, 'alpha', '0004-c.md'), 'utf8');
+    assert.match(movedC, /Cross \[D\]\(\.\.\/beta\/0005-d\.md\)/, 'moved file cross-link rewritten to new target');
+    assert.match(movedC, /Self `0004-c\.md:3`/, "moved file self-pointer rewritten to its own new name");
+
+    const movedB = readFileSync(join(decisionsDir, 'beta', '0003-b.md'), 'utf8');
+    assert.match(movedB, /Sibling \[D\]\(0005-d\.md\)/, 'moved file sibling link rewritten');
+    assert.match(
+      movedB,
+      /Cross \[A\]\(\.\.\/alpha\/0001-a\.md\)/,
+      'unmoved cross-link inside a moved file is a control and stays unchanged',
+    );
+    assert.match(movedB, /Pointer `0004-c\.md:12`/, 'moved file cross-pointer rewritten');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 shared slug once', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const movedX5 = readFileSync(join(decisionsDir, 'alpha', '0006-x.md'), 'utf8');
+    assert.match(
+      movedX5,
+      /Same slug other theme \[X6\]\(\.\.\/beta\/0007-x\.md\)/,
+      'shared-slug cross-theme link maps to its own new number, not the sibling slug pair',
+    );
+
+    const movedX6 = readFileSync(join(decisionsDir, 'beta', '0007-x.md'), 'utf8');
+    assert.match(
+      movedX6,
+      /Same slug \[X5\]\(\.\.\/alpha\/0006-x\.md\)/,
+      'shared-slug cross-theme link maps to its own new number',
+    );
+
+    const shared = readFileSync(join(root, 'shared.md'), 'utf8');
+    assert.match(
+      shared,
+      /First \[X6a\]\(0007-x\.md\) then \[X6b\]\(0007-x\.md\) again\./,
+      'both mentions of the same old filename map once, no double shift',
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 token boundaries', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const traps = readFileSync(join(root, 'traps.md'), 'utf8');
+    assert.equal(
+      traps,
+      'x0003-c.md and 0003-c.md.bak and (0004-c.md)\n',
+      'only the bare parenthesized token is rewritten; the x-prefixed and .bak-suffixed lookalikes are untouched',
+    );
+
+    const notes = readFileSync(join(root, 'notes.md'), 'utf8');
+    assert.match(
+      notes,
+      /Full name: 0008-supersedes-0003-c\.md is superseded further\./,
+      "the moved file's whole old filename is rewritten in one shot; the embedded 0003-c.md tail is not separately rewritten",
+    );
+
+    const supersedes = readFileSync(join(decisionsDir, 'alpha', '0008-supersedes-0003-c.md'), 'utf8');
+    assert.match(supersedes, /Supersedes \[C\]\(0004-c\.md\)/, 'the link inside the renamed file is rewritten');
+
+    // Supplementary direct check of the pure helper itself.
+    const rewriter = buildTokenRewriter(
+      new Map([
+        ['0003-c.md', '0004-c.md'],
+        ['0007-supersedes-0003-c.md', '0008-supersedes-0003-c.md'],
+      ]),
+    );
+    const probe = rewriter('x0003-c.md and 0003-c.md.bak and (0003-c.md) and 0007-supersedes-0003-c.md');
+    assert.equal(
+      probe.text,
+      'x0003-c.md and 0003-c.md.bak and (0004-c.md) and 0008-supersedes-0003-c.md',
+      'buildTokenRewriter itself respects filename-token boundaries (longest-first, lookbehind/lookahead)',
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 .json+.mjs follow', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const json = readFileSync(join(root, 'test', 'fx.json'), 'utf8');
+    assert.match(json, /"file": "decisions\/alpha\/0004-c\.md"/, '.json references follow the rename');
+
+    const mjs = readFileSync(join(root, 'test', 't.mjs'), 'utf8');
+    assert.match(mjs, /const F = 'decisions\/alpha\/0004-c\.md';/, '.mjs references follow the rename');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 frozen paths untouched and listed', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const plan = applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const frozenFiles = ['CHANGELOG.md', 'raw/r.md', 'wiki/log.md', 'docs/superpowers/s.md', '.pointer-baseline.json'];
+    for (const rel of frozenFiles) {
+      const content = readFileSync(join(root, rel), 'utf8');
+      assert.match(content, /0003-c\.md/, `${rel} keeps referencing the old ADR name (frozen, never rewritten)`);
+      assert.doesNotMatch(content, /0004-c\.md/, `${rel} must not be rewritten`);
+    }
+
+    assert.equal(plan.excluded?.length, 5, 'plan.excluded lists exactly the 5 frozen files');
+    for (const rel of frozenFiles) {
+      assert.ok(plan.excluded?.includes(rel), `plan.excluded must list ${rel}`);
+    }
+
+    // Supplementary direct check of the pure helper itself.
+    for (const rel of frozenFiles) {
+      assert.equal(isFrozenPath(rel, {}), true, `isFrozenPath(${rel}) is true with default raw/wiki dirs`);
+    }
+    assert.equal(isFrozenPath('decisions/alpha/0003-c.md', {}), false, 'a non-frozen ADR path is not frozen (control)');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 apply stages everything', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+    const lines = status.stdout.split('\n').filter(Boolean);
+    assert.ok(lines.length > 0, 'apply must produce a non-empty set of changes');
+
+    const dirty = lines.filter((l) => l[1] !== ' ');
+    assert.equal(dirty.length, 0, `every change must be staged; dirty entries:\n${dirty.join('\n')}`);
+
+    const rewrittenAlphaOne = lines.some((l) => l.includes('alpha/0001-a.md'));
+    assert.ok(rewrittenAlphaOne, 'the unmoved-but-rewritten alpha/0001-a.md content change must be staged');
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #581 tests 13-14 — ADR-NNNN moved-only report, post-move reportFile
+// → task 4 (F3)
+// ---------------------------------------------------------------------------
+
+test('#581 ADR-NNNN moved-only, report-only', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const before = readFileSync(join(root, 'src', 'a.ts'), 'utf8');
+    const plan = applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const after = readFileSync(join(root, 'src', 'a.ts'), 'utf8');
+    assert.equal(after, before, 'ADR-NNNN mentions are report-only; file content is never rewritten');
+
+    const hits = plan.ambiguous.filter((r) => r.file.includes('a.ts'));
+    assert.ok(hits.some((r) => /ADR-0003/.test(r.lineText)), 'moved number 3 (hyphen form) is reported');
+    assert.ok(!hits.some((r) => /ADR-0001\b/.test(r.lineText)), 'unmoved ADR-0001 is a control and must not be reported');
+    assert.ok(hits.some((r) => /ADR 0002/.test(r.lineText)), 'space-separated form of a moved number is still reported (control, #581 row 15; matches the pre-existing ADR 0006 test)');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#581 report cites post-move path', () => {
+  const { root, decisionsDir } = buildThemedFixture();
+  try {
+    const plan = applyRenumber({ dir: decisionsDir, insertAt: 2 });
+
+    const hit = plan.ambiguous.find((r) => /ADR-0004/.test(r.lineText));
+    assert.ok(hit, 'the ADR-0004 mention inside the moved beta file is reported');
+    assert.equal(hit.reportFile, 'decisions/beta/0003-b.md', 'reportFile cites the post-move path, not the pre-move 0002-b.md');
+    assert.ok(!hit.reportFile.includes('0002-b.md'), 'reportFile must not cite the stale pre-move name');
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #582 — resolveDecisionsDir / describeAdrDir ("--next") → task T1
+// ---------------------------------------------------------------------------
+
+function makeRepo(prefix) {
+  return mkdtempSync(join(tmpdir(), prefix));
+}
+
+test('#582 describeAdrDir: flat layout, exclusions folded in', () => {
+  const root = makeRepo('renumber-next-flat-');
+  try {
+    writeFileAt(root, 'docs/decisions/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/0003-c.md', '# 0003. C\n');
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+    writeFileAt(root, 'docs/decisions/README.md', '# readme\n');
+    writeFileAt(root, 'docs/decisions/2026-01-01-notes.md', '# notes\n');
+    writeFileAt(root, 'docs/decisions/.hidden/0099-ignored.md', '# 0099\n');
+    writeFileAt(root, 'docs/decisions/node_modules/0098-ignored.md', '# 0098\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'flat', 'root-only records with no theme subdirs is flat');
+    assert.equal(summary.count, 3, 'index.md, README.md, the date-named file, the dot dir and node_modules are all excluded');
+    assert.equal(summary.highest, 3);
+    assert.equal(summary.next, 4);
+    assert.equal(summary.nextPadded, '0004');
+    assert.equal(summary.exists, true);
+    assert.equal(summary.rootIndex, true);
+    assert.equal(summary.rootReadme, true);
+    assert.deepEqual(summary.themes, []);
+    assert.deepEqual(
+      summary.records.map((r) => r.path),
+      ['0001-a.md', '0002-b.md', '0003-c.md'],
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: themed layout, global max+1 across themes', () => {
+  const root = makeRepo('renumber-next-themed-');
+  try {
+    writeFileAt(root, 'docs/decisions/alpha/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/alpha/0003-c.md', '# 0003. C\n');
+    writeFileAt(root, 'docs/decisions/alpha/index.md', '# alpha\n');
+    writeFileAt(root, 'docs/decisions/beta/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/2026-02-02-notes.md', '# notes\n');
+    writeFileAt(root, 'docs/decisions/.hidden/0097-ignored.md', '# 0097\n');
+    writeFileAt(root, 'docs/decisions/node_modules/0096-ignored.md', '# 0096\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'themed', 'no root records, two theme subdirs');
+    assert.equal(summary.count, 3);
+    assert.equal(summary.highest, 3, 'highest is the global max across both themes');
+    assert.equal(summary.next, 4);
+    const byName = Object.fromEntries(summary.themes.map((t) => [t.name, t]));
+    assert.equal(byName.alpha.count, 2);
+    assert.equal(byName.alpha.index, true);
+    assert.equal(byName.beta.count, 1);
+    assert.equal(byName.beta.index, false);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: mixed layout (root records AND a theme)', () => {
+  const root = makeRepo('renumber-next-mixed-');
+  try {
+    writeFileAt(root, 'docs/decisions/0005-root.md', '# 0005. Root\n');
+    writeFileAt(root, 'docs/decisions/alpha/0001-a.md', '# 0001. A\n');
+    writeFileAt(root, 'docs/decisions/alpha/0002-b.md', '# 0002. B\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.layout, 'mixed');
+    assert.equal(summary.count, 3);
+    assert.equal(summary.highest, 5);
+    assert.equal(summary.next, 6);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: empty (exists, no records)', () => {
+  const root = makeRepo('renumber-next-empty-');
+  try {
+    mkdirSync(join(root, 'docs', 'decisions'), { recursive: true });
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.exists, true);
+    assert.equal(summary.layout, 'empty');
+    assert.equal(summary.count, 0);
+    assert.equal(summary.highest, 0);
+    assert.equal(summary.next, 1);
+    assert.equal(summary.nextPadded, '0001');
+    assert.deepEqual(summary.themes, []);
+    assert.deepEqual(summary.records, []);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 --next CLI: missing ADR directory exits 0 with next=1 (CLI subprocess)', () => {
+  const root = makeRepo('renumber-next-missing-');
+  try {
+    const result = spawnSync(process.execPath, [SCRIPT_PATH, '--next'], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, `--next on a repo with no docs/decisions/ must exit 0, stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.resolvedFrom, 'default');
+    assert.equal(parsed.exists, false);
+    assert.equal(parsed.layout, 'missing');
+    assert.equal(parsed.next, 1);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: empty-themed-root (only index.md + empty theme dirs)', () => {
+  const root = makeRepo('renumber-next-etr-');
+  try {
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+    writeFileAt(root, 'docs/decisions/alpha/index.md', '# alpha\n');
+    writeFileAt(root, 'docs/decisions/beta/index.md', '# beta\n');
+
+    const summary = describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' });
+    assert.equal(summary.exists, true);
+    assert.equal(summary.count, 0, 'no ADR records exist anywhere yet');
+    assert.equal(summary.layout, 'themed', 'theme subdirectories are present even though empty, so this is not the flat/empty case');
+    assert.equal(summary.highest, 0);
+    assert.equal(summary.next, 1);
+    assert.equal(summary.themes.length, 2);
+    assert.equal(summary.rootIndex, true);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 describeAdrDir: duplicate ADR number across themes throws EDUPLICATE', () => {
+  const root = makeRepo('renumber-next-dup-');
+  try {
+    writeFileAt(root, 'docs/decisions/alpha/0002-b.md', '# 0002. B\n');
+    writeFileAt(root, 'docs/decisions/beta/0002-z.md', '# 0002. Z\n');
+
+    assert.throws(
+      () => describeAdrDir({ repoRoot: root, dir: 'docs/decisions/' }),
+      (err) => {
+        assert.equal(err.code, 'EDUPLICATE', 'same error code planRenumber raises');
+        assert.match(err.message, /0002-b\.md/);
+        assert.match(err.message, /0002-z\.md/);
+        return true;
+      },
+    );
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: paths override resolved, wiki true', () => {
+  const root = makeRepo('renumber-next-override-');
+  try {
+    writeFileAt(
+      root,
+      '.gvt-agent.json',
+      JSON.stringify({ paths: { 'docs/decisions/': 'wiki/decisions/' } }, null, 2),
+    );
+    writeFileAt(root, 'wiki/decisions/0001-a.md', '# 0001. A\n');
+
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'wiki/decisions/');
+    assert.equal(resolved.resolvedFrom, 'paths');
+    assert.equal(resolved.warning, undefined);
+
+    const summary = describeAdrDir({ repoRoot: root, dir: resolved.dir });
+    assert.equal(summary.wiki, true, 'wiki/decisions/ is inside the default wikiDir');
+    assert.equal(summary.wikiDir, 'wiki');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: no config falls back to the default', () => {
+  const root = makeRepo('renumber-next-default-');
+  try {
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'docs/decisions/');
+    assert.equal(resolved.resolvedFrom, 'default');
+    assert.equal(resolved.warning, undefined);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 resolveDecisionsDir: malformed JSON and an empty override value both fall back with a warning', () => {
+  const malformedRoot = makeRepo('renumber-next-malformed-');
+  const emptyValRoot = makeRepo('renumber-next-emptyval-');
+  try {
+    writeFileAt(malformedRoot, '.gvt-agent.json', '{ not valid json');
+    const malformed = resolveDecisionsDir(malformedRoot);
+    assert.equal(malformed.dir, 'docs/decisions/');
+    assert.equal(malformed.resolvedFrom, 'default');
+    assert.ok(malformed.warning, 'malformed .gvt-agent.json reports a warning');
+
+    writeFileAt(
+      emptyValRoot,
+      '.gvt-agent.json',
+      JSON.stringify({ paths: { 'docs/decisions/': '   ' } }, null, 2),
+    );
+    const emptyVal = resolveDecisionsDir(emptyValRoot);
+    assert.equal(emptyVal.dir, 'docs/decisions/');
+    assert.equal(emptyVal.resolvedFrom, 'default');
+    assert.ok(emptyVal.warning, 'a whitespace-only override value reports a warning');
+  } finally {
+    cleanup(malformedRoot);
+    cleanup(emptyValRoot);
+  }
+});
+
+test('#582 describeAdrDir: wiki boundary — wiki-old/ is not inside wiki/, a custom wikiDir is honored', () => {
+  const root = makeRepo('renumber-next-wikiboundary-');
+  try {
+    writeFileAt(root, 'wiki-old/decisions/0001-a.md', '# 0001. A\n');
+    const notWiki = describeAdrDir({ repoRoot: root, dir: 'wiki-old/decisions/' });
+    assert.equal(notWiki.wiki, false, 'wiki-old/ is a sibling prefix, not inside wiki/');
+
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ wiki: { wikiDir: 'bundle' } }, null, 2));
+    writeFileAt(root, 'bundle/decisions/0001-a.md', '# 0001. A\n');
+    const customWiki = describeAdrDir({ repoRoot: root, dir: 'bundle/decisions/' });
+    assert.equal(customWiki.wiki, true, 'a custom wiki.wikiDir is honored');
+    assert.equal(customWiki.wikiDir, 'bundle');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('#582 --next CLI: combined with --insert-at exits 1 and makes no fs change (CLI subprocess)', () => {
+  const root = makeRepo('renumber-next-combined-');
+  try {
+    writeFileAt(root, 'docs/decisions/0001-a.md', '# 0001. A\n');
+    const before = readdirSync(join(root, 'docs', 'decisions')).sort();
+
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT_PATH, '--next', '--insert-at', '5'],
+      { cwd: root, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 1, '--next combined with --insert-at must exit 1');
+    assert.equal(result.stdout.trim(), '', 'no JSON summary is printed');
+
+    const after = readdirSync(join(root, 'docs', 'decisions')).sort();
+    assert.deepEqual(after, before, 'the ADR directory is untouched');
+  } finally {
+    cleanup(root);
   }
 });

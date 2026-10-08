@@ -12,8 +12,36 @@ means a new entry (and, if today isn't already the top group, a new
 insertion point moves from the bottom to the top, but prepending never
 touches a prior entry's text, so the append-only guarantee holds exactly as
 before. If a past entry itself needs correcting, add a new entry that says
-so; never edit or remove the old one in place. See `docs/wiki-schema.md` for
+so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
+
+## 2026-10-08
+
+* **Migration**: Moved the maintenance schema from `docs/` into the bundle as
+  `schema.md` for #587, gave it OKF frontmatter as a `convention` page, listed
+  it under `## Schema` in `index.md`, and brought its claims up to date with
+  the moved tree. Not an ingest; no `raw/` source drove it.
+
+## 2026-10-06
+
+* **Migration**: Moved the long maintainer sections of `CLAUDE.md` into six
+  `maintainer/` pages for #586, registered them in `maintainer/index.md`, and
+  replaced them in `CLAUDE.md` with a `## Knowledge base` routing list. Not an
+  ingest; no `raw/` source drove it.
+
+## 2026-10-05
+
+* **Migration**: Moved the issue-triage conventions to `process/issue-triage.md`
+  and the plugin-authoring notes to `maintainer/plugin-authoring.md` for #585,
+  gave each OKF frontmatter, added the `process/` and `maintainer/` indexes, and
+  linked them from `index.md`. Not an ingest; no `raw/` source drove it.
+
+## 2026-10-01
+
+* **Migration**: Moved the repo's decision records from `docs/decisions/` into
+  `wiki/decisions/<theme>/` for #584, gave each OKF frontmatter, added the
+  decisions and theme indexes, and linked them from `index.md`. Not an
+  ingest; no `raw/` source drove it.
 
 ## 2026-08-04
 

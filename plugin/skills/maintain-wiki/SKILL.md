@@ -6,11 +6,12 @@ metadata:
   expects:
     files:
       - path: docs/wiki-schema.md
+        prefer: <wikiDir>/schema.md
         required: false
-        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract); the skill offers to scaffold it from the bundled template if absent
+        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract), resolved as the paths override for this key, else <wikiDir>/schema.md inside the bundle, else the legacy docs/wiki-schema.md; the skill offers to scaffold it, at the override path when one is set and else at <wikiDir>/schema.md, when none of the three exists
       - path: docs/TOC.md
         required: false
-        reason: The §0 scaffold step adds a one-line index entry for the scaffolded docs/wiki-schema.md when docs/TOC.md is present
+        reason: The §0 scaffold step adds a one-line index entry for a schema scaffolded outside the wiki bundle (a paths override naming a location such as docs/) when docs/TOC.md is present
     config:
       - key: wiki.wikiDir
         in: .gvt-agent.json
@@ -33,8 +34,9 @@ metadata:
 
 Maintain a project's **LLM-wiki**: a three-tier, markdown-only compounding-memory
 knowledge base — `raw/` (immutable captured sources) → `<wikiDir>/` (LLM-maintained
-pages, `index.md`, `log.md`) → `docs/wiki-schema.md` (the maintenance rules that
-keep the first two in sync). No vector DB, no retrieval engine, no render step:
+pages, `index.md`, `log.md`) → the schema doc (the maintenance rules that keep
+the first two in sync), which lives inside the bundle at `<wikiDir>/schema.md`
+by default (§0 step 1 resolves it). No vector DB, no retrieval engine, no render step:
 **a wiki accumulates and compounds; RAG retrieves and forgets.** The skill
 exposes three verbs — `ingest`, `query`, `lint` — and scaffolds the layout on
 first use.
@@ -57,6 +59,23 @@ first use.
 1. **Resolve the wiki's directories** from the `wiki` block in `.gvt-agent.json`:
    `wikiDir` (default `wiki`), `rawDir` (default `raw`). These names are used
    throughout the rest of this skill.
+
+   **Then resolve the schema doc** — the one resolution every later step uses.
+   Three locations, in this order:
+   1. `paths['docs/wiki-schema.md']` in `.gvt-agent.json`, when set. The
+      override wins outright, whether or not a file exists at the other two
+      (`CONVENTIONS.md`, "Runtime path resolution").
+   2. `<wikiDir>/schema.md` — inside the bundle, the default.
+   3. `docs/wiki-schema.md` — the legacy location, still honoured.
+
+   With no override, the schema is the first of locations 2 and 3 that exists.
+   Every later mention of "the schema" in this skill means this resolved path.
+   While resolving, note two further states, both reported in step 4:
+   - **Shadowed duplicate** — a file exists at the resolved location *and* at
+     another of the three. The resolved one is the schema; the other is never
+     read.
+   - **Dangling override** — the override names a missing file while a file
+     exists at location 2 or 3.
 2. **Resolve the verb.** The user (or dispatching skill/command) names one of
    `ingest`, `query`, `lint`. If none is given, ask which is wanted — the three
    verbs have different inputs and safety profiles, so don't guess. **Resolve it
@@ -70,7 +89,14 @@ first use.
 4. **Probe for the three-tier layout:**
    - `<wikiDir>/` and `<rawDir>/` directories
    - `<wikiDir>/index.md` and `<wikiDir>/log.md`
-   - `docs/wiki-schema.md`
+   - the schema doc, at the location step 1 resolved
+
+   **Report a shadowed duplicate or a dangling override first**, for every
+   verb: name both paths and say which one is read. Report only — never
+   delete, merge or move either file. `lint` carries the report into its
+   findings as an advisory note; under `--non-interactive` it goes into the
+   run's output. A dangling override stops `ingest` before it writes anything
+   (fix the override or move the file); `query` and `lint` continue.
 
    **Only `ingest` scaffolds.** For `query` and `lint`, a missing piece is a
    **reportable state, not a gap to fill**: `query` says the wiki can't answer
@@ -81,7 +107,10 @@ first use.
    **If any piece is absent *and the verb is `ingest`*, offer to scaffold it**
    from the bundled templates — do not guess conventions:
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/wiki-schema.template.md` →
-     `docs/wiki-schema.md`
+     the override path when one is set, else `<wikiDir>/schema.md`. Scaffold
+     it **only when none of step 1's three locations holds a file** — a
+     schema anywhere, a duplicate or a dangling override all mean no
+     scaffold, under `--non-interactive` too.
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/wiki-index.template.md` →
      `<wikiDir>/index.md`
    - `${CLAUDE_PLUGIN_ROOT}/skills/maintain-wiki/wiki-log.template.md` →
@@ -90,28 +119,48 @@ first use.
      `<rawDir>/README.md`
 
    **Resolve the placeholders as you copy.** The templates spell the wiki's
-   directories as `<wikiDir>/` and `<rawDir>/`; substitute the names resolved
-   in step 1 into the copied text, so the scaffolded file names the project's
-   actual directories. `wiki-schema.template.md` is the exception — its header
-   tells the consumer to edit it for their project, so copy it as-is.
+   directories as `<wikiDir>/` and `<rawDir>/`, and the schema doc as
+   `<schemaDoc>`; substitute the names resolved in step 1 (for `<schemaDoc>`,
+   the schema path step 1 resolved, or the scaffold target if none exists)
+   into the copied text, so the scaffolded file names the project's paths.
+   `wiki-schema.template.md` is the exception — its body is copied as-is (its
+   header tells the consumer to edit it); only the frontmatter below is added.
+
+   **A schema scaffolded inside `<wikiDir>/` opens with OKF frontmatter**,
+   prepended before the template body, because the bundle requires a
+   non-empty `type` on every page (OKF §4.1/§11.2):
+
+   ```yaml
+   ---
+   type: convention
+   title: Wiki Maintenance Schema
+   description: The maintenance rules for this wiki — page format, create-vs-update lifecycle, raw/ immutability, staleness policy and the verb contract.
+   ---
+   ```
 
    Interactively, **offer** the scaffold (`AskUserQuestion`); in
    `--non-interactive`, scaffold **automatically**. **This step is idempotent**:
    re-running it only creates the pieces that are still missing — a directory,
-   file, or index entry already present is left untouched and skipped silently.
-   A partially-scaffolded wiki (e.g. `<wikiDir>/` exists but `docs/wiki-schema.md`
-   doesn't) is a normal, supported state, not an error.
+   file, or index entry already present is left untouched and skipped silently
+   (a shadowed schema duplicate is still reported, as step 4 says). A partly
+   scaffolded wiki (e.g. `<wikiDir>/` exists but no schema doc does) is normal.
 
-   **Index the scaffolded schema doc in `docs/TOC.md`.** After copying
-   `wiki-schema.template.md` to `docs/wiki-schema.md`, add a one-line entry for
-   it to `docs/TOC.md` under a **Knowledge Base** heading (create the heading
-   if absent) — mirroring how `plan-task` indexes a scaffolded `docs/decisions/`
-   record and `triage-issues` indexes `docs/issue-triage.md`. An unindexed
-   contract doc is invisible to the skills that discover docs via the index.
+   **Index the scaffolded schema doc in the index that owns its location.**
+   - **Inside `<wikiDir>/`** (the default): add a one-line entry linking it
+     from `<wikiDir>/index.md` under a **Schema** heading (create the heading
+     if absent), mirroring that index's existing entry shape, with the
+     frontmatter `description` as the entry text. An unlisted bundle page is
+     an orphan to `lint`. No `docs/TOC.md` row: the bundle's own index is its
+     discovery surface.
+   - **Outside the bundle** (an override naming, say, a `docs/` location): add the entry
+     to `docs/TOC.md` under a **Knowledge Base** heading (create the heading if
+     absent) — mirroring how `plan-task` indexes a scaffolded `docs/decisions/`
+     record and `triage-issues` indexes `docs/issue-triage.md`.
+
    Interactively, **offer** it; in `--non-interactive`, add it **automatically**.
-   Make it **idempotent** (skip if the entry already exists) and **skip
-   gracefully if `docs/TOC.md` is absent** — the doc still exists and works,
-   it's just undiscoverable through the index.
+   Make it **idempotent** (skip when a link in that index already resolves to
+   the schema) and **skip gracefully if the index file is absent** — the doc
+   still exists and works, it's just undiscoverable through the index.
 
 ## `ingest`
 
@@ -124,13 +173,13 @@ already sitting in `<rawDir>/` — into compounding `<wikiDir>/` content.
    haven't been ingested yet (cross-reference `<wikiDir>/log.md` to find
    which `<rawDir>/` files have no corresponding log entry).
 2. **Resolve the target page** using the create-vs-update rule in
-   `docs/wiki-schema.md`'s "Page lifecycle" section: a genuinely new topic
+   the schema's (§0 step 1) "Page lifecycle" section: a genuinely new topic
    gets a new page under `<wikiDir>/<topic-slug>.md`; new facts about a topic
    already covered get folded into the existing page in place — never a
    second thin page for the same topic.
 3. **Dispatch `gvt-dev:tech-writer`** to author (new page) or update
    (existing page) per the page format and lifecycle rules in
-   `docs/wiki-schema.md`. The **same** dispatch also owns the two bookkeeping
+   the schema (§0 step 1). The **same** dispatch also owns the two bookkeeping
    writes for that run — registering a new page in `<wikiDir>/index.md` and
    appending one entry per source to `<wikiDir>/log.md` — so the page and its
    index/log entries land as one consistent unit. Keep the
@@ -149,7 +198,7 @@ extracted insight can land in.
 
 1. Resolve `<wikiDir>`/`<rawDir>` (§0 step 1).
 2. **Dispatch `gvt-dev:wiki-librarian`** with the question and the resolved
-   paths. The agent is read-only: it consults `<wikiDir>/index.md`, reads the
+   paths, the schema doc's included. The agent is read-only: it consults `<wikiDir>/index.md`, reads the
    relevant page(s), traces provenance into `<rawDir>/` when needed, and
    returns one structured, cited answer (see the agent's Output Format).
 3. **Present the agent's answer** as returned — this skill routes the query,
@@ -211,17 +260,21 @@ mutates anything. Checks, run against `<wikiDir>/` (and optionally `<rawDir>/`):
   every page as an orphan would be a rejection in all but name.
 - **Stale pages** — pages whose frontmatter `stale_after` date has passed
   (`today >= stale_after`), per the staleness policy documented in
-  `docs/wiki-schema.md`. Without a declared `stale_after`, this check is
+  the schema (§0 step 1). Without a declared `stale_after`, this check is
   judgment-based rather than numeric — flag candidates, don't invent a
   default cutoff.
 - **`raw/` immutability (optional)** — `git log --diff-filter=M -- <rawDir>/`
   to flag any file under `<rawDir>/` that has been modified after its initial
   commit (a `raw/` file should only ever be added or re-captured as a new
-  file, never edited in place — see `docs/wiki-schema.md`). `<rawDir>/` is
+  file, never edited in place — see the schema). `<rawDir>/` is
   **outside** the OKF bundle — the bundle root is `<wikiDir>/` — so this check
   is a local convention of this three-tier layout, **not** an OKF requirement.
   Skipped gracefully if `git` isn't available or the repo has no history for
   the path.
+- **Shadowed schema duplicate or dangling override (advisory)** — §0 step 1's
+  report, carried into the findings list: two schema docs where only the
+  resolved one is read, or an override naming a missing file while a schema
+  sits elsewhere. A note, never a failure; `lint` changes neither file.
 
 **A script implements the deterministic subset of this list.**
 `plugin/skills/maintain-wiki/scripts/wiki-lint.mjs`, run as
@@ -264,7 +317,7 @@ fields specified in the spec — so a *mechanical* staleness verdict comes from
 LLM-mode judgment flag stays legal precisely because it refuses to compute a
 cutoff and is labelled a candidate rather than a "stale" determination.
 
-`docs/wiki-schema.md`'s **"Tolerated, never rejected"** paragraph is the page
+The schema's **"Tolerated, never rejected"** paragraph is the page
 format's own statement of these same clauses; **this** block is the binding one
 for `lint` and for the mechanical checker (#150).
 
@@ -276,7 +329,7 @@ mechanical checker (#150):** it may *report* any of the six cases above, but
 must never turn one into an error, a hard failure, or a non-zero exit — and if
 it offers an opt-in strict/exit-code mode, a §11-tolerated finding must not be
 what fails it. A consuming repo may hold itself to a stricter *local* policy in
-its own `docs/wiki-schema.md`; that is project policy, never an OKF requirement
+its own schema doc; that is project policy, never an OKF requirement
 and never a plugin default.
 
 **Boundary with #150 — `lint` does not check §11.1–11.2 conformance.** Whether

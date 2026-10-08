@@ -171,6 +171,57 @@ test('audit: a missing docs/TOC.md renders an orphan-check-skipped report line, 
 // actually reaches the rendered report through audit.mjs's real config load
 // (loadHygieneConfig / repoConfig.wiki), not only through a hand-built opts
 // object in the unit tests above.
+// #583 W1. A `docs/decisions/` paths override (relocating the ADR dir into a
+// wiki checkout) must be honored by the retired-token scan as wired through
+// audit-main.mjs's real hygieneOpts (opts.paths), not just by lib/hygiene.mjs's
+// own decisionsExclude unit tests. wiki/decisions/0001-x.md sits at the
+// relocated (excluded) path; wiki/other.md is an unrelated wiki page and must
+// still be scanned.
+test('audit: a docs/decisions/ paths override into the wiki excludes the relocated ADR dir from the retired-token scan, others still fire (#583)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        {
+          project: { name: 'foo' },
+          commands: { validate: 'echo ok' },
+          paths: { 'docs/decisions/': 'wiki/decisions/' },
+          wiki: { wikiDir: 'wiki' },
+        },
+        null,
+        2,
+      ),
+    );
+    // docs/TOC.md is required outright by condense-lessons — write a minimal
+    // one so the assertions below are isolated to the paths-override behavior
+    // under test rather than tripping on an unrelated required-file error.
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
+    await writeFile(
+      join(dir, 'wiki', 'decisions', '0001-x.md'),
+      'Contains a genvid-dev: token reference here.\n',
+    );
+    await writeFile(join(dir, 'wiki', 'other.md'), 'Contains a genvid-dev: token reference here.\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /wiki\/other\.md:1 contains retired token/,
+      `expected wiki/other.md's retired-token finding to be reported:\n${result.stdout}`,
+    );
+    assert.doesNotMatch(
+      result.stdout,
+      /wiki\/decisions\/0001-x\.md/,
+      `wiki/decisions/0001-x.md should be excluded via the docs/decisions/ paths override:\n${result.stdout}`,
+    );
+    assert.equal(result.status, 0, `audit must exit 0:\n${result.stdout}`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('audit: a docsRoot-collapsed-onto-wikiDir repo renders a link-check-skipped report line (#454 AC21)', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
     await writeFile(

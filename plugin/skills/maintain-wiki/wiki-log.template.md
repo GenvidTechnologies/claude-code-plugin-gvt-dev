@@ -12,7 +12,7 @@ means a new entry (and, if today isn't already the top group, a new
 insertion point moves from the bottom to the top, but prepending never
 touches a prior entry's text, so the append-only guarantee holds exactly as
 before. If a past entry itself needs correcting, add a new entry that says
-so; never edit or remove the old one in place. See `docs/wiki-schema.md` for
+so; never edit or remove the old one in place. See `<schemaDoc>` for
 the full maintenance schema.
 
 <!-- Example — two date groups, newest first, illustrating the ordering.

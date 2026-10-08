@@ -12,6 +12,7 @@ import {
   wikiCandidateFiles,
   candidateFileCount,
 } from '../lib/hygiene.mjs';
+import * as hygieneLib from '../lib/hygiene.mjs';
 import { resolveDocsRoot } from '../lib/path-overrides.mjs';
 
 async function withTempRepo(setup) {
@@ -913,6 +914,149 @@ test('scanBrokenLinks: wikiDir nested inside docsRoot declines only the nested b
 
     const skipped = findings.filter((f) => f.kind === 'link-check-skipped');
     assert.equal(skipped.length, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #583 — a `docs/TOC.md` `paths` override for the `docs/decisions/` key
+// relocates the ADR default exclusion itself, not just the docsRoot/wikiDir
+// pair. effectiveExcludes folds a resolved, anchored `docs/decisions/`
+// override into the exclude set (decisionsExclude), guarding the same traps
+// rawDirExclude already guards for opts.rawDir: an unusable/unrepresentable
+// value adds nothing, and a value that names (or is an ancestor of) a walked
+// root adds nothing rather than excluding the whole root.
+// ---------------------------------------------------------------------------
+
+test('#583 H1: a docs/decisions/ override into wiki/decisions/ excludes that wiki subdir from scanRetiredTokens', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/decisions/0001-x.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'wiki/other.md', 'Uses genvid-dev: here too.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, {
+      wikiDir: 'wiki',
+      paths: { 'docs/decisions/': 'wiki/decisions/' },
+    });
+    assert.deepEqual(findings.map((f) => f.file), ['wiki/other.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H2: the same override leaves the literal docs/decisions/ default exclusion intact', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/decisions/0001-x.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/other.md', 'Uses genvid-dev: here too.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, {
+      wikiDir: 'wiki',
+      paths: { 'docs/decisions/': 'wiki/decisions/' },
+    });
+    assert.deepEqual(findings.map((f) => f.file), ['docs/other.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H3: effectiveExcludes is exported and a self-referential/unusable-back-to-default override resolves to the same three baked-in defaults', async () => {
+  const cases = [
+    {},
+    { paths: { plugin_root: 'plugin' } },
+    { paths: { 'docs/decisions/': 'docs/decisions' } },
+  ];
+  for (const opts of cases) {
+    assert.deepEqual(
+      hygieneLib.effectiveExcludes(opts),
+      ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'],
+      `effectiveExcludes(${JSON.stringify(opts)})`,
+    );
+  }
+});
+
+test('#583 H4: a slash-less override (wiki/decisions) still anchors as a directory, not a prefix match on wiki/decisions-archive.md', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/decisions/0001-x.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'wiki/decisions-archive.md', 'Uses genvid-dev: here too.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, {
+      wikiDir: 'wiki',
+      paths: { 'docs/decisions/': 'wiki/decisions' },
+    });
+    assert.deepEqual(findings.map((f) => f.file), ['wiki/decisions-archive.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H5: an unusable docs/decisions/ override value (empty, relative-dot, absolute, drive-letter, parent-traversal, non-string) is ignored — behaves like no override at all', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/b/c.md', 'Uses genvid-dev: here too.\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'Uses genvid-dev: here as well.\n');
+  });
+  try {
+    const values = ['', '   ', '.', './', '/', '/abs/x', 'C:/x', '../x', 42, null];
+    for (const value of values) {
+      const findings = await scanRetiredTokens(dir, { paths: { 'docs/decisions/': value } });
+      assert.equal(findings.length, 3, `override value ${JSON.stringify(value)}`);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H6: an override that names a walked root itself (docs, docs/, or wiki) adds nothing — the root stays fully walked', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/b/c.md', 'Uses genvid-dev: here too.\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'Uses genvid-dev: here as well.\n');
+    await writeRepoFile(d, 'wiki/a.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'wiki/b.md', 'Uses genvid-dev: here too.\n');
+  });
+  try {
+    for (const value of ['docs', 'docs/']) {
+      const findings = await scanRetiredTokens(dir, { paths: { 'docs/decisions/': value } });
+      assert.equal(findings.length, 3, `override value ${JSON.stringify(value)}`);
+    }
+    const wikiFindings = await scanRetiredTokens(dir, {
+      wikiDir: 'wiki',
+      paths: { 'docs/decisions/': 'wiki' },
+    });
+    assert.equal(wikiFindings.filter((f) => f.file.startsWith('wiki/')).length, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H7: an empty-string excludePaths entry is ignored, not treated as a match-everything prefix', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/b/c.md', 'Uses genvid-dev: here too.\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'Uses genvid-dev: here as well.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir, { excludePaths: [''] });
+    assert.equal(findings.length, 3);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('#583 H8: scanOrphanedDocs excludes docs/adr/ once docs/decisions/ is relocated there, while an unrelated stray doc is still reported', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
+    await writeRepoFile(d, 'docs/adr/0001-x.md', 'content\n');
+    await writeRepoFile(d, 'docs/stray.md', 'content\n');
+  });
+  try {
+    const findings = await scanOrphanedDocs(dir, { paths: { 'docs/decisions/': 'docs/adr/' } });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'orphaned-doc');
+    assert.match(findings[0].detail, /docs\/stray\.md is not referenced in docs\/TOC\.md/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -56,12 +56,12 @@ wiki pattern in mind:
   scratch. The difference: `docs/TOC.md` indexes curated, relatively stable
   reference docs; `wiki/index.md` indexes pages that churn as new sources are
   ingested.
-- **ADRs (`docs/decisions/`) ≈ canonical curated pages — with a key lifecycle
+- **ADRs (now `wiki/decisions/`) ≈ canonical curated pages — with a key lifecycle
   difference.** Both an ADR and a wiki page are a durable write-up of
   accumulated understanding on a topic. But an ADR is **immutable** once
   accepted — later changes get a new ADR that supersedes it, per this
-  repo's own `docs/decisions/` convention — while a `wiki/` page is
-  explicitly a **living** document: `docs/wiki-schema.md`'s create-vs-update
+  repo's own decision-record convention — while an ingested `wiki/` page is
+  explicitly a **living** document: `wiki/schema.md`'s create-vs-update
   rule says new facts about an existing topic update the page in place
   rather than spawning a new one. An ADR is a snapshot of one decision; a
   wiki page is the compounding record of everything known about one topic.
@@ -70,7 +70,7 @@ wiki pattern in mind:
   accumulated lessons-learned entries into something more durable — both are
   a fold-new-material-into-existing-knowledge motion, which is what
   `ingest` formalizes for the `raw/` → `wiki/` tier. Per
-  [ADR 0015](../docs/decisions/0015-maintain-wiki-design-boundaries.md),
+  [ADR 0015](decisions/wiki-and-okf/0015-maintain-wiki-design-boundaries.md),
   `ingest` is a distinct, thin verb rather than a rewrite of either skill:
   they operate on different tiers (the live session and
   `docs/lessons-learned.md`, respectively) and stay in place, gaining only an
@@ -84,11 +84,11 @@ wiki pattern in mind:
   See [`audit-conventions` as proto-lint](/audit-conventions-as-proto-lint.md)
   for the detail and where the boundary between the two now sits.
   That scoping is now enforced rather than merely assumed:
-  [ADR 0053](../docs/decisions/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
+  [ADR 0053](decisions/wiki-and-okf/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
   closes a route by which a relocated `docsRoot` could pull bundle pages into
   these two scanners' own walk, and `maintain-wiki lint` gained a mechanical
   checker of its own,
-  [`wiki-lint.mjs`](../docs/decisions/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md).
+  [`wiki-lint.mjs`](decisions/wiki-and-okf/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md).
 
 ## Why this mapping matters
 

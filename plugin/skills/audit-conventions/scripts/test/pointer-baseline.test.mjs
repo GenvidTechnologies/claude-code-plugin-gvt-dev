@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BASELINE_FILE } from '../lib/pointer-anchors.mjs';
+import { BASELINE_FILE, scanPointerAnchors } from '../lib/pointer-anchors.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../pointer-baseline.mjs', import.meta.url));
 
@@ -357,4 +357,609 @@ test('an unknown option is a usage error, not a silent no-op', () => {
   const result = run('.', '--regenerate-everything');
   assert.equal(result.status, 2);
   assert.match(result.stderr, /unknown option/);
+});
+
+// ---- --rename ------------------------------------------------------------
+
+// A citing file with two accepted pointers of its own — one anchorless
+// (digest-bearing), one ambiguous (null-digest) — plus a second, UNRELATED
+// citing file whose own pointer names the first file's BASENAME as its
+// target. Moving the first file must still let the second file's pointer
+// resolve, since matchCandidates matches by basename suffix, not full path.
+async function buildRenameFixture(d) {
+  await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+  await writeRepoFile(d, 'plugin/skills/one/shared.md', linesOf('alpha', 'beta'));
+  await writeRepoFile(d, 'plugin/skills/two/shared.md', linesOf('gamma', 'delta'));
+  await writeRepoFile(
+    d,
+    'docs/decisions/0001-a.md',
+    linesOf(
+      `See ${cite('designer.md', '83')} for the rule.`,
+      '',
+      `See ${cite('shared.md', '2')} for the rule.`,
+      '',
+      'line 5',
+      'line 6',
+      'line 7',
+      'line 8',
+    ),
+  );
+  await writeRepoFile(d, 'docs/notes.md', `See ${cite('0001-a.md', '7')} for background.\n`);
+}
+
+test('rename: pure move re-keys entries verbatim and clears the pointer findings', async () => {
+  const dir = await withTempRepo(buildRenameFixture);
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = (await readBaseline(dir)).entries;
+    assert.equal(before.length, 3);
+
+    // The physical move --rename re-keys the baseline for: the citing file's
+    // own content travels with it, byte for byte.
+    const content = await readFile(join(dir, 'docs/decisions/0001-a.md'), 'utf8');
+    await writeRepoFile(dir, 'wiki/decisions/t/0001-a.md', content);
+    await rm(join(dir, 'docs/decisions/0001-a.md'));
+
+    const result = run(
+      dir,
+      '--rename',
+      'docs/decisions/0001-a.md=wiki/decisions/t/0001-a.md',
+      '--write',
+    );
+    assert.equal(result.status, 0);
+
+    const after = (await readBaseline(dir)).entries;
+    const moved = before.filter((e) => e.file === 'docs/decisions/0001-a.md');
+    assert.equal(moved.length, 2);
+    for (const entry of moved) {
+      const match = after.find(
+        (e) =>
+          e.file === 'wiki/decisions/t/0001-a.md' &&
+          e.pointer === entry.pointer &&
+          e.occurrence === entry.occurrence,
+      );
+      assert.deepEqual(match, { ...entry, file: 'wiki/decisions/t/0001-a.md' });
+    }
+    // The notes entry never named 0001-a.md as its OWN `file` — it is
+    // untouched by this pair, byte-equal apart from nothing at all.
+    const notesBefore = before.find((e) => e.file === 'docs/notes.md');
+    assert.deepEqual(
+      after.find((e) => e.file === 'docs/notes.md'),
+      notesBefore,
+    );
+
+    assert.deepEqual(await scanPointerAnchors(dir), []);
+
+    const again = run(dir);
+    assert.equal(again.status, 0);
+    assert.match(again.stdout, /Nothing to change/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: dry run leaves the baseline untouched, --write is the one that changes it', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    await rm(join(dir, 'docs/a.md'));
+    await writeRepoFile(dir, 'docs/b.md', ANCHORLESS);
+
+    const before = await readRaw(dir);
+    const mtimeBefore = await mtimeOf(dir);
+
+    const dryRun = run(dir, '--rename', 'docs/a.md=docs/b.md');
+    assert.equal(dryRun.status, 0);
+    assert.equal(await readRaw(dir), before);
+    assert.equal(await mtimeOf(dir), mtimeBefore);
+
+    // Positive control: the same command with --write does change it.
+    const written = run(dir, '--rename', 'docs/a.md=docs/b.md', '--write');
+    assert.equal(written.status, 0);
+    assert.notEqual(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: drift is refused with both digests and nothing written', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const storedEntry = (await readBaseline(dir)).entries[0];
+
+    await rm(join(dir, 'docs/a.md'));
+    await writeRepoFile(dir, 'docs/b.md', ANCHORLESS);
+    // Launder: the CITED line itself is rewritten, not merely moved.
+    const lines = numberedLines(120).split('\n');
+    lines[82] = 'line 83 (edited)';
+    await writeRepoFile(dir, 'plugin/agents/designer.md', lines.join('\n'));
+
+    const currentFindings = await scanPointerAnchors(dir, { useBaseline: false });
+    const currentEntry = currentFindings.find((f) => f.file === 'docs/b.md');
+    assert.ok(currentEntry);
+    assert.notEqual(currentEntry.digest, storedEntry.digest);
+
+    const before = await readRaw(dir);
+    const mtimeBefore = await mtimeOf(dir);
+
+    const result = run(dir, '--rename', 'docs/a.md=docs/b.md');
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, new RegExp(storedEntry.digest));
+    assert.match(result.output, new RegExp(currentEntry.digest));
+    assert.match(result.output, /Nothing was written/);
+    assert.equal(await readRaw(dir), before);
+    assert.equal(await mtimeOf(dir), mtimeBefore);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: a rename with no current finding at the new key is refused', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = await readRaw(dir);
+
+    const result = run(dir, '--rename', 'docs/a.md=outside/0001-a.md');
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, /outside\/0001-a\.md/);
+    assert.match(result.output, /Nothing was written/);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: renaming onto a file that already holds entries is refused', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', `See ${cite('designer.md', '83')} for the rule.\n`);
+    await writeRepoFile(d, 'docs/c.md', `See ${cite('designer.md', '84')} for the rule.\n`);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = await readRaw(dir);
+
+    const result = run(dir, '--rename', 'docs/a.md=docs/c.md');
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, /docs\/c\.md/);
+    assert.match(result.output, /Nothing was written/);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: a zero-entry pair alongside a real pair is listed and the run succeeds', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+
+    const content = await readFile(join(dir, 'docs/a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/b.md', content);
+    await rm(join(dir, 'docs/a.md'));
+
+    const result = run(
+      dir,
+      '--rename',
+      'docs/a.md=docs/b.md',
+      '--rename',
+      'docs/zzz.md=docs/www.md',
+    );
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /docs\/zzz\.md=docs\/www\.md/);
+    assert.match(result.stdout, /no baseline entries — nothing to re-key/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: all pairs zero-entry refuses with nothing to re-key', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = await readRaw(dir);
+
+    const result = run(dir, '--rename', 'docs/zzz.md=docs/www.md');
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, /nothing to re-key/);
+    assert.match(result.output, /Nothing was written/);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: an absent baseline refuses with nothing to re-key and creates no file', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    const result = run(dir, '--rename', 'docs/a.md=docs/b.md');
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, /nothing to re-key/);
+    assert.equal(await readRaw(dir), null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: a simultaneous chain re-keys every hop correctly', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', `See ${cite('designer.md', '83')} for the rule.\n`);
+    await writeRepoFile(d, 'docs/b.md', `See ${cite('designer.md', '84')} for the rule.\n`);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = (await readBaseline(dir)).entries;
+    assert.equal(before.length, 2);
+
+    // a's content moves onto b; b's own (pre-move) content moves onto c.
+    const bContent = await readFile(join(dir, 'docs/b.md'), 'utf8');
+    const aContent = await readFile(join(dir, 'docs/a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/c.md', bContent);
+    await writeRepoFile(dir, 'docs/b.md', aContent);
+    await rm(join(dir, 'docs/a.md'));
+
+    const result = run(
+      dir,
+      '--rename',
+      'docs/a.md=docs/b.md',
+      '--rename',
+      'docs/b.md=docs/c.md',
+      '--write',
+    );
+    assert.equal(result.status, 0);
+
+    const after = (await readBaseline(dir)).entries;
+    assert.equal(after.find((e) => e.pointer === ptr('designer.md', '83')).file, 'docs/b.md');
+    assert.equal(after.find((e) => e.pointer === ptr('designer.md', '84')).file, 'docs/c.md');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: a stored digest with no current digest passes through verbatim', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = (await readBaseline(dir)).entries;
+    assert.equal(before.length, 1);
+    assert.equal(typeof before[0].digest, 'string');
+
+    await rm(join(dir, 'docs/a.md'));
+    await writeRepoFile(dir, 'docs/b.md', ANCHORLESS);
+    // A second designer.md makes the target ambiguous, so the current
+    // finding at the new key carries a null digest.
+    await writeRepoFile(dir, 'plugin/skills/other/designer.md', numberedLines(120));
+
+    const result = run(dir, '--rename', 'docs/a.md=docs/b.md', '--write');
+    assert.equal(result.status, 0);
+
+    const after = (await readBaseline(dir)).entries;
+    assert.deepEqual(after, [{ ...before[0], file: 'docs/b.md' }]);
+    assert.deepEqual(await scanPointerAnchors(dir), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: entries left behind by an unrenamed move are warned about but left untouched', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', `See ${cite('designer.md', '83')} for the rule.\n`);
+    await writeRepoFile(d, 'docs/x.md', `See ${cite('designer.md', '84')} for the rule.\n`);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = (await readBaseline(dir)).entries;
+    const xEntry = before.find((e) => e.file === 'docs/x.md');
+    assert.ok(xEntry);
+
+    const aContent = await readFile(join(dir, 'docs/a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/b.md', aContent);
+    await rm(join(dir, 'docs/a.md'));
+    // docs/x.md moves too, but is NOT named in the --rename below — the
+    // operator forgot it.
+    const xContent = await readFile(join(dir, 'docs/x.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/y.md', xContent);
+    await rm(join(dir, 'docs/x.md'));
+
+    const result = run(dir, '--rename', 'docs/a.md=docs/b.md', '--write');
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /left behind/);
+    assert.match(result.stdout, /docs\/x\.md/);
+
+    const after = (await readBaseline(dir)).entries;
+    assert.deepEqual(
+      after.find((e) => e.file === 'docs/x.md'),
+      xEntry,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: usage errors are rejected before any write', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = await readRaw(dir);
+
+    const cases = [
+      ['--rename'], // missing value
+      ['--rename', 'a'], // no '='
+      ['--rename', '=b'], // empty <old>
+      ['--rename', 'a='], // empty <new>
+      ['--rename', 'a=a'], // identical after normalization
+      ['--rename', 'a=b', '--rename', 'a=c'], // duplicate <old>
+      ['--rename', 'a=c', '--rename', 'b=c'], // duplicate <new>
+      ['--rename', 'docs/a.md=docs/c.md', '--accept-new'], // mutually exclusive
+    ];
+    for (const flags of cases) {
+      const result = run(dir, ...flags);
+      assert.equal(result.status, 2, `expected usage error for ${JSON.stringify(flags)}`);
+      assert.equal(await readRaw(dir), before, `bytes changed for ${JSON.stringify(flags)}`);
+    }
+
+    // A lone positional shaped like a --rename pair — no dir argument at
+    // all, so this deliberately does not go through run(dir, ...).
+    const positionalCase = spawnSync(process.execPath, [SCRIPT, 'a=b'], { encoding: 'utf8' });
+    assert.equal(positionalCase.status, 2);
+    assert.match(positionalCase.stdout + positionalCase.stderr, /--rename/);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: backslash-separated pairs are normalized before re-keying', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/decisions/0001-a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+
+    const content = await readFile(join(dir, 'docs/decisions/0001-a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/decisions/0002-a.md', content);
+    await rm(join(dir, 'docs/decisions/0001-a.md'));
+
+    const BS = String.fromCharCode(92);
+    const token =
+      ['docs', 'decisions', '0001-a.md'].join(BS) + '=' + ['docs', 'decisions', '0002-a.md'].join(BS);
+    const result = run(dir, '--rename', token, '--write');
+    assert.equal(result.status, 0);
+
+    const after = (await readBaseline(dir)).entries;
+    assert.equal(after.length, 1);
+    assert.equal(after[0].file, 'docs/decisions/0002-a.md');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---- --allow-drift -------------------------------------------------------
+
+// The pointer's TARGET (designer.md) carries a cross-reference to the CITING
+// file's own basename at the cited line — the shape a renumbering batch
+// touches: renaming the citing file is paired with rewriting every place
+// that names its old basename, INCLUDING inside a target a baselined
+// pointer cites. The pointer itself carries no anchor (kind
+// pointer-anchor-missing), so its digest is simply the digest of that cited
+// line.
+const renumberTargetContent = (basenameName) =>
+  linesOf('alpha', 'beta', `See ${basenameName} for context.`);
+
+async function buildRenumberFixture(d) {
+  await writeRepoFile(d, 'plugin/agents/designer.md', renumberTargetContent('0001-a.md'));
+  await writeRepoFile(
+    d,
+    'docs/decisions/0001-a.md',
+    `See ${cite('designer.md', '3')} for detail.\n`,
+  );
+}
+
+test('rename: renumber-style drift is explained, and the printed --allow-drift token re-keys with the current digest', async () => {
+  const dir = await withTempRepo(buildRenumberFixture);
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const storedEntry = (await readBaseline(dir)).entries[0];
+    assert.ok(storedEntry);
+
+    // The rename: the citing file moves, and — the renumber shape — the
+    // cross-reference inside the pointer's OWN target is rewritten to match.
+    const content = await readFile(join(dir, 'docs/decisions/0001-a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/decisions/0002-a.md', content);
+    await rm(join(dir, 'docs/decisions/0001-a.md'));
+    await writeRepoFile(dir, 'plugin/agents/designer.md', renumberTargetContent('0002-a.md'));
+
+    const before = await readRaw(dir);
+
+    // Without an allowance: refused, but explained, with a ready token.
+    const refused = run(dir, '--rename', 'docs/decisions/0001-a.md=docs/decisions/0002-a.md');
+    assert.equal(refused.status, 1);
+    assert.match(refused.output, /REFUSED/);
+    assert.match(refused.output, /explained by this rename/);
+    assert.match(refused.output, /--allow-drift '/);
+    assert.equal(await readRaw(dir), before);
+
+    const tokenMatch = /--allow-drift '([^']+)'/.exec(refused.output);
+    assert.ok(tokenMatch, 'expected a ready --allow-drift token in the refusal output');
+    const token = tokenMatch[1];
+
+    // Re-run dry with the printed token: succeeds, still writes nothing.
+    const dryOk = run(
+      dir,
+      '--rename',
+      'docs/decisions/0001-a.md=docs/decisions/0002-a.md',
+      '--allow-drift',
+      token,
+    );
+    assert.equal(dryOk.status, 0);
+    assert.equal(await readRaw(dir), before);
+
+    // --write: the entry's digest equals the CURRENT digest, other fields
+    // unchanged.
+    const written = run(
+      dir,
+      '--rename',
+      'docs/decisions/0001-a.md=docs/decisions/0002-a.md',
+      '--allow-drift',
+      token,
+      '--write',
+    );
+    assert.equal(written.status, 0);
+
+    const currentFindings = await scanPointerAnchors(dir, { useBaseline: false });
+    const currentEntry = currentFindings.find((f) => f.file === 'docs/decisions/0002-a.md');
+    assert.ok(currentEntry);
+    assert.notEqual(currentEntry.digest, storedEntry.digest);
+
+    const after = (await readBaseline(dir)).entries;
+    assert.equal(after.length, 1);
+    assert.deepEqual(after[0], {
+      ...storedEntry,
+      file: 'docs/decisions/0002-a.md',
+      digest: currentEntry.digest,
+    });
+
+    assert.deepEqual(await scanPointerAnchors(dir), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: unexplained drift offers no token, but a hand-built allowance naming the current digest is honoured', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+
+    await rm(join(dir, 'docs/a.md'));
+    await writeRepoFile(dir, 'docs/b.md', ANCHORLESS);
+    // Launder: the CITED line itself is rewritten, not merely moved — no
+    // rename can explain this.
+    const lines = numberedLines(120).split('\n');
+    lines[82] = 'line 83 (edited)';
+    await writeRepoFile(dir, 'plugin/agents/designer.md', lines.join('\n'));
+
+    const currentFindings = await scanPointerAnchors(dir, { useBaseline: false });
+    const currentEntry = currentFindings.find((f) => f.file === 'docs/b.md');
+    assert.ok(currentEntry);
+
+    const before = await readRaw(dir);
+
+    const refused = run(dir, '--rename', 'docs/a.md=docs/b.md');
+    assert.equal(refused.status, 1);
+    assert.match(refused.output, /not explained/);
+    assert.doesNotMatch(refused.output, /--allow-drift '/);
+    assert.equal(await readRaw(dir), before);
+
+    const token = `docs/b.md@${ptr('designer.md', '83')}#0=${currentEntry.digest}`;
+    const accepted = run(dir, '--rename', 'docs/a.md=docs/b.md', '--allow-drift', token);
+    assert.equal(accepted.status, 0);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: an --allow-drift token with a well-formed but wrong digest is an unused allowance', async () => {
+  const dir = await withTempRepo(buildRenumberFixture);
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+
+    const content = await readFile(join(dir, 'docs/decisions/0001-a.md'), 'utf8');
+    await writeRepoFile(dir, 'docs/decisions/0002-a.md', content);
+    await rm(join(dir, 'docs/decisions/0001-a.md'));
+    await writeRepoFile(dir, 'plugin/agents/designer.md', renumberTargetContent('0002-a.md'));
+
+    const before = await readRaw(dir);
+    const WRONG_DIGEST = 'f'.repeat(12);
+    const token = `docs/decisions/0002-a.md@${ptr('designer.md', '3')}#0=${WRONG_DIGEST}`;
+
+    const result = run(
+      dir,
+      '--rename',
+      'docs/decisions/0001-a.md=docs/decisions/0002-a.md',
+      '--allow-drift',
+      token,
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.output, /REFUSED/);
+    assert.match(result.output, /unused allowance/);
+    assert.match(result.output, /Nothing was written/);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('rename: --allow-drift usage errors are rejected before any write', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+    await writeRepoFile(d, 'docs/a.md', ANCHORLESS);
+  });
+  try {
+    assert.equal(run(dir, '--accept-new', '--write').status, 0);
+    const before = await readRaw(dir);
+
+    const GOOD_DIGEST = 'a'.repeat(12);
+
+    // --allow-drift without --rename.
+    const noRename = run(
+      dir,
+      '--allow-drift',
+      `docs/b.md@${ptr('designer.md', '83')}#0=${GOOD_DIGEST}`,
+    );
+    assert.equal(noRename.status, 2);
+    assert.equal(await readRaw(dir), before);
+
+    const malformed = [
+      `docs/b.md${ptr('designer.md', '83')}#0=${GOOD_DIGEST}`, // no '@'
+      `docs/b.md@${ptr('designer.md', '83')}=${GOOD_DIGEST}`, // no '#'
+      `docs/b.md@${ptr('designer.md', '83')}#x=${GOOD_DIGEST}`, // non-integer occurrence
+      `docs/b.md@${ptr('designer.md', '83')}#0=short`, // digest too short
+      `docs/b.md@${ptr('designer.md', '83')}#0=${'g'.repeat(12)}`, // digest bad charset
+    ];
+    for (const token of malformed) {
+      const result = run(dir, '--rename', 'docs/a.md=docs/b.md', '--allow-drift', token);
+      assert.equal(result.status, 2, `expected usage error for ${JSON.stringify(token)}`);
+      assert.equal(await readRaw(dir), before, `bytes changed for ${JSON.stringify(token)}`);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

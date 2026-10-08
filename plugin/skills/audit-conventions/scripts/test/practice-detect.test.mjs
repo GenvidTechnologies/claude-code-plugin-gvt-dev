@@ -1,16 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   detectWikiAdoption,
+  SCHEMA_EXPECTATION,
   VERDICT_ABSENT,
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
+import { extractFrontmatter } from '../lib/frontmatter.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));
@@ -145,4 +148,95 @@ test('detectWikiAdoption: no wiki config block -> defaults wiki/ and raw/ are st
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// #385 / ADR-0070 — the schema signal follows maintain-wiki's resolution:
+// paths['docs/wiki-schema.md'], else <wikiDir>/schema.md, else docs/wiki-schema.md.
+// ---------------------------------------------------------------------------
+
+async function wikiTiers(d, wikiDir = 'wiki') {
+  await mkdir(join(d, wikiDir), { recursive: true });
+  await fs.writeFile(join(d, wikiDir, 'index.md'), '# Index\n');
+  await fs.writeFile(join(d, wikiDir, 'log.md'), '# Log\n');
+  await mkdir(join(d, 'raw'), { recursive: true });
+}
+
+async function schemaSignal(setup, config) {
+  const dir = await withTempRepo(setup);
+  try {
+    return await detectWikiAdoption(dir, config);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+test('detectWikiAdoption: schema only at <wikiDir>/schema.md -> schemaDoc true, adopted', async () => {
+  const { signals, verdict } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: {} });
+  assert.equal(signals.schemaDoc, true);
+  assert.equal(verdict, VERDICT_ADOPTED);
+});
+
+test('detectWikiAdoption: schema at both locations -> schemaDoc true', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+    await mkdir(join(d, 'docs'), { recursive: true });
+    await fs.writeFile(join(d, 'docs', 'wiki-schema.md'), '# Schema\n');
+  }, { wiki: {} });
+  assert.equal(signals.schemaDoc, true);
+});
+
+test('detectWikiAdoption: custom wikiDir -> <wikiDir>/schema.md is probed, the default wiki/schema.md is not', async () => {
+  const hit = await schemaSignal(async (d) => {
+    await wikiTiers(d, 'kb');
+    await fs.writeFile(join(d, 'kb', 'schema.md'), '# Schema\n');
+  }, { wiki: { wikiDir: 'kb' } });
+  assert.equal(hit.signals.schemaDoc, true);
+  const miss = await schemaSignal(async (d) => {
+    await wikiTiers(d, 'kb');
+    await mkdir(join(d, 'wiki'), { recursive: true });
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: { wikiDir: 'kb' } });
+  assert.equal(miss.signals.schemaDoc, false);
+});
+
+test('detectWikiAdoption: a paths override naming an existing file -> schemaDoc true', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await mkdir(join(d, 'notes'), { recursive: true });
+    await fs.writeFile(join(d, 'notes', 'rules.md'), '# Schema\n');
+  }, { wiki: {}, paths: { 'docs/wiki-schema.md': 'notes/rules.md' } });
+  assert.equal(signals.schemaDoc, true);
+});
+
+test('detectWikiAdoption: a dangling override does not fall through to <wikiDir>/schema.md', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: {}, paths: { 'docs/wiki-schema.md': 'notes/missing.md' } });
+  assert.equal(signals.schemaDoc, false);
+});
+
+test('detectWikiAdoption: a blank wikiDir means the default for every signal, not the repo root', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: { wikiDir: '  ' } });
+  assert.deepEqual(signals, { configBlock: true, wikiDir: true, index: true, log: true, rawDir: true, schemaDoc: true });
+});
+
+test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki declares', () => {
+  const skill = fileURLToPath(new URL('../../../maintain-wiki/SKILL.md', import.meta.url));
+  const entry = extractFrontmatter(readFileSync(skill, 'utf8')).metadata.expects.files.find((e) => e.path === 'docs/wiki-schema.md');
+  assert.deepEqual({ path: entry.path, prefer: entry.prefer }, { ...SCHEMA_EXPECTATION });
+});
+
+test('practice-detect.mjs imports only node:fs, node:path and ./expect-prefer.mjs (no maintain-wiki import)', () => {
+  const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
+  const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
+  assert.deepEqual(specs, ['node:fs', 'node:path', './expect-prefer.mjs']);
 });

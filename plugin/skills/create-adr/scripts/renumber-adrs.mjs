@@ -1,32 +1,37 @@
 #!/usr/bin/env node
 // Renumber ADR files by opening a slot at position N, shifting every ADR
 // numbered >= N up by one. Supports dry-run (default) and apply modes.
+// Also reports the next free ADR number and the shape of the ADR directory.
 //
 // CLI: node renumber-adrs.mjs --dir <adr-dir> --insert-at <N> [--apply]
+//      node renumber-adrs.mjs --next [--dir <adr-dir>]
 //
 // Exports for testing:
 //   planRenumber({ dir, insertAt })  -> plan object (pure, no fs writes)
 //   applyRenumber({ dir, insertAt }) -> performs moves + edits + prints report
+//   resolveDecisionsDir(repoRoot)    -> { dir, resolvedFrom, warning? } for --next
+//   describeAdrDir({ repoRoot, dir })-> JSON summary object printed by --next
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import {
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  realpathSync,
+  existsSync,
+  statSync,
+} from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join, relative, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
+import { resolveExpectationPath } from '../../audit-conventions/scripts/lib/path-overrides.mjs';
 
 // ---------------------------------------------------------------------------
 // ADR file discovery
 // ---------------------------------------------------------------------------
 
 const ADR_FILENAME_RE = /^(\d{4})-(.+)\.md$/;
-
-/**
- * Parse ADR filename into { num, slug } or null.
- */
-function parseAdrName(name) {
-  const m = ADR_FILENAME_RE.exec(name);
-  if (!m) return null;
-  return { num: parseInt(m[1], 10), slug: m[2], name };
-}
 
 /**
  * Zero-pad a number to 4 digits.
@@ -36,20 +41,18 @@ function pad(n) {
 }
 
 /**
- * List all ADR files in dir, sorted by number ascending.
- * Returns [{ num, slug, name }]
+ * Build the EDUPLICATE error raised when two ADR files across theme
+ * directories share a number. Shared by planRenumber and describeAdrDir so
+ * both report the exact same message.
+ * @param {Map<number,string[]>} duplicates
  */
-function listAdrs(dir) {
-  let entries;
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return entries
-    .map(parseAdrName)
-    .filter(Boolean)
-    .sort((a, b) => a.num - b.num);
+function duplicateError(duplicates) {
+  const parts = [...duplicates.entries()].map(
+    ([num, paths]) => `ADR ${pad(num)} used by: ${paths.join(', ')}`,
+  );
+  const err = new Error(`Duplicate ADR numbers found across theme directories: ${parts.join('; ')}`);
+  err.code = 'EDUPLICATE';
+  return err;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,33 +94,94 @@ function walkTree(dir, base = dir, out = []) {
   return out;
 }
 
-// Patterns for AMBIGUOUS detection: bare ADR number references in text.
-// Matches: "ADR 6", "ADR 0006", "decision 0006", "// See ADR 0006", etc.
-function buildAmbiguousPatterns(movedNums) {
-  // For each moved number, build patterns
-  return movedNums.flatMap((n) => {
-    const padded = pad(n);
-    const bare = String(n);
-    return [
-      // "ADR 6" or "ADR 0006"
-      new RegExp(`\\bADR\\s+${bare}\\b`, 'gi'),
-      new RegExp(`\\bADR\\s+${padded}\\b`, 'gi'),
-      // "decision 0006"
-      new RegExp(`\\bdecision\\s+${padded}\\b`, 'gi'),
-      new RegExp(`\\bdecision\\s+${bare}\\b`, 'gi'),
-    ];
-  });
+/**
+ * True when `buf`'s first 8 KB contains a NUL byte — a cheap binary-file
+ * heuristic used to exclude non-text files from the corpus scan.
+ */
+function isBinaryBuffer(buf) {
+  const len = Math.min(buf.length, 8192);
+  for (let i = 0; i < len; i++) {
+    if (buf[i] === 0) return true;
+  }
+  return false;
 }
 
 /**
- * Scan a single file for unambiguous (relative link) and ambiguous (bare number) refs.
- *
- * unambiguous: relative links like `[text](NNNN-slug.md)` or TOC rows referencing
- *   `decisions/NNNN-slug.md`, where the target was moved.
- * ambiguous: bare patterns like "ADR 0006", "decision 0006" — report only.
+ * Read the `wiki` block from `<repoRoot>/.gvt-agent.json`, if present.
+ * Missing or unparseable config is not an error — isFrozenPath() already
+ * falls back to its own wikiDir/rawDir defaults when a key is undefined.
  */
-function scanFile({ relPath, content, oldToNew, movedOldNames, movedNums, adrDirRel }) {
-  const unambiguous = [];
+function readWikiConfig(repoRoot) {
+  try {
+    const raw = readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    return { wikiDir: parsed.wiki?.wikiDir, rawDir: parsed.wiki?.rawDir };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Join a POSIX-relative `rel` path onto a (possibly empty) `base` directory,
+ * without introducing a leading slash when `base` is `''`.
+ */
+function joinRel(base, rel) {
+  return base ? `${base}/${rel}` : rel;
+}
+
+/**
+ * Build a sorted array of line-start offsets for `text`, for O(log n)
+ * offset -> line-number lookups via lineForOffset().
+ */
+function buildLineIndex(text) {
+  const offsets = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\n') offsets.push(i + 1);
+  }
+  return offsets;
+}
+
+function lineForOffset(lineIndex, offset) {
+  let lo = 0;
+  let hi = lineIndex.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (lineIndex[mid] <= offset) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo + 1;
+}
+
+/**
+ * Classify a token match by the character(s) immediately preceding it:
+ * `](` or `](<` -> relative-link (a markdown link target); a preceding `/`
+ * -> path (embedded in a longer path); a preceding backtick -> code;
+ * anything else -> text.
+ */
+function classifyTokenKind(text, index) {
+  if (index >= 3 && text[index - 1] === '<' && text.slice(index - 3, index - 1) === '](') {
+    return 'relative-link';
+  }
+  if (index >= 2 && text.slice(index - 2, index) === '](') {
+    return 'relative-link';
+  }
+  const prev = index > 0 ? text[index - 1] : '';
+  if (prev === '/') return 'path';
+  if (prev === '`') return 'code';
+  return 'text';
+}
+
+/**
+ * Scan a single file for ambiguous (bare number) refs. Unambiguous
+ * (whole-filename-token) refs are found separately, via buildTokenRewriter().
+ *
+ * ambiguous: bare patterns like "ADR 0006", "decision 0006", and the hyphen
+ * form "ADR-0006"/"ADR-6" — report only, never rewritten (ADR-0011 rule).
+ * `reportFile` is the citing file's post-move path (a file that itself moved
+ * is reported at its new location); `file` keeps the pre-move relPath used to
+ * read the content, for compatibility with existing consumers.
+ */
+function scanAmbiguous({ relPath, content, movedNums, reportFile }) {
   const ambiguous = [];
   const lines = content.split('\n');
 
@@ -125,65 +189,33 @@ function scanFile({ relPath, content, oldToNew, movedOldNames, movedNums, adrDir
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Unambiguous: relative markdown link `[text](NNNN-slug.md)` where NNNN-slug.md is a moved file
-    // Match pattern: ](NNNN-slug.md) or ](<NNNN-slug.md>)
-    const linkRe = /\]\(<?(\d{4}-[^)>]+\.md)>?\)/g;
-    let m;
-    while ((m = linkRe.exec(line)) !== null) {
-      const linkedName = m[1];
-      if (movedOldNames.has(linkedName)) {
-        unambiguous.push({
-          file: relPath,
-          line: lineNum,
-          kind: 'relative-link',
-          oldText: linkedName,
-          newText: oldToNew.get(linkedName),
-        });
-      }
-    }
-
-    // Unambiguous: TOC-style rows referencing decisions/NNNN-slug.md
-    // Patterns:
-    //   [`decisions/NNNN-slug.md`](decisions/NNNN-slug.md) — description
-    //   [decisions/NNNN-slug.md](decisions/NNNN-slug.md) — description
-    const tocRe = /decisions\/(\d{4}-[^)`\s]+\.md)/g;
-    const tocSeen = new Set();
-    while ((m = tocRe.exec(line)) !== null) {
-      const fname = m[1];
-      if (movedOldNames.has(fname) && !tocSeen.has(fname)) {
-        tocSeen.add(fname);
-        unambiguous.push({
-          file: relPath,
-          line: lineNum,
-          kind: 'toc-row',
-          oldText: `decisions/${fname}`,
-          newText: `decisions/${oldToNew.get(fname)}`,
-        });
-      }
-    }
-
-    // Ambiguous: bare "ADR N" / "ADR NNNN" / "decision NNNN" patterns
+    // Ambiguous: bare "ADR N" / "ADR NNNN" / "decision NNNN" / "ADR-N" /
+    // "ADR-NNNN" patterns — only for moved numbers.
     for (const n of movedNums) {
       const padded = pad(n);
       const bare = String(n);
-      // Check for "ADR N" patterns (case-insensitive)
-      const adrPatterns = [
-        new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
-        new RegExp(`\\bADR\\s+${padded}\\b`, 'i'),
-        new RegExp(`\\bdecision\\s+${padded}\\b`, 'i'),
-      ];
-      // Exclude bare==padded dup
-      const uniquePatterns = bare === padded
-        ? [new RegExp(`\\bADR\\s+${bare}\\b`, 'i'), new RegExp(`\\bdecision\\s+${bare}\\b`, 'i')]
-        : adrPatterns;
+      const patterns = bare === padded
+        ? [
+            new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bdecision\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bADR-${bare}\\b`, 'i'),
+          ]
+        : [
+            new RegExp(`\\bADR\\s+${bare}\\b`, 'i'),
+            new RegExp(`\\bADR\\s+${padded}\\b`, 'i'),
+            new RegExp(`\\bdecision\\s+${padded}\\b`, 'i'),
+            new RegExp(`\\bADR-${bare}\\b`, 'i'),
+            new RegExp(`\\bADR-${padded}\\b`, 'i'),
+          ];
 
       let matched = false;
-      for (const pat of uniquePatterns) {
+      for (const pat of patterns) {
         if (pat.test(line)) { matched = true; break; }
       }
       if (matched) {
         ambiguous.push({
           file: relPath,
+          reportFile: reportFile ?? relPath,
           line: lineNum,
           lineText: line,
           num: n,
@@ -192,7 +224,7 @@ function scanFile({ relPath, content, oldToNew, movedOldNames, movedNums, adrDir
     }
   }
 
-  return { unambiguous, ambiguous };
+  return ambiguous;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,8 +238,25 @@ function scanFile({ relPath, content, oldToNew, movedOldNames, movedNums, adrDir
  * @returns {object} plan
  */
 export function planRenumber({ dir, insertAt }) {
-  const adrs = listAdrs(dir);
-  const highest = adrs.length > 0 ? adrs[adrs.length - 1].num : 0;
+  if (!Number.isInteger(insertAt) || insertAt < 1) {
+    const err = new Error(`--insert-at must be an integer >= 1, got: ${insertAt}`);
+    err.code = 'EINSERTAT';
+    throw err;
+  }
+
+  const { adrs, duplicates } = discoverAdrs(dir);
+
+  if (duplicates.size > 0) {
+    throw duplicateError(duplicates);
+  }
+
+  if (adrs.length === 0) {
+    const err = new Error(`No ADR files found under ${dir}`);
+    err.code = 'ENOADRS';
+    throw err;
+  }
+
+  const highest = adrs[adrs.length - 1].num;
 
   // If N == H+1 or N > H, nothing to move (append / out-of-range)
   if (insertAt > highest) {
@@ -218,6 +267,16 @@ export function planRenumber({ dir, insertAt }) {
       headingEdits: [],
       unambiguous: [],
       ambiguous: [],
+      // Formatting-only additions (F4): discoveredCount/dir/repoRoot mirror
+      // the full-plan branch below so formatPlan() can render the same
+      // "Discovered N ADRs under <dir>" header and Summary line regardless
+      // of which branch produced the plan. excluded/excludedOccurrenceCount
+      // are always empty/zero here since no scan runs on this early exit.
+      discoveredCount: adrs.length,
+      dir,
+      repoRoot: findRepoRoot(dir) ?? dirname(dir),
+      excluded: [],
+      excludedOccurrenceCount: 0,
     };
   }
 
@@ -228,20 +287,27 @@ export function planRenumber({ dir, insertAt }) {
     if (!adr) continue; // gap in numbering — skip
     const oldNum = k;
     const newNum = k + 1;
-    const oldName = `${pad(oldNum)}-${adr.slug}.md`;
+    const oldName = adr.name;
     const newName = `${pad(newNum)}-${adr.slug}.md`;
+    const relDir = adr.relDir;
+    const oldPath = adr.path;
+    const newPath = relDir ? `${relDir}/${newName}` : newName;
     moves.push({
       oldNum,
       newNum,
       oldName,
       newName,
       slug: adr.slug,
+      relDir,
+      oldPath,
+      newPath,
     });
   }
 
   // Heading edits: for each moved file, update `# NNNN. ` heading
   const headingEdits = moves.map((m) => ({
     filename: m.newName, // the file after rename
+    path: m.newPath, // the file's post-move path relative to dir
     oldHeadingPrefix: `# ${pad(m.oldNum)}.`,
     newHeadingPrefix: `# ${pad(m.newNum)}.`,
   }));
@@ -257,36 +323,71 @@ export function planRenumber({ dir, insertAt }) {
   const repoRoot = findRepoRoot(dir) ?? dirname(dir);
   const adrDirRel = relative(repoRoot, dir).replace(/\\/g, '/');
 
+  const wikiCfg = readWikiConfig(repoRoot);
   const trackedFiles = listTrackedFiles(repoRoot);
+  const rewriter = buildTokenRewriter(oldToNew);
+
+  // Old repoRoot-relative path -> new repoRoot-relative path, for citing
+  // files that are themselves being moved (a moved ADR's own self- or
+  // cross-references still need `newFile` to point at its post-move path).
+  const movedRelPathToNew = new Map(
+    moves.map((m) => [
+      joinRel(adrDirRel, m.oldPath ?? m.oldName),
+      joinRel(adrDirRel, m.newPath ?? m.newName),
+    ]),
+  );
 
   const allUnambiguous = [];
   const allAmbiguous = [];
-
-  // Determine extensions to scan: .md and common source extensions
-  const SCAN_EXTS = new Set(['.md', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.jsx', '.py', '.go', '.rs', '.cs', '.cpp', '.c', '.h', '.java', '.rb', '.swift']);
+  const excluded = [];
+  const excludedSeen = new Set();
+  // Occurrence count (not file count) of frozen-path token hits — the `U`
+  // figure in the dry-run Summary line (F4). Counted here, alongside the
+  // existing `excluded` file-path list, rather than by re-scanning at
+  // format time.
+  let excludedOccurrenceCount = 0;
 
   for (const relPath of trackedFiles) {
-    const ext = relPath.includes('.') ? '.' + relPath.split('.').pop() : '';
-    if (!SCAN_EXTS.has(ext)) continue;
-
-    let content;
+    let raw;
     try {
-      content = readFileSync(join(repoRoot, relPath), 'utf8');
+      raw = readFileSync(join(repoRoot, relPath));
     } catch {
       continue;
     }
+    if (isBinaryBuffer(raw)) continue;
+    const content = raw.toString('utf8');
+    const frozen = isFrozenPath(relPath, wikiCfg);
 
-    const { unambiguous, ambiguous } = scanFile({
-      relPath,
-      content,
-      oldToNew,
-      movedOldNames,
-      movedNums,
-      adrDirRel,
-    });
+    const { hits } = rewriter(content);
+    if (hits.length > 0) {
+      if (frozen) {
+        if (!excludedSeen.has(relPath)) {
+          excludedSeen.add(relPath);
+          excluded.push(relPath);
+        }
+        excludedOccurrenceCount += hits.length;
+      } else {
+        const lineIndex = buildLineIndex(content);
+        const newFile = movedRelPathToNew.get(relPath);
+        for (const hit of hits) {
+          allUnambiguous.push({
+            file: relPath,
+            ...(newFile ? { newFile } : {}),
+            line: lineForOffset(lineIndex, hit.index),
+            kind: classifyTokenKind(content, hit.index),
+            oldText: hit.oldText,
+            newText: hit.newText,
+          });
+        }
+      }
+    }
 
-    allUnambiguous.push(...unambiguous);
-    allAmbiguous.push(...ambiguous);
+    // Frozen paths are history: scan-and-list (via `excluded` above) but
+    // never included in the ambiguous report either.
+    if (!frozen) {
+      const reportFile = movedRelPathToNew.get(relPath) ?? relPath;
+      allAmbiguous.push(...scanAmbiguous({ relPath, content, movedNums, reportFile }));
+    }
   }
 
   return {
@@ -296,6 +397,9 @@ export function planRenumber({ dir, insertAt }) {
     headingEdits,
     unambiguous: allUnambiguous,
     ambiguous: allAmbiguous,
+    excluded,
+    excludedOccurrenceCount,
+    discoveredCount: adrs.length,
     repoRoot,
     dir,
     oldToNew,
@@ -337,11 +441,81 @@ export function applyRenumber({ dir, insertAt }) {
     return plan;
   }
 
-  // Perform git mv highest-down (moves are already in that order)
+  const adrDirRel = relative(repoRoot, dir).replace(/\\/g, '/');
+
+  // Old repoRoot-relative path -> move, for every moved ADR.
+  const moveByOldRel = new Map(
+    plan.moves.map((m) => [joinRel(adrDirRel, m.oldPath ?? m.oldName), m]),
+  );
+
+  // Old repoRoot-relative path -> its unambiguous hits (citing files), used
+  // only to select which files need recomputing — never to drive the
+  // rewrite itself (see below).
+  const hitsByFile = new Map();
+  for (const ref of plan.unambiguous) {
+    if (!hitsByFile.has(ref.file)) hitsByFile.set(ref.file, []);
+    hitsByFile.get(ref.file).push(ref);
+  }
+
+  // Every file whose content needs recomputing: every moved ADR (for its
+  // heading, plus any refs it itself carries), plus every citing file with
+  // an unambiguous hit.
+  const candidateOldRelPaths = new Set([...moveByOldRel.keys(), ...hitsByFile.keys()]);
+
+  // Re-run the SAME single-pass, boundary-respecting rewriter planRenumber
+  // used to detect the hits above. Replaying detected refs one at a time via
+  // a plain substring replace (the old design) is unsafe: `String#split`
+  // matches `0003-c.md` inside `x0003-c.md` and `0003-c.md.bak` too, which
+  // is exactly the token-boundary violation buildTokenRewriter exists to
+  // prevent — so the rewrite must go through the same regex, not a re-derived
+  // string replace.
+  const rewriter = buildTokenRewriter(plan.oldToNew);
+
+  // Compute new content for every candidate, keyed by its FINAL (post-move)
+  // path, reading from the OLD (pre-move) path — all reads happen before any
+  // git mv runs below, so a moved file's refs are read from where the file
+  // still lives, not from where it is about to go.
+  const finalContents = new Map();
+
+  for (const oldRel of candidateOldRelPaths) {
+    const move = moveByOldRel.get(oldRel);
+    const finalRel = move ? joinRel(adrDirRel, move.newPath ?? move.newName) : oldRel;
+
+    let content;
+    try {
+      content = readFileSync(join(repoRoot, oldRel), 'utf8');
+    } catch (err) {
+      console.error(`Warning: could not read ${oldRel}: ${err.message}`);
+      continue;
+    }
+    let updated = content;
+
+    if (move) {
+      const headingRe = new RegExp(`^# ${pad(move.oldNum)}\\.`, 'm');
+      if (headingRe.test(updated)) {
+        updated = updated.replace(headingRe, `# ${pad(move.newNum)}.`);
+      } else {
+        console.error(`Warning: ${oldRel} has no "# ${pad(move.oldNum)}." heading — heading not updated.`);
+      }
+    }
+
+    if (hitsByFile.has(oldRel)) {
+      updated = rewriter(updated).text;
+    }
+
+    if (updated !== content) {
+      finalContents.set(finalRel, updated);
+    }
+  }
+
+  // Perform git mv highest-down (moves are already in that order). Use the
+  // move's relDir-aware oldPath/newPath (not the bare oldName/newName) so a
+  // themed move (file inside a theme subdirectory) resolves to its real
+  // location instead of a nonexistent direct child of `dir`.
   for (const move of plan.moves) {
-    const oldPath = join(dir, move.oldName);
-    const newPath = join(dir, move.newName);
-    const result = spawnSync('git', ['mv', oldPath, newPath], {
+    const fromPath = join(dir, move.oldPath ?? move.oldName);
+    const toPath = join(dir, move.newPath ?? move.newName);
+    const result = spawnSync('git', ['mv', fromPath, toPath], {
       cwd: repoRoot,
       encoding: 'utf8',
     });
@@ -353,60 +527,33 @@ export function applyRenumber({ dir, insertAt }) {
     console.log(`Moved: ${move.oldName} -> ${move.newName}`);
   }
 
-  // Apply heading edits
-  for (const edit of plan.headingEdits) {
-    const filePath = join(dir, edit.filename);
-    let content;
-    try {
-      content = readFileSync(filePath, 'utf8');
-    } catch (err) {
-      console.error(`Warning: could not read ${edit.filename} for heading edit: ${err.message}`);
-      continue;
-    }
-    const updated = content.replace(edit.oldHeadingPrefix, edit.newHeadingPrefix);
-    if (updated !== content) {
-      writeFileSync(filePath, updated, 'utf8');
-      console.log(`Updated heading in: ${edit.filename}`);
+  // Write every changed file to its final (post-move) location.
+  const writtenPaths = [];
+  for (const [finalRel, content] of finalContents) {
+    writeFileSync(join(repoRoot, finalRel), content, 'utf8');
+    writtenPaths.push(finalRel);
+    console.log(`Updated: ${finalRel}`);
+  }
+
+  if (writtenPaths.length > 0) {
+    const result = spawnSync('git', ['add', '--', ...writtenPaths], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+      console.error('Error: git add failed:');
+      console.error(result.stderr || result.stdout);
+      process.exit(1);
     }
   }
 
-  // Apply unambiguous reference rewrites
-  // Group by file to avoid multiple reads
-  const byFile = new Map();
-  for (const ref of plan.unambiguous) {
-    if (!byFile.has(ref.file)) byFile.set(ref.file, []);
-    byFile.get(ref.file).push(ref);
-  }
-
-  for (const [relPath, refs] of byFile) {
-    const filePath = join(repoRoot, relPath);
-    let content;
-    try {
-      content = readFileSync(filePath, 'utf8');
-    } catch (err) {
-      console.error(`Warning: could not read ${relPath} for ref rewrite: ${err.message}`);
-      continue;
-    }
-    let updated = content;
-    // Apply rewrites for this file (deduplicated by oldText)
-    const seen = new Set();
-    for (const ref of refs) {
-      if (seen.has(ref.oldText)) continue;
-      seen.add(ref.oldText);
-      // Replace all occurrences of oldText with newText
-      updated = updated.split(ref.oldText).join(ref.newText);
-    }
-    if (updated !== content) {
-      writeFileSync(filePath, updated, 'utf8');
-      console.log(`Updated references in: ${relPath}`);
-    }
-  }
-
-  // Print ambiguous report (never modified)
+  // Print ambiguous report (never modified), grouped by file — shares its
+  // rendering with the dry-run's ambiguous section (F4).
   if (plan.ambiguous.length > 0) {
     console.log('\n--- Ambiguous references (review manually, NOT auto-fixed) ---');
-    for (const ref of plan.ambiguous) {
-      console.log(`  ${ref.file}:${ref.line}: ${ref.lineText.trim()}`);
+    const groups = groupByFile(plan.ambiguous, (ref) => ref.reportFile ?? ref.file);
+    for (const line of formatGroupedByFile(groups, (ref) => ref.lineText.trim())) {
+      console.log(line);
     }
     console.log('--- End ambiguous report ---\n');
   }
@@ -437,47 +584,437 @@ function findRepoRoot(startDir) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Pure helpers for recursive/themed discovery (#581 task 1), and for the
+// single-pass token rewrite and frozen-path exclusion (#581 task 1, wired
+// into planRenumber/applyRenumber in task 3). Exported for direct unit
+// testing in addition to their use above.
+// ---------------------------------------------------------------------------
+
+const DATE_NAMED_RE = /^\d{4}-\d{2}-\d{2}-/;
+
+/**
+ * Recursively discover ADR files under `dir`, skipping dot-directories and
+ * `node_modules`. An ADR is a basename matching `NNNN-slug.md` that is NOT
+ * date-shaped (`NNNN-NN-NN-...`) — that excludes date-stamped notes files.
+ * `index.md`, `README.md` and any other non-matching file are ignored.
+ *
+ * Returns `{ adrs, duplicates }`:
+ *   - `adrs`: every discovered ADR as one sequence sorted by `num` ascending,
+ *     each `{ num, name, slug, relDir, path }`. `relDir` is the POSIX-style
+ *     directory of the file relative to `dir` (`''` for a file directly in
+ *     `dir`, `'alpha'` for `dir/alpha/...`). `path` is the file's POSIX-style
+ *     path relative to `dir` (`relDir` joined with `name`).
+ *   - `duplicates`: `Map<num, path[]>` — only numbers that occur more than
+ *     once across the whole tree (e.g. across two themes).
+ *
+ * @param {string} dir
+ * @returns {{ adrs: Array<{num:number,name:string,slug:string,relDir:string,path:string}>, duplicates: Map<number,string[]> }}
+ */
+export function discoverAdrs(dir) {
+  const adrs = [];
+
+  function walk(current, relDir) {
+    let entries;
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (entry.name === 'node_modules') continue;
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full, relDir ? `${relDir}/${entry.name}` : entry.name);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (DATE_NAMED_RE.test(entry.name)) continue;
+      const m = ADR_FILENAME_RE.exec(entry.name);
+      if (!m) continue;
+      adrs.push({
+        num: parseInt(m[1], 10),
+        name: entry.name,
+        slug: m[2],
+        relDir,
+        path: relDir ? `${relDir}/${entry.name}` : entry.name,
+      });
+    }
+  }
+
+  walk(dir, '');
+  adrs.sort((a, b) => a.num - b.num);
+
+  const byNum = new Map();
+  for (const adr of adrs) {
+    if (!byNum.has(adr.num)) byNum.set(adr.num, []);
+    byNum.get(adr.num).push(adr.path);
+  }
+  const duplicates = new Map();
+  for (const [num, paths] of byNum) {
+    if (paths.length > 1) duplicates.set(num, paths);
+  }
+
+  return { adrs, duplicates };
+}
+
+// ---------------------------------------------------------------------------
+// --next: resolve the ADR directory and describe its contents (#582)
+// ---------------------------------------------------------------------------
+
+const DECISIONS_DIR_KEY = 'docs/decisions/';
+
+/**
+ * Normalize a directory string to forward slashes with exactly one trailing
+ * slash, e.g. `wiki\decisions` -> `wiki/decisions/`.
+ */
+function normalizeDirSlash(value) {
+  const slashed = value.replace(/\\/g, '/');
+  return slashed.endsWith('/') ? slashed : `${slashed}/`;
+}
+
+/**
+ * Resolve the ADR directory for `--next`, honoring `.gvt-agent.json`'s
+ * `paths['docs/decisions/']` override (CONVENTIONS.md precedence: `paths` is
+ * consulted; the `docs/decisions/` default applies only when it isn't set).
+ * Missing or malformed config, or an unusable override value, falls back to
+ * the default and reports why via `warning`.
+ * @param {string} repoRoot
+ * @returns {{ dir: string, resolvedFrom: 'paths'|'default', warning?: string }}
+ */
+export function resolveDecisionsDir(repoRoot) {
+  let raw;
+  try {
+    raw = readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8');
+  } catch {
+    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
+  }
+
+  let cfg;
+  try {
+    cfg = JSON.parse(raw);
+  } catch {
+    return {
+      dir: DECISIONS_DIR_KEY,
+      resolvedFrom: 'default',
+      warning: '.gvt-agent.json is not valid JSON — using the default ADR directory',
+    };
+  }
+
+  const resolved = resolveExpectationPath(cfg.paths, DECISIONS_DIR_KEY);
+
+  if (resolved === DECISIONS_DIR_KEY) {
+    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
+  }
+
+  if (typeof resolved !== 'string' || resolved.trim() === '') {
+    return {
+      dir: DECISIONS_DIR_KEY,
+      resolvedFrom: 'default',
+      warning: `paths['${DECISIONS_DIR_KEY}'] override value is empty or unusable — using the default ADR directory`,
+    };
+  }
+
+  return { dir: normalizeDirSlash(resolved), resolvedFrom: 'paths' };
+}
+
+/**
+ * Read `.gvt-agent.json`'s `wiki.wikiDir` (default `wiki`), used only to
+ * decide whether `dir` lives inside the wiki bundle.
+ * @param {string} repoRoot
+ * @returns {string}
+ */
+function readWikiDir(repoRoot) {
+  try {
+    const cfg = JSON.parse(readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8'));
+    if (typeof cfg.wiki?.wikiDir === 'string' && cfg.wiki.wikiDir.trim() !== '') {
+      return cfg.wiki.wikiDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    }
+  } catch {
+    // Missing or malformed config — fall through to the default below.
+  }
+  return 'wiki';
+}
+
+/**
+ * Describe the ADR directory at `dir` (repo-root-relative, e.g.
+ * `docs/decisions/`) for `--next`. Pure fs reads — no writes. Reuses
+ * discoverAdrs()'s exclusions (index.md, README.md, date-named files, dot
+ * directories, node_modules). Throws the same EDUPLICATE error as
+ * planRenumber when two records across themes share a number.
+ *
+ * `layout` is missing (dir absent) | empty (exists, no root records and no
+ * theme subdirectories) | flat (root records, no theme subdirectories) |
+ * themed (no root records, one or more theme subdirectories — whether or
+ * not those subdirectories hold records yet) | mixed (root records AND one
+ * or more theme subdirectories).
+ *
+ * @param {{ repoRoot: string, dir: string }} opts
+ * @returns {object} summary — `resolvedFrom` is NOT included; the caller
+ *   (the `--next` CLI handler) fills it in from resolveDecisionsDir()/`--dir`.
+ */
+export function describeAdrDir({ repoRoot, dir }) {
+  const normDirSlash = normalizeDirSlash(dir);
+  const bareDir = normDirSlash.slice(0, -1);
+  const absDir = resolve(repoRoot, bareDir);
+
+  const wikiDir = readWikiDir(repoRoot);
+  const wiki = bareDir === wikiDir || bareDir.startsWith(`${wikiDir}/`);
+
+  const exists = existsSync(absDir) && statSync(absDir).isDirectory();
+  if (!exists) {
+    return {
+      dir: normDirSlash,
+      wiki,
+      wikiDir,
+      exists: false,
+      layout: 'missing',
+      count: 0,
+      highest: 0,
+      next: 1,
+      nextPadded: pad(1),
+      themes: [],
+      rootIndex: false,
+      rootReadme: false,
+      records: [],
+    };
+  }
+
+  const { adrs, duplicates } = discoverAdrs(absDir);
+  if (duplicates.size > 0) {
+    throw duplicateError(duplicates);
+  }
+
+  const themeNames = readdirSync(absDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules')
+    .map((e) => e.name)
+    .sort();
+
+  const themes = themeNames.map((name) => ({
+    name,
+    count: adrs.filter((a) => a.relDir === name || a.relDir.startsWith(`${name}/`)).length,
+    index: existsSync(join(absDir, name, 'index.md')),
+  }));
+
+  const rootCount = adrs.filter((a) => a.relDir === '').length;
+  const layout = rootCount > 0 && themeNames.length > 0
+    ? 'mixed'
+    : themeNames.length > 0
+      ? 'themed'
+      : rootCount > 0
+        ? 'flat'
+        : 'empty';
+
+  const highest = adrs.length ? adrs[adrs.length - 1].num : 0;
+  const next = highest + 1;
+
+  return {
+    dir: normDirSlash,
+    wiki,
+    wikiDir,
+    exists: true,
+    layout,
+    count: adrs.length,
+    highest,
+    next,
+    nextPadded: pad(next),
+    themes,
+    rootIndex: existsSync(join(absDir, 'index.md')),
+    rootReadme: existsSync(join(absDir, 'README.md')),
+    records: adrs.map((a) => ({ num: a.num, path: a.path })),
+  };
+}
+
+/**
+ * Escape a string for literal use inside a RegExp alternation.
+ */
+function escapeForRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Build a single-pass whole-filename-token rewriter from a map of old
+ * basename -> new basename. Never chain per-name replaces (that mis-rewrites
+ * a shifted sequence, e.g. 0002-x.md -> 0003-x.md -> 0004-x.md).
+ *
+ * The returned function performs ONE regex pass over the input text, using a
+ * single alternation of every old basename (regex-escaped, longest first so
+ * a longer filename that embeds a shorter one — e.g.
+ * `0007-supersedes-0003-c.md` embedding `0003-c.md` — matches whole first),
+ * bounded by a lookbehind/lookahead that requires the match to be a whole
+ * filename token (not a substring of a longer token, an extension, or a
+ * trailing digit run).
+ *
+ * @param {Map<string,string>} oldToNew
+ * @returns {(text: string) => { text: string, hits: Array<{index:number, oldText:string, newText:string}> }}
+ */
+export function buildTokenRewriter(oldToNew) {
+  const names = [...oldToNew.keys()];
+  if (names.length === 0) {
+    return (text) => ({ text, hits: [] });
+  }
+  const alternation = [...names]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeForRegExp)
+    .join('|');
+  const tokenRe = new RegExp(
+    `(?<![A-Za-z0-9_.-])(?:${alternation})(?![A-Za-z0-9_-]|[.][A-Za-z0-9])`,
+    'g',
+  );
+
+  return function rewrite(text) {
+    const hits = [];
+    const rewritten = text.replace(tokenRe, (match, offset) => {
+      const newText = oldToNew.get(match);
+      hits.push({ index: offset, oldText: match, newText });
+      return newText;
+    });
+    return { text: rewritten, hits };
+  };
+}
+
+/**
+ * True when `rel` (a repo-relative POSIX path) is frozen history that a
+ * renumber sweep must scan-and-list but never rewrite:
+ *   - any `CHANGELOG.md` (by basename, any directory)
+ *   - anything under `docs/superpowers/`
+ *   - anything under `<cfg.rawDir ?? 'raw'>/`
+ *   - exactly `<cfg.wikiDir ?? 'wiki'>/log.md`
+ *   - exactly `.pointer-baseline.json` (repo root)
+ *
+ * @param {string} rel
+ * @param {{ rawDir?: string, wikiDir?: string }} [cfg]
+ * @returns {boolean}
+ */
+export function isFrozenPath(rel, cfg = {}) {
+  const normalized = rel.replace(/\\/g, '/').replace(/^\.\//, '');
+  const rawDir = cfg.rawDir ?? 'raw';
+  const wikiDir = cfg.wikiDir ?? 'wiki';
+  const basename = normalized.split('/').pop();
+
+  if (basename === 'CHANGELOG.md') return true;
+  if (normalized === 'docs/superpowers' || normalized.startsWith('docs/superpowers/')) return true;
+  if (normalized === rawDir || normalized.startsWith(`${rawDir}/`)) return true;
+  if (normalized === `${wikiDir}/log.md`) return true;
+  if (normalized === '.pointer-baseline.json') return true;
+  return false;
+}
+
+/**
+ * Group an array of ref-like objects (each carrying a `.line`) by a citing
+ * path derived via `keyFn`, preserving first-seen file order. Shared by the
+ * dry-run reference-rewrite/ambiguous sections and the --apply ambiguous
+ * report, both of which render a "grouped by file" listing.
+ * @param {Array<object>} items
+ * @param {(item: object) => string} keyFn
+ * @returns {Map<string, object[]>}
+ */
+function groupByFile(items, keyFn) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return groups;
+}
+
+/**
+ * Render a grouped-by-file listing: one `path (N lines): Lx, Ly, …` header
+ * per file, followed by each affected line's detail (via `lineFormatter`).
+ * @param {Map<string, object[]>} groups
+ * @param {(item: object) => string} lineFormatter
+ * @returns {string[]}
+ */
+function formatGroupedByFile(groups, lineFormatter) {
+  const out = [];
+  for (const [file, items] of groups) {
+    const lineNums = items.map((item) => `L${item.line}`).join(', ');
+    out.push(`  ${file} (${items.length} lines): ${lineNums}`);
+    for (const item of items) {
+      out.push(`    L${item.line}: ${lineFormatter(item)}`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Compute the five Summary figures from a plan (#581 F4):
+ *   moves        — plan.moves.length
+ *   rewrites     — unambiguous reference-rewrite occurrences
+ *   rewriteFiles — distinct citing files among those occurrences
+ *   untouched    — frozen-path token occurrences left untouched
+ *   ambigLines   — distinct (file, line) pairs among ambiguous refs
+ * @param {object} plan
+ */
+function computeSummary(plan) {
+  const rewriteFiles = new Set(plan.unambiguous.map((r) => r.newFile ?? r.file));
+  const ambigLines = new Set(plan.ambiguous.map((r) => `${r.reportFile ?? r.file}:${r.line}`));
+  return {
+    moves: plan.moves.length,
+    rewrites: plan.unambiguous.length,
+    rewriteFiles: rewriteFiles.size,
+    untouched: plan.excludedOccurrenceCount ?? 0,
+    ambigLines: ambigLines.size,
+  };
+}
+
+function formatSummaryLine(s) {
+  return `Summary: ${s.moves} moves, ${s.rewrites} reference rewrites in ${s.rewriteFiles} files, ${s.untouched} left untouched, ${s.ambigLines} ambiguous lines`;
+}
+
 /**
  * Format a dry-run plan for stdout.
  */
 function formatPlan(plan) {
   const lines = ['--- ADR Renumber Dry-Run ---', ''];
+
+  const adrDirRel = plan.repoRoot ? relative(plan.repoRoot, plan.dir).replace(/\\/g, '/') : plan.dir;
+  lines.push(`Discovered ${plan.discoveredCount} ADRs under ${adrDirRel}`);
+
+  const summary = computeSummary(plan);
+
   if (plan.moves.length === 0) {
+    lines.push('');
     lines.push(`No moves needed: insert-at ${plan.insertAt} is beyond highest ADR ${plan.highest}.`);
+    lines.push('');
+    lines.push(formatSummaryLine(summary));
     return lines.join('\n');
   }
 
+  lines.push('');
   lines.push(`Insert slot at: ${plan.insertAt} (highest existing: ${plan.highest})`);
   lines.push('');
   lines.push('File moves (highest-down to avoid collisions):');
   for (const m of plan.moves) {
-    lines.push(`  ${m.oldName} -> ${m.newName}`);
-  }
-
-  if (plan.headingEdits.length > 0) {
-    lines.push('');
-    lines.push('Heading edits:');
-    for (const e of plan.headingEdits) {
-      lines.push(`  ${e.filename}: "${e.oldHeadingPrefix} ..." -> "${e.newHeadingPrefix} ..."`);
-    }
+    lines.push(`  ${joinRel(adrDirRel, m.oldPath ?? m.oldName)} -> ${joinRel(adrDirRel, m.newPath ?? m.newName)}`);
   }
 
   if (plan.unambiguous.length > 0) {
     lines.push('');
-    lines.push('Unambiguous reference rewrites (auto-fix in --apply):');
-    for (const r of plan.unambiguous) {
-      lines.push(`  ${r.file}:${r.line} [${r.kind}]: "${r.oldText}" -> "${r.newText}"`);
+    lines.push('Reference rewrites (grouped by file):');
+    const groups = groupByFile(plan.unambiguous, (r) => r.newFile ?? r.file);
+    lines.push(...formatGroupedByFile(groups, (r) => `[${r.kind}] "${r.oldText}" -> "${r.newText}"`));
+  }
+
+  if (plan.excluded.length > 0) {
+    lines.push('');
+    lines.push('Left untouched (frozen history — deliberately not rewritten):');
+    for (const f of plan.excluded) {
+      lines.push(`  ${f}`);
     }
   }
 
   if (plan.ambiguous.length > 0) {
     lines.push('');
     lines.push('Ambiguous references (review manually, never auto-fixed):');
-    for (const r of plan.ambiguous) {
-      lines.push(`  ${r.file}:${r.line}: ${r.lineText.trim()}`);
-    }
+    const groups = groupByFile(plan.ambiguous, (r) => r.reportFile ?? r.file);
+    lines.push(...formatGroupedByFile(groups, (r) => r.lineText.trim()));
   }
 
+  lines.push('');
+  lines.push(formatSummaryLine(summary));
   lines.push('');
   lines.push('Re-run with --apply to execute.');
   return lines.join('\n');
@@ -487,33 +1024,108 @@ function formatPlan(plan) {
 // CLI entry point
 // ---------------------------------------------------------------------------
 
-const isMain =
-  process.argv[1] &&
-  resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
+// Compare canonical real paths: a plain resolve() string compare misses the
+// same file reached through a Windows 8.3 short name (e.g. a TEMP path) or a
+// symlink, and the CLI then silently does nothing and exits 0.
+const isMain = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync.native(process.argv[1]) === realpathSync.native(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 
 if (isMain) {
-  const { values } = parseArgs({
-    options: {
-      dir: { type: 'string' },
-      'insert-at': { type: 'string' },
-      apply: { type: 'boolean', default: false },
-    },
-  });
+  let values;
+  try {
+    ({ values } = parseArgs({
+      options: {
+        dir: { type: 'string' },
+        'insert-at': { type: 'string' },
+        apply: { type: 'boolean', default: false },
+        next: { type: 'boolean', default: false },
+      },
+    }));
+  } catch (err) {
+    console.error(`Error: invalid command-line arguments: ${String(err.message).split('\n')[0]}`);
+    process.exit(1);
+  }
+
+  if (values['next']) {
+    if (values['insert-at'] !== undefined || values['apply']) {
+      console.error('Error: --next cannot be combined with --insert-at or --apply.');
+      process.exit(1);
+    }
+
+    const repoRoot = process.cwd();
+    const dirArg = values['dir'];
+    const dirInfo = dirArg
+      ? { dir: normalizeDirSlash(dirArg), resolvedFrom: '--dir' }
+      : resolveDecisionsDir(repoRoot);
+
+    let summary;
+    try {
+      summary = describeAdrDir({ repoRoot, dir: dirInfo.dir });
+    } catch (err) {
+      console.error(`Error: ${String(err.message).split('\n')[0]}`);
+      process.exit(1);
+    }
+
+    const output = {
+      dir: summary.dir,
+      resolvedFrom: dirInfo.resolvedFrom,
+      ...(dirInfo.warning ? { warning: dirInfo.warning } : {}),
+      wiki: summary.wiki,
+      wikiDir: summary.wikiDir,
+      exists: summary.exists,
+      layout: summary.layout,
+      count: summary.count,
+      highest: summary.highest,
+      next: summary.next,
+      nextPadded: summary.nextPadded,
+      themes: summary.themes,
+      rootIndex: summary.rootIndex,
+      rootReadme: summary.rootReadme,
+      records: summary.records,
+    };
+
+    console.log(JSON.stringify(output, null, 2));
+    process.exit(0);
+  }
 
   const dir = values['dir'];
-  const insertAt = parseInt(values['insert-at'], 10);
+  const insertAtRaw = values['insert-at'];
 
-  if (!dir || isNaN(insertAt)) {
+  if (!dir) {
     console.error('Usage: node renumber-adrs.mjs --dir <adr-dir> --insert-at <N> [--apply]');
+    console.error('       node renumber-adrs.mjs --next [--dir <adr-dir>]');
+    process.exit(1);
+  }
+
+  if (!insertAtRaw || !/^\d+$/.test(insertAtRaw) || parseInt(insertAtRaw, 10) < 1) {
+    console.error(`Error: --insert-at must be a positive integer, got: ${insertAtRaw ?? '(missing)'}`);
+    process.exit(1);
+  }
+
+  const insertAt = parseInt(insertAtRaw, 10);
+
+  if (insertAt > 9999) {
+    console.error(`Error: --insert-at ${insertAt} exceeds the maximum ADR number 9999.`);
     process.exit(1);
   }
 
   const absDir = resolve(dir);
 
-  if (values['apply']) {
-    applyRenumber({ dir: absDir, insertAt });
-  } else {
-    const plan = planRenumber({ dir: absDir, insertAt });
-    console.log(formatPlan(plan));
+  try {
+    if (values['apply']) {
+      applyRenumber({ dir: absDir, insertAt });
+    } else {
+      const plan = planRenumber({ dir: absDir, insertAt });
+      console.log(formatPlan(plan));
+    }
+  } catch (err) {
+    console.error(`Error: ${String(err.message).split('\n')[0]}`);
+    process.exit(1);
   }
 }

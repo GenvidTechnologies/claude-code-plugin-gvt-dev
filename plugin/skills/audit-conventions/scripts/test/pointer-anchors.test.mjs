@@ -24,6 +24,7 @@ import {
   normalizeForMatch,
   parseLineSpec,
   parsePointersInLine,
+  renameExplainsDrift,
   scanPointerAnchors,
   stripEmphasisMarkers,
   verifyAnchor,
@@ -831,9 +832,9 @@ test('collectPointers: an orphan continuation is not also reported anchor-missin
 
 // ---- corpus scoping ----------------------------------------------------------
 
-test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the changelog', async () => {
+test('listCitingFiles: takes .md and .mjs under docs/, plugin/ and wiki/, including the changelog', async () => {
   // No `git init` here, so the repo-root half contributes nothing and this
-  // stays a test of the two citing TREES alone — `examples/CLAUDE.md` is out
+  // stays a test of the three citing TREES alone — `examples/CLAUDE.md` is out
   // because `examples/` is not a citing root, and the root `CLAUDE.md` is out
   // because there is no index to prove it tracked (asserted directly below).
   const dir = await withTempRepo(async (d) => {
@@ -841,6 +842,9 @@ test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the
     await writeRepoFile(d, 'plugin/CHANGELOG.md', 'x\n');
     await writeRepoFile(d, 'plugin/skills/s/scripts/lib/thing.mjs', 'x\n');
     await writeRepoFile(d, 'plugin/skills/s/config.json', '{}\n');
+    await writeRepoFile(d, 'wiki/page.md', 'x\n');
+    await writeRepoFile(d, 'wiki/sub/x.mjs', 'x\n');
+    await writeRepoFile(d, 'wiki/data.json', '{}\n');
     await writeRepoFile(d, 'CLAUDE.md', 'x\n');
     await writeRepoFile(d, 'examples/CLAUDE.md', 'x\n');
   });
@@ -849,6 +853,8 @@ test('listCitingFiles: takes .md and .mjs under docs/ and plugin/, including the
       'docs/notes.md',
       'plugin/CHANGELOG.md',
       'plugin/skills/s/scripts/lib/thing.mjs',
+      'wiki/page.md',
+      'wiki/sub/x.mjs',
     ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -1002,6 +1008,39 @@ test('collectPointers: a target inside the eval fixture tree is not a resolution
     const { pointers, findings } = await collectPointers(dir);
     assert.deepEqual(findings, []);
     assert.equal(pointers[0].target, 'plugin/CONVENTIONS.md');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// #583: the wiki/ tree joined the citing corpus, but resolution itself is
+// unchanged — a cited path is still matched against the WHOLE repo-relative
+// candidate list (`matchCandidates`), never against the citing file's own
+// directory. A path written as if `wiki/` were a bundle root of its own (a
+// leading slash) therefore does NOT resolve, while the same path written
+// relative to the repo root does.
+test('#583 collectPointers: a repo-root-relative pointer under wiki/ resolves; a leading-slash form does not', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/decisions/0001-x.md', numberedLines(5));
+    await writeRepoFile(
+      d,
+      'wiki/page.md',
+      `Bundle-style ${cite('/decisions/0001-x.md', '3')} ("line 3").\n` +
+        `Repo-relative ${cite('decisions/0001-x.md', '3')} ("line 3").\n`,
+    );
+  });
+  try {
+    const findings = await scanPointerAnchors(dir);
+    // The leading-slash form matches nothing: candidates never carry a leading
+    // slash, so the suffix check never lines up. Its sibling one line below,
+    // written relative to the repo root, resolves against
+    // `wiki/decisions/0001-x.md` cleanly — this is the ONLY finding, so the
+    // relative form is proven to report nothing by elimination.
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'pointer-unresolved');
+    assert.equal(findings[0].severity, 'error');
+    assert.equal(findings[0].file, 'wiki/page.md');
+    assert.equal(findings[0].line, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -1492,6 +1531,79 @@ test('digestCitedRange: normalization-equivalent target text digests the same', 
   const dressed = linesOf('    When a refresh command exists, **do NOT treat** the copy as truth.');
   const cited = [{ start: 1, end: 1 }];
   assert.equal(digestCitedRange(plain, cited), digestCitedRange(dressed, cited));
+});
+
+// ---- renameExplainsDrift -------------------------------------------------------
+
+test('renameExplainsDrift: a target line naming the new basename explains drift against the old name', () => {
+  const before = linesOf('alpha', 'See analyst.md for the flow.', 'gamma');
+  const after = linesOf('alpha', 'See reviewer.md for the flow.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/reviewer.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [{ old: 'analyst.md', new: 'reviewer.md' }],
+  });
+  assert.equal(result, true);
+});
+
+test('renameExplainsDrift: a target line changed for reasons other than the rename is not explained', () => {
+  const before = linesOf('alpha', 'See analyst.md for the flow.', 'gamma');
+  const after = linesOf('alpha', 'See analyst.md for a completely different reason.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/analyst.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [{ old: 'analyst.md', new: 'reviewer.md' }],
+  });
+  assert.equal(result, false);
+});
+
+test('renameExplainsDrift: a rename chain reverse-maps both hops in one simultaneous pass', () => {
+  // a.md -> b.md, then b.md -> c.md. A sequential (rather than simultaneous)
+  // reverse-substitution would double-map the second hop's output back
+  // through the first hop's pattern; this fixture is built so that mistake
+  // produces a digest mismatch instead of a coincidentally-correct one.
+  const before = linesOf('alpha', 'See a.md and b.md together.', 'gamma');
+  const after = linesOf('alpha', 'See b.md and c.md together.', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(before, ranges);
+  const pointer = ptr('plugin/agents/c.md', '2');
+  const result = renameExplainsDrift({
+    content: after,
+    pointer,
+    storedDigest,
+    renames: [
+      { old: 'a.md', new: 'b.md' },
+      { old: 'b.md', new: 'c.md' },
+    ],
+  });
+  assert.equal(result, true);
+});
+
+test('renameExplainsDrift: a same-basename directory move contributes no substitution', () => {
+  const target = linesOf('alpha', 'x.md content stays the same', 'gamma');
+  const ranges = [{ start: 2, end: 2 }];
+  const storedDigest = digestCitedRange(target, ranges);
+  const pointer = ptr('wiki/decisions/t/x.md', '2');
+  const renames = [{ old: 'docs/decisions/x.md', new: 'wiki/decisions/t/x.md' }];
+
+  assert.equal(
+    renameExplainsDrift({ content: target, pointer, storedDigest, renames }),
+    true,
+  );
+
+  const changed = linesOf('alpha', 'x.md content is now different', 'gamma');
+  assert.equal(
+    renameExplainsDrift({ content: changed, pointer, storedDigest, renames }),
+    false,
+  );
 });
 
 // ---- the ratchet: fixtures ----------------------------------------------------
