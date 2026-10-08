@@ -194,3 +194,47 @@ test('audit: "unknown pillar" is not surfaced against a consuming repo, even wit
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// #385 / ADR-0070 — the schema expectation and the Environment row agree on
+// an in-bundle schema, and an unmet expectation names both locations.
+// ---------------------------------------------------------------------------
+
+async function withTempWikiRepo(schemaAt) {
+  return withTempPracticeCoverageRepo(async (dir) => {
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'index.md'), '# Index\n');
+    await writeFile(join(dir, 'wiki', 'log.md'), '# Log\n');
+    await mkdir(join(dir, 'raw'), { recursive: true });
+    if (schemaAt) await writeFile(join(dir, schemaAt), '# Schema\n');
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' }, wiki: {} }, null, 2),
+    );
+  });
+}
+
+test('audit: a schema only at wiki/schema.md satisfies the maintain-wiki expectation and reads "adopted"', async () => {
+  const tmpDir = await withTempWikiRepo(join('wiki', 'schema.md'));
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.equal(result.status, 0, result.stdout);
+    assert.ok(result.stdout.includes('| Environment |'), result.stdout);
+    assert.doesNotMatch(result.stdout, /Environment \|.*\| (not adopted|partial)/, result.stdout);
+    assert.ok(!result.stdout.includes('**maintain-wiki** expects `docs/wiki-schema.md`'), result.stdout);
+    assert.ok(!result.stdout.includes('or `docs/wiki-schema.md`'), result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: with no schema anywhere, the unmet expectation names both locations in resolution order', async () => {
+  const tmpDir = await withTempWikiRepo(null);
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.equal(result.status, 0, result.stdout);
+    assert.ok(result.stdout.includes('**maintain-wiki** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional)'), result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});

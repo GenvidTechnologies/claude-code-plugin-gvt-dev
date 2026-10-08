@@ -542,13 +542,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "plugin/skills/maintain-wiki/SKILL.md:29,159-163",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "d5254e2c1fe1"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "plugin/skills/maintain-wiki/wiki-schema.template.md:65-78",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",

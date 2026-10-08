@@ -1,16 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   detectWikiAdoption,
+  SCHEMA_EXPECTATION,
   VERDICT_ABSENT,
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
+import { extractFrontmatter } from '../lib/frontmatter.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));
@@ -216,4 +219,16 @@ test('detectWikiAdoption: a dangling override does not fall through to <wikiDir>
     await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
   }, { wiki: {}, paths: { 'docs/wiki-schema.md': 'notes/missing.md' } });
   assert.equal(signals.schemaDoc, false);
+});
+
+test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki declares', () => {
+  const skill = fileURLToPath(new URL('../../../maintain-wiki/SKILL.md', import.meta.url));
+  const entry = extractFrontmatter(readFileSync(skill, 'utf8')).metadata.expects.files.find((e) => e.path === 'docs/wiki-schema.md');
+  assert.deepEqual({ path: entry.path, prefer: entry.prefer }, { ...SCHEMA_EXPECTATION });
+});
+
+test('practice-detect.mjs imports only node:fs, node:path and ./expect-prefer.mjs (no maintain-wiki import)', () => {
+  const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
+  const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
+  assert.deepEqual(specs, ['node:fs', 'node:path', './expect-prefer.mjs']);
 });

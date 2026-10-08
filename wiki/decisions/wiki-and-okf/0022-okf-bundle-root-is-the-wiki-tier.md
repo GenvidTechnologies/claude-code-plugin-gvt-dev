@@ -67,7 +67,7 @@ Nine contradicted or open sites follow from this decision. **Nothing in this tab
 
 **Explicitly not contradicted:**
 
-- The `raw/` immutability rule at all **7** sites, **byte-identical**: `docs/wiki-schema.md:80-93`; `plugin/skills/maintain-wiki/wiki-schema.template.md:65-78`; `raw/README.md:8-10`; `plugin/skills/maintain-wiki/raw-readme.template.md:8-10`; `plugin/skills/maintain-wiki/SKILL.md:29,159-163`; the verb-contract echoes `docs/wiki-schema.md:126` / `wiki-schema.template.md:111`; and the captures' own self-declarations `raw/karpathy-llm-wiki-agent-memory.md:5` / `raw/beyond-rag-llm-wiki-pattern.md:5`.
+- The `raw/` immutability rule at all **7** sites, **byte-identical**: `docs/wiki-schema.md:80-93`; `plugin/skills/maintain-wiki/wiki-schema.template.md:65-78`; `raw/README.md:8-10`; `plugin/skills/maintain-wiki/raw-readme.template.md:8-10`; `plugin/skills/maintain-wiki/SKILL.md:27,266-273` ("raw/ immutability"); the verb-contract echoes `docs/wiki-schema.md:126` / `wiki-schema.template.md:111`; and the captures' own self-declarations `raw/karpathy-llm-wiki-agent-memory.md:5` / `raw/beyond-rag-llm-wiki-pattern.md:5`.
 - ADR-0015 decisions 1, 2, and 3.
 - `.gvt-agent.json` — no schema change; `wiki.wikiDir` doubles as the bundle root.
 - `plugin/skills/audit-conventions/**` — untouched.
