@@ -10,7 +10,11 @@ list current: a new page is added here when it's created, and `lint` flags
 any page listed in **no** index — here, or in a subdirectory's own
 `index.md`. Each entry's description is the linked page's frontmatter
 `description`, so the index and the page can't drift. See
-`docs/wiki-schema.md` for the page format and maintenance rules.
+`wiki/schema.md` for the page format and maintenance rules.
+
+## Schema
+
+- [Wiki Maintenance Schema](schema.md) — The maintenance rules for this wiki — page format and types, create-vs-update lifecycle, raw/ immutability, staleness policy, verb contract and wiki-links.
 
 ## Practice notes
 
