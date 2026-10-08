@@ -262,7 +262,11 @@ Make all in-repo edits, then a single release commit. Work on the default branch
    ```
 
 4. **Commit** both files together with the subject `release: vX.Y.Z`. Show the
-   diff and confirm first.
+   diff and confirm first. Then, **before pushing**, check that
+   `git log -1 --format=%s` prints exactly `release: vX.Y.Z`. A stale or reused
+   message file commits without any error, and once a mislabelled release commit
+   is on an unprotected default branch it can only be corrected additively, never
+   amended.
 
 ## Phase 4 — CI gate (graceful)
 
