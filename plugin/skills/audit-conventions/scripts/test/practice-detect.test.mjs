@@ -221,6 +221,14 @@ test('detectWikiAdoption: a dangling override does not fall through to <wikiDir>
   assert.equal(signals.schemaDoc, false);
 });
 
+test('detectWikiAdoption: a blank wikiDir means the default for every signal, not the repo root', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: { wikiDir: '  ' } });
+  assert.deepEqual(signals, { configBlock: true, wikiDir: true, index: true, log: true, rawDir: true, schemaDoc: true });
+});
+
 test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki declares', () => {
   const skill = fileURLToPath(new URL('../../../maintain-wiki/SKILL.md', import.meta.url));
   const entry = extractFrontmatter(readFileSync(skill, 'utf8')).metadata.expects.files.find((e) => e.path === 'docs/wiki-schema.md');

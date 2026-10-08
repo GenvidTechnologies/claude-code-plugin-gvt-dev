@@ -25,7 +25,10 @@ export const VERDICT_PARTIAL = 'partial';
 export const VERDICT_ADOPTED = 'adopted';
 
 export async function detectWikiAdoption(repoRoot, config) {
-  const wikiDir = config?.wiki?.wikiDir ?? DEFAULT_WIKI_DIR;
+  // A blank wikiDir means the default, as it does for the schema candidates
+  // (expect-prefer), so every signal below probes the same directory.
+  const configured = config?.wiki?.wikiDir;
+  const wikiDir = typeof configured === 'string' && configured.trim() !== '' ? configured : DEFAULT_WIKI_DIR;
   const rawDir = config?.wiki?.rawDir ?? DEFAULT_RAW_DIR;
 
   const [wikiDirPresent, indexPresent, logPresent, rawDirPresent, schemaDocPresent] =

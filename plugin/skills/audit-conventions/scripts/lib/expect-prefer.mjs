@@ -18,7 +18,8 @@ const WIKI_DIR_TOKEN = '<wikiDir>';
 
 export function expandPrefer(prefer, wikiDir) {
   if (typeof prefer !== 'string' || prefer.trim() === '') return null;
-  const dir = typeof wikiDir === 'string' && wikiDir.trim() !== '' ? wikiDir : DEFAULT_WIKI_DIR;
+  // A trailing separator would print as `wiki//schema.md` in the audit report.
+  const dir = typeof wikiDir === 'string' && wikiDir.trim() !== '' ? wikiDir.replace(/[\\/]+$/, '') : DEFAULT_WIKI_DIR;
   return prefer.split(WIKI_DIR_TOKEN).join(dir);
 }
 

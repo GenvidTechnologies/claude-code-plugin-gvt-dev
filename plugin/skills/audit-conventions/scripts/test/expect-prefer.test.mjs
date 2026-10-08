@@ -35,3 +35,19 @@ test('expandPrefer: blank or non-string prefer is ignored, and an empty wikiDir 
   assert.equal(expandPrefer(undefined, 'wiki'), null);
   assert.equal(expandPrefer('<wikiDir>/schema.md', ''), 'wiki/schema.md');
 });
+
+test('expandPrefer: a trailing separator on wikiDir is dropped', () => {
+  assert.equal(expandPrefer('<wikiDir>/schema.md', 'wiki/'), 'wiki/schema.md');
+  assert.equal(expandPrefer('<wikiDir>/schema.md', 'kb\\'), 'kb/schema.md');
+});
+
+test('expectationCandidates: a prefer equal to the declared path collapses to one candidate', () => {
+  assert.deepEqual(expectationCandidates({ path: 'wiki/schema.md', prefer: '<wikiDir>/schema.md' }, {}).candidates, ['wiki/schema.md']);
+});
+
+test('expectationCandidates: an override equal to the declared path is still an override, with no prefer probe', () => {
+  assert.deepEqual(
+    expectationCandidates(SCHEMA, { paths: { 'docs/wiki-schema.md': 'docs/wiki-schema.md' } }),
+    { overridden: true, candidates: ['docs/wiki-schema.md'] },
+  );
+});

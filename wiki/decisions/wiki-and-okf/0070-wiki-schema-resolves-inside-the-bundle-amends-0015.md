@@ -37,9 +37,10 @@ override was reported as `partial adoption` by the detector while the audit acce
 3. Else `docs/wiki-schema.md`, the legacy location.
 
 `<wikiDir>` is `wiki.wikiDir`, default `wiki`. The canonical statement is `maintain-wiki`
-§0 step 1. The other consumers agree with it: `run-retro`, `wiki-librarian`,
-`triage-issues`, and the audit's Environment detector `practice-detect`, which now also
-honours the `paths` override. That closes the mismatch above.
+§0 step 1. `run-retro` and the audit's Environment detector `practice-detect`, which now
+also honours the `paths` override, restate the same order; that closes the mismatch
+above. `wiki-librarian` reads the path its dispatcher resolved, and `triage-issues`
+cites the wiki's schema doc without naming a location.
 
 **2. ADR-0015 decision 1 is amended, not edited in place.** Following the precedent of
 [ADR-0041](0041-widen-retired-token-scan-to-wiki-amends-0015.md), the older record stays
@@ -79,11 +80,12 @@ untouched. An unmet entry names both locations. Alternatives:
 
 **5. Indexing follows location.** An in-bundle schema gets one line in
 `<wikiDir>/index.md` under a `## Schema` heading and no `docs/TOC.md` row, because two
-rows for one page would drift. An override that points into `docs/` keeps the existing
-`docs/TOC.md` Knowledge Base rule.
+rows for one page would drift. A schema outside the bundle (an override pointing, say,
+into `docs/`) keeps the existing `docs/TOC.md` Knowledge Base rule.
 
-**6. Frontmatter is added at scaffold time.** The scaffold prepends `type: convention`
-plus a title and description (the index entry quotes the description). It is not baked
+**6. Frontmatter is added at scaffold time.** A schema scaffolded inside the bundle gets
+`type: convention` plus a title and description prepended (the index entry quotes the
+description); one scaffolded outside the bundle gets none. It is not baked
 into the template, which would shift every template line cited by baselined pointers.
 
 **7. ADR-0062's Compromise is reconciled.** That record rejected "an implicit wiki

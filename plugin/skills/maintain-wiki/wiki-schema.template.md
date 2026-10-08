@@ -1,7 +1,7 @@
 # Wiki Maintenance Schema
 
 > Project conventions consumed by `/gvt-dev:maintain-wiki`, which copies this
-> file to `<wikiDir>/schema.md`; edit it for your project. This is the **maintenance
+> file to the resolved schema path (`<wikiDir>/schema.md` unless overridden); edit it for your project. This is the **maintenance
 > schema** for the three-tier wiki: `raw/` (immutable captured sources) →
 > `<wikiDir>/` (LLM-maintained pages, `index.md`, `log.md`) → this schema (the rules
 > that govern how the first two are kept in sync).

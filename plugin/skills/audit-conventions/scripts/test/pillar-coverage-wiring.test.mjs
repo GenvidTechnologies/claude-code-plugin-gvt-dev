@@ -220,7 +220,7 @@ test('audit: a schema only at wiki/schema.md satisfies the maintain-wiki expecta
     const result = spawnAudit([], tmpDir);
     assert.equal(result.status, 0, result.stdout);
     assert.ok(result.stdout.includes('| Environment |'), result.stdout);
-    assert.doesNotMatch(result.stdout, /Environment \|.*\| (not adopted|partial)/, result.stdout);
+    assert.match(result.stdout, /\| Environment \|[^\n]*\| adopted \|/, result.stdout);
     assert.ok(!result.stdout.includes('**maintain-wiki** expects `docs/wiki-schema.md`'), result.stdout);
     assert.ok(!result.stdout.includes('or `docs/wiki-schema.md`'), result.stdout);
   } finally {

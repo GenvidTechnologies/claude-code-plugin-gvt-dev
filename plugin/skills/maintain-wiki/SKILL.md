@@ -8,10 +8,10 @@ metadata:
       - path: docs/wiki-schema.md
         prefer: <wikiDir>/schema.md
         required: false
-        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract), resolved as the paths override for this key, else <wikiDir>/schema.md inside the bundle, else the legacy docs/wiki-schema.md; the skill offers to scaffold it at <wikiDir>/schema.md when none of the three exists
+        reason: The wiki's maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract), resolved as the paths override for this key, else <wikiDir>/schema.md inside the bundle, else the legacy docs/wiki-schema.md; the skill offers to scaffold it, at the override path when one is set and else at <wikiDir>/schema.md, when none of the three exists
       - path: docs/TOC.md
         required: false
-        reason: The §0 scaffold step adds a one-line index entry for a schema scaffolded outside the wiki bundle (a paths override naming a docs/ location) when docs/TOC.md is present
+        reason: The §0 scaffold step adds a one-line index entry for a schema scaffolded outside the wiki bundle (a paths override naming a location such as docs/) when docs/TOC.md is present
     config:
       - key: wiki.wikiDir
         in: .gvt-agent.json
@@ -121,10 +121,10 @@ first use.
    **Resolve the placeholders as you copy.** The templates spell the wiki's
    directories as `<wikiDir>/` and `<rawDir>/`, and the schema doc as
    `<schemaDoc>`; substitute the names resolved in step 1 (for `<schemaDoc>`,
-   the scaffold target when the schema is created in the same run) into the
-   copied text, so the scaffolded file names the project's actual paths.
-   `wiki-schema.template.md` is the exception — its header tells the consumer
-   to edit it for their project, so copy it as-is.
+   the schema path step 1 resolved, or the scaffold target if none exists)
+   into the copied text, so the scaffolded file names the project's paths.
+   `wiki-schema.template.md` is the exception — its body is copied as-is (its
+   header tells the consumer to edit it); only the frontmatter below is added.
 
    **A schema scaffolded inside `<wikiDir>/` opens with OKF frontmatter**,
    prepended before the template body, because the bundle requires a
@@ -141,9 +141,9 @@ first use.
    Interactively, **offer** the scaffold (`AskUserQuestion`); in
    `--non-interactive`, scaffold **automatically**. **This step is idempotent**:
    re-running it only creates the pieces that are still missing — a directory,
-   file, or index entry already present is left untouched and skipped silently.
-   A partially-scaffolded wiki (e.g. `<wikiDir>/` exists but no schema doc
-   does) is a normal, supported state, not an error.
+   file, or index entry already present is left untouched and skipped silently
+   (a shadowed schema duplicate is still reported, as step 4 says). A partly
+   scaffolded wiki (e.g. `<wikiDir>/` exists but no schema doc does) is normal.
 
    **Index the scaffolded schema doc in the index that owns its location.**
    - **Inside `<wikiDir>/`** (the default): add a one-line entry linking it
@@ -152,7 +152,7 @@ first use.
      frontmatter `description` as the entry text. An unlisted bundle page is
      an orphan to `lint`. No `docs/TOC.md` row: the bundle's own index is its
      discovery surface.
-   - **Anywhere else** (an override naming a `docs/` location): add the entry
+   - **Outside the bundle** (an override naming, say, a `docs/` location): add the entry
      to `docs/TOC.md` under a **Knowledge Base** heading (create the heading if
      absent) — mirroring how `plan-task` indexes a scaffolded `docs/decisions/`
      record and `triage-issues` indexes `docs/issue-triage.md`.
