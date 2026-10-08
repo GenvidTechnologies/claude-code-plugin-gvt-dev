@@ -47,9 +47,9 @@ requirement never reaches them and the `raw/` immutability convention
 (below) stands unamended.
 
 > **The `wiki/` bundle is OKF v0.2 conformant** — every **non-reserved** `.md`
-> under `wiki/` carries parseable frontmatter with a non-empty `type`, and the
-> two reserved files follow §8 and §9: `wiki/index.md` carries `okf_version`
-> as its sole key, `wiki/log.md` carries no frontmatter at all (#192, ADR-0026). Per ADR-0022 decision 4
+> under `wiki/` carries parseable frontmatter with a non-empty `type`. The
+> reserved files are `index.md` at any depth and `wiki/log.md`: the root `wiki/index.md` carries `okf_version`
+> as its sole key, the subdirectory indexes and `wiki/log.md` carry no frontmatter at all (#192, ADR-0026). Per ADR-0022 decision 4
 > the claim is scoped to the **bundle**, never to this repo — nothing outside
 > `wiki/` is in scope, including `raw/`. Nothing mechanical enforces it yet:
 > `wiki-lint.mjs` (#150) checks links, orphans and `raw/` immutability but
@@ -172,8 +172,8 @@ existing one, prefer updating the closer existing page — a wiki with one
 strong page beats a wiki with two thin overlapping ones.
 
 A `decision-record` page is the exception: an accepted record is not
-rewritten in place when its decision changes. A new record supersedes it,
-and the old record's status says so.
+rewritten in place when its decision changes. A new record supersedes or
+amends it and says so, and the older record stays as written.
 
 ## The `raw/` immutability convention
 

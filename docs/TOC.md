@@ -47,7 +47,7 @@ own practice, per `/gvt-dev:maintain-wiki`: immutable captured sources under
 the repo-root `raw/`, and the OKF bundle under the repo-root `wiki/`. The
 bundle holds the LLM-maintained pages, the decision records, the process and
 maintainer notes, `wiki/log.md`, and the maintenance schema itself
-(`wiki/schema.md`), all listed in the bundle's own `wiki/index.md`. `raw/` and
+(`wiki/schema.md`), all reachable from the bundle's own `wiki/index.md`. `raw/` and
 `wiki/` sit outside `docs/`, so the orphan-doc scanner doesn't index them —
 this pointer is here for human/agent discovery.
 
