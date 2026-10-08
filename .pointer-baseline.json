@@ -472,55 +472,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:1-26",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "2673f2a309d8"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:1-26",
-      "occurrence": 1,
-      "kind": "pointer-anchor-missing",
-      "digest": "2673f2a309d8"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:126",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "e3b0c44298fc"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:38-46,55-57",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "339a54b4b248"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:80-93",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "80f9ff3914aa"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:92-93",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "0501d89e66f7"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "docs/wiki-schema.md:95-110",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "831ed2a5eb54"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "plugin/CONVENTIONS.md:102-108",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
@@ -700,20 +651,6 @@
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
       "digest": "fb4d0eea9cb7"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",
-      "pointer": "docs/wiki-schema.md:117-118",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "855969b29fb7"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",
-      "pointer": "docs/wiki-schema.md:184-185",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "aebdb6018f2d"
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",

@@ -54,7 +54,7 @@ moved.
 
 **2. `usage_window` is omitted absent any `usage_count`, and the format question
 is handed to #221 rather than fixed here.** The key is defined — in both
-`docs/wiki-schema.md:117-118` and
+`wiki/schema.md:136-137` ("written once as a sibling") and
 `plugin/skills/maintain-wiki/wiki-schema.template.md:88` — as framing "every
 `usage_count` in the page." Nothing in the format emits a `usage_count`, and
 `wiki-librarian` never reads `usage_window`. Emitting it would frame an empty
@@ -71,7 +71,7 @@ warns about, where three copies of one contract silently disagree. Filed as
 **#221**.
 
 **Contrast with `stale_after`, which is also omitted and is *not* a defect.**
-`docs/wiki-schema.md:184-185` explicitly sanctions the omission — "`stale_after`
+`wiki/schema.md:207-208` ("when the underlying convention changes") explicitly sanctions the omission — "`stale_after`
 is typically omitted … Set one only when a page describes something actively in
 flux." Both pages describe settled structure, so no date is owed. That asymmetry
 is the whole point of separating the two: one omission is the schema's own
