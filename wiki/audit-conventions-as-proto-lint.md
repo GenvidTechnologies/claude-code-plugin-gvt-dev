@@ -56,7 +56,7 @@ just applied to `docs/` instead of `wiki/`. They are wired into
 severity, never `error`): a consuming repo's audit never fails because of a
 broken doc link
 or an orphaned page, it just gets told about it. That advisory posture — flag,
-don't block — is exactly what `docs/wiki-schema.md` describes for the
+don't block — is exactly what `wiki/schema.md` describes for the
 `lint` verb's own findings.
 
 ## Where the boundary sits
@@ -88,10 +88,10 @@ closes that gap — `scanOrphanedDocs` and `scanBrokenLinks` now decline bundle
 content explicitly and report the decline as an `info` finding, rather than
 depending on placement alone to keep them out. `plugin/CONVENTIONS.md`'s
 scope-table cells for those two scanners still read `no` for `<wikiDir>/`:
-the guard enforces that published contract instead of changing it. Only
-`docs/wiki-schema.md` itself — the curated maintenance-rules doc — stays
-under `docs/`, indexed in `docs/TOC.md`, and hygiene-covered like any other
-reference doc.
+the guard enforces that published contract instead of changing it. The
+curated maintenance-rules doc now sits inside the bundle too, as
+`wiki/schema.md`, indexed in `wiki/index.md` rather than `docs/TOC.md`, and
+outside those two scanners' walk like every other bundle page.
 
 The practical effect is unchanged: a repo can adopt the wiki practice, run
 `maintain-wiki lint` — now a mechanical checker,

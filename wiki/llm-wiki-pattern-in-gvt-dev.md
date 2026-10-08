@@ -56,12 +56,12 @@ wiki pattern in mind:
   scratch. The difference: `docs/TOC.md` indexes curated, relatively stable
   reference docs; `wiki/index.md` indexes pages that churn as new sources are
   ingested.
-- **ADRs (`docs/decisions/`) ≈ canonical curated pages — with a key lifecycle
+- **ADRs (now `wiki/decisions/`) ≈ canonical curated pages — with a key lifecycle
   difference.** Both an ADR and a wiki page are a durable write-up of
   accumulated understanding on a topic. But an ADR is **immutable** once
   accepted — later changes get a new ADR that supersedes it, per this
-  repo's own `docs/decisions/` convention — while a `wiki/` page is
-  explicitly a **living** document: `docs/wiki-schema.md`'s create-vs-update
+  repo's own decision-record convention — while an ingested `wiki/` page is
+  explicitly a **living** document: `wiki/schema.md`'s create-vs-update
   rule says new facts about an existing topic update the page in place
   rather than spawning a new one. An ADR is a snapshot of one decision; a
   wiki page is the compounding record of everything known about one topic.

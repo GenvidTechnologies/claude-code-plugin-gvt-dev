@@ -12,8 +12,15 @@ means a new entry (and, if today isn't already the top group, a new
 insertion point moves from the bottom to the top, but prepending never
 touches a prior entry's text, so the append-only guarantee holds exactly as
 before. If a past entry itself needs correcting, add a new entry that says
-so; never edit or remove the old one in place. See `docs/wiki-schema.md` for
+so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
+
+## 2026-10-08
+
+* **Migration**: Moved the maintenance schema from `docs/` into the bundle as
+  `schema.md` for #587, gave it OKF frontmatter as a `convention` page, listed
+  it under `## Schema` in `index.md`, and brought its claims up to date with
+  the moved tree. Not an ingest; no `raw/` source drove it.
 
 ## 2026-10-06
 
