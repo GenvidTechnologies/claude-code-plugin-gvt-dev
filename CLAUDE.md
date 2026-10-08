@@ -19,7 +19,7 @@ Maintainer rules that are not loaded automatically. Read the page before its tri
 - Before writing or editing a skill or agent `description` → [`wiki/maintainer/skill-frontmatter-rules.md`](wiki/maintainer/skill-frontmatter-rules.md)
 - Before trusting a green audit when adding a skill or agent, or when writing a line-number citation → [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md)
 - Before adding audit logic or a content-scanning check, proving a scanner ignores a surface, or deciding whether a skill needs an eval harness → [`wiki/maintainer/testing-the-audit.md`](wiki/maintainer/testing-the-audit.md)
-- Before starting a multi-issue chain, bumping `plugin.json` `version`, or writing a CHANGELOG entry → [`wiki/maintainer/release-cycle-rules.md`](wiki/maintainer/release-cycle-rules.md)
+- Before starting a multi-issue chain, bumping `plugin.json` `version`, writing a CHANGELOG entry, or importing audit-core from outside `plugin/` → [`wiki/maintainer/release-cycle-rules.md`](wiki/maintainer/release-cycle-rules.md)
 
 ## Repo layout
 
