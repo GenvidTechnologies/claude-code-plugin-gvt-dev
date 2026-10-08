@@ -17,6 +17,13 @@ the full maintenance schema.
 
 ## 2026-10-08
 
+* **Update**: Retro of the docs→wiki chain. `maintainer/audit-author-time-findings.md`
+  gains a note on moving a *cited* file: its baselined pointers go silently
+  unresolved, so repair them by intent and check that the cited text still
+  exists. `maintainer/release-cycle-rules.md` records that the leak-guard
+  check now runs in `commands.validate` too. Not an ingest; no `raw/` source
+  drove it.
+
 * **Migration**: Moved the maintenance schema from `docs/` into the bundle as
   `schema.md` for #587, gave it OKF frontmatter as a `convention` page, listed
   it under `## Schema` in `index.md`, and brought its claims up to date with

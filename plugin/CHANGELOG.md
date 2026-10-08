@@ -7,6 +7,12 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`release-plugin` checks the release commit's subject before pushing, and `planner` stops writing commit trailers and assigning agents to mechanical tasks (retro of the docs→wiki chain).**
+  - **`release-plugin` Phase 3:** before the default-branch push, `git log -1 --format=%s` must print exactly `release: vX.Y.Z`. The v4.30.0 release commit went out as `release: v4.29.0` from a stale message file, and on an unprotected branch the only fix was an additive commit.
+  - **`planner`:** a task's `**Commit:**` is a subject and body only, because attribution trailers come from the orchestrator's harness. A task that only applies prepared fragments, moves a file or runs a deterministic script is orchestrator-executed, not assigned to an implementer agent.
+
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.30.0] - 2026-10-08
 
 - **A new `plugin/CONVENTIONS.md` "Runtime path resolution" rule requires skills, agents and scripts to resolve a declared expectation path through the same `.gvt-agent.json` `paths` override `/gvt-dev:audit-conventions` already applies — `paths[<declared path>]` when set, else the declared path unchanged, so a repo with no override sees no behaviour change.** `triage-issues` and `issue-triage-analyst` are the first adopters: `triage-issues` §0 resolves its contract through `paths['docs/issue-triage.md']` once, and every later step means that resolved path — the near-miss scan covers the top level of the resolved parent directory and of `docs/` (both non-recursive), §0b renames/scaffolds at the resolved path (adding minimal OKF frontmatter, `type: convention`, when the path falls inside the wiki bundle), §0c indexes the resolved path, and §1 dispatches it to the analyst. `issue-triage-analyst` now reads the conventions path it is dispatched with, rather than a hardcoded literal. ADR-0039's two stale `triage-issues` citations are repaired to an anchored form. See ADR-0062. Part of #579 (#580). Behavioral skill/agent change → version bump at release.

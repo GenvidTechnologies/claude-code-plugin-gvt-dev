@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: 'Release-Cycle Rules'
-description: 'When a multi-issue chain must branch at the start, how to read the plugin.json version against the newest tag, and how a CHANGELOG entry closes.'
+description: 'When a chain must branch at the start, how to read the plugin.json version against the newest tag, how a CHANGELOG entry closes, and where leak-guard runs.'
 tags: [maintainer, releasing]
 status: stable
 ---
@@ -16,3 +16,8 @@ Rules that keep main releasable, the version bump once per release cycle, and th
   - **`version` is *ahead* of the newest tag** → this cycle's bump has already happened. Add your `[Unreleased]` CHANGELOG entry and **leave `version` alone**. Otherwise a second change in the same unreleased cycle double-bumps and desyncs the tag/marketplace `source.ref` contract.
   - **`version` is *equal* to the newest tag** → this cycle's bump has **not** happened, and **your change owns it**: bump `version` alongside your `[Unreleased]` entry. Equal is the state a release leaves behind, so it is exactly what you find when you are the *first* change after one — and it is now common, because the release-before-dogfooding rule in [Dogfooding the Plugin](dogfooding-the-plugin.md) makes "release, then plan the next thing in the same session" the normal sequence rather than an edge case. *(Worked example: on 2026-08-07 a session cut `v4.6.0` mid-run and then planned #251 minutes later; `plugin.json` read 4.6.0 against tag `v4.6.0`, so that change correctly bumped to 4.7.0.)* The `[Unreleased]` entries' own "→ version bump at release" phrasing is the tell: the bump belongs to the *release*, which `release-plugin` owns — not to each change.
 - **CHANGELOG entry shape**: each `[Unreleased]` bullet **closes with its version-bump verdict** — "New invocable skill → version bump at release.", "Behavioral skill/agent change → version bump at release.", "No consumer-facing behavior change → no version bump." That clause is the entry's tail by convention, so when a later change **amends an existing entry** (the right move when the entry's subject hasn't shipped yet — a second `[Unreleased]` entry about the same unshipped surface is noise), the new sentence goes **before** the verdict, not after it. Appending past the tail reads as a second verdict and breaks the scan-the-last-clause habit the convention exists for.
+- **The leak-guard check runs in `commands.validate`, not only in CI.** `.github/scripts/leak-guard.sh` is the one copy of its rules:
+  - it blocks local paths and the username everywhere;
+  - it blocks the `@genvidtech` npm scope in any tracked file except `*.md` and the plugin's own `package.json`/lockfile.
+
+  Both `.github/workflows/leak-guard.yml` and `commands.validate` call it. Before this, it ran only in CI. #582's `create-adr-evals/grade.mjs` imported audit-core by its scoped package path, passed about 60 gated commits, and failed only on the chain PR (#616). From outside `plugin/`, where the `#audit-core` imports alias (ADR-0060) does not resolve, import the plugin's own module, for example `plugin/skills/audit-conventions/scripts/lib/frontmatter.mjs`.
