@@ -21,30 +21,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Org-specific leak grep
-        run: |
-          set -euo pipefail
-          # Always blocked, everywhere: local filesystem paths and usernames
-          # are never legitimate in a committed file.
-          always='C:/repos/|C:/Users/|fninoles'
-          # Blocked in code/config only: the `@genvidtech` npm scope is a public
-          # org, so naming a `@genvidtech/...` package in prose docs (CHANGELOG,
-          # *.md) is fine — but it should not be hardcoded in code/config/CI.
-          code_only='@genvidtech|genvidtech/'
-          # Exclude this workflow file itself: it necessarily contains the
-          # patterns above as its own definition, which would self-match.
-          guard=':!.github/workflows/leak-guard.yml'
-          found=0
-          if git ls-files -- "$guard" | xargs grep -nE "$always"; then
-            echo "::error::leak pattern found (local path / username — blocked everywhere)"
-            found=1
-          fi
-          # plugin/package.json and plugin/package-lock.json are exempt:
-          # the plugin's own dependency manifest must name the scoped leaf
-          # package; code reaches it only via the "#audit-core" imports
-          # alias. See ADR-0060.
-          if git ls-files -- "$guard" ':!*.md' ':!plugin/package.json' ':!plugin/package-lock.json' | xargs grep -nE "$code_only"; then
-            echo "::error::internal npm-scope reference found in a non-doc file"
-            found=1
-          fi
-          if [ "$found" -ne 0 ]; then exit 1; fi
-          echo "no leak patterns found"
+        # The rules live in the script, which commands.validate also runs,
+        # so a violation fails the local gate and not only CI.
+        run: bash .github/scripts/leak-guard.sh
