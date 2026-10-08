@@ -203,7 +203,7 @@ the detected default without asking.
 (read from `.gvt-agent.json`, default `wiki`), the scaffolded file opens with
 a minimal OKF frontmatter block — `---`, `type: convention`, `---` — before
 the template body: the wiki bundle requires a non-empty `type` on every page
-(see `docs/wiki-schema.md`, OKF §4.1/§11.2).
+(see the wiki's schema doc, OKF §4.1/§11.2).
 
 Once scaffolded, §0c's TOC-index sub-block indexes the new contract at its
 resolved path in `docs/TOC.md`.

@@ -39,7 +39,7 @@ The dispatch prompt gives you:
 
 ## Page frontmatter
 
-The page format is OKF v0.2, specified in the consuming repo's `docs/wiki-schema.md`, and it opens a `<wikiDir>/` page with a YAML frontmatter block. A page carrying **no** frontmatter at all is a pre-migration page, not a defect — read its prose, report the absent-key defaults (`unverified`, `stable`), and don't flag it as broken. The keys you consume, with the spec section each comes from:
+The page format is OKF v0.2, specified in the consuming repo's wiki schema doc (`<wikiDir>/schema.md`, or the legacy `docs/wiki-schema.md`; the dispatching skill passes the resolved path), and it opens a `<wikiDir>/` page with a YAML frontmatter block. A page carrying **no** frontmatter at all is a pre-migration page, not a defect — read its prose, report the absent-key defaults (`unverified`, `stable`), and don't flag it as broken. The keys you consume, with the spec section each comes from:
 
 - **`type` (§4.1)** — the page's kind; the only always-required key, and non-empty. **Never skip or reject a page for carrying a `type` value you don't recognize** — §11 forbids it.
 - **`tags` (§4.1)** — recommended; the topics the page covers.
