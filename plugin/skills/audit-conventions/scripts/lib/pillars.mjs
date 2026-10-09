@@ -41,7 +41,7 @@ export const PILLARS = [
 ];
 
 // Reads the `metadata.pillar` frontmatter scalar into a list of pillar ids.
-// `lib/frontmatter.mjs` is a deliberately minimal parser that cannot parse
+// audit-core's `extractFrontmatter` (0.2.x) is a deliberately minimal parser that cannot parse
 // YAML scalar sequences (`pillars:\n  - Spec` silently yields `[{}, {}]`), so
 // multi-pillar declarations use a comma-delimited single scalar instead
 // (`pillar: spec, verify`). This is the reader for that encoding.
