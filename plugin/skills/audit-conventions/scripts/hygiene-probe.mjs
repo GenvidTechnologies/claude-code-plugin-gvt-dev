@@ -48,6 +48,8 @@
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { fileExists } from '#audit-core';
+
 import {
   scanRetiredTokens,
   scanBrokenLinks,
@@ -84,15 +86,6 @@ async function loadRepoConfig(repoRoot) {
     return JSON.parse(raw);
   } catch {
     return undefined;
-  }
-}
-
-async function fileExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isFile();
-  } catch {
-    return false;
   }
 }
 

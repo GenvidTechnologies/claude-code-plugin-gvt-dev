@@ -17,6 +17,8 @@ import { promises as fs } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import { fileExists } from '#audit-core';
+
 import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
 import { inferHostFromRemote } from './host-drift.mjs';
 import { listFiles, listMarkdown } from './fs-walk.mjs';
@@ -630,15 +632,6 @@ export async function applyPlan(plan, repoRoot) {
 // -----------------------------------------------------------------------------
 // helpers
 // -----------------------------------------------------------------------------
-
-async function fileExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isFile();
-  } catch {
-    return false;
-  }
-}
 
 async function ensureDir(path) {
   await fs.mkdir(path, { recursive: true });
