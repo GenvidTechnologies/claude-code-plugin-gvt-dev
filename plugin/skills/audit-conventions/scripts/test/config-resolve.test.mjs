@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveKey } from '../lib/config-resolve.mjs';
+import { resolveKey } from '#audit-core';
 
 test('resolveKey: shallow key found', () => {
   const r = resolveKey({ name: 'genvid' }, 'name');

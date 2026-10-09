@@ -13,7 +13,7 @@ import {
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
-import { extractFrontmatter } from '../lib/frontmatter.mjs';
+import { extractFrontmatter } from '#audit-core';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));

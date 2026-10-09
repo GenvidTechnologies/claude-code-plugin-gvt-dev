@@ -4,7 +4,7 @@ import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { fileExists, dirExists, commandExists } from '../lib/probes.mjs';
+import { fileExists, dirExists, commandExists } from '#audit-core';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'probes-test-'));

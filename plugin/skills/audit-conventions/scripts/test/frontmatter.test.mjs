@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { extractFrontmatter, parseYaml } from '../lib/frontmatter.mjs';
+import { extractFrontmatter, parseYaml } from '#audit-core';
 
 test('extractFrontmatter: missing frontmatter returns null', () => {
   assert.equal(extractFrontmatter('# Just a markdown file'), null);

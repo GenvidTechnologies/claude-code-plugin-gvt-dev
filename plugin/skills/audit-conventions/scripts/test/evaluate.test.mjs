@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { evaluateFile, evaluateConfig, evaluateTool } from '../lib/evaluate.mjs';
+import { evaluateFile, evaluateConfig, evaluateTool } from '#audit-core';
 
 const component = { name: 'some-skill' };
 

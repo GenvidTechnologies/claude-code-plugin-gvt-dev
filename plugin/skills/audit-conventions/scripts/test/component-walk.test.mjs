@@ -5,8 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { walkComponents, loadComponent } from '../lib/component-walk.mjs';
-import { extractFrontmatter } from '../lib/frontmatter.mjs';
+import { walkComponents, loadComponent, extractFrontmatter } from '#audit-core';
 import { descriptionLength, descriptionLengthOf } from '../lib/description-length.mjs';
 import { listFiles } from '../lib/fs-walk.mjs';
 
