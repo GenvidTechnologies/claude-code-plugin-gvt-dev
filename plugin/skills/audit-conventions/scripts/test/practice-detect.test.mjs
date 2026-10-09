@@ -239,7 +239,7 @@ test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs and the au
   const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
   const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
   assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs']);
-  const core = src.split(String.fromCharCode(10)).filter((l) => l.startsWith('import ') && l.endsWith(" from '#audit-core';"));
+  const core = src.split('\n').filter((l) => l.startsWith('import ') && l.endsWith(" from '#audit-core';"));
   assert.equal(core.length, 1);
   const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();
   assert.deepEqual(bindings, ['dirExists', 'fileExists']);

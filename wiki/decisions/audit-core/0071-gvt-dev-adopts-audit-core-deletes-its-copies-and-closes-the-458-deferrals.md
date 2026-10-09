@@ -24,8 +24,9 @@ documents (ADR-0051), and one caller outside the package scope that the `#audit-
 Settled context, not reopened here. No `npx`: ADR-0051 says "`npx` is rejected by name" and
 "`metadata.expects.tools` is unchanged", so the tool declarations stay as they are. Imports inside `plugin/` go
 through the `#audit-core` alias (ADR-0060). The `yaml` swap does not happen in `gvt-dev` (ADR-0060, decision A); it
-is `audit-core#4`. The pin to 0.2.1 is behaviour-preserving for `gvt-dev`: the leaf's `src/` is byte-identical to
-0.2.0 apart from `VERSION`, which `gvt-dev` does not read.
+is `audit-core#4`. The pin to 0.2.1 is behaviour-preserving for `gvt-dev`: the leaf's runtime `src/` is byte-identical to
+0.2.0 apart from the `VERSION` export, which `gvt-dev` does not read; the only other `src/` change is a comment in
+`index.d.ts`.
 
 ## Decision
 
