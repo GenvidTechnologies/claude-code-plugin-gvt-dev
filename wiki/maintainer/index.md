@@ -9,5 +9,7 @@ Notes for people working on the plugin itself, not for its consuming repos.
 * [Audit Author-Time Findings](audit-author-time-findings.md) - Which audit findings fire only on the plugin source, the severity and report section of each, how the gate is enforced, and how to write passing pointers.
 * [Testing the Audit](testing-the-audit.md) - Where testable audit logic lives, how red and green map onto skill work, how to prove a scanner ignores a surface, and when to build an eval harness.
 * [Release-Cycle Rules](release-cycle-rules.md) - When a chain must branch at the start, how to read the plugin.json version against the newest tag, how a CHANGELOG entry closes, and where leak-guard runs.
+* [Leaf-Dependency Posture](leaf-dependency-posture.md) - Which shared leaf libraries gvt-dev pins, where the mechanism/policy boundary sits, how code reaches a leaf, and the discipline for bumping an exact pin.
+* [Leaf-Dependency Ledger](leaf-dependency-ledger.md) - Per-version record of each pinned leaf library, what each version changed for gvt-dev, and the checks to run before the next bump.
 * [Skill Frontmatter Rules](skill-frontmatter-rules.md) - The two rules a skill or agent description must meet, the 1536-char listing cap and no unquoted colon-space, and why breaking either fails silently.
 * [Running the Audit on Windows](running-the-audit-on-windows.md) - Why the audit and commands.validate must run under Bash rather than PowerShell on Windows, and how to recognise the false grep-not-found failure.

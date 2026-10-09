@@ -15,6 +15,14 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-10-09
+
+* **Creation**: Added `maintainer/leaf-dependency-posture.md` and
+  `maintainer/leaf-dependency-ledger.md`, the two documents ADR-0051 deferred
+  until `gvt-dev` first pins a leaf, as recorded in ADR-0071 (#458, #578).
+  Both are listed in `maintainer/index.md`. Not an ingest; no `raw/` source
+  drove them.
+
 ## 2026-10-08
 
 * **Update**: Retro of the docs→wiki chain. `maintainer/audit-author-time-findings.md`

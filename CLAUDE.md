@@ -20,6 +20,7 @@ Maintainer rules that are not loaded automatically. Read the page before its tri
 - Before trusting a green audit when adding a skill or agent, or when writing a line-number citation → [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md)
 - Before adding audit logic or a content-scanning check, proving a scanner ignores a surface, or deciding whether a skill needs an eval harness → [`wiki/maintainer/testing-the-audit.md`](wiki/maintainer/testing-the-audit.md)
 - Before starting a multi-issue chain, bumping `plugin.json` `version`, writing a CHANGELOG entry, or importing audit-core from outside `plugin/` → [`wiki/maintainer/release-cycle-rules.md`](wiki/maintainer/release-cycle-rules.md)
+- Before bumping a leaf pin such as `@genvidtech/audit-core`, or deciding whether a capability belongs upstream → [`wiki/maintainer/leaf-dependency-posture.md`](wiki/maintainer/leaf-dependency-posture.md)
 
 ## Repo layout
 
@@ -73,7 +74,7 @@ claude plugin install gvt-dev@gvt-plugins
 claude plugin update gvt-dev@gvt-plugins
 claude plugin details gvt-dev
 
-# Install the audit's own runtime dependency (needed for a git checkout; the Claude Code cache installs it automatically)
+# Install the plugin's runtime dependencies (needed for a git checkout; the Claude Code cache installs it automatically)
 npm ci --prefix plugin --ignore-scripts
 
 # Run audit-conventions tests
@@ -194,7 +195,7 @@ The marketplace catalog ([`claude-code-gvt-marketplace`](https://github.com/Genv
 
 ## Testing
 
-The plugin has no top-level test runner script. `plugin/package.json` exists, but only to declare the audit's one runtime dependency (`@genvidtech/audit-core`, see ADR-0060) — it carries no `scripts` block. `commands.validate`/`commands.test` run `npm ci --prefix plugin` first to install that dependency, then hand off to native `node --test`, which is what the audit-conventions skill's own unit tests use:
+The plugin has no top-level test runner script. `plugin/package.json` exists, but only to declare two runtime dependencies, `@genvidtech/audit-core` (the audit's mechanism, see ADR-0060 and ADR-0071) and `shell-quote` (the git-state-guard hook) — it carries no `scripts` block. `commands.validate`/`commands.test` run `npm ci --prefix plugin` first to install those dependencies, then hand off to native `node --test`, which is what the audit-conventions skill's own unit tests use:
 
 ```bash
 node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
