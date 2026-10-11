@@ -16,7 +16,7 @@
 //
 // Deliberately node:-built-ins-only, no imports from sibling lib/ modules:
 // this is the fallback that must still work when the thing it's checking
-// for (a leaf npm dependency other lib/ modules may eventually depend on)
+// for (a leaf npm dependency other lib/ modules depend on)
 // is exactly what's missing.
 //
 // Check order (see checkPluginDependencies): manifest presence/non-empty

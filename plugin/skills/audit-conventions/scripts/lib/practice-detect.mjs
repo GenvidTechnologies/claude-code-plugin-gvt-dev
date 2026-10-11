@@ -4,13 +4,15 @@
 // audit because it would risk a non-zero audit exit driven by wiki content
 // issues rather than plugin-contract violations. Do not add directory
 // listing or file-content calls, or import anything from maintain-wiki,
-// here — presence only, via stat-style existence checks. The one sibling
-// import is ./expect-prefer.mjs, a pure path-list helper (ADR-0070): it
-// expands an expectation into the locations to stat and reads nothing.
+// here — presence only, via stat-style existence checks. The imports are
+// ./expect-prefer.mjs, a pure path-list helper (ADR-0070) that expands an
+// expectation into the locations to stat and reads nothing, and the two
+// presence probes (fileExists, dirExists) from audit-core. No frontmatter
+// or walking machinery is imported.
 
-import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 
+import { fileExists, dirExists } from '#audit-core';
 import { expectationCandidates } from './expect-prefer.mjs';
 
 const DEFAULT_WIKI_DIR = 'wiki';
@@ -67,22 +69,4 @@ async function firstExisting(repoRoot, candidates) {
     if (await fileExists(join(repoRoot, candidate))) return true;
   }
   return false;
-}
-
-async function fileExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function dirExists(path) {
-  try {
-    const s = await fs.stat(path);
-    return s.isDirectory();
-  } catch {
-    return false;
-  }
 }

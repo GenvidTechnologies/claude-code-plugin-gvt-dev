@@ -8,13 +8,13 @@
 // *rendered* description so the audit can warn the author before truncation bites.
 //
 // Parsing is delegated entirely to the shared frontmatter parser
-// (`frontmatter.mjs`), which understands YAML block scalars (`>`, `>-`, `>+`,
+// (audit-core's `extractFrontmatter`), which understands YAML block scalars (`>`, `>-`, `>+`,
 // `|`, `|-`, `|+`) with chomping. `renderedDescription` is a thin adapter over
 // it: it trims the parsed value, since the skill listing renders the
 // description as a single line and a `clip`/`keep`-chomped block scalar can
 // carry a trailing newline that a raw length count would otherwise include.
 
-import { extractFrontmatter } from './frontmatter.mjs';
+import { extractFrontmatter } from '#audit-core';
 
 export const MAX_DESCRIPTION_CHARS = 1536;
 
@@ -34,7 +34,7 @@ export function descriptionLength(content) {
 // an already-parsed frontmatter object rather than re-extracting it from raw
 // content. renderedDescription is defined in terms of this function, so the
 // two stay provably equivalent by construction rather than by duplicated
-// logic. Lets a caller that already parsed frontmatter (component-walk.mjs)
+// logic. Lets a caller that already parsed frontmatter (audit-core's `walkComponents`)
 // avoid a second parse of the same file.
 export function renderedDescriptionOf(fm) {
   const description = fm?.description;

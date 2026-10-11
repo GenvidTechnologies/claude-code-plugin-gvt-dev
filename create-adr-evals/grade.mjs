@@ -16,7 +16,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { snapshotTree } from './fixtures.mjs';
-import { extractFrontmatter } from '../plugin/skills/audit-conventions/scripts/lib/frontmatter.mjs';
+import { extractFrontmatter } from '../plugin/skills/audit-conventions/scripts/lib/audit-core-reexport.mjs';
 import { lintWiki } from '../plugin/skills/maintain-wiki/scripts/lib/checks.mjs';
 import { describeAdrDir } from '../plugin/skills/create-adr/scripts/renumber-adrs.mjs';
 

@@ -13,7 +13,7 @@ import {
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
-import { extractFrontmatter } from '../lib/frontmatter.mjs';
+import { extractFrontmatter } from '#audit-core';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));
@@ -235,8 +235,12 @@ test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki dec
   assert.deepEqual({ path: entry.path, prefer: entry.prefer }, { ...SCHEMA_EXPECTATION });
 });
 
-test('practice-detect.mjs imports only node:fs, node:path and ./expect-prefer.mjs (no maintain-wiki import)', () => {
+test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs and the audit-core presence probes (no maintain-wiki import)', () => {
   const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
   const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
-  assert.deepEqual(specs, ['node:fs', 'node:path', './expect-prefer.mjs']);
+  assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs']);
+  const core = src.split('\n').filter((l) => l.startsWith('import ') && l.endsWith(" from '#audit-core';"));
+  assert.equal(core.length, 1);
+  const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();
+  assert.deepEqual(bindings, ['dirExists', 'fileExists']);
 });

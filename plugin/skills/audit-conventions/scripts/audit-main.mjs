@@ -18,10 +18,8 @@ import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { walkComponents } from './lib/component-walk.mjs';
-import { evaluateFile, evaluateConfig, evaluateTool } from './lib/evaluate.mjs';
+import { walkComponents, evaluateFile, evaluateConfig, evaluateTool, resolveKey, fileExists, dirExists } from '#audit-core';
 import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
-import { resolveKey } from './lib/config-resolve.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
 import {
   detectState,
@@ -36,7 +34,6 @@ import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, fo
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
-import { fileExists, dirExists } from './lib/probes.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';

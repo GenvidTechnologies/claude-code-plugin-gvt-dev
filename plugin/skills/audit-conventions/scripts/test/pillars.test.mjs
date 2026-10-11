@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-import { extractFrontmatter } from '../lib/frontmatter.mjs';
+import { extractFrontmatter } from '#audit-core';
 import { parsePillars, computePluginCoverage, PILLARS } from '../lib/pillars.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 
+import { fileExists } from '#audit-core';
+
 const NEW_CONFIG = '.gvt-agent.json';
 const LEGACY_CONFIG = 'claude-config.json';
 const STALE_CONFIG = '.genvid-agent.json';
@@ -30,15 +32,6 @@ async function hasLegacySubmodule(repoRoot) {
   const content = await readIfExists(join(repoRoot, GITMODULES));
   if (!content) return false;
   return content.includes(LEGACY_SUBMODULE_NAME);
-}
-
-async function fileExists(path) {
-  try {
-    await fs.access(path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function readIfExists(path) {

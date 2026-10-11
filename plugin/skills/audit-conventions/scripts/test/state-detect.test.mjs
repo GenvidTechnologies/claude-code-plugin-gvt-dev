@@ -44,6 +44,17 @@ test('detectState: .gvt-agent.json present, no submodule -> migrated', async () 
   }
 });
 
+test('detectState: .gvt-agent.json is a directory, not a file -> greenfield', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await fs.mkdir(join(d, '.gvt-agent.json'));
+  });
+  try {
+    assert.equal(await detectState(dir), STATE_GREENFIELD);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('detectState: legacy claude-config.json present -> legacy', async () => {
   const dir = await withTempRepo(async (d) => {
     await fs.writeFile(join(d, 'claude-config.json'), '{}');

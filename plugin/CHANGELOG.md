@@ -7,6 +7,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`audit-conventions` consumes the audit mechanism from `@genvidtech/audit-core` through the `#audit-core` alias, and the five local mechanism copies under `scripts/lib/` are deleted (#458, #578, #550).**
+  - **Rewire:** the copies were byte-identical to the leaf's `src/`, so the audit's output is unchanged. The pin moves from 0.2.0 to exactly 0.2.1 (#578), which differs from 0.2.0 only in a `.d.ts` comment, the `VERSION` export and tests.
+  - **New seam:** `scripts/lib/audit-core-reexport.mjs` re-exports `extractFrontmatter` by an explicit named list, for callers outside the plugin package where the `#audit-core` alias does not resolve (`create-adr-evals/grade.mjs`).
+  - **Policy modules (#550):** `hygiene-probe`, `migrate`, `practice-detect` and `state-detect` take `fileExists`/`dirExists` from the leaf; `dependency-preflight` keeps its own, because it must use node built-ins only.
+  - **Behaviour change:** `state-detect` no longer treats a directory named `.gvt-agent.json` as config, so such a repo now reads as `greenfield` rather than `migrated`.
+  - **Maintainer docs:** two new pages, `wiki/maintainer/leaf-dependency-posture.md` and `wiki/maintainer/leaf-dependency-ledger.md`, plus ADR-0071, which also records that no consumer-side drift check is built under the exact pin.
+
+  Behavioral skill/agent change → version bump at release.
+
 - **`release-plugin` checks the release commit's subject before pushing, and `planner` stops writing commit trailers and assigning agents to mechanical tasks (retro of the docs→wiki chain).**
   - **`release-plugin` Phase 3:** before the default-branch push, `git log -1 --format=%s` must print exactly `release: vX.Y.Z`. The v4.30.0 release commit went out as `release: v4.29.0` from a stale message file, and on an unprotected branch the only fix was an additive commit.
   - **`planner`:** a task's `**Commit:**` is a subject and body only, because attribution trailers come from the orchestrator's harness. A task that only applies prepared fragments, moves a file or runs a deterministic script is orchestrator-executed, not assigned to an implementer agent.
