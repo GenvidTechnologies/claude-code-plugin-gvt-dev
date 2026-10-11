@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.31.0] - 2026-10-11
+
 - **`audit-conventions` consumes the audit mechanism from `@genvidtech/audit-core` through the `#audit-core` alias, and the five local mechanism copies under `scripts/lib/` are deleted (#458, #578, #550).**
   - **Rewire:** the copies were byte-identical to the leaf's `src/`, so the audit's output is unchanged. The pin moves from 0.2.0 to exactly 0.2.1 (#578), which differs from 0.2.0 only in a `.d.ts` comment, the `VERSION` export and tests.
   - **New seam:** `scripts/lib/audit-core-reexport.mjs` re-exports `extractFrontmatter` by an explicit named list, for callers outside the plugin package where the `#audit-core` alias does not resolve (`create-adr-evals/grade.mjs`).
