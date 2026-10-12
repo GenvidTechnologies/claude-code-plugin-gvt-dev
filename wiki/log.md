@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-10-12
+
+* **Creation**: Added `decisions/development-practice/0072-triage-verifies-issue-claims-against-the-target-artifact.md`,
+  recording the claim-vs-artifact verification step in `issue-triage-analyst`
+  (#193, with #430 folded in), and listed it in that theme's `index.md`. Not an
+  ingest; no `raw/` source drove it.
+
 ## 2026-10-09
 
 * **Creation**: Added `maintainer/leaf-dependency-posture.md` and
