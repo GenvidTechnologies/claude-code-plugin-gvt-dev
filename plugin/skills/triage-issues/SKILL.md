@@ -328,6 +328,23 @@ approved changes using the **Mutation recipes** in the resolved contract:
 - when the analyst flagged a mechanism prescription, offer to rewrite the issue
   body to outcome + acceptance criteria, dropping the prescribed mechanism — per
   `development-principles.md` principle #8 (stale-mechanism corollary);
+- when the analyst's **Verification findings** report anything other than
+  `agreement` for this issue, present the finding with the target's actual text
+  and offer a body rewrite that cites what the target says: `partly-shipped` →
+  rescope to the residual; `proposal-stale` → drop or reframe the stale passage,
+  and never adopt wording a `stricter-shipped` flag marks as weaker than what
+  shipped; `premise-false` → correct the premise; `target-absent` → record that
+  the target is absent or owned elsewhere; `artifact-wrong` → keep the proposal
+  and add that the artifact is the side in error, naming what settled it. Fold
+  this into the mechanism rewrite when both apply — one rewrite, one approval.
+  The rewrite names the claims it checked and the commit it read, rather than a
+  general "verified" stamp. Under `--non-interactive` without `--force`, post the
+  note as a comment instead (§4). Post it through the
+  contract's Comment recipe. A contract scaffolded before 4.32.0 still
+  passes the text inline; never send a backticked note through that form — write
+  it to `{tmpfile}` and use the tracker's body-file option instead. The analyst
+  stays read-only: this skill makes the write. Per `development-principles.md`
+  principle #13;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed. This keeps the skill idempotent: an aborted run leaves the issue
   un-triaged, so re-running picks it up again.
@@ -350,7 +367,8 @@ regardless; only the create is best-effort (see
 |---|---|---|
 | Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred** unless `--force`, which takes **remove** |
-| Field / label / priority / body / language | per-issue approval | auto-apply |
+| Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
+| Body rewrite from a verification finding (§3) | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
 | Close-as-duplicate / create split issues | approve per item | **deferred** unless `--force` |
@@ -363,7 +381,8 @@ explicit `--force`. These actions are hard to reverse on most trackers.
 
 Report: issues triaged; fields / labels / priorities changed; duplicates linked or
 closed; issues split or created; dependencies linked; and anything left
-`needs-info` or deferred for a follow-up run.
+`needs-info` or deferred for a follow-up run. Report verification findings by
+outcome, and which were rewritten into the body versus posted as a comment.
 
 Also report, when §0 produced them: how the contract was resolved (scaffolded /
 adopted, and from which near-miss path / already canonical); any deferred
