@@ -328,6 +328,17 @@ split). Present them together, then apply the approved changes using the **Mutat
 - when the analyst flagged a mechanism prescription, offer to rewrite the issue
   body to outcome + acceptance criteria, dropping the prescribed mechanism — per
   `development-principles.md` principle #8 (stale-mechanism corollary);
+- when a body rewrite in this walk records acceptance criteria — the outcome +
+  acceptance-criteria rewrite above, or a verification rewrite below that
+  restates a checkable criterion — write them as `- [ ]` rows under a
+  `## Acceptance Criteria` heading, never as a bold or inline label inside
+  another section. If the body already states acceptance — under that heading,
+  or as other acceptance text, which `plan-task` Phase 4 recognises by an
+  opening label carrying the word acceptance in its first two words (its
+  *Writing the section into an issue body* block) — edit that statement rather
+  than adding a second one. `plan-task` matches the canonical heading and
+  supersedes it with a mapping; a criterion left as a label is one it can only
+  mark superseded or fork on;
 - when the analyst's **Verification findings** report anything other than
   `agreement` for this issue, present the finding with the target's actual text
   and offer a body rewrite that cites what the target says: `partly-shipped` →
