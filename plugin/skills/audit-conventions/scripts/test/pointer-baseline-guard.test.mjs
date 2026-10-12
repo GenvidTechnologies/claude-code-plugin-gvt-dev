@@ -18,9 +18,7 @@
 // test forbids those strings from entering the baseline. Unresolvable by
 // construction. `.json` is not a citing extension, so the strings are inert in
 // `fixtures/swept-pointers.json`, which also records where each was cited from
-// and what it was corrected to. The same hazard is why the positive-control
-// pointer below is assembled around its colon at runtime rather than written
-// out — see the sibling generator test, which does the same for its fixtures.
+// and what it was corrected to.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
