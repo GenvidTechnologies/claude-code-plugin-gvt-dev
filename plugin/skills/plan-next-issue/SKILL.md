@@ -157,7 +157,8 @@ Build a **ranked shortlist** of candidate issues to address:
   against the target the analyst read: flag or de-prioritize the candidate and
   carry the named residual into its rationale; call out `stricter-shipped`.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
-  cover.
+  cover — that read is this skill's own ranking-time check below, not the
+  analyst's bounded step.
 - **Otherwise**, do a **lightweight inline metadata fetch** (number, title,
   priority, labels — **not** full bodies) via `bugTracker.actionQuery` and rank
   from that.

@@ -69,8 +69,8 @@ cited for the rationale, and the motivating case is not reproduced in the
 skill or agent files. Precedent: `plan-task/SKILL.md` (#167) and ADR-0021.
 
 **Line-invariant placement.** Nothing is inserted above the baselined analyst
-pointer line (the one beginning with the mechanism-prescription step 5
-text), and the `triage-issues` span anchored on "dropping the prescribed
+pointer line (step 5's **Per-issue enrichment** bullet, which carries the
+mechanism-prescription flag), and the `triage-issues` span anchored on "dropping the prescribed
 mechanism" stays byte-identical with no net shift above it. ADR-0039's
 citations and `.pointer-baseline.json` are untouched. The new §3 bullet lands
 after that span, and the optional §3-intro edit is net-zero lines.
@@ -92,8 +92,9 @@ existing mechanism step shifts a baselined pointer line cited by ADR-0039;
 demonstrated to trip two `pointer-baseline-drifted` errors and break the audit.
 
 **Rejected: verify in §3 on the main thread (Option C).** Contradicts §1's
-split — the main thread does not fetch bodies or read targets itself, the
-analyst does — and spends main-context on exploration.
+split — the main thread does not fetch issue bodies itself, the analyst
+does — and verifying claims there would mean reading those bodies and their
+targets on the main thread, spending main-context on exploration.
 
 **Rejected: a standalone "verified @ sha" stamp in the issue body.** Cheap
 for later readers, but a stamp asserts a commit that has moved on, and it
@@ -120,8 +121,15 @@ Landing slots for dependents, each attaching without restructuring:
 - #260: ordering and scope rules attach to step 6 and its verification note.
 - #286: a citation sub-check extends step 6.
 - #426: a pre-rewrite gate on the §3 bullet.
-- #257: consumes `read at <sha>` in `plan-next-issue` §2.
-- #203, #209 and #372: new comparand tags under `### Verification findings`.
+- #257: its "premise freshness" discriminator waits on #193 for a contracted
+  signal; the outcome and `read at <sha>` each finding records are that
+  signal's in-session form (the cross-session marker stays #257's to design).
+- #203 (body vs. its own comments) and #209 (cross-references vs. the other
+  issue's live state): new comparands, each a new tag under
+  `### Verification findings` beside step 6's `[artifact]`.
+- #372 (the analyst verifies what *it* emits, corrections included): a separate
+  obligation on the analyst's own output, not a comparand; it touches the same
+  file but not this section's shape.
 
 Watch for: the analyst's inline obligation drifting from principle #13's
 wording, since the two are deliberately duplicated.

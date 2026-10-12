@@ -312,11 +312,11 @@ destructive items unless `--force` was passed.
 
 ## 3. Phase 2 — per-issue walk (interactive)
 
-For each action-set issue, gather its work from two places in the analyst's
-report: its **Per-issue enrichment** row, and any Phase 1 relational findings
-whose membership includes this issue's number (duplicate-cluster membership, an
-accepted dependency, an approved split). Present both together, then apply the
-approved changes using the **Mutation recipes** in the resolved contract:
+For each action-set issue, gather its work from three places in the analyst's
+report: its **Per-issue enrichment** row, its entry under the verification
+findings, and any Phase 1 relational findings whose membership includes this
+issue's number (duplicate-cluster membership, an accepted dependency, an approved
+split). Present them together, then apply the approved changes using the **Mutation recipes** in the resolved contract:
 
 - type / priority / field updates, label add/remove, body language fixes;
 - `needsInfoLabel` + a comment when a required field is missing (or let the
@@ -342,7 +342,8 @@ approved changes using the **Mutation recipes** in the resolved contract:
   note as a comment instead (§4). Post it through the
   contract's Comment recipe. A contract scaffolded before 4.32.0 still
   passes the text inline; never send a backticked note through that form — write
-  it to `{tmpfile}` and use the tracker's body-file option instead. The analyst
+  it to `{tmpfile}` and post it with `gh issue comment {id} --body-file {tmpfile}`
+  (or the tracker's equivalent body-file form) instead. The analyst
   stays read-only: this skill makes the write. Per `development-principles.md`
   principle #13;
 - **last**, add `triagedLabel` — only after the issue's other approved changes

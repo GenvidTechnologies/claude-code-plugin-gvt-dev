@@ -1,6 +1,6 @@
 ---
 name: issue-triage-analyst
-description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, and per-issue field/label/priority/language proposals. Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
+description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, per-issue field/label/priority/language proposals, and verification findings (issue claims checked against the artifacts they name). Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
@@ -93,6 +93,7 @@ Run ONLY read commands (`list`, `view`, `get`, equivalents). Never run a command
 - #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none · mechanism: ok · verify: n/a
 
 ### Verification findings
+Tag each entry with the comparand it checked. Step 6's check is `[artifact]` (the issue's claims vs. the artifact it names).
 - [artifact] #12 — partly-shipped. Flag: stricter-shipped (the target is tighter than the proposal). `plugin/skills/foo/SKILL.md` says "retries once on timeout"; the retry path the issue asks for is still missing. Evidence: authoritative (the file that is loaded at runtime), not a proxy. read at 098121e
 
 ### Notes
