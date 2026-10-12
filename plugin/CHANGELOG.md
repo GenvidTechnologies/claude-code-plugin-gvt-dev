@@ -7,6 +7,15 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`issue-triage-analyst` verifies an issue's claims against the artifact the issue names, and `triage-issues` offers a cited rewrite of the issue body from what it finds (#193, #430).** An issue can go stale in either direction, and the analyst now checks both (principle #13); the `artifact-wrong` case is gvt-construct3#59.
+  - **`issue-triage-analyst` step 6:** bounded to issues that name a concrete target and claim something about its current content, checked per claim. Each claim gets one of six outcomes: `agreement`, `partly-shipped`, `proposal-stale`, `premise-false`, `target-absent` or `artifact-wrong`. It also flags `stricter-shipped`, where adopting the issue's proposal verbatim would be a regression. It carries #430's evidence-authority caveat. Findings appear as a `verify:` field per issue and a `### Verification findings` report section, each citing `read at <sha>`.
+  - **`/gvt-dev:triage-issues`:** §3 offers a cited body rewrite per outcome. §4 changes the `--non-interactive` behavior: a verification-finding rewrite is posted as a comment instead, and the body is rewritten only under `--force` (new row in the safety table). §5 reports counts by outcome.
+  - **`/gvt-dev:plan-next-issue` §2:** reuses the findings when triage just ran, rather than re-verifying.
+  - **Contract templates:** in `issue-triage.template.md` and `issue-triage.flat.template.md`, the Comment and Create split issue recipes now use `--body-file {tmpfile}`, because inline `--body` corrupted backtick-heavy text. The `{text}` and `{body}` placeholders are gone. `--title` stays inline, since `gh` has no title-file flag.
+  - **Migration:** Optional migration — no action required: contracts scaffolded from earlier `issue-triage.template.md` or `issue-triage.flat.template.md` versions can replace their Comment and Create split issue lines with the new `--body-file` forms. Not breaking.
+
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.31.0] - 2026-10-11
 
 - **`audit-conventions` consumes the audit mechanism from `@genvidtech/audit-core` through the `#audit-core` alias, and the five local mechanism copies under `scripts/lib/` are deleted (#458, #578, #550).**
