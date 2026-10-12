@@ -381,34 +381,6 @@
     },
     {
       "file": "wiki/decisions/plan-execution/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "approval-and-audit.md:11",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "6e026f43a51b"
-    },
-    {
-      "file": "wiki/decisions/plan-execution/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "issue-triage-analyst.md:54",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "c53984141809"
-    },
-    {
-      "file": "wiki/decisions/plan-execution/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "plugin/agents/issue-triage-analyst.md:54",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "c53984141809"
-    },
-    {
-      "file": "wiki/decisions/plan-execution/0039-mechanism-three-question-gate-and-approval-boundary.md",
-      "pointer": "plugin/skills/plan-task/approval-and-audit.md:11",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "6e026f43a51b"
-    },
-    {
-      "file": "wiki/decisions/plan-execution/0039-mechanism-three-question-gate-and-approval-boundary.md",
       "pointer": "SKILL.md:68",
       "occurrence": 0,
       "kind": "pointer-ambiguous",

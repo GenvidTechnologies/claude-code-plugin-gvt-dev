@@ -51,7 +51,7 @@ corollary's existing footprint —
 `grep -rn "prescribed mechanism\|mechanism check\|mechanism superseded\|stale-mechanism" plugin/ docs/ --include=*.md | grep -v CHANGELOG.md`
 — returns **7 sites**. Two of them cite the corollary for a materially
 different purpose than the one this change addresses:
-`plugin/agents/issue-triage-analyst.md:54` (the `issue-triage-analyst`'s
+`plugin/agents/issue-triage-analyst.md` (the `issue-triage-analyst`'s
 per-issue enrichment step) and `plugin/skills/triage-issues/SKILL.md:328-330`
 ("dropping the prescribed mechanism") — its `triage-issues` mutation-recipe
 step — both cite it to **detect an issue body that prescribes a mechanism and
@@ -122,7 +122,7 @@ above the feature-ticket paragraph where both bug and feature tickets reach
 it.
 
 **The fourth approval-boundary site, named in no issue.**
-`plugin/skills/plan-task/approval-and-audit.md:11` stated plan approval in
+`plugin/skills/plan-task/approval-and-audit.md` step 5 stated plan approval in
 wording — *"Wait for explicit approval before creating the branch or making
 any changes"* — that reads as authorizing execution, not just Phase 4.
 `049a839` found it by walking every checkpoint statement in the skill after
@@ -152,7 +152,7 @@ Alternatives considered and rejected:
 1. **Promoting the three-question technique (or a pointer to it) into
    `development-principles.md`'s stale-mechanism corollary (principle #8).**
    Rejected per decision (1): the corollary's other two citation sites —
-   `issue-triage-analyst.md:54` and `triage-issues/SKILL.md:328-330`
+   `issue-triage-analyst.md` and `triage-issues/SKILL.md:328-330`
    ("dropping the prescribed mechanism") — use it for issue-authoring
    detection, not plan-time re-verification technique, and widening it would
    hand two unrelated components prose they'd never read for its stated
@@ -203,7 +203,7 @@ sites named above (`SKILL.md`'s "Wait for explicit approval before saving"
 Phase 3 checkpoint, `SKILL.md`'s "The compressed checkpoint above
 authorizes Phase 4 only" simple-tasks shortcut note, `SKILL.md`'s "Present
 a combined design + plan in" full-proposal shortcut checkpoint, and
-`approval-and-audit.md:11`) rather than assuming one canonical statement
+`approval-and-audit.md` step 5) rather than assuming one canonical statement
 suffices — the whole point of this change was that a
 reader on any one path meets the boundary before reaching the canonical
 statement under `## Execution (Post-Approval)`.
