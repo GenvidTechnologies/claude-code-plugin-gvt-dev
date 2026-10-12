@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.33.0] - 2026-10-12
+
 - **Acceptance criteria are routed on content, written as rows under one heading, and counted over that section only (#336, #377, #502, #508).** Recorded in ADR-0073, which amends ADR-0032.
   - **`plan-task` Phase 4 step 4:** recognizes acceptance text and routes it on content. Near misses are replaced with a mapping, and non-criterion lines in the span are carried rather than dropped. The read-back also checks the blank line before the heading. Outcome 3 is asked where it is found, with a carve-out added at all four approval-boundary sites.
   - **`validator` and `code-reviewer`:** count the acceptance denominator over the `## Acceptance Criteria` section only, not the whole body.
