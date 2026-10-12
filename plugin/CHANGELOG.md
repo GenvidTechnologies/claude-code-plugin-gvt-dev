@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.32.0] - 2026-10-12
+
 - **`issue-triage-analyst` verifies an issue's claims against the artifact the issue names, and `triage-issues` offers a cited rewrite of the issue body from what it finds (#193, #430).** An issue can go stale in either direction, and the analyst now checks both (principle #13); the `artifact-wrong` case is gvt-construct3#59.
   - **`issue-triage-analyst` step 6:** bounded to issues that name a concrete target and claim something about its current content, checked per claim. Each claim gets one of six outcomes: `agreement`, `partly-shipped`, `proposal-stale`, `premise-false`, `target-absent` or `artifact-wrong`. It also flags `stricter-shipped`, where adopting the issue's proposal verbatim would be a regression. It carries #430's evidence-authority caveat. Findings appear as a `verify:` field per issue and a `### Verification findings` report section, each citing `read at <sha>`.
   - **`/gvt-dev:triage-issues`:** §3 offers a cited body rewrite per outcome. §4 changes the `--non-interactive` behavior: a verification-finding rewrite is posted as a comment instead, and the body is rewritten only under `--force` (new row in the safety table). §5 reports verification findings by outcome, and which were rewritten versus posted as a comment.
