@@ -86,8 +86,8 @@ GitHub task-list under a `Depends on` heading.
 ## Mutation recipes
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
-`{type}`, `{p}`, `{a}`, `{text}`, `{canonical}`, `{other}`, `{title}`,
-`{body}`, `{tmpfile}`, `{triagedLabel}`, and `{needsInfoLabel}` are substituted
+`{type}`, `{p}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
+`{tmpfile}`, `{triagedLabel}`, and `{needsInfoLabel}` are substituted
 by the skill.
 
 - Set type: `gh issue edit {id} --remove-label "type:bug,type:crash,type:regression" --add-label "type:{type}"`
@@ -95,10 +95,10 @@ by the skill.
 - Add area: `gh issue edit {id} --add-label "area:{a}"`
 - Remove area: `gh issue edit {id} --remove-label "area:{a}"`
 - Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
-- Comment: `gh issue comment {id} --body "{text}"`
+- Comment: `gh issue comment {id} --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
 - Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
 - Close duplicate (only with approval): `gh issue close {id} --reason "not planned" --comment "Duplicate of #{canonical}"`
-- Create split issue: `gh issue create --title "{title}" --body "{body}" --label "type:{type},area:{a}"` — for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
+- Create split issue: `gh issue create --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
 - Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
