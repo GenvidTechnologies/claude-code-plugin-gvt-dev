@@ -114,7 +114,7 @@ Detect whether the backlog needs grooming before planning:
   backlog is not by itself a reason to skip.** Dedup/linking value does shrink
   as the untriaged count drops, but triage's other two payloads — per-issue
   **enrichment** (label completeness, body accuracy, cross-reference correctness)
-  and **staleness detection** — are per-issue and don't shrink with count;
+  and **staleness detection** (the analyst's verification step) — are per-issue and don't shrink with count;
   staleness in fact *grows* with issue age. Neither is reachable from §2's fetch,
   which is metadata-only by design. So the untriaged count is one input to the
   skip decision, not the criterion.
@@ -151,8 +151,13 @@ In `--non-interactive`, triage automatically when untriaged issues exist; pass
 
 Build a **ranked shortlist** of candidate issues to address:
 
-- **If triage just ran**, reuse the `issue-triage-analyst` report's priorities and
-  enrichment — no second fetch.
+- **If triage just ran**, reuse the `issue-triage-analyst` report's priorities,
+  enrichment, and **Verification findings** — no second fetch. A `premise-false`
+  or `partly-shipped` finding *is* the already-shipped check below, already done
+  against the target the analyst read: flag or de-prioritize the candidate and
+  carry the named residual into its rationale; call out `stricter-shipped`.
+  Re-read a target only for a candidate the report marked `verify: n/a` or didn't
+  cover.
 - **Otherwise**, do a **lightweight inline metadata fetch** (number, title,
   priority, labels — **not** full bodies) via `bugTracker.actionQuery` and rank
   from that.
@@ -180,7 +185,7 @@ of those are content questions; only reading the target answers them. This is
 also the ranking-time instance of `development-principles.md` principle **#13** —
 a proposal is a claim about the artifact it modifies — so what you learn here is
 worth carrying into the handoff, since `plan-task` owes the same check at
-adoption time.
+adoption time. When triage just ran, its Verification findings already did this read.
 This is a soft signal, not a hard exclude (many issues name no concrete target,
 and a partial overlap usually means *rescope*, not *skip*); surface it in the
 candidate's one-line rationale — naming which part already shipped and which
