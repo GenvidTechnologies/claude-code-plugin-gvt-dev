@@ -86,8 +86,8 @@ full-proposal shortcut, and step 5 of `approval-and-audit.md`) so none of them
 reads as authorizing the write of text nobody has seen.
 
 **(6) The grader denominator is section-scoped.** `validator.md` and
-`code-reviewer.md` count rows with an `awk` program that applies the same
-boundary as the splice, fence-aware and not stopping at `---`, piped into the
+`code-reviewer.md` count rows with an `awk` program that applies the splice's
+boundary for the canonical heading and backtick fences at line start, not stopping at `---`, piped into the
 existing `grep -c`. The rule that emitted rows equal the denominator stays as
 the backstop.
 

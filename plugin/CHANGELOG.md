@@ -15,7 +15,7 @@ and follows [semantic versioning](https://semver.org/).
 
   Behavioral skill/agent change → version bump at release.
 
-- **Maintainer-internal: the pointer-baseline guard test proves the baseline against a live scan instead of a size floor (#615).** Recorded in ADR-0074. `.pointer-baseline.json` was pruned from 102 to 98 entries (4 pruned). #405 is no longer blocked.
+- **Maintainer-internal: the pointer-baseline guard test proves the baseline against a live scan instead of a size floor (#615).** Recorded in ADR-0074. `.pointer-baseline.json` was pruned from 102 to 98 entries (4 pruned). #405 and #519 are no longer blocked.
 
   No consumer-facing behavior change → no version bump.
 

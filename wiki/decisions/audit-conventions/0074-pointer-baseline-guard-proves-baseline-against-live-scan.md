@@ -60,7 +60,7 @@ correct prune, including 102 to 98, and #405's future sweep, with no edit to the
 - A legitimate prune, and #405's sweep of the `wiki/decisions/` citations, no longer touch the test. #405 and
   #519 are no longer blocked by the floor.
 - The guard now runs a full scan of the repo, so it is slower than a file read; this is accepted.
-- **Evidence.** Mutations were applied one at a time on the index tree `f1de530` (this change's guard staged on
+- **Evidence** (rows R29–R33 of #336's checklist; [evidence comment](https://github.com/GenvidTechnologies/claude-code-plugin-gvt-dev/issues/336#issuecomment-6130798901)). Mutations were applied one at a time on the index tree `f1de530` (this change's guard staged on
   31f2627) against the 3-test guard file, each reverted byte-for-byte. The failing test in every case was "no
   swept pointer has been baselined away, over a baseline proven to match a live scan".
 
