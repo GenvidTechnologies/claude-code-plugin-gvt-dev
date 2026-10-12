@@ -175,3 +175,5 @@ shared block to update (`plugin/skills/plan-task/SKILL.md`'s *"Writing the
 section into an issue body"* subsection) plus the mirrored
 `plugin/agents/planner.md` Key Principle — two sites, not the four to six
 the pre-hoist duplication would have left behind.
+
+**Amended by [ADR-0073](0073-acceptance-text-recognition-accounted-spans-and-section-scoped-count.md)** (#336, #377, #502, #508): that record replaces this one's near-miss routing, its heading-to-next-`## ` span, outcome 3's "at the checkpoint" fork, and the statement above that `validator.md` and `code-reviewer.md` needed no edits.

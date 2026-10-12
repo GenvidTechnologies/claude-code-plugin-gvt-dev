@@ -7,6 +7,18 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Acceptance criteria are routed on content, written as rows under one heading, and counted over that section only (#336, #377, #502, #508).** Recorded in ADR-0073, which amends ADR-0032.
+  - **`plan-task` Phase 4 step 4:** recognizes acceptance text and routes it on content. Near misses are replaced with a mapping, and non-criterion lines in the span are carried rather than dropped. The read-back also checks the blank line before the heading. Outcome 3 is asked where it is found, with a carve-out added at all four approval-boundary sites.
+  - **`validator` and `code-reviewer`:** count the acceptance denominator over the `## Acceptance Criteria` section only, not the whole body.
+  - **`triage-issues` §3 and `issue-triage-analyst`:** write acceptance criteria as `- [ ]` rows under `## Acceptance Criteria`.
+  - **Migration:** Optional migration — no action required: contracts scaffolded from an earlier issue-triage template may add the "(or acceptance criteria, as `- [ ]` rows under an `## Acceptance Criteria` heading)" clause. Not breaking.
+
+  Behavioral skill/agent change → version bump at release.
+
+- **Maintainer-internal: the pointer-baseline guard test proves the baseline against a live scan instead of a size floor (#615).** Recorded in ADR-0074. `.pointer-baseline.json` was pruned from 102 to 98 entries (4 pruned). #405 and #519 are no longer blocked.
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.32.0] - 2026-10-12
 
 - **`issue-triage-analyst` verifies an issue's claims against the artifact the issue names, and `triage-issues` offers a cited rewrite of the issue body from what it finds (#193, #430).** An issue can go stale in either direction, and the analyst now checks both (principle #13); the `artifact-wrong` case is gvt-construct3#59.

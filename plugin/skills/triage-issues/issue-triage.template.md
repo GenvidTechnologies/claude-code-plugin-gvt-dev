@@ -54,7 +54,7 @@ expected vs. actual behavior, the build/version, and at least one `area:*` label
 Missing any of these → add `needs-info` and comment exactly what is missing.
 
 A **non-defect** issue (enhancement, docs, chore) has no repro or build/version;
-it instead needs a clear **proposed change** (or acceptance criteria) and at least
+it instead needs a clear **proposed change** (or acceptance criteria, as `- [ ]` rows under an `## Acceptance Criteria` heading) and at least
 one `area:*` label. Never `needs-info` an enhancement for lacking a repro — flag
 it only when the proposed change itself is too vague to act on.
 

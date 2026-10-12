@@ -18,9 +18,7 @@
 // test forbids those strings from entering the baseline. Unresolvable by
 // construction. `.json` is not a citing extension, so the strings are inert in
 // `fixtures/swept-pointers.json`, which also records where each was cited from
-// and what it was corrected to. The same hazard is why the positive-control
-// pointer below is assembled around its colon at runtime rather than written
-// out — see the sibling generator test, which does the same for its fixtures.
+// and what it was corrected to.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +26,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
-import { BASELINE_FILE } from '../lib/pointer-anchors.mjs';
+import { BASELINE_FILE, applyBaseline, scanPointerAnchors } from '../lib/pointer-anchors.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test -> scripts -> audit-conventions -> skills -> plugin -> repo root
@@ -50,22 +48,16 @@ async function forbiddenPointers() {
 
 const distinct = (entries) => new Set(entries.map((e) => e.pointer));
 
-// A known-accepted entry, assembled around its colon (see the header note).
-// It is an ambiguous finding — no single target, hence no cited range, hence
-// `digest: null`. That is supported, not malformed, so the control asserts the
-// null rather than tolerating it.
-const CONTROL = {
-  file: 'wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md',
-  pointer: 'SKILL.md' + ':' + '159',
-  occurrence: 0,
-  kind: 'pointer-ambiguous',
-  digest: null,
-};
-
-// High enough that an empty or truncated baseline fails loudly, low enough that
-// anchoring pointers over time — which legitimately shrinks the file — does not
-// fail a correct future change. The count was 126 when this test was written.
-const MIN_BASELINE_ENTRIES = 100;
+// The guard below needs proof that the baseline it searches is the real one,
+// and neither an absolute size nor one hand-picked entry can give that proof.
+// The ratchet legitimately shrinks the file whenever a pointer is anchored (126
+// entries when this test was written, 102 after #587, 98 after #336), and the
+// sweep #405 plans re-anchors the very ADRs a fixed control entry would be
+// chosen from. So the control is a live scan of this repo instead: the entries
+// read must account for every pointer finding the scan reports, leaving no
+// finding unaccepted, no accepted digest drifted, and no entry matching nothing.
+// That rejects an emptied, truncated or foreign baseline whatever its size, and
+// accepts any correct prune (#615).
 
 // ---- the fixture itself ------------------------------------------------------
 
@@ -116,29 +108,27 @@ test('the ratchet baseline parses and carries the expected envelope', async () =
 // ---- the guard ---------------------------------------------------------------
 
 // The absence assertions and the positive control share one test deliberately.
-// Absence alone would pass against an empty — or absent — baseline file, which
-// is precisely the state this must not tolerate, so the proof that the corpus
-// being searched is the real one has to be inseparable from the search.
-test('no swept pointer has been baselined away, over a baseline proven non-empty', async () => {
+// Absence alone would pass against an empty, truncated or foreign baseline,
+// which is precisely the state this must not tolerate, so the proof that the
+// corpus being searched is the real one has to be inseparable from the search.
+test('no swept pointer has been baselined away, over a baseline proven to match a live scan', async () => {
   const baseline = await readJson(BASELINE_PATH);
 
-  // POSITIVE CONTROL, same corpus: a known-accepted entry is really in there,
-  // and the file is really populated.
-  assert.ok(
-    baseline.entries.length >= MIN_BASELINE_ENTRIES,
-    `${BASELINE_FILE} holds ${baseline.entries.length} entries, below the floor of ` +
-      `${MIN_BASELINE_ENTRIES} — an empty or truncated baseline would make the ` +
-      `absence assertions below vacuous`,
+  // POSITIVE CONTROL, same corpus: the entries just read, and nothing else,
+  // must account for a live scan of this repo with nothing left over. An
+  // emptied or truncated baseline leaves live findings unaccepted; a foreign
+  // one also leaves entries matching nothing. New pointer debt fails here too,
+  // exactly as it fails the audit: accept it with pointer-baseline.mjs rather
+  // than hand-editing the file.
+  const live = await scanPointerAnchors(REPO_ROOT, { useBaseline: false });
+  const unaccounted = applyBaseline(live, { present: true, entries: baseline.entries });
+  assert.deepEqual(
+    unaccounted.map((f) => `${f.kind}: ${f.detail}`),
+    [],
+    `${BASELINE_FILE} (${baseline.entries.length} entries) does not match a live scan of ` +
+      `this repo (${live.length} findings) — it is emptied, truncated, stale or not the ` +
+      `file the audit reads, so the absence assertions below would be vacuous`,
   );
-  const control = baseline.entries.find(
-    (e) => e.file === CONTROL.file && e.pointer === CONTROL.pointer,
-  );
-  assert.ok(
-    control,
-    `the control entry (${CONTROL.pointer}, accepted from ${CONTROL.file}) is missing from ` +
-      `${BASELINE_FILE} — without it, this test is not reading the baseline it thinks it is`,
-  );
-  assert.deepEqual(control, CONTROL);
 
   // THE GUARD.
   const baselined = new Set(baseline.entries.map((e) => e.pointer));

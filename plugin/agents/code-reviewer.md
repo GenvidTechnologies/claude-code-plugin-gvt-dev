@@ -104,13 +104,15 @@ The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed
 
 The denominator is every row present in that **fetched section** — never your own enumeration of what the criteria "should" be, and never a count of literal `- [ ]` checklist syntax (this file's own body carries 20 unrelated checklist rows above; that's a different thing being counted). If the section cannot be fully fetched or fully read, report the checklist as incomplete and grade nothing — do not grade the readable portion and silently drop the rest.
 
-**Derive N by a command over the fetched body, not by eye.** Run a checkbox-agnostic count against the fetched section, e.g.:
+**Derive N by a command over the fetched section, not by eye and not over the whole body.** The section runs from the line reading `## Acceptance Criteria` to the next line beginning `# ` or `## ` outside a fenced code block, or to the end of the body — the span `plan-task` Phase 4 writes, as its *Writing the section into an issue body* block defines it; a checklist row anywhere else in the body is not a criterion. Run a checkbox-agnostic count over that section, e.g.:
 
-    gh issue view <canonical> --json body -q .body | grep -c '^- \[[ x]\] '
+    gh issue view <canonical> --json body -q .body | awk '/^\140\140\140/{f=!f; next} !f && /^##? /{s=($0 ~ /^## Acceptance Criteria[[:space:]]*$/); next} s && !f' | grep -c '^- \[[ x]\] '
+
+The program skips fenced code blocks (`\140` is a backtick), so a checklist quoted inside one is not counted, and it does not stop at a `---` rule inside the section. A body-wide count overstates the denominator whenever rows sit outside the section: on issue #336 before its pledge, a fenced block quoting a suggested checklist counted 4 rows body-wide where the section held none. The command recognises only the exact canonical heading and backtick fences that start a line, so a count of 0 is not evidence of an empty checklist: if the body carries a near-miss acceptance heading, or checklist rows outside any section, report the section as not found and the criteria incomplete rather than grading against an empty denominator.
 
 Match **both** checkbox states — `[ ]` and `[x]` — in the same pattern. A run that instead greps only the unticked form silently undercounts a partly-worked checklist: on issue #198, `grep -c '^- \[ \] \*\*R'` returns **1** over a body where the checkbox-agnostic `grep -c '^- \[[ x]\] '` returns **26** — that gap is #352's own stated baseline, which had itself decayed for exactly the reason this fix exists.
 
-This does not contradict the sentence above forbidding "a count of literal `- [ ]` checklist syntax": that sentence forbids counting the syntax **in this file's own instructions** (the 20 unrelated rows above are a different thing being counted); the command here counts the syntax **in the fetched issue body**, a different corpus entirely — the one the checklist was actually fetched from. Both statements hold at once because they bind different corpora, not because either is weaker than it reads.
+This does not contradict the sentence above forbidding "a count of literal `- [ ]` checklist syntax": that sentence forbids counting the syntax **in this file's own instructions** (the 20 unrelated rows above are a different thing being counted); the command here counts the syntax **in the fetched issue body's acceptance section**, a different corpus entirely — the one the checklist was actually fetched from. Both statements hold at once because they bind different corpora, not because either is weaker than it reads.
 
 If the emitted row count and the stated denominator ever disagree, the report is wrong — say so and re-derive the count, rather than shipping both numbers unreconciled.
 
