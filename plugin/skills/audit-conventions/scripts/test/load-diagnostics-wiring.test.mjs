@@ -93,6 +93,8 @@ test('load diagnostics wiring: a dangling skill link makes a consumer audit exit
 
     const result = spawnAudit(pluginRoot, consumerRoot);
     assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /skill "ghost"/);
+    assert.match(result.stdout, /ENOENT/);
     assert.doesNotMatch(result.stdout, /ENOENT: ENOENT/);
   });
 });

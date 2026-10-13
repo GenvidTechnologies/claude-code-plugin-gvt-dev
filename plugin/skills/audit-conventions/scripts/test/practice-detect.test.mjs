@@ -239,7 +239,7 @@ test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki dec
 // #671 / ADR-0077 — an error is not a wrong kind. A candidate that cannot be
 // examined stops the chain (so the signal agrees with the audit's finding); a
 // wrong-kind candidate that is not the last falls through.
-test('detectWikiAdoption: a dangling wiki/schema.md stops the chain, so a real docs/wiki-schema.md does not count -> schemaDoc false (C18)', async () => {
+test('detectWikiAdoption: a dangling wiki/schema.md stops the chain, so a real docs/wiki-schema.md does not count -> schemaDoc false', async () => {
   const { signals } = await schemaSignal(async (d) => {
     await wikiTiers(d);
     await makeDanglingLink(join(d, 'wiki', 'schema.md'));
@@ -249,7 +249,7 @@ test('detectWikiAdoption: a dangling wiki/schema.md stops the chain, so a real d
   assert.equal(signals.schemaDoc, false);
 });
 
-test('detectWikiAdoption: a directory at wiki/schema.md falls through to a real docs/wiki-schema.md -> schemaDoc true (C18)', async () => {
+test('detectWikiAdoption: a directory at wiki/schema.md falls through to a real docs/wiki-schema.md -> schemaDoc true', async () => {
   const { signals } = await schemaSignal(async (d) => {
     await wikiTiers(d);
     await mkdir(join(d, 'wiki', 'schema.md'), { recursive: true });

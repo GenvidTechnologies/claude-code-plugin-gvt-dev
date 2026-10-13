@@ -7,6 +7,12 @@
 // entry with no `expects`, so without a diagnostic the broken component would
 // vanish from the report and the audit would still pass. This module turns each
 // such entry into an error finding, and maps the finding set to the exit code.
+//
+// Two cases get their own wording. A tree record (see isTreeRecord) stands for
+// an unreadable skills/ or agents/ directory as a whole, so it says no
+// component of that type was loaded rather than naming one component. And a
+// parseError whose code is NO_FRONTMATTER reads "is missing its frontmatter"
+// instead of the generic "has frontmatter that could not be parsed".
 
 export const LOAD_FAILURE_KINDS = ['component-unreadable', 'component-malformed'];
 

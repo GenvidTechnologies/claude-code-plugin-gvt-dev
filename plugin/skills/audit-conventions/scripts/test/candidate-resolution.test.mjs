@@ -25,14 +25,14 @@ function stub(byRel) {
   return { probe, calls };
 }
 
-// ---- C10: an error stops the chain ----------------------------------------
+// ---- an error stops the chain ----------------------------------------
 
 for (const [label, error] of [
   ['EACCES', { code: 'EACCES', message: 'denied' }],
   ['ELOOP', { code: 'ELOOP', message: 'loop' }],
   ['dangling link (ENOENT)', { code: 'ENOENT', message: 'dangling' }],
 ]) {
-  test(`C10: ${label} on candidate 1 of 2 stops the chain, unsatisfied, probe called once`, async () => {
+  test(`${label} on candidate 1 of 2 stops the chain, unsatisfied, probe called once`, async () => {
     const { probe, calls } = stub({ 'a.md': { kind: 'error', error }, 'b.md': { kind: 'file' } });
     const r = await resolveCandidate(ROOT, 'a.md', ['a.md', 'b.md'], { probe });
     assert.equal(r.candidate, 'a.md');
@@ -42,9 +42,30 @@ for (const [label, error] of [
   });
 }
 
-// ---- C12: wrong kinds are passed over --------------------------------------
+test('an error on the last candidate, after an absent first one, is returned unsatisfied', async () => {
+  const error = { code: 'EACCES', message: 'denied' };
+  const { probe, calls } = stub({ 'b.md': { kind: 'error', error } });
+  const r = await resolveCandidate(ROOT, 'a.md', ['a.md', 'b.md'], { probe });
+  assert.equal(r.candidate, 'b.md');
+  assert.equal(r.satisfied, false);
+  assert.equal(r.found.kind, 'error');
+  assert.equal(calls.length, 2);
+});
 
-test('C12: a directory on candidate 1 is passed over; a file on candidate 2 satisfies', async () => {
+test('a wrong kind is passed over, then an error on candidate 2 of 3 stops before candidate 3', async () => {
+  const error = { code: 'EACCES', message: 'denied' };
+  const { probe, calls } = stub({ c1: { kind: 'directory' }, c2: { kind: 'error', error }, c3: { kind: 'file' } });
+  const r = await resolveCandidate(ROOT, 'x.md', ['c1', 'c2', 'c3'], { probe });
+  assert.equal(r.candidate, 'c2');
+  assert.equal(r.satisfied, false);
+  assert.equal(r.found.kind, 'error');
+  assert.equal(calls.length, 2);
+  assert.deepEqual(r.skipped, [{ candidate: 'c1', kind: 'directory' }]);
+});
+
+// ---- wrong kinds are passed over --------------------------------------
+
+test('a directory on candidate 1 is passed over; a file on candidate 2 satisfies', async () => {
   const { probe } = stub({ 'c1': { kind: 'directory' }, 'c2': { kind: 'file' } });
   const r = await resolveCandidate(ROOT, 'x.md', ['c1', 'c2'], { probe });
   assert.equal(r.candidate, 'c2');
@@ -52,7 +73,7 @@ test('C12: a directory on candidate 1 is passed over; a file on candidate 2 sati
   assert.deepEqual(r.skipped, [{ candidate: 'c1', kind: 'directory' }]);
 });
 
-test('C12: `other` on candidate 1 falls through to candidate 2', async () => {
+test('`other` on candidate 1 falls through to candidate 2', async () => {
   const { probe } = stub({ 'c1': { kind: 'other' }, 'c2': { kind: 'file' } });
   const r = await resolveCandidate(ROOT, 'x.md', ['c1', 'c2'], { probe });
   assert.equal(r.candidate, 'c2');
@@ -60,7 +81,7 @@ test('C12: `other` on candidate 1 falls through to candidate 2', async () => {
   assert.deepEqual(r.skipped, [{ candidate: 'c1', kind: 'other' }]);
 });
 
-// ---- C14: trailing separators are stripped before probing ------------------
+// ---- trailing separators are stripped before probing ------------------
 
 test('the backslash fixture really is a backslash', () => {
   assert.equal(BS.length, 1);
@@ -73,7 +94,7 @@ for (const [label, candidate] of [
   ['x//', 'x//'],
   ['x + backslash', 'x' + BS],
 ]) {
-  test(`C14: candidate ${label} is probed without a trailing separator`, async () => {
+  test(`candidate ${label} is probed without a trailing separator`, async () => {
     const { probe, calls } = stub({});
     await resolveCandidate(ROOT, 'd/', [candidate], { probe });
     assert.equal(calls.length, 1);
@@ -82,16 +103,16 @@ for (const [label, candidate] of [
   });
 }
 
-// ---- C15: kind comes from the declared path --------------------------------
+// ---- kind comes from the declared path --------------------------------
 
-test('C15: declared `d/` with candidate `c` expects a directory', async () => {
+test('declared `d/` with candidate `c` expects a directory', async () => {
   const { probe } = stub({ c: { kind: 'directory' } });
   const r = await resolveCandidate(ROOT, 'd/', ['c'], { probe });
   assert.equal(r.probe, 'directory');
   assert.equal(r.satisfied, true);
 });
 
-test('C15: declared `f.md` with candidate `g.md/` expects a file', async () => {
+test('declared `f.md` with candidate `g.md/` expects a file', async () => {
   const { probe } = stub({ 'g.md': { kind: 'file' } });
   const r = await resolveCandidate(ROOT, 'f.md', ['g.md/'], { probe });
   assert.equal(r.probe, 'file');
@@ -166,6 +187,20 @@ test('rendering: a wrong kind passed over then absent last adds the passed-over 
   assert.equal(
     formatCandidateTarget(f),
     '`wiki/schema.md` or `docs/wiki-schema.md` — `docs/wiki-schema.md`: file not found; `wiki/schema.md` was passed over (found a directory)',
+  );
+});
+
+test('rendering: an error on a later candidate after a passed-over one names the candidate and appends the note', () => {
+  const f = {
+    ...base,
+    detail: 'file unreadable (EACCES)',
+    described: 'docs/wiki-schema.md',
+    describedKind: 'error',
+    skipped: [{ candidate: 'wiki/schema.md', kind: 'directory' }],
+  };
+  assert.equal(
+    formatCandidateTarget(f),
+    '`wiki/schema.md` or `docs/wiki-schema.md` — `docs/wiki-schema.md`: file unreadable (EACCES); `wiki/schema.md` was passed over (found a directory)',
   );
 });
 
