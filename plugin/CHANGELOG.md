@@ -7,6 +7,20 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The audit-core pin moves to exactly 0.4.0, and a `prefer` location that exists but cannot be examined now stops the search instead of being skipped (#679, #671, #672).** Recorded in ADR-0077, which amends ADR-0070.
+  - **New exit-2 triggers:** the audit prints its full report, then exits **2**, when a plugin component is a dangling symlink or junction, when a component has no frontmatter block (reported as "is missing its frontmatter"), or when the plugin's `skills/` or `agents/` tree cannot be read (reported as that tree; the author-time README inventory skips that half). An unreadable component file and unparseable frontmatter still exit 2. Load-failure lines print the error code once, where it was doubled (`ENOENT: ENOENT: …`), and never print `null:`. A consumer CI that treats any non-zero exit as "contract unmet" will now also see 2 for these.
+  - **New `files` finding wording (from audit-core 0.4.0):** `<kind> not found` now means absence only. A path that cannot be examined reads `could not be checked (<code>)`, and a symbolic link or junction whose target is missing reads `could not be checked (dangling link, <code>)`. The wrong kind reads `expected a directory, found a file` or `expected a file, found a directory`. Something that is neither reads `found neither a file nor a directory`.
+  - **The `prefer` chain (#671):** a preferred location that exists but cannot be examined stops the search and is reported in its own state; it used to be silently skipped in favour of the next location. A location of the wrong kind is passed over, and an unmet finding names it. The Environment pillar's schema signal follows the same rule, so a dangling `wiki/schema.md` reads `partial adoption` where the audit reports it. `maintain-wiki`'s schema-resolution prose says the same.
+  - **Trailing slash and the declared kind:** the slash is dropped before a path is examined, so a file, or a dangling link, at a directory expectation reads the same on Windows and Linux (it used to differ). The kind follows the DECLARED path: a `paths` override or `prefer` value is checked as the declared kind whether or not its own value ends in a slash, so `{"docs/decisions/": "adr"}` over a real `adr/` directory is now satisfied.
+  - **`CONVENTIONS.md` (#672):** the trailing-slash paragraph documents every message above, and the `prefer` and exit-2 sentences are updated.
+  - **Migration:** every migrated consumer will see a `conventions-drift` warning until they run `/gvt-dev:audit-conventions --fix`.
+
+  Behavioral change to the audit → version bump at release.
+
+- **Maintainer-internal: the leaf-dependency ledger has an audit-core 0.4.0 entry (corpus re-run, one next-bump check closed, two added), and ADR-0077 records the `prefer` resolution rule.**
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.35.0] - 2026-10-13
 
 - **The audit exits 2 when a plugin component cannot be loaded, and reports each such component as an error finding (#648).** Recorded in ADR-0076, with an amendment note on ADR-0057 Q2. `@genvidtech/audit-core` is pinned at exactly 0.3.0, where the component walker returns an unreadable file or a frontmatter the yaml parser rejects instead of throwing; without this change the audit would have skipped such a component silently and exited 0.
