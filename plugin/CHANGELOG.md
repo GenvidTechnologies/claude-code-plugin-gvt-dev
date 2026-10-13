@@ -7,6 +7,20 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The audit exits 2 when a plugin component cannot be loaded, and reports each such component as an error finding (#648).** Recorded in ADR-0076, with an amendment note on ADR-0057 Q2. `@genvidtech/audit-core` is pinned at exactly 0.3.0, where the component walker returns an unreadable file or a frontmatter the yaml parser rejects instead of throwing; without this change the audit would have skipped such a component silently and exited 0.
+  - **New findings:** `component-unreadable` and `component-malformed` are error findings naming the component, the error code and the message. The audit prints the full report first, then exits **2**. The diagnostic is ungated, so it fires in consumer audits too.
+  - **Exit-code change:** a consumer's CI that treated any non-zero exit as "contract unmet" will now also see 2 for a broken plugin component. `CONVENTIONS.md` and the audit-conventions skill document the new clause.
+
+  Behavioral change to the audit → version bump at release.
+
+- **The audit Summary counts unmet expectations, so its "unmet" lines agree with the `required: X of Y` and `optional: X of Y` ratio lines (#540, #157).** The "N required/optional expectations unmet" lines were counting every error or info finding. They now report total minus met. Findings that are not expectations get their own lines: "N plugin component(s) could not be loaded", "N other error finding(s)" and "N advisory finding(s)". Tests pin the rendered lines.
+
+  Behavioral change to the audit → version bump at release.
+
+- **Maintainer-internal: a leaf-dependency ledger entry for audit-core 0.3.0, `loadComponent` readError/parseError tests, and a refreshed parser comment in `lib/pillars.mjs`.** Under 0.3.0 a flow `pillar: [spec, verify]` parses as an array, which `parsePillars` accepts.
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.34.0] - 2026-10-13
 
 - **Every quoted block in a `plan-task` dispatch brief now has a stated role, so design decisions are quoted instead of restated and plan-local wording stops shipping into artifacts (#554, #569, #646).** Recorded in ADR-0075.

@@ -41,10 +41,10 @@ export const PILLARS = [
 ];
 
 // Reads the `metadata.pillar` frontmatter scalar into a list of pillar ids.
-// audit-core's `extractFrontmatter` (0.2.x) is a deliberately minimal parser that cannot parse
-// YAML scalar sequences (`pillars:\n  - Spec` silently yields `[{}, {}]`), so
-// multi-pillar declarations use a comma-delimited single scalar instead
-// (`pillar: spec, verify`). This is the reader for that encoding.
+// Multi-pillar declarations use a comma-delimited single scalar (`pillar: spec, verify`); that
+// encoding is kept for compatibility. Under audit-core's yaml-based `extractFrontmatter`, a flow
+// sequence such as `[spec, verify]` now parses as an array, which this reader also accepts
+// (`String(['spec', 'verify'])` is `spec,verify`, so the split below handles it).
 export function parsePillars(raw) {
   if (raw == null) return [];
   return String(raw).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);

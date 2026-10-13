@@ -45,6 +45,10 @@ test('parsePillars: comma-delimited scalar splits into a trimmed, lowercased lis
   assert.deepEqual(parsePillars('spec, verify'), ['spec', 'verify']);
 });
 
+test('parsePillars: a flow-sequence frontmatter array is returned as the same list', () => {
+  assert.deepEqual(parsePillars(['spec', 'verify']), ['spec', 'verify']);
+});
+
 test('parsePillars: undefined yields an empty list', () => {
   assert.deepEqual(parsePillars(undefined), []);
 });

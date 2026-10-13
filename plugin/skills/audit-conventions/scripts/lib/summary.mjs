@@ -1,3 +1,5 @@
+import { LOAD_FAILURE_KINDS } from './load-diagnostics.mjs';
+
 // Tallies expectation findings into required/optional met-vs-total counts.
 //
 // Findings carry a boolean `required` (set for every finding) and a boolean-ish
@@ -21,6 +23,53 @@ export function summarizeExpectations(findings) {
   }
 
   return summary;
+}
+
+// Renders the report's Summary section as lines, starting with `### Summary`.
+//
+// The "unmet" lines derive from the same tally as the ratio lines
+// (`requiredTotal - requiredMet`, `optionalTotal - optionalMet`), so the two can
+// never disagree. Findings that carry no boolean `required` (scan findings,
+// scan notes, load failures) are not expectations: they get their own lines
+// and those lines never say "expectation". Warnings never claim to be
+// expectations, so they are counted by severity.
+export function renderSummary({ findings, scanSummary = null }) {
+  const { requiredMet, requiredTotal, optionalMet, optionalTotal } = summarizeExpectations(findings);
+  const isNonExpectation = (f) => f.required !== true && f.required !== false;
+  const loadFailures = findings.filter((f) => LOAD_FAILURE_KINDS.includes(f.kind)).length;
+  const otherErrors = findings.filter(
+    (f) => f.severity === 'error' && isNonExpectation(f) && !LOAD_FAILURE_KINDS.includes(f.kind),
+  ).length;
+  const advisories = findings.filter((f) => f.severity === 'info' && isNonExpectation(f)).length;
+  const warnings = findings.filter((f) => f.severity === 'warning').length;
+  const requiredUnmet = requiredTotal - requiredMet;
+  const optionalUnmet = optionalTotal - optionalMet;
+
+  const lines = ['### Summary'];
+  lines.push(`- required: ${requiredMet} of ${requiredTotal} satisfied.`);
+  lines.push(`- optional: ${optionalMet} of ${optionalTotal} satisfied.`);
+  if (scanSummary) {
+    lines.push(`- ${formatScanSummary(scanSummary)}`);
+  }
+  if (requiredUnmet > 0) {
+    lines.push(`- ${requiredUnmet} required expectation${requiredUnmet === 1 ? '' : 's'} unmet.`);
+  }
+  if (loadFailures > 0) {
+    lines.push(`- ${loadFailures} plugin component${loadFailures === 1 ? '' : 's'} could not be loaded.`);
+  }
+  if (otherErrors > 0) {
+    lines.push(`- ${otherErrors} other error finding${otherErrors === 1 ? '' : 's'}.`);
+  }
+  if (warnings > 0) {
+    lines.push(`- ${warnings} warning${warnings === 1 ? '' : 's'} (non-fatal).`);
+  }
+  if (optionalUnmet > 0) {
+    lines.push(`- ${optionalUnmet} optional expectation${optionalUnmet === 1 ? '' : 's'} unmet.`);
+  }
+  if (advisories > 0) {
+    lines.push(`- ${advisories} advisory finding${advisories === 1 ? '' : 's'}.`);
+  }
+  return lines;
 }
 
 // Renders the scan-coverage line shown in the report's Summary section,

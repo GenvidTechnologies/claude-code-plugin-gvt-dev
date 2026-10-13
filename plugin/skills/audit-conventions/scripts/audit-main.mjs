@@ -11,7 +11,10 @@
 // 1 if any required expectation is unmet. --fix mode has its own, separate
 // semantics: 0 once the dry-run plan has printed, 1 if --apply refuses a
 // dirty tree or an applied action fails. In both modes, 2 means an
-// unexpected throw caught at the top level, not a validation failure.
+// unexpected throw caught at the top level, not a validation failure. In
+// validate mode, 2 also means a plugin component could not be loaded
+// (unreadable or malformed): it is reported, then the audit exits 2 after
+// printing the full report.
 
 import { promises as fs } from 'node:fs';
 import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
@@ -21,6 +24,7 @@ import { spawnSync } from 'node:child_process';
 import { walkComponents, evaluateFile, evaluateConfig, evaluateTool, resolveKey, fileExists, dirExists } from '#audit-core';
 import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
+import { loadFailureDiagnostics, auditExitCode } from './lib/load-diagnostics.mjs';
 import {
   detectState,
   STATE_GREENFIELD,
@@ -37,7 +41,7 @@ import { expectationCandidates } from './lib/expect-prefer.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
-import { summarizeExpectations, formatScanSummary } from './lib/summary.mjs';
+import { renderSummary } from './lib/summary.mjs';
 import { PILLARS, parsePillars } from './lib/pillars.mjs';
 import { detectWikiAdoption } from './lib/practice-detect.mjs';
 import { formatPracticeCoverage } from './lib/pillar-report.mjs';
@@ -120,7 +124,9 @@ async function main() {
     return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${inFile}` };
   };
 
-  const findings = [];
+  // Ungated: a component that failed to load is a plugin defect in any audit,
+  // including a consumer run. The loop below skips it (`expects` is null).
+  const findings = [...loadFailureDiagnostics(components)];
   const declaredPaths = new Set();
   for (const component of components) {
     const expects = component.expects;
@@ -238,8 +244,7 @@ async function main() {
   const report = formatReport(state, findings, { cfgHasC3, pillarCensus, practices, scanSummary });
   console.log(report);
 
-  const hasErrors = findings.some((f) => f.severity === 'error');
-  process.exit(hasErrors ? 1 : 0);
+  process.exit(auditExitCode(findings));
 }
 
 // ---- evaluate --------------------------------------------------------------
@@ -424,22 +429,7 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
     lines.push('');
   }
 
-  const { requiredMet, requiredTotal, optionalMet, optionalTotal } = summarizeExpectations(findings);
-  lines.push('### Summary');
-  lines.push(`- required: ${requiredMet} of ${requiredTotal} satisfied.`);
-  lines.push(`- optional: ${optionalMet} of ${optionalTotal} satisfied.`);
-  if (scanSummary) {
-    lines.push(`- ${formatScanSummary(scanSummary)}`);
-  }
-  if (errors.length > 0) {
-    lines.push(`- ${errors.length} required expectation${errors.length === 1 ? '' : 's'} unmet.`);
-  }
-  if (warnings.length > 0) {
-    lines.push(`- ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (non-fatal).`);
-  }
-  if (infos.length > 0) {
-    lines.push(`- ${infos.length} optional expectation${infos.length === 1 ? '' : 's'} unmet.`);
-  }
+  lines.push(...renderSummary({ findings, scanSummary }));
   if (state === STATE_LEGACY) {
     lines.push('');
     lines.push('> Run `--fix` to migrate from the legacy template-rendered setup.');
@@ -480,6 +470,8 @@ function formatFinding(f) {
     'principle-citation',
     'pillar-unknown',
     'path-override',
+    'component-unreadable',
+    'component-malformed',
   ];
   // The pointer-anchor scanner is matched by PREFIX rather than enumerated: it
   // emits eight kinds that all share the `pointer-` prefix, all self-contained,
