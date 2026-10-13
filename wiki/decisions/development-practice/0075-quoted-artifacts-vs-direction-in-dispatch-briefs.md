@@ -68,11 +68,15 @@ a summary-only dispatch instead of reconstructing the options. The
 
 **Rejected, Option B, "New development-principles principle with pointers":** planner and 6 other agents never load the shared doc, so inline copies would be needed anyway, and #285's residual is a pending claimant for that list.
 
+"Load" here means the agent body carries a `${CLAUDE_PLUGIN_ROOT}/docs/…` path it can resolve when dispatched standalone. Measured at `ea6db6d`, seven agent bodies carry none: `analyst`, `designer`, `issue-triage-analyst`, `planner`, `ts-implementer`, `validator` and `wiki-librarian`. Several of them mention `development-principles.md` by name, but a name with no resolvable path does not put the text in front of the agent.
+
 **Rejected, Option C, "Three independent local rules, no shared definition":** a quoted row and a required-strings block would look the same to the receiver, which is the interaction the combined plan exists to resolve.
 
 **Rejected, Option A-alt, "Extend the Verified-vs-inherited section in place":** that section labels provenance, this one labels role; a separate heading gives the sites a name to cite.
 
 **Deferred, "Receiving-side copies in tech-writer and ts-implementer (ADR-0031 pattern)":** this is #522's side, and the user approved #554 only.
+
+The scope boundary this records: this decision covers the sender side of a brief (`plan-task` and `planner`); the receiving agents' own rules are #522's to decide.
 
 ## Consequences
 

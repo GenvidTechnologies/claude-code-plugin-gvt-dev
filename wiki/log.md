@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-10-13
+
+* **Creation**: Added `decisions/development-practice/0075-quoted-artifacts-vs-direction-in-dispatch-briefs.md`,
+  recording the source / content / direction roles for quoted blocks in
+  `plan-task` dispatch briefs (#554, with #569 and #646 combined), and listed it
+  in that theme's `index.md`. Not an ingest; no `raw/` source drove it.
+
 ## 2026-10-12
 
 * **Creation**: Added `decisions/development-practice/0072-triage-verifies-issue-claims-against-the-target-artifact.md`,
