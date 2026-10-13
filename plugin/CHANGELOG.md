@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.35.0] - 2026-10-13
+
 - **The audit exits 2 when a plugin component cannot be loaded, and reports each such component as an error finding (#648).** Recorded in ADR-0076, with an amendment note on ADR-0057 Q2. `@genvidtech/audit-core` is pinned at exactly 0.3.0, where the component walker returns an unreadable file or a frontmatter the yaml parser rejects instead of throwing; without this change the audit would have skipped such a component silently and exited 0.
   - **New findings:** `component-unreadable` and `component-malformed` are error findings naming the component, the error code and the message. The audit prints the full report first, then exits **2**. The diagnostic is ungated, so it fires in consumer audits too.
   - **Exit-code change:** a consumer's CI that treated any non-zero exit as "contract unmet" will now also see 2 for a broken plugin component. `CONVENTIONS.md` and the audit-conventions skill document the new clause.
