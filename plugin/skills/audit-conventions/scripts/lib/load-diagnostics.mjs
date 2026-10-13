@@ -16,13 +16,35 @@ export const LOAD_FAILURE_KINDS = ['component-unreadable', 'component-malformed'
 export function loadFailureDiagnostics(components) {
   const diagnostics = [];
   for (const component of components) {
-    if (component.readError) {
+    if (isTreeRecord(component)) {
+      diagnostics.push({
+        kind: 'component-unreadable',
+        ok: false,
+        severity: 'error',
+        detail: `The plugin's own ${component.name} tree could not be read, so no ${component.type} was loaded from it (${errorText(component.readError)}). This is a plugin defect, not a problem in your repo.`,
+      });
+    } else if (component.readError) {
       diagnostics.push(diagnostic('component-unreadable', 'could not be read', component, component.readError));
     } else if (component.parseError) {
-      diagnostics.push(diagnostic('component-malformed', 'has frontmatter that could not be parsed', component, component.parseError));
+      const problem = component.parseError.code === 'NO_FRONTMATTER'
+        ? 'is missing its frontmatter'
+        : 'has frontmatter that could not be parsed';
+      diagnostics.push(diagnostic('component-malformed', problem, component, component.parseError));
     }
   }
   return diagnostics;
+}
+
+// audit-core names a record for an unreadable skills/ or agents/ tree itself
+// 'skills/' or 'agents/' (type skill or agent).
+export const isTreeRecord = (c) => Boolean(c.readError) && c.name === `${c.type}s/`;
+
+// "CODE: message", without doubling a code the message already starts with and
+// without a "null:" prefix when there is no code.
+export function errorText({ code, message }) {
+  if (!code) return message;
+  if (message.startsWith(`${code}:`)) return message;
+  return `${code}: ${message}`;
 }
 
 function diagnostic(kind, problem, component, error) {
@@ -30,7 +52,7 @@ function diagnostic(kind, problem, component, error) {
     kind,
     ok: false,
     severity: 'error',
-    detail: `The plugin's own ${component.type} "${component.name}" ${problem} (${error.code}: ${error.message}). This is a plugin defect, not a problem in your repo.`,
+    detail: `The plugin's own ${component.type} "${component.name}" ${problem} (${errorText(error)}). This is a plugin defect, not a problem in your repo.`,
   };
 }
 

@@ -13,7 +13,7 @@
 // dirty tree or an applied action fails. In both modes, 2 means an
 // unexpected throw caught at the top level, not a validation failure. In
 // validate mode, 2 also means a plugin component could not be loaded
-// (unreadable or malformed): it is reported, then the audit exits 2 after
+// (unreadable, missing its frontmatter, or malformed): it is reported, then the audit exits 2 after
 // printing the full report.
 
 import { promises as fs } from 'node:fs';

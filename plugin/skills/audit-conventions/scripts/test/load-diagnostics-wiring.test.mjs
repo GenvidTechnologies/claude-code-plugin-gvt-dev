@@ -9,11 +9,10 @@
 // (`description: Use it: now`, a parseError). The audit must print the whole
 // report, name the skill in a diagnostic, and exit 2.
 //
-// There is no readError end-to-end fixture: no portable way exists to make a
-// component file unreadable. A directory named SKILL.md is skipped by
-// walkComponents (it yields no component), chmod is a no-op on Windows, and
-// root ignores it on POSIX. The readError branch is covered by the unit tests
-// in load-diagnostics.test.mjs.
+// A dangling skill-directory link (makeDanglingLink) is the readError
+// end-to-end fixture under audit-core 0.4.0: walkComponents reports the
+// unreadable entry instead of skipping it. A skill with no frontmatter block
+// is the NO_FRONTMATTER parseError fixture.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +22,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { makeDanglingLink } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPTS_DIR = join(__dirname, '..');
@@ -70,6 +70,30 @@ test('load diagnostics wiring: a skill with malformed frontmatter makes a consum
     assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
     assert.match(result.stdout, /^- The plugin's own skill "broken-skill" has frontmatter that could not be parsed/m);
     assert.match(result.stdout, /BLOCK_AS_IMPLICIT_KEY/);
+  });
+});
+
+test('load diagnostics wiring: a skill with no frontmatter makes a consumer audit exit 2', async () => {
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    const dir = join(pluginRoot, 'skills', 'bare');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'SKILL.md'), 'Just a body, no frontmatter.\n');
+
+    const result = spawnAudit(pluginRoot, consumerRoot);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /^- The plugin's own skill "bare" is missing its frontmatter/m);
+    assert.doesNotMatch(result.stdout, /"bare" has frontmatter/);
+  });
+});
+
+test('load diagnostics wiring: a dangling skill link makes a consumer audit exit 2 without a doubled error code', async () => {
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    await mkdir(join(pluginRoot, 'skills'), { recursive: true });
+    await makeDanglingLink(join(pluginRoot, 'skills', 'ghost'));
+
+    const result = spawnAudit(pluginRoot, consumerRoot);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.doesNotMatch(result.stdout, /ENOENT: ENOENT/);
   });
 });
 
