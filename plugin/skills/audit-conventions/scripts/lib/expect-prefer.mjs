@@ -5,6 +5,8 @@
 //     override alone, existing or not (CONVENTIONS "Runtime path resolution").
 //   - Otherwise an entry's optional `prefer` location is probed first, then
 //     the declared `path`. The declared path stays the override key.
+//   - Which candidate answers, and the stop/pass-over rule, is
+//     lib/candidate-resolution.mjs (ADR-0077).
 //
 // `<wikiDir>` is the one placeholder `prefer` recognises, resolved from
 // `wiki.wikiDir` with maintain-wiki's own default (`wiki`). That default

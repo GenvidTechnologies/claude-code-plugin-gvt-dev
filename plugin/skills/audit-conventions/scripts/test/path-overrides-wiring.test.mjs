@@ -183,3 +183,34 @@ test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// The declared path decides the expected kind; a trailing slash on the override
+// value (or its absence) must not change it (ADR-0077).
+test('audit: an override value without a trailing slash still satisfies a declared directory (docs/decisions/)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await mkdir(join(dir, 'custom-decisions'), { recursive: true });
+    await writeConfig(dir, { 'docs/decisions/': 'custom-decisions' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.doesNotMatch(result.stdout, /expects `docs\/decisions\/`/);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: an override value with a trailing slash still satisfies a declared file (docs/TOC.md)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'documentation'), { recursive: true });
+    await writeFile(join(dir, 'documentation', 'INDEX.md'), '# Index\n');
+    await writeConfig(dir, { 'docs/TOC.md': 'documentation/INDEX.md/' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.doesNotMatch(result.stdout, /expects `docs\/TOC\.md`/);
+    assert.equal(result.status, 0, result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});

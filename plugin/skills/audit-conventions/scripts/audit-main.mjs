@@ -21,7 +21,7 @@ import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-import { walkComponents, evaluateFile, evaluateConfig, evaluateTool, resolveKey, fileExists, dirExists } from '#audit-core';
+import { walkComponents, evaluateFile, evaluateConfig, evaluateTool, resolveKey } from '#audit-core';
 import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
 import { loadFailureDiagnostics, auditExitCode } from './lib/load-diagnostics.mjs';
@@ -38,6 +38,7 @@ import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, fo
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
+import { resolveCandidate, formatCandidateTarget } from './lib/candidate-resolution.mjs';
 import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
@@ -102,22 +103,13 @@ async function main() {
   const pathOverrides = repoConfig?.paths;
   const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
 
-  // Picks the location that satisfies a files entry (ADR-0070): the paths
-  // override alone when set, else the entry's `prefer` location when it
-  // exists, else the declared path. evaluateFile (audit-core) still probes
-  // exactly one path; the choice among candidates is policy, made here.
+  // Candidate order lives in lib/expect-prefer.mjs. Which candidate answers, and
+  // the stop/pass-over rule, live in lib/candidate-resolution.mjs (ADR-0070,
+  // ADR-0077). evaluateFile (audit-core) probes the one path chosen here.
   const resolveFile = async (entry) => {
     const { candidates } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
-    const located = (candidate) => ({
-      path: join(REPO_ROOT, candidate),
-      probe: candidate.endsWith('/') ? 'directory' : 'file',
-      target: entry.path,
-    });
-    for (const candidate of candidates.slice(0, -1)) {
-      const r = located(candidate);
-      if (await (r.probe === 'directory' ? dirExists(r.path) : fileExists(r.path))) return { ...r, candidates };
-    }
-    return { ...located(candidates[candidates.length - 1]), candidates };
+    const r = await resolveCandidate(REPO_ROOT, entry.path, candidates);
+    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped };
   };
   const resolveConfig = (entry) => {
     const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
@@ -136,7 +128,11 @@ async function main() {
       declaredPaths.add(entry.path);
       const where = await resolveFile(entry);
       const finding = await evaluateFile(component, entry, () => where);
-      findings.push(where.candidates.length > 1 ? { ...finding, candidates: where.candidates } : finding);
+      findings.push(
+        where.candidates.length > 1
+          ? { ...finding, candidates: where.candidates, described: where.described, describedKind: where.found.kind, skipped: where.skipped }
+          : finding,
+      );
     }
     for (const entry of expects.config ?? []) {
       findings.push(await evaluateConfig(component, entry, resolveConfig));
@@ -478,8 +474,8 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  const shown = f.candidates ? f.candidates.map((c) => `\`${c}\``).join(' or ') : `\`${f.target}\``;
-  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\`` : shown} — ${f.detail}.${reason}`;
+  const shown = f.candidates ? formatCandidateTarget(f) : `\`${f.target}\` — ${f.detail}`;
+  return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\` — ${f.detail}` : shown}.${reason}`;
 }
 
 // ---- --fix orchestration ---------------------------------------------------

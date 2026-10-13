@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { makeDanglingLink } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/directory-expectations.test.mjs -> scripts
@@ -116,6 +117,33 @@ test('audit: a plain (no trailing slash) file expectation is still checked as a 
       result.stdout,
       /CLAUDE\.md.*expected a file, found a directory/,
       'a directory must not satisfy a file expectation',
+    );
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a FILE standing at docs/decisions is reported as the wrong kind', async () => {
+  const tmpDir = await withTempRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'decisions'), 'not a directory\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.match(result.stdout, /expects `docs\/decisions\/` — expected a directory, found a file \(optional\)/);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a dangling link at docs/decisions is reported as unreadable, not as missing', async () => {
+  const tmpDir = await withTempRepo(async (dir) => {
+    await makeDanglingLink(join(dir, 'docs', 'decisions'));
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.ok(
+      result.stdout.includes('expects `docs/decisions/` — directory could not be checked (dangling link, ENOENT) (optional)'),
+      result.stdout,
     );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
