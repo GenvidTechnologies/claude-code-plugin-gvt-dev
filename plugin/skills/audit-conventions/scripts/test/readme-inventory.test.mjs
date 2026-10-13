@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkReadmeInventory } from '../lib/readme-inventory.mjs';
+import { checkReadmeInventory, inventoryNames } from '../lib/readme-inventory.mjs';
 
 // A minimal README with both a Skills table and an Agents list, plus a trailing
 // **Hook:** section (whose backtick tokens must NOT leak into the agents scan)
@@ -95,4 +95,26 @@ test('checkReadmeInventory: only one section present is checked; the absent one 
   // Agents list absent → agents half skipped even though agentNames is non-empty.
   const findings = checkReadmeInventory(content, ['plan-task'], ['analyst', 'designer']);
   assert.deepEqual(findings, []);
+});
+
+const ordinary = (type, name) => ({ type, name });
+const treeRecord = (type) => ({ type, name: `${type}s/`, readError: { code: 'ENOENT', message: 'gone' } });
+
+test('inventoryNames: a skills/ tree record gives skill null; agents are still listed', () => {
+  const names = inventoryNames([treeRecord('skill'), ordinary('agent', 'analyst')]);
+  assert.deepEqual(names, { skill: null, agent: ['analyst'] });
+});
+
+test('inventoryNames: an agents/ tree record gives agent null; skills are still listed', () => {
+  const names = inventoryNames([ordinary('skill', 'plan-task'), treeRecord('agent')]);
+  assert.deepEqual(names, { skill: ['plan-task'], agent: null });
+});
+
+test('checkReadmeInventory: a null half emits nothing for that half while the other is still checked', () => {
+  const content = readme({ skills: [{ name: 'plan-task' }], agents: ['analyst'] });
+  assert.deepEqual(checkReadmeInventory(content, ['plan-task'], null), []);
+  assert.deepEqual(checkReadmeInventory(content, null, ['analyst']), []);
+  const other = checkReadmeInventory(content, null, ['analyst', 'designer']);
+  assert.equal(other.length, 1);
+  assert.match(other[0].detail, /plugin\/agents\/designer/);
 });

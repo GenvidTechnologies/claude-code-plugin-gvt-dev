@@ -38,7 +38,7 @@ import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, fo
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
-import { checkReadmeInventory } from './lib/readme-inventory.mjs';
+import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
 import { renderSummary } from './lib/summary.mjs';
@@ -163,8 +163,7 @@ async function main() {
   // Skills table / Agents list must stay in sync with plugin/skills + plugin/agents.
   if (AUDITING_PLUGIN_SOURCE) {
     const readme = await readFileOrNull(join(REPO_ROOT, 'README.md'));
-    const skillNames = components.filter((c) => c.type === 'skill').map((c) => c.name);
-    const agentNames = components.filter((c) => c.type === 'agent').map((c) => c.name);
+    const { skill: skillNames, agent: agentNames } = inventoryNames(components);
     findings.push(...checkReadmeInventory(readme, skillNames, agentNames));
 
     // Also author-time-only, but `error` rather than the family's usual

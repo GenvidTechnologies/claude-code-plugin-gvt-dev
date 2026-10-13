@@ -117,3 +117,25 @@ test('load diagnostics wiring: a well-formed skill alone does not exit 2 and rep
     assert.doesNotMatch(result.stdout, /could not be parsed|could not be read/);
   });
 });
+
+// Author mode: the plugin root sits INSIDE the audited repo (<base>/plugin,
+// cwd = <base>), as in this repo's own layout, so AUDITING_PLUGIN_SOURCE is true.
+test('load diagnostics wiring: an unreadable agents/ tree in author mode is named once and the README inventory skips agents', async () => {
+  await withFixture(async (pluginRoot) => {
+    const base = dirname(pluginRoot);
+    await makeDanglingLink(join(pluginRoot, 'agents'));
+    await writeSkill(pluginRoot, 'fine-skill', 'name: fine-skill\ndescription: A well formed skill');
+    await writeFile(
+      join(base, 'README.md'),
+      ['# plugin', '', '**Skills**:', '', '| Skill | Purpose |', '|--|--|', '| `fine-skill` | p |', '',
+        '**Agents**:', '', '`foo`.', '', '**Hook:** none', ''].join('\n'),
+    );
+
+    const result = spawnAudit(pluginRoot, base);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /agents\/ tree could not be read/);
+    assert.doesNotMatch(result.stdout, /agent "agents\/"/);
+    const inventoryLines = result.stdout.split('\n').filter((l) => /README agents list|plugin\/agents\//.test(l));
+    assert.deepEqual(inventoryLines.filter((l) => l.includes('foo')), [], `inventory lines:\n${inventoryLines.join('\n')}`);
+  });
+});
