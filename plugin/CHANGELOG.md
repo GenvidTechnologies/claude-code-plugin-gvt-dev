@@ -7,6 +7,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Every quoted block in a `plan-task` dispatch brief now has a stated role, so design decisions are quoted instead of restated and plan-local wording stops shipping into artifacts (#554, #569, #646).** Recorded in ADR-0075.
+  - **New `plan-task` section, "Quoted artifacts vs. direction in a dispatch brief":** a quoted block is *source* (an acceptance row or a design decision, which the receiver builds to or records from in the artifact's own voice), *content* (a required string that must appear verbatim) or *direction*. Everything outside a quoted block is direction, and direction never ships. That includes plan task ids: a phrase such as "once T3 lands" belongs in the brief and never in the deliverable, where it would dangle once the plan is overwritten.
+  - **Three sites apply it.** Phase 3 passes the design's option labels and one-line reasons to the planner verbatim. The Execution lead requires implementer briefs to quote each owned acceptance row verbatim and to call out literal inputs a fixture would not naturally use. A new read-as-reader step catches claims that are right but misaddressed, such as prose in the brief's voice or instructions to an implementer who is not there.
+  - **`planner` Process item 13 and its self-audit row:** a task entry that names the design's chosen option, rejected options or reasons quotes the design's own labels and one-line reasons rather than restating them.
+
+  Behavioral skill/agent change → version bump at release.
+
+- **Maintainer-internal: `wiki/maintainer/release-cycle-rules.md` states that a CHANGELOG verdict classifies release impact and is worded the same when the branch already carries the bump.** A grader had read "→ version bump at release" next to an in-branch bump as a contradiction.
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.33.0] - 2026-10-12
 
 - **Acceptance criteria are routed on content, written as rows under one heading, and counted over that section only (#336, #377, #502, #508).** Recorded in ADR-0073, which amends ADR-0032.
