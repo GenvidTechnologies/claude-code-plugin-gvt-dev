@@ -68,7 +68,7 @@ first use.
    2. `<wikiDir>/schema.md` — inside the bundle, the default.
    3. `docs/wiki-schema.md` — the legacy location, still honoured.
 
-   With no override, the schema is the first of locations 2 and 3 that holds a file. A location holding a directory is passed over; one that exists but cannot be read (permission denied, a dangling link) stops resolution there: report it, and do not fall through to the next.
+   With no override, the schema is the first of locations 2 and 3 that holds a file; when neither holds a file, the schema is missing, and location 3, `docs/wiki-schema.md`, is the last one checked. A location holding a directory is passed over; one that exists but cannot be read (permission denied, a dangling link) stops resolution there: report it, and do not fall through to the next.
    Every later mention of "the schema" in this skill means this resolved path.
    While resolving, note two further states, both reported in step 4:
    - **Shadowed duplicate** — a file exists at the resolved location *and* at

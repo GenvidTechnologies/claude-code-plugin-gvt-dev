@@ -48,6 +48,8 @@ So a file at a slash path, and a dangling link at a slash path, gave different a
 dangling link in particular is an `error` on Windows and an `absent` on Linux, which would have let the stop rule
 below fire on one platform only.
 
+The Linux column was measured on Node 20.19.2 (WSL2), below the supported Node 22 (audit-core 0.4.0 declares `node >=22`). `stat`'s trailing-separator behaviour is a kernel property, not a Node one, but that is an inference, not a measurement. The supported-runtime check is the end-to-end directory tests running on CI's ubuntu Node 22 job.
+
 ## Decision
 
 The resolver is `resolveCandidate` in `plugin/skills/audit-conventions/scripts/lib/candidate-resolution.mjs`.
@@ -105,8 +107,12 @@ Accepted residuals:
 - If a directory sits at `wiki/schema.md` and `docs/wiki-schema.md` is a real file, the entry is satisfied and
   the stray directory is not mentioned. This is the same class as ADR-0070's shadowed duplicate.
 - A consumer `paths` override whose value's slash disagrees with its key's slash changes meaning, because the
-  kind now follows the declared key. Only the "unmet becomes satisfied" direction is affected. This is
-  unvalidated across consumers; 0 of this repo's 2 content overrides are affected.
+  kind now follows the declared key, in both directions. A declared `docs/decisions/` with an override value
+  `adr` (no slash) over a real `adr/` directory was unmet and is now satisfied. A declared `docs/TOC.md` with an override `docs/TOC/`
+  pointing at a directory was satisfied and is now unmet, reading `expected a file, found a directory`; for a
+  required entry that changes the audit's exit to 1. An override says where the thing lives, not what it is,
+  and this was chosen deliberately. It is unvalidated across consumers; 0 of this repo's 2 content overrides
+  are affected.
 
 ## Consequences
 
