@@ -112,6 +112,42 @@ test('loadComponent: a file with no frontmatter yields {expects: null, frontmatt
   }
 });
 
+test('loadComponent: a path that does not exist yields a readError and no parseError', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const component = await loadComponent('skill', 'missing', join(dir, 'skills', 'missing', 'SKILL.md'));
+    assert.equal(component.type, 'skill');
+    assert.equal(component.name, 'missing');
+    assert.equal(component.expects, null);
+    assert.equal(component.frontmatter, null);
+    assert.equal(component.readError.code, 'ENOENT');
+    assert.equal(typeof component.readError.message, 'string');
+    assert.ok(component.readError.message.length > 0);
+    assert.equal('parseError' in component, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('loadComponent: frontmatter the yaml parser rejects yields a parseError and no readError', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'skills/bad/SKILL.md', '---\ndescription: Use it: now\n---\n');
+  });
+  try {
+    const component = await loadComponent('skill', 'bad', join(dir, 'skills', 'bad', 'SKILL.md'));
+    assert.equal(component.type, 'skill');
+    assert.equal(component.name, 'bad');
+    assert.equal(component.expects, null);
+    assert.equal(component.frontmatter, null);
+    assert.equal(typeof component.parseError.code, 'string');
+    assert.equal(typeof component.parseError.message, 'string');
+    assert.ok(component.parseError.message.length > 0);
+    assert.equal('readError' in component, false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('walkComponents: rejects with TypeError when pluginRoot is missing or not a string', async () => {
   await assert.rejects(() => walkComponents(undefined), TypeError);
   await assert.rejects(() => walkComponents(123), TypeError);
