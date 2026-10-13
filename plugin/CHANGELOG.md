@@ -14,6 +14,10 @@ and follows [semantic versioning](https://semver.org/).
 
   Behavioral skill/agent change → version bump at release.
 
+- **Maintainer-internal: `wiki/maintainer/release-cycle-rules.md` states that a CHANGELOG verdict classifies release impact and is worded the same when the branch already carries the bump.** A grader had read "→ version bump at release" next to an in-branch bump as a contradiction.
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.33.0] - 2026-10-12
 
 - **Acceptance criteria are routed on content, written as rows under one heading, and counted over that section only (#336, #377, #502, #508).** Recorded in ADR-0073, which amends ADR-0032.
