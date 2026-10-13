@@ -158,6 +158,16 @@ file exists before `loadComponent` reads it, so the one place the no-throw prope
 rather than by design. This is **explicitly deferred to #458**, which is where the library's actual consumption
 wiring — and therefore the fix — belongs.
 
+**Amendment (2026-10-13, #648).** Two points in this section are updated by what audit-core 0.3.0 shipped; the
+decision text above is left as written.
+
+- *A second permitted caller-contract violation.* `loadComponent` rejects with a `TypeError` on a non-string
+  `filePath`. It is async, so the violation surfaces as a rejection rather than a synchronous throw. Like the
+  omitted plugin root, it is a programmer error in the caller, not a fact about the audited repo.
+- *The deferred `loadComponent` inconsistency is closed.* audit-core#5, shipped in 0.3.0, resolves an unreadable
+  file to a `readError` entry instead of rejecting. ADR-0071 (decision 3) had relocated that item from #458 to
+  audit-core#5. How the audit reports the entry is ADR-0076.
+
 **Consequence:** the library has no process of its own and therefore no exit codes to own. The ratified
 `0`/`1`/`2` exit contract — `0049-audit-core-mechanism-policy-boundary.md:142` ("Both audits compute")
 `hasErrors` from `findings.some((f) => f.severity === 'error')` and exits accordingly — survives as an
