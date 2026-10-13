@@ -99,7 +99,7 @@ test('audit: a plain (no trailing slash) file expectation is still checked as a 
 
     assert.match(
       result.stdout,
-      /CLAUDE\.md.*file not found/,
+      /CLAUDE\.md.*expected a file, found a directory/,
       'a directory must not satisfy a file expectation',
     );
   } finally {
