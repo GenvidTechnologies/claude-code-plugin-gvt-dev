@@ -21,6 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { walkComponents, evaluateFile, evaluateConfig, evaluateTool, resolveKey, fileExists, dirExists } from '#audit-core';
 import { descriptionLengthOf, MAX_DESCRIPTION_CHARS } from './lib/description-length.mjs';
 import { gitRemoteUrl } from './lib/git-info.mjs';
+import { loadFailureDiagnostics, auditExitCode } from './lib/load-diagnostics.mjs';
 import {
   detectState,
   STATE_GREENFIELD,
@@ -120,7 +121,9 @@ async function main() {
     return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${inFile}` };
   };
 
-  const findings = [];
+  // Ungated: a component that failed to load is a plugin defect in any audit,
+  // including a consumer run. The loop below skips it (`expects` is null).
+  const findings = [...loadFailureDiagnostics(components)];
   const declaredPaths = new Set();
   for (const component of components) {
     const expects = component.expects;
@@ -238,8 +241,7 @@ async function main() {
   const report = formatReport(state, findings, { cfgHasC3, pillarCensus, practices, scanSummary });
   console.log(report);
 
-  const hasErrors = findings.some((f) => f.severity === 'error');
-  process.exit(hasErrors ? 1 : 0);
+  process.exit(auditExitCode(findings));
 }
 
 // ---- evaluate --------------------------------------------------------------
@@ -480,6 +482,8 @@ function formatFinding(f) {
     'principle-citation',
     'pillar-unknown',
     'path-override',
+    'component-unreadable',
+    'component-malformed',
   ];
   // The pointer-anchor scanner is matched by PREFIX rather than enumerated: it
   // emits eight kinds that all share the `pointer-` prefix, all self-contained,
