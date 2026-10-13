@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.34.0] - 2026-10-13
+
 - **Every quoted block in a `plan-task` dispatch brief now has a stated role, so design decisions are quoted instead of restated and plan-local wording stops shipping into artifacts (#554, #569, #646).** Recorded in ADR-0075.
   - **New `plan-task` section, "Quoted artifacts vs. direction in a dispatch brief":** a quoted block is *source* (an acceptance row or a design decision, which the receiver builds to or records from in the artifact's own voice), *content* (a required string that must appear verbatim) or *direction*. Everything outside a quoted block is direction, and direction never ships. That includes plan task ids: a phrase such as "once T3 lands" belongs in the brief and never in the deliverable, where it would dangle once the plan is overwritten.
   - **Three sites apply it.** Phase 3 passes the design's option labels and one-line reasons to the planner verbatim. The Execution lead requires implementer briefs to quote each owned acceptance row verbatim and to call out literal inputs a fixture would not naturally use. A new read-as-reader step catches claims that are right but misaddressed, such as prose in the brief's voice or instructions to an implementer who is not there.
