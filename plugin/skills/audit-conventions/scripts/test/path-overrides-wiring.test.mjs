@@ -87,7 +87,34 @@ test('audit: a paths override relocating a directory expectation (docs/decisions
       /docs\/decisions\/.*directory not found/,
       'an existing custom-decisions/ directory reached via the override must satisfy docs/decisions/',
     );
+    // Stronger: a FILE at the resolved path prints "expected a directory,
+    // found a file", which the pattern above misses. Satisfied = no finding.
+    assert.doesNotMatch(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a satisfied relocated docs/decisions/ expectation must produce no finding line',
+    );
     assert.equal(result.status, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a paths override pointing docs/decisions/ at a MISSING directory is still reported', async () => {
+  // Positive control for the relocation test's absence pattern.
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a relocated directory that does not exist must render an `expects` finding line',
+    );
+    assert.equal(result.status, 0, 'the expectation is optional, so the exit code stays 0');
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

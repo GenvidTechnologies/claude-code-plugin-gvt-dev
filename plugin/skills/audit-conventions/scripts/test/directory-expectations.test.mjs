@@ -62,6 +62,14 @@ test('audit: an existing docs/decisions/ directory SATISFIES the directory expec
       /docs\/decisions\/.*not found/,
       'an existing docs/decisions/ directory must not be reported as missing',
     );
+    // Stronger than the "not found" check above: a FILE standing where the
+    // directory belongs prints "expected a directory, found a file", which
+    // that pattern misses. A satisfied expectation emits no finding at all.
+    assert.doesNotMatch(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a satisfied docs/decisions/ expectation must produce no finding line',
+    );
     assert.equal(result.status, 0, 'optional expectations never gate the exit code');
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
@@ -77,6 +85,13 @@ test('audit: a MISSING docs/decisions/ is reported as a directory, not a file', 
       result.stdout,
       /docs\/decisions\/.*directory not found \(optional\)/,
       'a missing directory expectation should say "directory not found", not "file not found"',
+    );
+    // Positive control for the SATISFIES test's absence pattern: proves the
+    // `expects` form can fire on real output.
+    assert.match(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a missing directory expectation renders as an `expects` finding line',
     );
     assert.equal(result.status, 0, 'it is an optional expectation, so the exit code stays 0');
   } finally {
