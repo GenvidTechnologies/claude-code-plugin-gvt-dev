@@ -38,7 +38,7 @@ import { expectationCandidates } from './lib/expect-prefer.mjs';
 import { checkReadmeInventory } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
-import { summarizeExpectations, formatScanSummary } from './lib/summary.mjs';
+import { renderSummary } from './lib/summary.mjs';
 import { PILLARS, parsePillars } from './lib/pillars.mjs';
 import { detectWikiAdoption } from './lib/practice-detect.mjs';
 import { formatPracticeCoverage } from './lib/pillar-report.mjs';
@@ -426,22 +426,7 @@ function formatReport(state, findings, { cfgHasC3 = false, pillarCensus = [], pr
     lines.push('');
   }
 
-  const { requiredMet, requiredTotal, optionalMet, optionalTotal } = summarizeExpectations(findings);
-  lines.push('### Summary');
-  lines.push(`- required: ${requiredMet} of ${requiredTotal} satisfied.`);
-  lines.push(`- optional: ${optionalMet} of ${optionalTotal} satisfied.`);
-  if (scanSummary) {
-    lines.push(`- ${formatScanSummary(scanSummary)}`);
-  }
-  if (errors.length > 0) {
-    lines.push(`- ${errors.length} required expectation${errors.length === 1 ? '' : 's'} unmet.`);
-  }
-  if (warnings.length > 0) {
-    lines.push(`- ${warnings.length} warning${warnings.length === 1 ? '' : 's'} (non-fatal).`);
-  }
-  if (infos.length > 0) {
-    lines.push(`- ${infos.length} optional expectation${infos.length === 1 ? '' : 's'} unmet.`);
-  }
+  lines.push(...renderSummary({ findings, scanSummary }));
   if (state === STATE_LEGACY) {
     lines.push('');
     lines.push('> Run `--fix` to migrate from the legacy template-rendered setup.');
