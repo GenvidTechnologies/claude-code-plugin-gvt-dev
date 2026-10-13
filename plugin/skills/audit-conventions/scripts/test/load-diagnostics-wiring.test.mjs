@@ -9,10 +9,10 @@
 // (`description: Use it: now`, a parseError). The audit must print the whole
 // report, name the skill in a diagnostic, and exit 2.
 //
-// No readError fixture: a directory named SKILL.md was tried and walkComponents
-// skips it (it returned no component at all), and there is no other portable
-// way to make an existing file unreadable (chmod is a no-op on Windows and
-// root ignores it on POSIX). The readError branch is covered by the unit tests
+// There is no readError end-to-end fixture: no portable way exists to make a
+// component file unreadable. A directory named SKILL.md is skipped by
+// walkComponents (it yields no component), chmod is a no-op on Windows, and
+// root ignores it on POSIX. The readError branch is covered by the unit tests
 // in load-diagnostics.test.mjs.
 
 import { test } from 'node:test';
@@ -88,7 +88,8 @@ test('load diagnostics wiring: a well-formed skill alone does not exit 2 and rep
     await writeSkill(pluginRoot, 'fine-skill', 'name: fine-skill\ndescription: A well formed skill');
 
     const result = spawnAudit(pluginRoot, consumerRoot);
-    assert.notEqual(result.status, 2, `expected a non-load-failure exit:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    // 0: the fixture skill declares no metadata.expects, so no required expectation can be unmet.
+    assert.equal(result.status, 0, `expected exit 0:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
     assert.doesNotMatch(result.stdout, /could not be parsed|could not be read/);
   });
 });

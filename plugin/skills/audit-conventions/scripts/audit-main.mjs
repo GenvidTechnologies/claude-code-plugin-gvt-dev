@@ -11,7 +11,10 @@
 // 1 if any required expectation is unmet. --fix mode has its own, separate
 // semantics: 0 once the dry-run plan has printed, 1 if --apply refuses a
 // dirty tree or an applied action fails. In both modes, 2 means an
-// unexpected throw caught at the top level, not a validation failure.
+// unexpected throw caught at the top level, not a validation failure. In
+// validate mode, 2 also means a plugin component could not be loaded
+// (unreadable or malformed): it is reported, then the audit exits 2 after
+// printing the full report.
 
 import { promises as fs } from 'node:fs';
 import { join, dirname, resolve, relative, isAbsolute } from 'node:path';

@@ -16,7 +16,9 @@
 //
 // Exit-code contract: 0/1 come from the audit body (see audit-main.mjs's
 // own header comment). 2 here means the audit could not run — an
-// unexpected error, or its own dependency is unavailable.
+// unexpected error, or its own dependency is unavailable. (audit-main.mjs
+// also exits 2 after a full report when a plugin component could not be
+// loaded; see its header comment.)
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
