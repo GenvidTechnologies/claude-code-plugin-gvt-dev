@@ -252,6 +252,8 @@ test('audit: a dangling wiki/schema.md stops the chain and is reported as unread
       ),
       result.stdout,
     );
+    // The Environment row agrees with the audit's finding: the chain stopped.
+    assert.match(result.stdout, /\| Environment \|[^\n]*\| partial adoption \|/, result.stdout);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -262,7 +264,11 @@ test('audit: a directory at wiki/schema.md is passed over when docs/wiki-schema.
   try {
     await mkdir(join(tmpDir, 'wiki', 'schema.md'), { recursive: true });
     const result = spawnAudit([], tmpDir);
-    assert.ok(!result.stdout.includes('**maintain-wiki** expects `wiki/schema.md`'), result.stdout);
+    const maintainWikiLines = result.stdout
+      .split('\n')
+      .filter((l) => l.includes('**maintain-wiki** expects') && (l.includes('wiki/schema.md') || l.includes('docs/wiki-schema.md')));
+    assert.deepEqual(maintainWikiLines, [], result.stdout);
+    assert.match(result.stdout, /\| Environment \|[^\n]*\| adopted \|/, result.stdout);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

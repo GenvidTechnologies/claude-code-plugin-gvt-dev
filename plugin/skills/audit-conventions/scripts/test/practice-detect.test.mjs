@@ -14,6 +14,7 @@ import {
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
 import { extractFrontmatter } from '#audit-core';
+import { makeDanglingLink } from './helpers/temp-repo.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));
@@ -235,10 +236,33 @@ test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki dec
   assert.deepEqual({ path: entry.path, prefer: entry.prefer }, { ...SCHEMA_EXPECTATION });
 });
 
-test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs and the audit-core presence probes (no maintain-wiki import)', () => {
+// #671 / ADR-0077 — an error is not a wrong kind. A candidate that cannot be
+// examined stops the chain (so the signal agrees with the audit's finding); a
+// wrong-kind candidate that is not the last falls through.
+test('detectWikiAdoption: a dangling wiki/schema.md stops the chain, so a real docs/wiki-schema.md does not count -> schemaDoc false (C18)', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await makeDanglingLink(join(d, 'wiki', 'schema.md'));
+    await mkdir(join(d, 'docs'), { recursive: true });
+    await fs.writeFile(join(d, 'docs', 'wiki-schema.md'), '# Schema\n');
+  }, { wiki: {} });
+  assert.equal(signals.schemaDoc, false);
+});
+
+test('detectWikiAdoption: a directory at wiki/schema.md falls through to a real docs/wiki-schema.md -> schemaDoc true (C18)', async () => {
+  const { signals } = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await mkdir(join(d, 'wiki', 'schema.md'), { recursive: true });
+    await mkdir(join(d, 'docs'), { recursive: true });
+    await fs.writeFile(join(d, 'docs', 'wiki-schema.md'), '# Schema\n');
+  }, { wiki: {} });
+  assert.equal(signals.schemaDoc, true);
+});
+
+test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs, ./candidate-resolution.mjs and the audit-core presence probes (no maintain-wiki import)', () => {
   const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
   const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
-  assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs']);
+  assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs', './candidate-resolution.mjs']);
   const core = src.split('\n').filter((l) => l.startsWith('import ') && l.endsWith(" from '#audit-core';"));
   assert.equal(core.length, 1);
   const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();

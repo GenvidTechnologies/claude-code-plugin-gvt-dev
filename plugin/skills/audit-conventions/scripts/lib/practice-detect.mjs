@@ -6,14 +6,18 @@
 // listing or file-content calls, or import anything from maintain-wiki,
 // here — presence only, via stat-style existence checks. The imports are
 // ./expect-prefer.mjs, a pure path-list helper (ADR-0070) that expands an
-// expectation into the locations to stat and reads nothing, and the two
-// presence probes (fileExists, dirExists) from audit-core. No frontmatter
-// or walking machinery is imported.
+// expectation into the locations to stat and reads nothing; the two
+// presence probes (fileExists, dirExists) from audit-core; and
+// ./candidate-resolution.mjs, the shared candidate rule (ADR-0070, ADR-0077),
+// whose only audit-core import is probePath, which runs stat then lstat and
+// never lists a directory or reads a file. No frontmatter or walking
+// machinery is imported.
 
 import { join } from 'node:path';
 
 import { fileExists, dirExists } from '#audit-core';
 import { expectationCandidates } from './expect-prefer.mjs';
+import { resolveCandidate } from './candidate-resolution.mjs';
 
 const DEFAULT_WIKI_DIR = 'wiki';
 const DEFAULT_RAW_DIR = 'raw';
@@ -39,7 +43,7 @@ export async function detectWikiAdoption(repoRoot, config) {
       fileExists(join(repoRoot, wikiDir, 'index.md')),
       fileExists(join(repoRoot, wikiDir, 'log.md')),
       dirExists(join(repoRoot, rawDir)),
-      firstExisting(repoRoot, expectationCandidates(SCHEMA_EXPECTATION, { paths: config?.paths, wikiDir }).candidates),
+      schemaPresent(repoRoot, config, wikiDir),
     ]);
 
   const signals = {
@@ -62,11 +66,17 @@ export async function detectWikiAdoption(repoRoot, config) {
   return { signals, verdict };
 }
 
-// True when any candidate exists. The candidate list already encodes the
-// order and the override's no-fallthrough rule, so presence is all this needs.
-async function firstExisting(repoRoot, candidates) {
-  for (const candidate of candidates) {
-    if (await fileExists(join(repoRoot, candidate))) return true;
-  }
-  return false;
+// True only when the candidate the audit would accept holds a file, so this
+// signal agrees with the audit's own finding (ADR-0070 names a
+// detector/audit disagreement as the defect it closed). The candidate list
+// encodes the order and the override's no-fallthrough rule; the shared
+// resolver then decides each candidate:
+//   - a candidate that cannot be examined stops the chain and reads as not
+//     present, as the audit reports it;
+//   - a wrong-kind or other candidate that is not the last falls through to
+//     the next one;
+//   - a wrong-kind last candidate gives false.
+async function schemaPresent(repoRoot, config, wikiDir) {
+  const { candidates } = expectationCandidates(SCHEMA_EXPECTATION, { paths: config?.paths, wikiDir });
+  return (await resolveCandidate(repoRoot, SCHEMA_EXPECTATION.path, candidates)).satisfied;
 }
