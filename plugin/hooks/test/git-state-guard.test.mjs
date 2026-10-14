@@ -153,6 +153,25 @@ test('assignments and unexpanded variables', () => {
   assertAllow('git $SUBCMD');
 });
 
+// ANSI-C quoting ($'...') must not hide the subcommand. Each string below is
+// the literal shell command; backslashes are doubled so the runtime string
+// carries a single one.
+test('T15a: ANSI-C quoted whole word git $\'stash\' is denied', () => {
+  assertDeny("git $'stash'");
+});
+test('T15b: ANSI-C quoted prefix git $\'sta\'sh is denied', () => {
+  assertDeny("git $'sta'sh");
+});
+test('T15c: ANSI-C hex escape git $\'st\\x61sh\' is denied', () => {
+  assertDeny("git $'st\\x61sh'");
+});
+test('T15d: ANSI-C octal escape git $\'st\\141sh\' is denied', () => {
+  assertDeny("git $'st\\141sh'");
+});
+test('T15e: ANSI-C empty quote prefix git $\'\'stash is denied', () => {
+  assertDeny("git $''stash");
+});
+
 // T13 — entry script, spawned as a real subprocess.
 test('T13: entry script exits 2 and blames #14 on deny, 0 on allow', () => {
   const denyPayload = JSON.stringify({
