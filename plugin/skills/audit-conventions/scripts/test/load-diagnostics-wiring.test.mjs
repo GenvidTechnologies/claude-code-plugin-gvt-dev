@@ -9,11 +9,10 @@
 // (`description: Use it: now`, a parseError). The audit must print the whole
 // report, name the skill in a diagnostic, and exit 2.
 //
-// There is no readError end-to-end fixture: no portable way exists to make a
-// component file unreadable. A directory named SKILL.md is skipped by
-// walkComponents (it yields no component), chmod is a no-op on Windows, and
-// root ignores it on POSIX. The readError branch is covered by the unit tests
-// in load-diagnostics.test.mjs.
+// A dangling skill-directory link (makeDanglingLink) is the readError
+// end-to-end fixture under audit-core 0.4.0: walkComponents reports the
+// unreadable entry instead of skipping it. A skill with no frontmatter block
+// is the NO_FRONTMATTER parseError fixture.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +22,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { makeDanglingLink } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPTS_DIR = join(__dirname, '..');
@@ -73,6 +73,32 @@ test('load diagnostics wiring: a skill with malformed frontmatter makes a consum
   });
 });
 
+test('load diagnostics wiring: a skill with no frontmatter makes a consumer audit exit 2', async () => {
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    const dir = join(pluginRoot, 'skills', 'bare');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'SKILL.md'), 'Just a body, no frontmatter.\n');
+
+    const result = spawnAudit(pluginRoot, consumerRoot);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /^- The plugin's own skill "bare" is missing its frontmatter/m);
+    assert.doesNotMatch(result.stdout, /"bare" has frontmatter/);
+  });
+});
+
+test('load diagnostics wiring: a dangling skill link makes a consumer audit exit 2 without a doubled error code', async () => {
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    await mkdir(join(pluginRoot, 'skills'), { recursive: true });
+    await makeDanglingLink(join(pluginRoot, 'skills', 'ghost'));
+
+    const result = spawnAudit(pluginRoot, consumerRoot);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /skill "ghost"/);
+    assert.match(result.stdout, /ENOENT/);
+    assert.doesNotMatch(result.stdout, /ENOENT: ENOENT/);
+  });
+});
+
 test('load diagnostics wiring: the full report prints before the load-failure exit', async () => {
   await withFixture(async (pluginRoot, consumerRoot) => {
     await writeSkill(pluginRoot, 'broken-skill', 'name: broken-skill\ndescription: Use it: now');
@@ -91,5 +117,27 @@ test('load diagnostics wiring: a well-formed skill alone does not exit 2 and rep
     // 0: the fixture skill declares no metadata.expects, so no required expectation can be unmet.
     assert.equal(result.status, 0, `expected exit 0:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
     assert.doesNotMatch(result.stdout, /could not be parsed|could not be read/);
+  });
+});
+
+// Author mode: the plugin root sits INSIDE the audited repo (<base>/plugin,
+// cwd = <base>), as in this repo's own layout, so AUDITING_PLUGIN_SOURCE is true.
+test('load diagnostics wiring: an unreadable agents/ tree in author mode is named once and the README inventory skips agents', async () => {
+  await withFixture(async (pluginRoot) => {
+    const base = dirname(pluginRoot);
+    await makeDanglingLink(join(pluginRoot, 'agents'));
+    await writeSkill(pluginRoot, 'fine-skill', 'name: fine-skill\ndescription: A well formed skill');
+    await writeFile(
+      join(base, 'README.md'),
+      ['# plugin', '', '**Skills**:', '', '| Skill | Purpose |', '|--|--|', '| `fine-skill` | p |', '',
+        '**Agents**:', '', '`foo`.', '', '**Hook:** none', ''].join('\n'),
+    );
+
+    const result = spawnAudit(pluginRoot, base);
+    assert.equal(result.status, 2, `expected exit 2:\nstdout:${result.stdout}\nstderr:${result.stderr}`);
+    assert.match(result.stdout, /agents\/ tree could not be read/);
+    assert.doesNotMatch(result.stdout, /agent "agents\/"/);
+    const inventoryLines = result.stdout.split('\n').filter((l) => /README agents list|plugin\/agents\//.test(l));
+    assert.deepEqual(inventoryLines.filter((l) => l.includes('foo')), [], `inventory lines:\n${inventoryLines.join('\n')}`);
   });
 });

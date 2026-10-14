@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadFailureDiagnostics, auditExitCode } from '../lib/load-diagnostics.mjs';
+import { loadFailureDiagnostics, auditExitCode, isTreeRecord } from '../lib/load-diagnostics.mjs';
 
 const normal = { type: 'skill', name: 'fine-skill', expects: { files: [] }, frontmatter: { name: 'fine-skill' } };
 const unreadable = {
@@ -104,4 +104,47 @@ test('auditExitCode: a load failure alongside another error finding still exits 
 
 test('auditExitCode: the diagnostics produced by loadFailureDiagnostics exit 2', () => {
   assert.equal(auditExitCode(loadFailureDiagnostics([malformed])), 2);
+});
+
+test('loadFailureDiagnostics: a readError whose message already starts with its code prints the code once', () => {
+  const c = { type: 'skill', name: 'x', readError: { code: 'ENOENT', message: 'ENOENT: no such file or directory, stat x' } };
+  const [d] = loadFailureDiagnostics([c]);
+  assert.equal(d.detail.split('ENOENT').length - 1, 1);
+});
+
+test('loadFailureDiagnostics: a readError with a null code prints no "null"', () => {
+  const c = { type: 'skill', name: 'x', readError: { code: null, message: 'something broke' } };
+  const [d] = loadFailureDiagnostics([c]);
+  assert.doesNotMatch(d.detail, /null/);
+  assert.match(d.detail, /something broke/);
+});
+
+test('loadFailureDiagnostics: a skills/ tree record says the tree could not be read', () => {
+  const c = { type: 'skill', name: 'skills/', readError: { code: 'EACCES', message: 'denied' } };
+  assert.equal(isTreeRecord(c), true);
+  const [d] = loadFailureDiagnostics([c]);
+  assert.equal(d.kind, 'component-unreadable');
+  assert.match(d.detail, /skills\/ tree could not be read/);
+});
+
+test('loadFailureDiagnostics: an agents/ tree record says the tree could not be read', () => {
+  const c = { type: 'agent', name: 'agents/', readError: { code: 'EACCES', message: 'denied' } };
+  assert.equal(isTreeRecord(c), true);
+  const [d] = loadFailureDiagnostics([c]);
+  assert.equal(d.kind, 'component-unreadable');
+  assert.match(d.detail, /agents\/ tree could not be read/);
+});
+
+test('isTreeRecord: an ordinary component named "skills" with a readError is not a tree record', () => {
+  const c = { type: 'skill', name: 'skills', readError: { code: 'EACCES', message: 'denied' } };
+  assert.equal(isTreeRecord(c), false);
+  assert.doesNotMatch(loadFailureDiagnostics([c])[0].detail, /tree could not be read/);
+});
+
+test('loadFailureDiagnostics: a NO_FRONTMATTER parseError says the frontmatter is missing', () => {
+  const c = { type: 'skill', name: 'bare', parseError: { code: 'NO_FRONTMATTER', message: 'no frontmatter block' } };
+  const [d] = loadFailureDiagnostics([c]);
+  assert.equal(d.kind, 'component-malformed');
+  assert.match(d.detail, /"bare" is missing its frontmatter/);
+  assert.doesNotMatch(d.detail, /"bare" has frontmatter/);
 });

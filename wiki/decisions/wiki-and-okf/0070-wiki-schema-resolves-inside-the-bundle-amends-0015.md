@@ -134,3 +134,7 @@ owner removes one. The pointer-anchor baseline drops from 113 to 111 as the two 
 citations are anchored and pruned.
 
 **Related:** ADR-0015 (decision 1 amended), ADR-0022, ADR-0041, ADR-0062, #385, #587, #579.
+
+**Amendment (2026-10-13, #671).** [ADR-0077](../audit-conventions/0077-candidate-resolution-probes-the-kind-and-stops-at-a-candidate-it-cannot-examine.md)
+refines decision 1's resolution rule: what "exists" means for a candidate, the stop rule when a candidate cannot be
+examined, and where the expected kind comes from. The decisions above are left as written.

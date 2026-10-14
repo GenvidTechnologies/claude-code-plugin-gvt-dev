@@ -14,6 +14,8 @@
 // component — so it never fires on a plugin repo whose README has a different
 // shape, only on drift within an existing table/list.
 
+import { isTreeRecord } from './load-diagnostics.mjs';
+
 // First-column-only match for a Markdown table row: `| `<name>` | ... |`.
 // Deliberately anchored to the row's first cell so backtick tokens in the
 // Purpose column (e.g. a row that mentions `triaged`) are not mistaken for
@@ -44,6 +46,17 @@ function matchNames(re, text) {
   let m;
   while ((m = re.exec(text))) out.add(m[1]);
   return out;
+}
+
+// Names of the loaded skills and agents. A type whose whole tree could not be
+// read (audit-core's 'skills/' / 'agents/' record) has no name list at all, so
+// its value is null and the inventory check skips that half.
+export function inventoryNames(components) {
+  const names = (type) =>
+    components.some((c) => c.type === type && isTreeRecord(c))
+      ? null
+      : components.filter((c) => c.type === type).map((c) => c.name);
+  return { skill: names('skill'), agent: names('agent') };
 }
 
 function mk(detail) {
@@ -80,12 +93,12 @@ export function checkReadmeInventory(readmeContent, skillNames, agentNames) {
   const findings = [];
 
   const skillsSection = sliceSection(readmeContent, '**Skills**');
-  if (skillsSection != null) {
+  if (skillNames != null && skillsSection != null) {
     findings.push(...diff('skills', 'skills table', skillNames, matchNames(SKILL_ROW_RE, skillsSection)));
   }
 
   const agentsSection = sliceSection(readmeContent, '**Agents**');
-  if (agentsSection != null) {
+  if (agentNames != null && agentsSection != null) {
     findings.push(...diff('agents', 'agents list', agentNames, matchNames(NAME_RE, agentsSection)));
   }
 

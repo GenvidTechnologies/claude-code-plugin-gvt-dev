@@ -27,7 +27,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, makeDanglingLink } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/pillar-coverage-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -234,6 +234,57 @@ test('audit: with no schema anywhere, the unmet expectation names both locations
     const result = spawnAudit([], tmpDir);
     assert.equal(result.status, 0, result.stdout);
     assert.ok(result.stdout.includes('**maintain-wiki** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional)'), result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// #671 — the audit line names the candidate that answered, and why an earlier
+// candidate did not (ADR-0077).
+test('audit: a dangling wiki/schema.md stops the chain and is reported as unreadable, not passed over', async () => {
+  const tmpDir = await withTempWikiRepo(join('docs', 'wiki-schema.md'));
+  try {
+    await makeDanglingLink(join(tmpDir, 'wiki', 'schema.md'));
+    const result = spawnAudit([], tmpDir);
+    assert.ok(
+      result.stdout.includes(
+        'expects `wiki/schema.md` or `docs/wiki-schema.md` — `wiki/schema.md`: file could not be checked (dangling link, ENOENT) (optional)',
+      ),
+      result.stdout,
+    );
+    // The Environment row agrees with the audit's finding: the chain stopped.
+    assert.match(result.stdout, /\| Environment \|[^\n]*\| partial adoption \|/, result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a directory at wiki/schema.md is passed over when docs/wiki-schema.md is a real file', async () => {
+  const tmpDir = await withTempWikiRepo(join('docs', 'wiki-schema.md'));
+  try {
+    await mkdir(join(tmpDir, 'wiki', 'schema.md'), { recursive: true });
+    const result = spawnAudit([], tmpDir);
+    const maintainWikiLines = result.stdout
+      .split('\n')
+      .filter((l) => l.includes('**maintain-wiki** expects') && (l.includes('wiki/schema.md') || l.includes('docs/wiki-schema.md')));
+    assert.deepEqual(maintainWikiLines, [], result.stdout);
+    assert.match(result.stdout, /\| Environment \|[^\n]*\| adopted \|/, result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a directory at wiki/schema.md with no legacy file reports the legacy path and names the pass-over', async () => {
+  const tmpDir = await withTempWikiRepo(null);
+  try {
+    await mkdir(join(tmpDir, 'wiki', 'schema.md'), { recursive: true });
+    const result = spawnAudit([], tmpDir);
+    assert.ok(
+      result.stdout.includes(
+        '— `docs/wiki-schema.md`: file not found (optional); `wiki/schema.md` was passed over (found a directory)',
+      ),
+      result.stdout,
+    );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

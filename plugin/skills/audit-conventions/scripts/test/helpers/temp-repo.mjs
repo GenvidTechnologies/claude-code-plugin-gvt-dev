@@ -10,9 +10,17 @@
 // wrote (e.g. replacing .gvt-agent.json to test a config override) — setup
 // runs after the base fixture is in place, so later writes win.
 
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, basename } from 'node:path';
+
+// Makes `path` a dangling link: its target (a sibling named `.gone-<name>`)
+// never exists, so cleanup has nothing to follow into. 'junction' makes a
+// junction on Windows without admin; on Linux the type argument is ignored
+// and a symlink is made. Both read as dangling.
+export async function makeDanglingLink(path) {
+  await symlink(join(dirname(path), '.gone-' + basename(path)), path, 'junction');
+}
 
 export async function withTempMigratedRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'audit-migrated-repo-test-'));

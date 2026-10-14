@@ -87,7 +87,34 @@ test('audit: a paths override relocating a directory expectation (docs/decisions
       /docs\/decisions\/.*directory not found/,
       'an existing custom-decisions/ directory reached via the override must satisfy docs/decisions/',
     );
+    // Stronger: a FILE at the resolved path prints "expected a directory,
+    // found a file", which the pattern above misses. Satisfied = no finding.
+    assert.doesNotMatch(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a satisfied relocated docs/decisions/ expectation must produce no finding line',
+    );
     assert.equal(result.status, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a paths override pointing docs/decisions/ at a MISSING directory is still reported', async () => {
+  // Positive control for the relocation test's absence pattern.
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /expects `docs\/decisions\/`/,
+      'a relocated directory that does not exist must render an `expects` finding line',
+    );
+    assert.equal(result.status, 0, 'the expectation is optional, so the exit code stays 0');
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -152,6 +179,37 @@ test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no
       'plugin_root is reserved — it must never be treated as an override target or flagged as unrecognized',
     );
     assert.equal(result.status, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// The declared path decides the expected kind; a trailing slash on the override
+// value (or its absence) must not change it (ADR-0077).
+test('audit: an override value without a trailing slash still satisfies a declared directory (docs/decisions/)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await mkdir(join(dir, 'custom-decisions'), { recursive: true });
+    await writeConfig(dir, { 'docs/decisions/': 'custom-decisions' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.doesNotMatch(result.stdout, /expects `docs\/decisions\/`/);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: an override value with a trailing slash still satisfies a declared file (docs/TOC.md)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'documentation'), { recursive: true });
+    await writeFile(join(dir, 'documentation', 'INDEX.md'), '# Index\n');
+    await writeConfig(dir, { 'docs/TOC.md': 'documentation/INDEX.md/' });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.doesNotMatch(result.stdout, /expects `docs\/TOC\.md`/);
+    assert.equal(result.status, 0, result.stdout);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

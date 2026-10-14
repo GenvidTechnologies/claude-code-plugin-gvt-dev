@@ -100,13 +100,22 @@ test('walkComponents: a missing agents/ directory is tolerated (returns only ski
   }
 });
 
-test('loadComponent: a file with no frontmatter yields {expects: null, frontmatter: null}', async () => {
+test('loadComponent: a file with no frontmatter yields null expects and frontmatter plus a NO_FRONTMATTER parseError', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'skills/plain/SKILL.md', 'no frontmatter here\n');
   });
   try {
     const component = await loadComponent('skill', 'plain', join(dir, 'skills', 'plain', 'SKILL.md'));
-    assert.deepEqual(component, { type: 'skill', name: 'plain', expects: null, frontmatter: null });
+    assert.deepEqual(component, {
+      type: 'skill',
+      name: 'plain',
+      expects: null,
+      frontmatter: null,
+      parseError: {
+        code: 'NO_FRONTMATTER',
+        message: 'no frontmatter block: the file must open with a --- line, closed by another --- line',
+      },
+    });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
