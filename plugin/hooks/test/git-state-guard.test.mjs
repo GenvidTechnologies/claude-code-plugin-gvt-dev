@@ -153,6 +153,71 @@ test('assignments and unexpanded variables', () => {
   assertAllow('git $SUBCMD');
 });
 
+// ANSI-C quoting ($'...') must not hide the subcommand. Each string below is
+// the literal shell command; backslashes are doubled so the runtime string
+// carries a single one.
+test('T15a: ANSI-C quoted whole word git $\'stash\' is denied', () => {
+  assertDeny("git $'stash'");
+});
+test('T15b: ANSI-C quoted prefix git $\'sta\'sh is denied', () => {
+  assertDeny("git $'sta'sh");
+});
+test('T15c: ANSI-C hex escape git $\'st\\x61sh\' is denied', () => {
+  assertDeny("git $'st\\x61sh'");
+});
+test('T15d: ANSI-C octal escape git $\'st\\141sh\' is denied', () => {
+  assertDeny("git $'st\\141sh'");
+});
+test('T15e: ANSI-C empty quote prefix git $\'\'stash is denied', () => {
+  assertDeny("git $''stash");
+});
+
+// A $'...' word is read as bash reads it: the verdict follows the decoded command.
+test('T16a: git stash $\'list\' decodes to a read-only form and is allowed', () => {
+  assertAllow("git stash $'list'");
+});
+test('T16b: git stash $\'show\' decodes to a read-only form and is allowed', () => {
+  assertAllow("git stash $'show'");
+});
+test('T16c: git clean $\'-n\' decodes to a dry run and is allowed', () => {
+  assertAllow("git clean $'-n'");
+});
+test('T16d: git stash $\'pop\' decodes to a mutating form and is denied', () => {
+  assertDeny("git stash $'pop'");
+});
+test('T16e: git clean $\'-f\' decodes to a mutating form and is denied', () => {
+  assertDeny("git clean $'-f'");
+});
+
+// Operator tokens added in shell-quote 1.12.0 are split like any other operator.
+test('T17a: git stash &> out is denied', () => {
+  assertDeny('git stash &> out');
+});
+test('T17b: git stash &>> out is denied', () => {
+  assertDeny('git stash &>> out');
+});
+test('T17c: git stash >| out is denied', () => {
+  assertDeny('git stash >| out');
+});
+test('T17d: git stash << EOF is denied', () => {
+  assertDeny('git stash << EOF');
+});
+test('T17e: git stash <<- EOF is denied', () => {
+  assertDeny('git stash <<- EOF');
+});
+test('T17f: git stash <> out is denied', () => {
+  assertDeny('git stash <> out');
+});
+test('T17g: git stash ;& echo hi is denied', () => {
+  assertDeny('git stash ;& echo hi');
+});
+test('T17h: git stash ;;& echo hi is denied', () => {
+  assertDeny('git stash ;;& echo hi');
+});
+test('T17i: git stash >(cat) is denied', () => {
+  assertDeny('git stash >(cat)');
+});
+
 // T13 — entry script, spawned as a real subprocess.
 test('T13: entry script exits 2 and blames #14 on deny, 0 on allow', () => {
   const denyPayload = JSON.stringify({
