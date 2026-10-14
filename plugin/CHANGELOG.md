@@ -9,8 +9,8 @@ and follows [semantic versioning](https://semver.org/).
 
 - **`shell-quote` moves to exactly 1.12.0, and the git-state guard now denies ANSI-C quoted forms of denied git subcommands (#632).**
   - **Advisory:** GHSA-pqg4-j6r4-53mv affects `quote()` only. The hook calls only `parse()`, so it was never exposed to it.
-  - **Behaviour change:** shell-quote 1.11.0 expands ANSI-C `$'...'` quoting in `parse()`. Under 1.10.0 the guard allowed `git $'stash'` and similar forms (`git $'sta'sh`, `git $'st\x61sh'`, `git $'st\141sh'`, `git $''stash`), which bash runs as `git stash`. They are now denied, and new tests pin those five forms. No previously denied command becomes allowed.
-  - **Operator tokens:** 1.12.0 adds `&>`, `&>>`, `>|`, `<<`, `<<-`, `<>`, `;&`, `;;&` and `>(`. The splitter treats them like every other operator, so no verdict changes. Comment, line-terminator and glob parsing are unchanged.
+  - **Behaviour change:** shell-quote 1.11.0 expands ANSI-C `$'...'` quoting in `parse()`. Under 1.10.0 the guard allowed `git $'stash'` and similar forms (`git $'sta'sh`, `git $'st\x61sh'`, `git $'st\141sh'`, `git $''stash`), which bash runs as `git stash`. They are now denied, and new tests pin those five forms. A `$'...'` word is now read as bash reads it, so the verdict follows the decoded command in both directions. Some forms 1.10.0 denied are now allowed because they decode to read-only commands the guard already allows: `git stash $'list'`, `git stash $'show'` and `git clean $'-n'`. Mutating forms such as `git stash $'pop'` and `git clean $'-f'` stay denied.
+  - **Operator tokens:** 1.12.0 adds `&>`, `&>>`, `>|`, `<<`, `<<-`, `<>`, `;&`, `;;&` and `>(`. The splitter treats them like every other operator, so no verdict changes. Comment, line-terminator and glob parsing are unchanged. 1.11.0 also changed `$`-variable tokenisation: `$_` is no longer a special variable, and `\$` and `\\` escapes are kept in barewords. Probes of these showed no verdict change.
 
   Behavioral change to a shipped hook → version bump at release.
 

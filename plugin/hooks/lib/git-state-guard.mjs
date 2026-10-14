@@ -77,8 +77,8 @@ function isControlOp(tok) {
 
 // Split a flat shell-quote token stream into one array per simple command,
 // breaking at every control operator (&&, ||, ;, ;;, |, |&, &, (, ), <, >,
-// <(, <<<, >>, >&, <&, and the shell-quote 1.12.0 tokens &>, &>>, >|, <<, <<-,
-// <>, ;&, ;;&, >(). Redirection targets end up as their own (harmless)
+// <(, <<<, >>, >&, <&, and the tokens added in shell-quote 1.12.0: &>, &>>,
+// >|, <<, <<-, <>, ;&, ;;&, >(). Redirection targets end up as their own (harmless)
 // segment rather than folded into the preceding command's argument list,
 // which is a conservative simplification: it never hides a `git` invocation,
 // it can only ever misclassify a stray redirect target as its own segment.
