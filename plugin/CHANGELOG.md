@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.36.0] - 2026-10-14
+
 - **The audit-core pin moves to exactly 0.4.0, and a `prefer` location that exists but cannot be examined now stops the search instead of being skipped (#679, #671, #672).** Recorded in ADR-0077, which amends ADR-0070.
   - **New exit-2 triggers:** the audit prints its full report, then exits **2**, when a plugin component is a dangling symlink or junction, when a component has no frontmatter block (reported as "is missing its frontmatter"), or when the plugin's `skills/` or `agents/` tree cannot be read (reported as that tree; the author-time README inventory skips that half). An unreadable component file and unparseable frontmatter still exit 2. Load-failure lines print the error code once, where it was doubled (`ENOENT: ENOENT: …`), and never print `null:`. A consumer CI that treats any non-zero exit as "contract unmet" will now also see 2 for these.
   - **New `files` finding wording (from audit-core 0.4.0):** `<kind> not found` now means absence only. A path that cannot be examined reads `could not be checked (<code>)`, and a symbolic link or junction whose target is missing reads `could not be checked (dangling link, <code>)`. The wrong kind reads `expected a directory, found a file` or `expected a file, found a directory`. Something that is neither reads `found neither a file nor a directory`.
