@@ -14,6 +14,15 @@ and follows [semantic versioning](https://semver.org/).
 
   Behavioral change to a shipped hook → version bump at release.
 
+- **`plan-task`'s task-commit and co-dispatch rules are hardened (#186, #295, #301, #351, #393).** The drift check is recorded in ADR-0078.
+  - **Drift check before a scoped commit (#351):** before every pathspec-scoped task commit, the orchestrator runs `git diff --quiet -- <paths>` and reads `git status --porcelain -- <paths>` for coverage, as a command separate from the commit so the pre-commit lint hook still fires. A scoped commit records the worktree, not the graded index. So drift that is the task's own rewrite is re-staged and re-validated, and any other drift stops the run.
+  - **Sibling-sweep decoy (#301):** `git add <files> && git commit` is named as a decoy that still sweeps in a sibling's staged files. The pathspec belongs on the commit.
+  - **Generated names (#295):** a generated file's full name is fixed before dispatching a task that cites it.
+  - **Sharing a file (#393):** reading or executing a sibling's file, done-when commands included, counts as sharing it. `plan-task` and the planner agent both apply this when judging whether tasks are parallel-safe.
+  - **Commit grouping (#186):** when two tasks share a file, the planner states the honest commit grouping, and the self-audit checklist line says so.
+
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.36.0] - 2026-10-14
 
 - **The audit-core pin moves to exactly 0.4.0, and a `prefer` location that exists but cannot be examined now stops the search instead of being skipped (#679, #671, #672).** Recorded in ADR-0077, which amends ADR-0070.

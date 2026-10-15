@@ -18,7 +18,7 @@ The user must be able to see and review the complete plan in the conversation be
 
 Before presenting the plan to the user, verify:
 
-- [ ] **Committable units** — each task produces a single, independently committable change.
+- [ ] **Committable units** — each task produces a single, independently committable change. Where two tasks share a file, the plan says so and states whether they are committed between dispatches or committed together (see `planner.md`, *Each task = one commit*).
 - [ ] **Dependencies verified** — prerequisite branches/PRs identified and checked against the base branch.
 - [ ] **Scope check** — plan fits in one session. If not, use the multi-session structure from [`multi-session.md`](multi-session.md).
 - [ ] **Pre-existing patterns** — checked the codebase for existing solutions before proposing new abstractions.
