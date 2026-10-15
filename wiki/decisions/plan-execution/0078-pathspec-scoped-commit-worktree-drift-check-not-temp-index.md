@@ -66,8 +66,9 @@ When the check fails:
   re-validating**, stop and report. Discarding drift with `git restore` or `git checkout` is repository
   state surgery that principle #14 rules out, which is why "stop" is the answer rather than "clean up".
 
-When `commands.lint` rewrites files, run it first, before the check, because the hook runs it only after
-the check and only for a command that begins with `git commit`. Keep the check and the commit as two
+Whenever `commands.lint` is set, run it first, before the check, because the hook runs it only after
+the check and only for a command that begins with `git commit`. A rewrite made there would land in the
+commit unseen, and running lint first doesn't require knowing in advance whether it rewrites anything. Keep the check and the commit as two
 separate commands for the same reason (finding 3).
 
 The guidance sits under the *index is shared* label of plan-task's Execution section, as new paragraphs
