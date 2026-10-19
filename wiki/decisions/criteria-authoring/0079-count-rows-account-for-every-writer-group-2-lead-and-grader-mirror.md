@@ -63,7 +63,8 @@ defects, each corrected under `## Premise corrections` as **defective**: the pla
 test files and the plan's gates, and counts the end-of-run code-reviewer as a gate that may add tests. The
 validator and code-reviewer carry the same shared rule, from "Grade a count row by the bound it states, not
 only by the number you measured." through "rather than chase missing work.", identical in both. It makes a floor satisfied by any measurement at or above its bound, a
-declared closed set exact, and a test skipped by a guard the row itself names present; an unnamed skip is
+declared closed set exact (and, for a literal count, an exact count with its derivation stated; a test count is
+closed only by the declaration), and a test skipped by a guard the row itself names present; an unnamed skip is
 `not satisfied`. The two critics must not split on a floor, a declared closed set or a guard-skipped test, which
 is why the shared rule is identical and not paraphrased. The closing pointer sentence to `designer.md` is worded in each file's own voice. The code-reviewer also gains the closed-set conflict sentences after the shared rule: a test its own
 findings recommend that would flip a declared-closed-set row is surfaced as the conflict, "and never withhold
