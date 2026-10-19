@@ -40,7 +40,7 @@ question once: who else writes this population?
 
 ## Decision
 
-**Option A (recommended): one group-2 lead, 'every writer of the counted population', with five sub-bullets, mirrored in the planner, both graders and SKILL.md :253.** In the shipped text the lead opens "A count pins the size of a population, so its expected value must account for every writer of that population". An absence is treated as the zero case of a count. The lead cites the three neighbouring bullets by name instead of restating them, and adds no fourth "Prefer the count".
+**Option A (recommended): one group-2 lead, 'every writer of the counted population', with five sub-bullets, mirrored in the planner, both graders and the `plan-task` SKILL.md paragraph opening "The same shape, higher stakes: a later task in this same plan can falsify a pledged acceptance-criteria row".** (Location references in the option labels are restated by content, not by line number.) In the shipped text the lead opens "A count pins the size of a population, so its expected value must account for every writer of that population". An absence is treated as the zero case of a count. The lead cites the three neighbouring bullets by name instead of restating them, and adds no fourth "Prefer the count".
 
 The five sub-bullets are one per writer:
 
@@ -61,22 +61,22 @@ The five sub-bullets are one per writer:
 **Mirrors.** `planner.md` item 12 gains a sub-bullet citing the lead by its opening phrase, with five named
 defects, each corrected under `## Premise corrections` as **defective**: the planner holds the task list, the
 test files and the plan's gates, and counts the end-of-run code-reviewer as a gate that may add tests. The
-validator and code-reviewer carry a byte-identical paragraph, "Grade a count row by the bound it states, not
-only by the number you measured." It makes a floor satisfied by any measurement at or above its bound, a
+validator and code-reviewer carry the same shared rule, from "Grade a count row by the bound it states, not
+only by the number you measured." through "rather than chase missing work.", identical in both. It makes a floor satisfied by any measurement at or above its bound, a
 declared closed set exact, and a test skipped by a guard the row itself names present; an unnamed skip is
 `not satisfied`. The two critics must not split on a floor, a declared closed set or a guard-skipped test, which
-is why the paragraph is identical and not paraphrased. The code-reviewer also gains one sentence: a test its own
+is why the shared rule is identical and not paraphrased. The closing pointer sentence to `designer.md` is worded in each file's own voice. The code-reviewer also gains the closed-set conflict sentences after the shared rule: a test its own
 findings recommend that would flip a declared-closed-set row is surfaced as the conflict, "and never withhold
 the recommendation to keep the row true."
 
-**`plan-task`.** The later-task sweep in the Phase 3 correction rule now re-runs every row pinning a count or
+**`plan-task`.** The later-task sweep, the paragraph in `plan-task`'s Execution section opening "The same shape, higher stakes", now re-runs every row pinning a count or
 tally, not only absence rows (#464), says that the remedy of scoping to the construct or restating as a
 **direction** is not specific to co-dispatch, and says that in a pledged row a direction is a floor because the
 final review can still add tests. Two add-ons from #556 follow.
 
-- **Add-on 2(a), a named sub-case.** **Option a1 (recommended): a named sub-case of decayed, added as a new paragraph right after :257. :257 itself is byte-unchanged.** The label is "decayed -- falsified by scope change": a row true when pledged and made false by a scope change approved after the pledge. If the falsifying task was in the plan at pledge time the row is defective on arrival instead. This tightens ADR-0017's pre-commitment, because the evidence must cite a recorded scope decision; a scope change with no recorded decision does not qualify, and moving a criterion for an unrecorded reason is the silent move ADR-0017 forbids.
+- **Add-on 2(a), a named sub-case.** **Option a1 (recommended): a named sub-case of decayed, added as a new paragraph right after the paragraph opening "A pre-committed criterion found defective during execution is amended in the open, never quietly". That paragraph itself is byte-unchanged.** The label is "decayed -- falsified by scope change": a row true when pledged and made false by a scope change approved after the pledge. If the falsifying task was in the plan at pledge time the row is defective on arrival instead. This tightens ADR-0017's pre-commitment, because the evidence must cite a recorded scope decision; a scope change with no recorded decision does not qualify, and moving a criterion for an unrecorded reason is the silent move ADR-0017 forbids.
 - **Add-on 2(b), the Phase 4 step 6 re-check.** Step 4 pledges the criteria before step 6 authors the decision record, so the record is a later writer for every pledged count row whose corpus could include the resolved decisions directory or its index. Step 6 re-runs those rows before the record is committed and classifies any it falsifies: defective if the record was in the plan at pledge time, "decayed -- falsified by scope change" if it was folded in later. The record's own criterion is no substitute.
-- **Add-on 1, a stale pointer.** `designer.md` carried a prose pointer to "line 97's property (c)" that this insertion would have made wrong. It now cites the bullet by content ("property (c) in the bullet above: anchor the 'before' to a commit"). It changes no tracked pointer. The design weighed no alternative for either 2(b) or add-on 1.
+- **Add-on 1, a stale pointer.** `designer.md` carried a prose pointer that was a line-number citation of property (c) and that this insertion would have made wrong. It now cites the bullet by content ("property (c) in the bullet above: anchor the 'before' to a commit"). It changes no tracked pointer. The design weighed no alternative for either 2(b) or add-on 1.
 
 ## ADR-0037 axis result
 
@@ -90,7 +90,7 @@ group 2 went from 7 leads to 8, and the group count stayed at five.
 
 ## Compromise
 
-**Rejected: Option B (alternative): in-place extensions only, no new lead.** Reason: one population question is spread across four leads and two groups, the test-vs-literal boundary has no single home, the planner and graders must cite 4–5 owners, :91 and :93 grow further, and ADR-0050 rejected exactly this kind of merge.
+**Rejected: Option B (alternative): in-place extensions only, no new lead.** Reason: one population question is spread across four leads and two groups, the test-vs-literal boundary has no single home, the planner and graders must cite 4–5 owners, the designer bullets on a satisfiable expected value and on a pinned total grow further, and ADR-0050 rejected exactly this kind of merge.
 
 **Rejected: Option C (alternative): a sixth group, *'Does the counted population hold still?'*** Reason: under ADR-0037's own test, every one of the five rules answers group 2's question, *Is the expected value right?*
 
@@ -104,7 +104,7 @@ exact literal derived from the spec.
 
 **Rejected for add-on 2(a):**
 
-- **Option a2: a fourth top-level class inside :257's list.** Reason: it rewrites (4)'s list and its "the three read alike" framing, unsettles every "defective rather than decayed" instruction in planner.md item 10/12 and SKILL.md Phase 3, and adds a class whose fix is the same as decayed's.
+- **Option a2: a fourth top-level class inside the three-way defective/decayed/unmet list of the paragraph opening "A pre-committed criterion found defective during execution is amended in the open, never quietly".** Reason: it rewrites (4)'s list and its "the three read alike" framing, unsettles every "defective rather than decayed" instruction in planner.md item 10/12 and SKILL.md Phase 3, and adds a class whose fix is the same as decayed's.
 - **Option a3: routing only, with no name.** Reason: it gives no named class.
 
 **Accepted cost: group 2 now carries eight leads.** ADR-0050 already recorded the group at five and warned that it
@@ -139,10 +139,10 @@ apply the shipped agent text, not this table.
 
 | Row | Original | Fires (designer sub-bullet / planner defect) | Amended form | Fires |
 |---|---|---|---|---|
-| #622 T7 | ``grep -c 'it("#293'`` ≥6 | generators / source-text count (it is a floor, so the gates rule does not fire) | `npm run test -- --grep "#293"` → ≥6 passing, `fail 0` | none |
+| #622 T7 | ``grep -c 'it("#293'`` ≥6 | generators / source-text count (it is a floor, so the gates rule does not fire) | `npm run test -- --grep "#293"` → ≥6 passing, `fail 0`, pre-change titles survive | none |
 | #622 T2 | "`story:scene1` is undefined" (fixture seeds it) | setup / seeded-key absence | deep-equals the seed, plus a key the code writes is undefined | none |
-| #711 C1 | `mocha … → 63 passing` | gates / exact test total | `fail 0`, ≥63 passing (baseline + Σ new), named tests present via `--grep` | none |
+| #711 C1 | `mocha … → 63 passing` | gates / exact test total | `fail 0`, ≥63 passing (baseline + Σ new), named tests present via `--grep`, pre-change titles survive | none |
 | #711 C2 | `grep -c "^  it(" … → 58` | gates and generators / exact total and source-text count | runner: `fail 0`, ≥58 passing, named titles present via `--grep`, pre-change titles survive | none |
-| #708 R14 | `≥356 passing, 0 failing (341+12+3)`, with O65 guarded | skip guards / platform-unreachable | `fail 0`; passing + pending ≥356 (341+12+3); 15 ids present, O65 passing or skipped by its win32/root guard | none |
+| #708 R14 | `≥356 passing, 0 failing (341+12+3)`, with O65 guarded | skip guards / platform-unreachable | `fail 0`; passing + skipped ≥356 (341+12+3); 15 ids present, O65 passing or skipped by its win32/root guard; pre-change titles survive | none |
 | #715 R16 | `grep -cF 'layer="OptionDBase"'` → 2 | mechanism / underived literal | `grep -B1 -F 'set-layer-interactive(layer="OptionDBase"' f \| grep -cF 'layer-name-exists(layer="OptionDBase")'` → 2 (one gate above each of 2 toggle sites) | none |
-| #715 R32 | `grep -cF 'instance-variable=numOptions, comparison=5 (≥), value=4'` → 1 | mechanism / underived literal | → 2 (2 = one per site, c4 + c5) | none |
+| #715 R32 | `grep -cF 'instance-variable=numOptions, comparison=5 (≥), value=4'` → 1 | mechanism / underived literal | `grep -cF 'instance-variable=numOptions, comparison=5 (≥), value=4' f` → 2 (2 = one per site, c4 + c5) | none |
