@@ -50,7 +50,7 @@ measurement itself was correct (a figure taken on one file, written into a
 row asserting it across a directory). This was the only genuinely ownerless
 rule of #326's four candidate gaps. The other three were discharged by
 citation, not by a new bullet: baseline-must-be-measured is already owned at
-`designer.md:89` (*"Measure the baseline by running the row's own command
+`designer.md` (*"Measure the baseline by running the row's own command
 against the pre-change tree — never assert one from reading the file"*);
 vacuity (a baseline that already satisfies the pass condition) is already
 owned at `planner.md:66`; and the baseline re-run clause the planner needs at
@@ -136,7 +136,7 @@ change's.
 
 **(6) ADR-0037's fire test was applied and does NOT fire — no sixth group.**
 Both new rules extend an existing group's axis rather than opening a new one:
-the scope trap extends group 2's baseline chain (`designer.md:89` is *how* to
+the scope trap extends group 2's baseline chain (`designer.md`'s "Measure the baseline" bullet is *how* to
 measure a baseline; the new rule, "A baseline measured over a narrower corpus
 than the row asserts over", is *over what corpus*), and the
 comparison-control rule extends group 4 as a sub-bullet under `designer.md`'s "A behavioural assertion whose expected value is an empty collection" bullet, not as a
