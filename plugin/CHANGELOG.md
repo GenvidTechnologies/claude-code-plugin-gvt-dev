@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Count-pinning criteria rows account for every writer of the counted population (#711, #708, #622, #715, #464; ADR-0079).** Before, a row pinning a count was often found defective during execution: a review-added test broke an exact total, a platform-skipped test made a pass count unreachable, a source grep missed generated tests, an absence check failed on a key the fixture seeds, or an exact literal count was lower than the design's own mechanism writes.
+  - **Designer:** item 8 group 2 gains one lead, "A count pins the size of a population", with five writers: gates the plan schedules after the pledge (a test count is a floor plus named tests and `fail 0`, exact only for a declared closed set), generators (count through the test runner), skip guards (count per platform, or passing or skipped by its named guard), the design's own mechanism (derive an exact literal count from the spec, scoped to the construct when the literal recurs), and the test's own setup (check the fixture before asserting absence). A count of tests follows the test rule when a review-recommended test could move it; otherwise the literal rule applies.
+  - **Planner:** item 12 flags these five defects on transcription and corrects each as defective.
+  - **Validator and code-reviewer:** both grade a count row by the bound it states, with the same rule in both: a floor, a declared closed set or an exact literal count with its derivation stated, and a test skipped by a guard the row names. The code-reviewer still recommends a change that would flip a closed row, surfaced as a conflict.
+  - **plan-task:** the pre-final-gate sweep re-runs count and tally rows as well as absence rows, and its direction remedy applies to sequential plans too (#464). A row made false by a recorded mid-run scope change is named "decayed — falsified by scope change", and must cite that scope decision. Phase 4 step 6 re-runs pledged count rows before committing a decision record. These two extras are both from #464's follow-up, #556.
+
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.37.0] - 2026-10-15
 
 - **`shell-quote` moves to exactly 1.12.0, and the git-state guard now denies ANSI-C quoted forms of denied git subcommands (#632).**
