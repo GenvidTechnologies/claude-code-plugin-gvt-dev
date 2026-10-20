@@ -43,7 +43,7 @@ Two neighbouring failures share the root "the command does not do what the row s
 The options, quoted from the approved design (labels and one-line reasons are the design's own words, not a
 paraphrase):
 
-- **Chosen, quoted from the design: "Option A: no `|` in a cell command, plus a fenced command block keyed by row id (recommended)".** The design's reason: "Additive only; keeps the table and its scanability at the Phase 2 checkpoint; keeps the rationale in `designer.md` line 108 ("never as a fourth table column") intact; adds one new hop obligation: the Phase 3 hand-off must carry the blocks with the table."
+- **Chosen, quoted from the design: "Option A: no `|` in a cell command, plus a fenced command block keyed by row id (recommended)".** The design's reason: "Additive only; keeps the table and its scanability at the Phase 2 checkpoint; keeps the rationale in `designer.md` line 108 ("never as a fourth table column") intact; adds one new hop obligation: the Phase 3 hand-off must carry the blocks with the table." (Line 108 was the bullet's position when the design was written; this change's own insertions have since moved it, which is why this record cites it by its quoted phrase.)
 - **Rejected, quoted from the design: "Option B: emit Test Criteria as a list instead of a table".** The design's reason: "largest footprint, and it doesn't remove the need for the rule."
 - **Rejected as the mechanism, quoted from the design: "Option C: the planner un-escapes `\|` on transcription and flags literal-pipe/BRE cases (#640 b, #686 remedy 2)".** The design's reason: "kept only as the repair-by-intent procedure inside Option A."
 - **Rejected alone, quoted from the design: "Option D: `-e` lists only (#640 a)".** The design's reason: "kept as an allowed way to keep a command in its cell."
@@ -74,8 +74,8 @@ Everything downstream mirrors the rule and checks it.
   recorded under `## Premise corrections` as defective; a zero baseline needs a must-match control; a
   non-reproducing baseline is defective unless the tree moved.
 - **plan-task.** Phase 3 gains two paragraphs: "verbatim is byte-for-byte for a command" with the table passed
-  together with its command blocks, and a non-reproducing baseline tied to failure mode (4) of "The pledged
-  target itself can be defective". The mid-run paragraph and the shortcut-path bullet each gain a sentence
+  together with its command blocks, and a non-reproducing baseline tied to the *defective* failure mode that property (4) of "The pledged
+  target itself can be defective" names. The mid-run paragraph and the shortcut-path bullet each gain a sentence
   applying the container rule to rows authored there. The brief-quoting paragraph now reads "a fenced list, or a
   table only when no string contains a pipe". `approval-and-audit.md` gains a self-audit item, "Every criterion
   command runs as written".
