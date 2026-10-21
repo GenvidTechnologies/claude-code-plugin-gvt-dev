@@ -22,7 +22,7 @@ something different in the table than in the shell.
 Four pipe shapes behave differently, which is why neither a blanket ban nor a blanket un-escape is right:
 
 - **ERE or `rg` alternation.** The escape turns alternation into a literal pipe and the pattern goes dead.
-  Measured: `a\|b` matched 3 lines under BRE grep, 1 under `grep -E` and 1 under `rg`, on the same input.
+  Measured: `a\|b` matched 3 lines under BRE grep, 1 under `grep -E` and 1 under `rg`, on the three lines `a`, `b`, `a|b`.
 - **Literal-pipe regex.** The escape is intended under `-E` or `rg`, and un-escaping would break it.
 - **BRE alternation.** `\|` is alternation under plain grep, so the escape is correct as written.
 - **Shell pipeline.** An unescaped `|` splits the cell and an escaped one is no longer a pipe.
