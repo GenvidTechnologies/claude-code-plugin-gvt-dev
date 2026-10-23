@@ -86,8 +86,9 @@ log under a fresh temp directory, printed at the end.
 
 **Cost note: every invocation is a real, metered Claude Code session.** Cost
 per run (`total_cost_usd`), `num_turns` and `is_error` are recorded and
-printed per run, with a summed total; the per-run cost has not been measured
-yet. `run.mjs` is never wired into `commands.test`/`commands.validate`; only
+printed per run, with a summed total. Measured over the first 49 haiku runs:
+about $0.006 per run (range $0.005-$0.009), so a full F,C,R sweep at 3 runs each
+is about $0.06. `run.mjs` is never wired into `commands.test`/`commands.validate`; only
 `test/grade.test.mjs` is.
 
 ## Pass rule (per variant, N = `--runs`)

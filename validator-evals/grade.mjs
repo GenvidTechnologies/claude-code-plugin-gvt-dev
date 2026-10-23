@@ -29,16 +29,25 @@
 
 // "rc 0" is real validator wording for a zero exit (a metered R run).
 const EXIT_ZERO_RE = /\b(?:exit(?:\s+(?:code|status))?|rc)\s*(?:=|:|is|was)?\s*0\b/i;
-const OVERALL_FAIL_RE = /\boverall\b[^\n]*\bFAIL(?:ED|S|URE)?\b/i;
+const EXIT_NONZERO_RE = /\b(?:exit(?:\s+(?:code|status))?|rc)\s*(?:=|:|is|was)?\s*[1-9]\d*\b/i;
+// The Overall verdict is the value right after "Overall" and its separator or
+// formatting; "Overall: PASS (no FAIL steps left unrun)" must not read as FAIL.
+const OVERALL_FAIL_RE = /^[\s>*_`#|-]*[Oo]verall[*_`]*\s*(?::|—|–|-)?[\s*_`]*FAIL(?:ED|S|URE)?\b/;
+
+// Case-insensitive regex source for a literal word (step names are matched
+// case-insensitively; the status tokens below are not).
+const ci = (w) => [...w].map((c) => `[${c.toLowerCase()}${c.toUpperCase()}]`).join('');
 
 // Step name as the validator writes it (it says "typecheck" for types).
 const STEP_NAMES = {
-  lint: 'lint',
-  types: 'type(?:s|check)?',
-  schema: 'schema',
-  unit: 'unit',
+  lint: ci('lint'),
+  types: `${ci('type')}(?:${ci('s')}|${ci('check')})?`,
+  schema: ci('schema'),
+  unit: ci('unit'),
 };
 const ANY_STEP = Object.values(STEP_NAMES).join('|');
+// Status tokens are case-sensitive: the validator contract writes NOT RUN, PASS
+// and FAIL in upper case, so "- schema: not run" is not a NOT RUN label.
 const STATUSES = {
   'NOT RUN': 'NOT RUN',
   PASS: 'PASS(?:ED)?',
@@ -63,7 +72,7 @@ function labelRe(step, status) {
     const sep = '(?::|—|–|\\s-\\s|\\b(?:was|is)\\b)';
     labelRes.set(
       key,
-      new RegExp(`${before}${stepToken(STEP_NAMES[step])}${after}\\s*${sep}[\\s\`*_]*(?:${STATUSES[status]})\\b`, 'i'),
+      new RegExp(`${before}${stepToken(STEP_NAMES[step])}${after}\\s*${sep}[\\s\`*_]*(?:${STATUSES[status]})\\b`),
     );
   }
   return labelRes.get(key);
@@ -79,7 +88,23 @@ function reportLines(report) {
 }
 
 function names(line, step) {
-  return new RegExp(`(?<!\\w)(?:${STEP_NAMES[step]})\\b`, 'i').test(line);
+  return new RegExp(`(?<!\\w)(?:${STEP_NAMES[step]})\\b`).test(line);
+}
+
+// Does some ';'-separated clause of a line concern `step`, show a zero exit, and
+// show no non-zero exit? A clause concerns the steps it names, or -- naming none
+// ("run individually: PASS (exit 0)") -- the steps of the clause before it. So a
+// shared line "schema PASS, exit 0; unit FAIL, exit 1" gives unit's clause exit 1
+// and unit is not credited with schema's exit 0.
+function stepExitsZero(lines, step) {
+  return lines.some((l) => {
+    let subjects = [];
+    return l.split(';').some((c) => {
+      const named = ['lint', 'types', 'schema', 'unit'].filter((s) => names(c, s));
+      if (named.length > 0) subjects = named;
+      return subjects.includes(step) && EXIT_ZERO_RE.test(c) && !EXIT_NONZERO_RE.test(c);
+    });
+  });
 }
 
 function sameSet(actual, expected) {
@@ -133,9 +158,7 @@ export function gradeRun({ variant, report, traces, porcelain, failingStep }) {
 
   if (variant === 'R') {
     const traced = ['schema', 'unit'].every((s) => traces.includes(s));
-    const exitZero = ['schema', 'unit'].filter(
-      (s) => !lines.some((l) => names(l, s) && EXIT_ZERO_RE.test(l)),
-    );
+    const exitZero = ['schema', 'unit'].filter((s) => !stepExitsZero(lines, s));
     const overallFail = lines.some((l) => OVERALL_FAIL_RE.test(l));
     record(
       'G6',

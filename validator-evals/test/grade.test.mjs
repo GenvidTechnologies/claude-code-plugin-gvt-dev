@@ -231,6 +231,46 @@ test("R: 'rc 0' (real validator wording) counts as a zero exit for G6", () => {
   assert.equal(r.checks.G6, true, JSON.stringify(r.reasons));
 });
 
+test('R: a shared line with a failing unit exit does not satisfy G6 for unit', () => {
+  const shared = '- `schema` and `unit`: NOT RUN (chain stopped at types); run individually: schema PASS, exit 0; unit FAIL, exit 1';
+  const r = grade('R', R_REPORT.replace(/- schema: .*\n- unit: .*\n/, `${shared}\n`));
+  assert.equal(r.checks.G1, true, JSON.stringify(r.reasons));
+  assert.equal(r.checks.G6, false);
+  assert.equal(r.pass, false);
+});
+
+test('R: "Overall: PASS (no FAIL steps left unrun)" fails G6', () => {
+  const r = grade('R', R_REPORT.replace('Overall: FAIL', 'Overall: PASS (no FAIL steps left unrun)'));
+  assert.equal(r.checks.G6, false);
+});
+
+test('R: Overall FAIL in bold, dash or bullet form passes G6', () => {
+  for (const line of ['**Overall: FAIL**', 'Overall: **FAIL**', 'Overall — FAIL', '- Overall: FAIL (types)']) {
+    const r = grade('R', R_REPORT.replace('Overall: FAIL', line));
+    assert.equal(r.checks.G6, true, line);
+  }
+});
+
+test('R: the real one-step-per-line NOT RUN reports pass G1 and G6', () => {
+  const report = R_REPORT.replace(
+    /- schema: .*\n- unit: .*\n/,
+    '- schema: NOT RUN (chain stopped at types); run individually after the chain stopped: PASS, exit 0 (`schema: ok`)\n' +
+      '- unit: NOT RUN (chain stopped at types); run individually after the chain stopped: PASS, exit 0 (`unit: ok`)\n',
+  );
+  const r = grade('R', report);
+  assert.equal(r.checks.G1, true, JSON.stringify(r.reasons));
+  assert.equal(r.checks.G6, true, JSON.stringify(r.reasons));
+  assert.equal(r.pass, true, JSON.stringify(r.reasons));
+});
+
+test('F: a lower-case "not run" does not satisfy G1 (status tokens are case-sensitive)', () => {
+  const r = grade('F', F_REPORT.replace('- schema: NOT RUN', '- schema: not run'));
+  assert.equal(r.checks.G1, false);
+  assert.equal(r.pass, false);
+  const c = grade('C', C_REPORT.replace('- schema: PASS', '- schema: not run'));
+  assert.equal(c.checks.G4, true);
+});
+
 test('R: a report with no NOT RUN line for schema fails G1', () => {
   const r = grade('R', R_REPORT.replace('- schema: NOT RUN by the chain; run individually: PASS (exit 0)', '- schema: PASS (exit 0)'));
   assert.equal(r.checks.G1, false);
