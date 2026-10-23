@@ -109,6 +109,22 @@ test('C: a report labelling any step NOT RUN fails G4', () => {
   assert.equal(r.pass, false);
 });
 
+test('C: a negated NOT RUN mention (real validator wording) passes G4', () => {
+  const line = '- Steps after `unit`: none. `unit` is the last step, so no step is `NOT RUN`.';
+  const r = grade('C', C_REPORT.replace('\n\nOverall: FAIL', `\n${line}\n\nOverall: FAIL`));
+  assert.equal(r.checks.G4, true, JSON.stringify(r.reasons));
+  assert.equal(r.pass, true, JSON.stringify(r.reasons));
+});
+
+test('C: genuine NOT RUN labels still fail G4', () => {
+  const unit = grade('C', C_REPORT.replace('- unit: FAIL (exit 1) - unit: failing', '- unit: NOT RUN'));
+  assert.equal(unit.checks.G4, false);
+  const schema = grade('C', C_REPORT.replace('- schema: PASS', '- schema: **NOT RUN** (chain stopped)'));
+  assert.equal(schema.checks.G4, false);
+  const dash = grade('C', C_REPORT.replace('- schema: PASS', '- schema — NOT RUN'));
+  assert.equal(dash.checks.G4, false);
+});
+
 test('C: a correct control report passes', () => {
   const r = grade('C', C_REPORT);
   assert.equal(r.pass, true, JSON.stringify(r.reasons));
