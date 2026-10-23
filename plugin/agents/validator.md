@@ -69,6 +69,8 @@ Run the project's validation suite and report pass/fail status with details on a
 - test: PASS / FAIL (N passed, M failed — list failures with file:line)
 - typecheck: PASS / FAIL (details)
 - <project-specific checks>: PASS / FAIL / SKIPPED / NOT RUN
+- <step the chain never reached>: NOT RUN (chain stopped at <failing step>)
+- <same step, full-result dispatch>: NOT RUN (chain stopped at <failing step>); run individually after the chain stopped: PASS / FAIL, exit <code>
 
 ### Acceptance Criteria
 - <criteria>: N rows in the fetched section; N graded, X unverifiable-as-written, Y out of scope
