@@ -123,6 +123,20 @@ test('C: genuine NOT RUN labels still fail G4', () => {
   assert.equal(schema.checks.G4, false);
   const dash = grade('C', C_REPORT.replace('- schema: PASS', '- schema — NOT RUN'));
   assert.equal(dash.checks.G4, false);
+  const path = grade('C', C_REPORT.replace('- schema: PASS', '- `checks/unit.mjs`: NOT RUN. The `&&` chain stopped at `b`.'));
+  assert.equal(path.checks.G4, false);
+});
+
+test('C: a step tally line (real validator wording) passes G4', () => {
+  const line = '- Chain steps: 4 in `commands.validate`. 4 ran, 0 NOT RUN (`unit` is the last step, so nothing was left unreached).';
+  const r = grade('C', C_REPORT.replace('\n\nOverall: FAIL', `\n${line}\n\nOverall: FAIL`));
+  assert.equal(r.checks.G4, true, JSON.stringify(r.reasons));
+  assert.equal(r.pass, true, JSON.stringify(r.reasons));
+});
+
+test('C: "unit was NOT RUN" fails G4', () => {
+  const r = grade('C', C_REPORT.replace('\n\nOverall: FAIL', '\nunit was NOT RUN\n\nOverall: FAIL'));
+  assert.equal(r.checks.G4, false);
 });
 
 test('C: a correct control report passes', () => {

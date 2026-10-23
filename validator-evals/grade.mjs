@@ -11,7 +11,8 @@
 //   G1  F, R   lines naming `schema` and `unit` carry a NOT RUN label
 //   G2  F      no non-NOT-RUN line pairs schema or unit with PASS
 //   G3  F      traces exist for lint and types only
-//   G4  C      no step line is labelled NOT RUN
+//   G4  C      no step is labelled NOT RUN: no line of the form
+//              "<step> <: | dash | was | is> NOT RUN" (counts and negations pass)
 //   G5  all    the failing step is named FAIL
 //   G6  R      traces exist for schema and unit, both lines show exit 0,
 //              and Overall is FAIL
@@ -48,17 +49,19 @@ function isNotRunLabelled(line) {
   return NOT_RUN_RE.test(line.replace(DO_NOT_RUN_RE, ''));
 }
 
-// G4 only. A correct C report can say, in negated form, that nothing was NOT RUN
-// -- real validator output: "- Steps after `unit`: none. `unit` is the last step,
-// so no step is `NOT RUN`." That line is not a label. A negation word (no, none,
-// not, never, nothing, without) earlier in the same clause -- no . ; : or newline
-// between it and the token -- excludes the mention; backticks may surround the token.
-// A genuine label such as "- unit: NOT RUN" or "- schema: **NOT RUN**" has no
-// negation word in front of the token and still counts.
-const NEGATED_NOT_RUN_RE = /\b(?:no|none|not|never|nothing|without)\b[^.;:\n]*?\bNOT RUN\b/gi;
+// G4 only. A correct C report mentions the token without labelling a step -- real
+// validator output: "- Steps after `unit`: none. `unit` is the last step, so no step
+// is `NOT RUN`." and "- Chain steps: 4 in `commands.validate`. 4 ran, 0 NOT RUN (...)".
+// So G4 is structural: a mislabel is a step name (optionally wrapped in backticks /
+// bold, optionally a path such as checks/unit.mjs), then a status separator (`:`,
+// em/en dash, ` - `, or the verbs was/is), then optional formatting (`**`, backticks,
+// spaces), then NOT RUN. Counts ("0 NOT RUN"), negations and other prose have no
+// "<step> <separator> NOT RUN" shape and do not count.
+const STEP_NOT_RUN_RE =
+  /(?<!\w)(?:[\w.-]+\/)*(?:lint|types?|schema|unit)(?:\.\w+)?[`*_]*\s*(?::|—|–|\s-\s|\b(?:was|is)\b)[\s`*_]*NOT RUN\b/i;
 
-function isLabelledNotRunUnnegated(line) {
-  return isNotRunLabelled(line.replace(NEGATED_NOT_RUN_RE, ''));
+function isStepLabelledNotRun(line) {
+  return STEP_NOT_RUN_RE.test(line);
 }
 
 function sameSet(actual, expected) {
@@ -104,7 +107,7 @@ export function gradeRun({ variant, report, traces, porcelain, failingStep }) {
 
   if (variant === 'C') {
     const labelled = lines.filter(
-      (l) => Object.keys(STEP_RES).some((s) => names(l, s)) && isLabelledNotRunUnnegated(l),
+      (l) => isStepLabelledNotRun(l),
     );
     record('G4', labelled.length === 0, `step line(s) labelled NOT RUN: ${labelled.map((l) => l.trim()).join(' | ')}`);
   }
