@@ -24,7 +24,7 @@ and follows [semantic versioning](https://semver.org/).
 
   Behavioral skill/agent change → version bump at release.
 
-- **Maintainer harness for chain-step reporting (#724, #408; ADR-0081).** A repo-root `validator-evals/` harness measures the `gvt-dev:validator` report against fixtures whose `&&` chain stops, with a grader that has its own unit test. It is wired into this repo's `.gvt-agent.json`, run on demand with `node validator-evals/run.mjs`, and listed in `wiki/maintainer/testing-the-audit.md`. ADR-0081 records the false-red principle, the `NOT RUN` vocabulary and the validator's report self-check.
+- **Maintainer harness for chain-step reporting (#724, #408; ADR-0081).** A repo-root `validator-evals/` harness measures the `gvt-dev:validator` report against fixtures whose `&&` chain stops, with a grader that has its own unit test. It is wired into this repo's `.gvt-agent.json`, run on demand with `node validator-evals/run.mjs`, and listed in `wiki/maintainer/testing-the-audit.md`. ADR-0081 records the false-red principle, the `NOT RUN` vocabulary and the validator's report self-check. Two maintainer notes record what the harness taught: `testing-the-audit.md` on grading model prose by structure and re-grading the retained reports, and `plugin-authoring.md` on putting a small model's required output shape in its template.
 
   No consumer-facing behavior change → no version bump.
 
