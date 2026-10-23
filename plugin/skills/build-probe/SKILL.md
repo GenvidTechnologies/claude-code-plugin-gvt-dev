@@ -146,6 +146,14 @@ the baseline came back. Verify each mutation actually landed before measuring;
 a silently-failed edit reports the unmutated baseline and reads exactly like
 "nothing depends on this."
 
+**A control's red must be the assertion's red.** A mutation or positive control
+proves a check can fail only if it fails *because the assertion fired*. The tell
+that it didn't is a failure count that doesn't match the assertions the control
+exercises: `tests 1 / fail 1` from a test file that holds many tests is one
+anonymous failure for a file that failed to load, not the assertion. The
+differential probe below ("A differential probe needs the pre-change
+implementation from git") is the way to tell the two apart.
+
 **A mutation is the one probe that cannot live in the scratchpad, so contain it
 deliberately.** Step 2's rule — never write a probe into the repo tree — still
 governs the probe *script*, but a mutation has to touch the real source for the
