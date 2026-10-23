@@ -29,7 +29,7 @@ Principle #15 in `plugin/docs/development-principles.md` states the rule: a fail
 
 The restatements, each short and each citing the principle:
 
-- `plugin/agents/validator.md` and `plugin/agents/code-reviewer.md` carry one byte-identical block ("A red is graded only after its check is confirmed to have run"), so the two graders cannot drift from each other (the ADR-0079 practice). A command that errored is not a measurement; if the error is in the row's own command, the row is unverifiable-as-written; a report whose own figures disagree is re-measured, not shipped with a caveat.
+- `plugin/agents/validator.md` and `plugin/agents/code-reviewer.md` carry one block of identical text ("A red is graded only after its check is confirmed to have run"), so the two graders cannot drift from each other (the ADR-0079 practice). A command that errored is not a measurement; if the error is in the row's own command, the row is unverifiable-as-written; a report whose own figures disagree is re-measured, not shipped with a caveat.
 - `plugin/skills/plan-task/SKILL.md` adds an orchestrator-side paragraph on a red the orchestrator measures or a critic reports, placed beside the rule on false greens it complements.
 - `plugin/skills/build-probe/SKILL.md` adds "A control's red must be the assertion's red": the tell is a failure count that does not match the assertions the control exercises, such as one anonymous failure from a test file that holds many tests, which means the file failed to load.
 - `plugin/agents/designer.md` adds one sentence to the mutation-control row guidance: the red observed when the forbidden state is constructed must be the assertion's red, not a load error or a crash.
@@ -100,8 +100,8 @@ The F1, F2, F3, F4 and F5 alternatives above were rejected for the reasons given
 
 Every `gvt-dev` agent that grades or acts on a red now has the rule in its own body, and `validate-changes` and `plan-task` no longer let an unreached step read as passed. A consumer whose `commands.validate` is a chain sees `NOT RUN` rows after a mid-chain failure where it previously saw the failure alone.
 
-The metered harness is not in CI: it spends model calls and needs a local `claude`. Only its grader unit test runs there, so a regression in the validator's behaviour is caught when someone runs the harness, not on every change.
+The metered harness is not in CI: it spends model calls and needs a local `claude`. Only its grader unit test runs there, so a regression in the validator's behaviour is caught when someone runs the harness, not on every change. Review of the harness also found grader false greens (a per-line exit check, an Overall check that matched any FAIL word, and a case-insensitive status match), fixed with pinned tests.
 
 Five other sites also run `commands.validate`: `rebase-branch`, `rebase-stack`, `split-branch`, `release-npm-package` and `create-adr`. They are out of scope here and left to #611 and #718.
 
-**Related records:** ADR-0061 (principle #14 and the `git-state-guard` backstop, the model for a cross-role principle with per-agent restatements, and the reason the tree cannot be restored by the validator); ADR-0030 and ADR-0031 (rules kept in skill bodies, and why this one is not); ADR-0034 and ADR-0043 (verdict and status vocabulary that `NOT RUN` joins); ADR-0079 (the byte-identical shared block); ADR-0008 (the orchestrator owns the index and the commit).
+**Related records:** ADR-0061 (principle #14 and the `git-state-guard` backstop, the model for a cross-role principle with per-agent restatements, and the reason the tree cannot be restored by the validator); ADR-0030 and ADR-0031 (rules kept in skill bodies, and why this one is not); ADR-0034 and ADR-0043 (verdict and status vocabulary that `NOT RUN` joins); ADR-0079 (the shared block, identical text in both files); ADR-0008 (the orchestrator owns the index and the commit).
