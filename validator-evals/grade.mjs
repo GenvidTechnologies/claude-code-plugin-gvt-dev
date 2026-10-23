@@ -27,7 +27,8 @@
 // F is the positive control for C's zero-hit G4: both go through the same
 // report rendering, and F's G1 is the hit that shows the label is detectable.
 
-const EXIT_ZERO_RE = /\bexit(?:\s+(?:code|status))?\s*(?:=|:|is|was)?\s*0\b/i;
+// "rc 0" is real validator wording for a zero exit (a metered R run).
+const EXIT_ZERO_RE = /\b(?:exit(?:\s+(?:code|status))?|rc)\s*(?:=|:|is|was)?\s*0\b/i;
 const OVERALL_FAIL_RE = /\boverall\b[^\n]*\bFAIL(?:ED|S|URE)?\b/i;
 
 // Step name as the validator writes it (it says "typecheck" for types).

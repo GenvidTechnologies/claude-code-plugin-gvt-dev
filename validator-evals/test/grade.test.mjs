@@ -226,6 +226,11 @@ test('R: an Overall of PASS fails G6', () => {
   assert.equal(r.checks.G6, false);
 });
 
+test("R: 'rc 0' (real validator wording) counts as a zero exit for G6", () => {
+  const r = grade('R', R_REPORT.replace(/\(exit 0\)/g, '(rc 0)'));
+  assert.equal(r.checks.G6, true, JSON.stringify(r.reasons));
+});
+
 test('R: a report with no NOT RUN line for schema fails G1', () => {
   const r = grade('R', R_REPORT.replace('- schema: NOT RUN by the chain; run individually: PASS (exit 0)', '- schema: PASS (exit 0)'));
   assert.equal(r.checks.G1, false);
