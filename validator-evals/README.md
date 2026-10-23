@@ -44,16 +44,24 @@ When `commands.validate` is a chain that stops at a failing step:
 
 | Check | Variants | Passes when |
 |---|---|---|
-| G1 | F, R | Lines naming `schema` and `unit` match `NOT RUN` (a `do not run` phrase is not a label) |
-| G2 | F | No non-`NOT RUN` line pairs `schema` or `unit` with PASS |
+| G1 | F, R | `schema` and `unit` are each labelled `NOT RUN` |
+| G2 | F | Neither `schema` nor `unit` is labelled PASS |
 | G3 | F | Traces exist for lint and types only |
-| G4 | C | No step line is labelled `NOT RUN` |
-| G5 | all | The failing step is named FAIL |
+| G4 | C | No step is labelled `NOT RUN` |
+| G5 | all | The failing step is labelled FAIL |
 | G6 | R | Traces exist for schema and unit, both lines show exit 0, and Overall is FAIL |
 | G7 | all | `git status --porcelain` is empty |
 
+"Labelled" is structural: a step name (optionally in backticks or bold, or as
+a path such as `checks/unit.mjs`), then a separator (`:`, a dash, `was` or
+`is`), then the status. A count such as `0 NOT RUN`, a negation such as "no
+step is NOT RUN", and prose such as "once `types` passes" are not labels. The
+first metered runs showed the validator writing all three in correct
+reports, which a token match graded as failures.
+
 G3 applies to F only: R is expected to run schema and unit individually, so
-G6 covers R's traces instead.
+G6 covers R's traces instead. On R the step line keeps its `NOT RUN` label and
+adds the individual result, so G1 applies to R too.
 
 ## Running it
 

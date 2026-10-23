@@ -81,6 +81,55 @@ test('F: a report omitting unit fails G1', () => {
   assert.equal(r.pass, false);
 });
 
+test("F: prose using 'passes' as a verb (real validator wording) passes G2", () => {
+  const line = '- `schema` and `unit` have never run. They need a run once `types` passes or is fixed, to establish whether they pass.';
+  const r = grade('F', F_REPORT.replace('\n\nOverall: FAIL', `\n${line}\n\nOverall: FAIL`));
+  assert.equal(r.checks.G2, true, JSON.stringify(r.reasons));
+  assert.equal(r.pass, true, JSON.stringify(r.reasons));
+});
+
+test('F: a bare "- schema: PASS" line still fails G2, in each labelled form', () => {
+  for (const line of ['- schema: PASS', '- `unit`: **PASS** (exit 0)', '- schema (`checks/schema.mjs`): PASSED', '- unit — PASS', '- unit was PASS']) {
+    const r = grade('F', F_REPORT.replace('\n\nOverall: FAIL', `\n${line}\n\nOverall: FAIL`));
+    assert.equal(r.checks.G2, false, line);
+  }
+});
+
+test('F: a PASS label on lint or types does not trip G2', () => {
+  const r = grade('F', F_REPORT.replace('\n\nOverall: FAIL', '\n- types: PASS on the re-run\n\nOverall: FAIL'));
+  assert.equal(r.checks.G2, true, JSON.stringify(r.reasons));
+});
+
+test('F: one line labelling schema and unit NOT RUN together satisfies G1 for both', () => {
+  const combined = F_REPORT.replace(/- schema: NOT RUN.*\n- unit: NOT RUN.*\n/, '- `schema` and `unit`: NOT RUN (chain stopped at types)\n');
+  assert.equal(grade('F', combined).checks.G1, true);
+  const bold = F_REPORT.replace(/- schema: NOT RUN.*\n- unit: NOT RUN.*\n/, '- schema, unit — **NOT RUN**\n');
+  assert.equal(grade('F', bold).checks.G1, true);
+});
+
+test('F: a NOT RUN count or "never run" prose is not a G1 label', () => {
+  const prose = F_REPORT.replace(
+    /- schema: NOT RUN.*\n- unit: NOT RUN.*\n/,
+    '- `schema` and `unit` have never run.\nTotals: PASS 1 + FAIL 1 + NOT RUN 2 = 4 steps.\n',
+  );
+  assert.equal(grade('F', prose).checks.G1, false);
+});
+
+test('G5: a FAIL label in bold, path or parenthesised-path form is accepted', () => {
+  for (const line of ['- types: **FAIL** (exit 1)', '- types (`checks/types.mjs`): **FAIL**.', '- typecheck: FAIL (exit 1)']) {
+    const r = grade('F', F_REPORT.replace('- types: FAIL (exit 1) - types: failing', line));
+    assert.equal(r.checks.G5, true, line);
+  }
+  const unit = grade('C', C_REPORT.replace('- unit: FAIL (exit 1) - unit: failing', '- test (`checks/unit.mjs`): FAIL. It printed `unit: failing`.'));
+  assert.equal(unit.checks.G5, true);
+});
+
+test('G5: prose that merely mentions the failure is not a FAIL label', () => {
+  // Structural by design: every real report in the retained corpus labels the failing step.
+  const r = grade('F', F_REPORT.replace('- types: FAIL (exit 1) - types: failing', '- The types step failed with exit 1; types failing is expected.'));
+  assert.equal(r.checks.G5, false);
+});
+
 test('F: traces beyond lint and types fail G3', () => {
   const r = grade('F', F_REPORT, { traces: ALL_TRACES });
   assert.equal(r.checks.G3, false);
