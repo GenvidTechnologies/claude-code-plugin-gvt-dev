@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.39.0] - 2026-10-23
+
 - **A failing result is a hypothesis until the check ran as intended (#409, #408; ADR-0081).** Before, a red from a check that never ran properly (a bad pattern, a suite that failed to load, an empty denominator) was graded as a real failure and manufactured work, the mirror image of the false green the empty-corpus rule already guards against.
   - **Development principles:** new principle #15 states it: a failing result is a hypothesis until the check is confirmed to have run as intended, with exit status and stderr read, the denominator populated and one known-good item passing. A false green ships bad work and a false red manufactures work.
   - **Validator and code-reviewer:** one identical block in both. A red is graded only after its check is confirmed to have run.
