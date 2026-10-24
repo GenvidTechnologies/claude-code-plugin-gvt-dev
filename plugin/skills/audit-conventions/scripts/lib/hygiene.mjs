@@ -135,10 +135,12 @@ export function effectiveExcludes(opts = {}) {
   ];
 }
 
-// Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
-// CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
-// listMarkdown's shape). Missing <docsRoot>/ or CLAUDE.md are handled gracefully
-// by listMarkdown / safeReadFile respectively — this helper never throws.
+// Docs-walk candidate set: <docsRoot>/**.md + repo-root CLAUDE.md (when it
+// exists), minus excludePaths. Used by the link and orphan scanners and by the
+// docs leg of the retired-token corpus (which also unions wiki and config
+// files — see retiredTokenCorpus). Repo-relative, forward-slash paths (matches
+// listMarkdown's shape). A missing <docsRoot>/ is handled gracefully by
+// listMarkdown — this helper never throws.
 //
 // opts.docsRoot relocates the walk root away from the 'docs' default — see
 // resolveDocsRoot (lib/path-overrides.mjs), which derives it from a
@@ -160,7 +162,8 @@ export function effectiveExcludes(opts = {}) {
 async function listCandidateFiles(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
   const excludePaths = effectiveExcludes(opts);
-  const files = [...(await listMarkdown(repoRoot, docsRoot)), 'CLAUDE.md'];
+  const files = await listMarkdown(repoRoot, docsRoot);
+  if (await pathExists(join(repoRoot, 'CLAUDE.md'))) files.push('CLAUDE.md');
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
 
@@ -230,6 +233,26 @@ function configCandidateFiles(repoRoot, opts = {}) {
 
 // ---- scanRetiredTokens -------------------------------------------------------
 
+// The retired-token scan's corpus: docs walk, then wiki walk, then tracked
+// config files, de-duplicated by repo-relative path string. The first walk to
+// reach a file wins (its `via` is kept) and insertion order is preserved, so
+// non-overlapping layouts yield the same order as concatenating the walks.
+// Overlap (docsRoot equal to, or nested in either direction with, wikiDir)
+// would otherwise list a file twice and double every finding. `roots` labels
+// the roots walked, for callers that report what was examined.
+export async function retiredTokenCorpus(repoRoot, opts = {}) {
+  const byPath = new Map();
+  const add = (paths, via) => {
+    for (const path of paths) if (!byPath.has(path)) byPath.set(path, { path, via });
+  };
+  add(await listCandidateFiles(repoRoot, opts), 'docs');
+  add(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts), 'wiki');
+  add(configCandidateFiles(repoRoot, opts), 'config');
+  const roots = [{ via: 'docs', root: opts.docsRoot ?? 'docs' }];
+  if (opts.wikiDir) roots.push({ via: 'wiki', root: opts.wikiDir });
+  return { files: [...byPath.values()], roots };
+}
+
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
   // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
@@ -252,14 +275,10 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
   // no such owner: `lint` has no retired-token check at all (`grep -i token`
   // over maintain-wiki/SKILL.md returns nothing), so token drift on the wiki
   // tier is genuinely unowned unless this scanner reaches it.
-  const files = [
-    ...(await listCandidateFiles(repoRoot, opts)),
-    ...(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts)),
-    ...configCandidateFiles(repoRoot, opts),
-  ];
+  const { files } = await retiredTokenCorpus(repoRoot, opts);
   const findings = [];
 
-  for (const relPath of files) {
+  for (const { path: relPath } of files) {
     const content = await safeReadFile(join(repoRoot, relPath));
     if (content == null) continue;
 

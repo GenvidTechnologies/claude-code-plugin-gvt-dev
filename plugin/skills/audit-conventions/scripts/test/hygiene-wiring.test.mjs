@@ -252,3 +252,36 @@ test('audit: a docsRoot-collapsed-onto-wikiDir repo renders a link-check-skipped
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('audit: docsRoot === wikiDir renders one retired-token line per site and counts it once in advisories (#453)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        {
+          project: { name: 'foo' },
+          commands: { validate: 'echo ok' },
+          wiki: { wikiDir: 'wiki' },
+          paths: { 'docs/TOC.md': 'wiki/TOC.md' },
+        },
+        null,
+        2,
+      ),
+    );
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'TOC.md'), '# TOC\n\n- [Page](page.md)\n');
+    await writeFile(join(dir, 'wiki', 'page.md'), '# Page\n\nContains a genvid-dev: token here.\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const lines = result.stdout.split('\n').filter((l) => l.includes('contains retired token'));
+    assert.equal(lines.length, 1, `expected exactly one retired-token line:\n${result.stdout}`);
+    assert.match(lines[0], /wiki\/page\.md:3 contains retired token/);
+    const m = result.stdout.match(/(\d+) advisory findings?\./);
+    assert.ok(m, `expected an advisory count line:\n${result.stdout}`);
+    // 3 = the one retired-token site + the link-check-skipped line + the orphan-check-skipped line (4 before the dedup fix).
+    assert.equal(Number(m[1]), 3, `advisory count should count the site once:\n${result.stdout}`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
