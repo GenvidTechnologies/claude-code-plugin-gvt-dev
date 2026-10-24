@@ -53,3 +53,4 @@ One principle — bundle content is `lint`'s, and the audit now enforces that in
 - The `info` severity keeps both new kinds out of the exit code, which matters because these scanners are **not** author-time gated and run in every consuming repo's audit.
 - The substring-matching residual in the orphan check (tracked as an open issue about matching the literal link target rather than "appears in") becomes live for relocated *non-wiki* docs roots now that the scanner is no longer inert there — **flagged, not fixed, by this record**.
 - The sibling broken-link defect and the orphan inertness share this root cause and are resolved together here, rather than as two separate fixes on two separate schedules.
+- The declines also show in the Summary: the link check's `scanned` line counts the individual bundle files it declined, and the index check's line says it declined the whole scan; the retired-token scan declines nothing (ADR-0082, #401).

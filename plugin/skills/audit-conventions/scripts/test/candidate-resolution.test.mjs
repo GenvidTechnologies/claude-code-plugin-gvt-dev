@@ -9,6 +9,7 @@ import {
   probeRelPath,
   resolveCandidate,
   formatCandidateTarget,
+  formatOverrideTarget,
 } from '../lib/candidate-resolution.mjs';
 
 const ROOT = join('repo', 'root');
@@ -239,4 +240,18 @@ test('candidate-resolution.mjs imports only node:path and the audit-core probePa
   assert.equal(core.length, 1);
   const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();
   assert.deepEqual(bindings, ['probePath']);
+});
+
+// ---- formatOverrideTarget (#731) -------------------------------------------
+
+test('formatOverrideTarget: names the declared path then the resolved path via paths (#731)', () => {
+  assert.equal(
+    formatOverrideTarget('docs/decisions/', 'wiki/decisions/'),
+    '`docs/decisions/` (→ `wiki/decisions/` via paths)',
+  );
+  assert.equal(formatOverrideTarget('docs/decisions/', undefined), '`docs/decisions/`');
+});
+
+test('formatOverrideTarget: an empty override value renders as empty backticks (#731)', () => {
+  assert.equal(formatOverrideTarget('docs/wiki-schema.md', ''), '`docs/wiki-schema.md` (→ `` via paths)');
 });

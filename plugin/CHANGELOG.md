@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The audit report names what it actually examined (#731, #453, #401; ADR-0082).** Before, the Summary's one `scanned` line left out files the retired-token scan reads and overstated what the link and index checks read, overlapping layouts reported each retired-token site twice, and a `paths` override that moved an expectation went unmentioned.
+  - **Summary:** the single `scanned N file(s) under docs/, CLAUDE.md` line becomes one line per hygiene scanner (retired tokens, links, index coverage), built from the scanners' own corpus functions, counting only files that exist and noting bundle content declined under ADR-0053. A consumer that matches the old line must change it: gvt-construct3 documents `scanned 21 file(s) under wiki/, CLAUDE.md` in its `wiki/the-audit-contract.md` residue table (follow-up: GenvidTechnologies/claude-code-plugin-gvt-construct3#169). With an empty deny-list (`hygiene.retiredTokens: []`) the retired-token scan does not run and its line reads `retired-token scan off (hygiene.retiredTokens is empty); 0 file(s) checked`.
+  - **Retired-token findings:** each site is reported once when the docs and wiki walks overlap (first walk wins), so retired-token and advisory counts drop in overlapping layouts; the gvt-construct3 snapshot went from 8 lines to 4. A finding reached only through the wiki walk or a tracked config file now ends with `(via wiki/, retired-token scan only)` or the config-file equivalent; docs-root and `CLAUDE.md` findings are unchanged.
+  - **Override arrow:** a file or config expectation relocated by a `paths` override reads ``expects `<declared>` (→ `<resolved>` via paths)``. Findings with no override, or an override equal to the declared path, are unchanged.
+
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.39.0] - 2026-10-23
 
 - **A failing result is a hypothesis until the check ran as intended (#409, #408; ADR-0081).** Before, a red from a check that never ran properly (a bad pattern, a suite that failed to load, an empty denominator) was graded as a real failure and manufactured work, the mirror image of the false green the empty-corpus rule already guards against.

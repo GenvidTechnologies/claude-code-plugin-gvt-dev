@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { summarizeExpectations, formatScanSummary, renderSummary } from '../lib/summary.mjs';
+import { summarizeExpectations, formatScanSummary, renderSummary, hygieneScanSummary } from '../lib/summary.mjs';
 
 test('renderSummary: unmet lines count expectations, not severity buckets', () => {
   // Severity buckets here: 4 errors, 1 warning, 9 infos. Expectation counts:
@@ -197,4 +197,85 @@ test('formatScanSummary: fileCount 0 is surfaced, not hidden', () => {
   const line = formatScanSummary({ root: 'docs/', unrepresentable: false, fileCount: 0 });
   assert.match(line, /\bscanned\b/);
   assert.match(line, /\b0\b/);
+});
+
+// ---- one scanned line per hygiene scanner (#401) ---------------------------
+
+const FINDING_NEEDLES = ['orphan', 'broken link', 'contains retired token'];
+
+function corporaFor({ docsRoot = 'docs', wikiDir = 'wiki', claude = true, equal = false, noIndex = false, tokenFiles = [] } = {}) {
+  const docs = equal ? 'wiki' : docsRoot;
+  const link = claude ? ['CLAUDE.md'] : [];
+  return {
+    retiredToken: {
+      files: [...(claude ? [{ path: 'CLAUDE.md', via: 'docs' }] : []), ...tokenFiles],
+      roots: [{ via: 'docs', root: docs }, { via: 'wiki', root: wikiDir }],
+    },
+    linkCheck: {
+      files: equal ? link : [`${docs}/a.md`, ...link],
+      declined: equal ? ['wiki/a.md', 'wiki/b.md'] : [],
+      bundleRoot: wikiDir,
+      roots: [`${docs}/`, 'CLAUDE.md'],
+    },
+    indexCheck: {
+      skipped: equal ? 'bundle' : noIndex ? 'no-index' : null,
+      index: `${docs}/TOC.md`,
+      files: [],
+      roots: [`${docs}/`],
+    },
+  };
+}
+
+test('renderSummary: one scanned line per hygiene scanner (#401)', () => {
+  const scanSummary = hygieneScanSummary(
+    corporaFor({ tokenFiles: [{ path: '.gvt-agent.json', via: 'config' }] }),
+    { unrepresentable: true },
+  );
+  assert.equal(scanSummary.length, 3);
+  const lines = renderSummary({ findings: [], scanSummary });
+  const scanned = lines.filter((l) => l.startsWith('- scanned '));
+  assert.equal(scanned.length, 3);
+  assert.match(scanned[0], /^- scanned 2 file\(s\) for retired tokens under docs\/, wiki\/, CLAUDE\.md, \.gvt-agent\.json/);
+  assert.match(scanned[1], /^- scanned 2 file\(s\) for links under docs\/, CLAUDE\.md$/);
+  assert.match(scanned[2], /^- scanned 0 file\(s\) for index coverage under docs\/ \(index docs\/TOC\.md\)$/);
+  // The fallback note states the unrepresentable root once, on the first line.
+  assert.equal(lines.filter((l) => /fell back/.test(l)).length, 1);
+  assert.match(scanned[0], /fell back/);
+  // A single-object scanSummary still renders exactly one line.
+  assert.deepEqual(
+    renderSummary({ findings: [], scanSummary: { root: 'docs/', unrepresentable: false, fileCount: 7 } }).slice(-1),
+    ['- scanned 7 file(s) under docs/'],
+  );
+  // Equal layout: nested roots collapse, declines are stated.
+  const equal = renderSummary({ findings: [], scanSummary: hygieneScanSummary(corporaFor({ equal: true }), {}) })
+    .filter((l) => l.startsWith('- scanned '));
+  assert.deepEqual(equal, [
+    '- scanned 1 file(s) for retired tokens under wiki/, CLAUDE.md',
+    '- scanned 1 file(s) for links under CLAUDE.md (2 under wiki/ declined, see Info)',
+    '- scanned 0 file(s) for index coverage (docs root wiki/ is inside the wiki bundle wiki/; declined, see Info)',
+  ]);
+});
+
+test('renderSummary: scanned lines never contain a finding needle a downstream digest counts (#401)', () => {
+  const scenarios = [
+    corporaFor({}),
+    corporaFor({ equal: true }),
+    corporaFor({ noIndex: true }),
+    corporaFor({ claude: false }),
+    corporaFor({ tokenFiles: [{ path: 'package.json', via: 'config' }] }),
+  ];
+  for (const unrepresentable of [false, true]) {
+    for (const corpora of scenarios) {
+      const lines = renderSummary({
+        findings: [],
+        scanSummary: hygieneScanSummary(corpora, { unrepresentable }),
+      }).filter((l) => l.startsWith('- scanned '));
+      assert.equal(lines.length, 3);
+      for (const line of lines) {
+        for (const needle of FINDING_NEEDLES) {
+          assert.ok(!line.toLowerCase().includes(needle), `"${needle}" in: ${line}`);
+        }
+      }
+    }
+  }
 });

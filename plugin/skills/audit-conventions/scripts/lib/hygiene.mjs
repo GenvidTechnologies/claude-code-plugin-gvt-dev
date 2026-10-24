@@ -15,6 +15,7 @@ import { listMarkdown } from './fs-walk.mjs';
 import { gitTrackedFiles } from './git-info.mjs';
 import { iterateUnfencedLines, maskInlineCode } from './md-scan.mjs';
 import { resolveExpectationPath } from './path-overrides.mjs';
+import { BACKSLASH, bareDir, insideDir } from './dir-path.mjs';
 
 export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
@@ -66,7 +67,7 @@ const DECISIONS_DIR = 'docs/decisions/';
 // exclude-nothing-useful.
 export function anchoredDirEntry(value) {
   if (typeof value !== 'string') return null;
-  let v = value.trim().split(String.fromCharCode(92)).join('/');
+  let v = value.trim().split(BACKSLASH).join('/');
   while (v.startsWith('./')) v = v.slice(2);
   while (v.endsWith('/')) v = v.slice(0, -1);
   if (v === '' || v === '.') return null;
@@ -115,7 +116,7 @@ function rawDirExclude(opts) {
   if (!rawDir) return [];
   const docsRoot = opts.docsRoot ?? 'docs';
   const roots = [docsRoot, opts.wikiDir].filter(Boolean);
-  const withinWalkedRoot = roots.some((root) => rawDir === root || rawDir.startsWith(`${root}/`));
+  const withinWalkedRoot = roots.some((root) => insideDir(rawDir, root));
   return withinWalkedRoot ? [`${rawDir}/`] : [];
 }
 
@@ -135,10 +136,12 @@ export function effectiveExcludes(opts = {}) {
   ];
 }
 
-// Candidate file set shared by all three scanners: <docsRoot>/**.md + repo-root
-// CLAUDE.md, minus excludePaths. Repo-relative, forward-slash paths (matches
-// listMarkdown's shape). Missing <docsRoot>/ or CLAUDE.md are handled gracefully
-// by listMarkdown / safeReadFile respectively — this helper never throws.
+// Docs-walk candidate set: <docsRoot>/**.md + repo-root CLAUDE.md (when it
+// exists), minus excludePaths. Used by the link and orphan scanners and by the
+// docs leg of the retired-token corpus (which also unions wiki and config
+// files — see retiredTokenCorpus). Repo-relative, forward-slash paths (matches
+// listMarkdown's shape). A missing <docsRoot>/ is handled gracefully by
+// listMarkdown — this helper never throws.
 //
 // opts.docsRoot relocates the walk root away from the 'docs' default — see
 // resolveDocsRoot (lib/path-overrides.mjs), which derives it from a
@@ -160,15 +163,9 @@ export function effectiveExcludes(opts = {}) {
 async function listCandidateFiles(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
   const excludePaths = effectiveExcludes(opts);
-  const files = [...(await listMarkdown(repoRoot, docsRoot)), 'CLAUDE.md'];
+  const files = await listMarkdown(repoRoot, docsRoot);
+  if (await pathExists(join(repoRoot, 'CLAUDE.md'))) files.push('CLAUDE.md');
   return files.filter((f) => !isExcluded(f, excludePaths));
-}
-
-// Count-only wrapper around listCandidateFiles, for callers (audit.mjs's
-// Summary line) that need "how many files did the walk cover" without
-// re-implementing the walk. Same opts, same graceful missing-dir handling.
-export async function candidateFileCount(repoRoot, opts = {}) {
-  return (await listCandidateFiles(repoRoot, opts)).length;
 }
 
 // Candidate file set for a repo's wiki checkout: *.md under <wikiDir>/,
@@ -230,6 +227,42 @@ function configCandidateFiles(repoRoot, opts = {}) {
 
 // ---- scanRetiredTokens -------------------------------------------------------
 
+// The retired-token scan's corpus: docs walk, then wiki walk, then tracked
+// config files, de-duplicated by repo-relative path string. The first walk to
+// reach a file wins (its `via` is kept) and insertion order is preserved, so
+// non-overlapping layouts yield the same order as concatenating the walks.
+// Overlap (docsRoot equal to, or nested in either direction with, wikiDir)
+// would otherwise list a file twice and double every finding. `roots` labels
+// the roots walked, for callers that report what was examined.
+export async function retiredTokenCorpus(repoRoot, opts = {}) {
+  const byPath = new Map();
+  const add = (paths, via) => {
+    for (const path of paths) if (!byPath.has(path)) byPath.set(path, { path, via });
+  };
+  add(await listCandidateFiles(repoRoot, opts), 'docs');
+  add(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts), 'wiki');
+  add(configCandidateFiles(repoRoot, opts), 'config');
+  const roots = [{ via: 'docs', root: opts.docsRoot ?? 'docs' }];
+  if (opts.wikiDir) roots.push({ via: 'wiki', root: opts.wikiDir });
+  return { files: [...byPath.values()], roots };
+}
+
+// The directory a wikiDir names, for display: trailing separators stripped,
+// then one '/' appended ('wiki/' and 'wiki' both give 'wiki/').
+function displayDir(dir) {
+  return `${bareDir(dir)}/`;
+}
+
+// Suffix naming how a retired-token finding's file was reached, for files the
+// docs walk did not reach (#401): a reader seeing a hit in wiki/ or a config
+// file should know this scanner alone looked there. Docs-root and CLAUDE.md
+// findings get none.
+function provenanceSuffix(via, wikiDir) {
+  if (via === 'wiki') return ` (via ${displayDir(wikiDir)}, retired-token scan only)`;
+  if (via === 'config') return ' (via tracked config file, retired-token scan only)';
+  return '';
+}
+
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
   // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
@@ -252,17 +285,16 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
   // no such owner: `lint` has no retired-token check at all (`grep -i token`
   // over maintain-wiki/SKILL.md returns nothing), so token drift on the wiki
   // tier is genuinely unowned unless this scanner reaches it.
-  const files = [
-    ...(await listCandidateFiles(repoRoot, opts)),
-    ...(await wikiCandidateFiles(repoRoot, opts.wikiDir, opts)),
-    ...configCandidateFiles(repoRoot, opts),
-  ];
   const findings = [];
+  // An empty deny-list can match nothing; skip the corpus walk and file reads.
+  if (retiredTokens.length === 0) return findings;
+  const { files } = await retiredTokenCorpus(repoRoot, opts);
 
-  for (const relPath of files) {
+  for (const { path: relPath, via } of files) {
     const content = await safeReadFile(join(repoRoot, relPath));
     if (content == null) continue;
 
+    const suffix = provenanceSuffix(via, opts.wikiDir);
     const lines = content.split('\n');
     lines.forEach((line, idx) => {
       if (line.includes('http')) return; // provenance/issue URLs are correct-as-history
@@ -272,7 +304,7 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
             kind: 'retired-token',
             ok: false,
             severity: 'info',
-            detail: `${relPath}:${idx + 1} contains retired token '${token}'`,
+            detail: `${relPath}:${idx + 1} contains retired token '${token}'${suffix}`,
             file: relPath,
             line: idx + 1,
             token,
@@ -287,7 +319,14 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
 
 // ---- scanBrokenLinks ---------------------------------------------------------
 
-export async function scanBrokenLinks(repoRoot, opts = {}) {
+/**
+ * The files the link check examines, and the ones it declines. `files` are the
+ * candidates scanBrokenLinks reads; `declined` are the candidates it leaves to
+ * `maintain-wiki lint` because they live in the OKF wiki bundle (ADR-0053).
+ * `bundleRoot` is the wikiDir the decline was measured against (null when the
+ * repo declares none); `roots` labels what this corpus walks.
+ */
+export async function linkCheckCorpus(repoRoot, opts = {}) {
   const all = await listCandidateFiles(repoRoot, opts);
   const wikiDir = opts.wikiDir;
   // Per-file decline of OKF bundle-resident files (ADR-0053) — NOT a
@@ -304,16 +343,27 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
   // above: equality OR nested-prefix, never a substring test.
   const inBundle = (f) => !!wikiDir && (f === wikiDir || f.startsWith(`${wikiDir}/`));
   const files = all.filter((f) => !inBundle(f));
-  const declined = all.length - files.length;
+  const declined = all.filter((f) => inBundle(f));
+  return {
+    files,
+    declined,
+    bundleRoot: wikiDir || null,
+    roots: [`${opts.docsRoot ?? 'docs'}/`, 'CLAUDE.md'],
+  };
+}
+
+export async function scanBrokenLinks(repoRoot, opts = {}) {
+  const { files, declined } = await linkCheckCorpus(repoRoot, opts);
+  const wikiDir = opts.wikiDir;
   const findings = [];
   // Reported rather than silently dropped, for the same reason scanOrphanedDocs'
   // guards report a skip instead of returning [] — see ADR-0053.
-  if (declined > 0) {
+  if (declined.length > 0) {
     findings.push({
       kind: 'link-check-skipped',
       ok: false,
       severity: 'info',
-      detail: `${declined} file(s) under ${wikiDir}/ were not link-checked — OKF bundle pages resolve links against the bundle root, which /gvt-dev:maintain-wiki lint owns (ADR-0053). Run it for dead-link coverage of ${wikiDir}/.`,
+      detail: `${declined.length} file(s) under ${wikiDir}/ were not link-checked — OKF bundle pages resolve links against the bundle root, which /gvt-dev:maintain-wiki lint owns (ADR-0053). Run it for dead-link coverage of ${wikiDir}/.`,
     });
   }
 
@@ -367,9 +417,20 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
 
 // ---- scanOrphanedDocs ---------------------------------------------------------
 
-export async function scanOrphanedDocs(repoRoot, opts = {}) {
+/**
+ * The guard logic and file set behind the orphan check. `skipped` is 'bundle'
+ * when the docs root sits inside the wiki bundle (ADR-0053), 'no-index' when
+ * there is no index at `index`, else null. Guard 1 is tested before guard 2.
+ * `files` are the docs the check compares against the index (empty when
+ * skipped), `indexContent` the index text (null when skipped), `roots` the
+ * root labels walked.
+ */
+export async function indexCheckCorpus(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
   const wikiDir = opts.wikiDir;
+  const docsIndex = opts.docsIndex ?? 'TOC.md';
+  const tocPath = `${docsRoot}/${docsIndex}`;
+  const roots = [`${docsRoot}/`];
 
   // Guard 1 — checked FIRST, before the index read (ADR-0053). When the
   // resolved docs root is inside (or equal to) the OKF wiki bundle, orphan
@@ -395,18 +456,9 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
   // zero orphans and "never checked" must not render identically — that
   // indistinguishability is the defect #454 exists to fix.
   if (wikiDir && (docsRoot === wikiDir || docsRoot.startsWith(`${wikiDir}/`))) {
-    return [
-      {
-        kind: 'orphan-check-skipped',
-        ok: false,
-        severity: 'info',
-        detail: `orphan check skipped — the docs root '${docsRoot}/' is inside the wiki bundle '${wikiDir}/', where orphaned pages are owned by /gvt-dev:maintain-wiki lint, not this scan`,
-      },
-    ];
+    return { skipped: 'bundle', index: tocPath, files: [], indexContent: null, roots };
   }
 
-  const docsIndex = opts.docsIndex ?? 'TOC.md';
-  const tocPath = `${docsRoot}/${docsIndex}`;
   const tocContent = await safeReadFile(join(repoRoot, tocPath));
   // Guard 2 — checked AFTER guard 1 (ADR-0053). No <docsRoot>/<docsIndex>
   // found: report the skip rather than returning [], for the same
@@ -416,6 +468,34 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
   // single informational note, because reporting every page as an orphan
   // would be a rejection in all but name.
   if (tocContent == null) {
+    return { skipped: 'no-index', index: tocPath, files: [], indexContent: null, roots };
+  }
+
+  const candidates = await listCandidateFiles(repoRoot, opts);
+  const docsPrefix = `${docsRoot}/`;
+  const files = candidates.filter((f) => f.startsWith(docsPrefix) && f !== tocPath);
+  return { skipped: null, index: tocPath, files, indexContent: tocContent, roots };
+}
+
+export async function scanOrphanedDocs(repoRoot, opts = {}) {
+  const docsRoot = opts.docsRoot ?? 'docs';
+  const wikiDir = opts.wikiDir;
+  const { skipped, index: tocPath, files: docs, indexContent: tocContent } = await indexCheckCorpus(repoRoot, opts);
+
+  // The two skips are reported rather than returned as [] — zero orphans and
+  // "never checked" must not render identically (#454). Guard order lives in
+  // indexCheckCorpus; see ADR-0053.
+  if (skipped === 'bundle') {
+    return [
+      {
+        kind: 'orphan-check-skipped',
+        ok: false,
+        severity: 'info',
+        detail: `orphan check skipped — the docs root '${docsRoot}/' is inside the wiki bundle '${wikiDir}/', where orphaned pages are owned by /gvt-dev:maintain-wiki lint, not this scan`,
+      },
+    ];
+  }
+  if (skipped === 'no-index') {
     return [
       {
         kind: 'orphan-check-skipped',
@@ -426,10 +506,7 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
     ];
   }
 
-  const candidates = await listCandidateFiles(repoRoot, opts);
   const docsPrefix = `${docsRoot}/`;
-  const docs = candidates.filter((f) => f.startsWith(docsPrefix) && f !== tocPath);
-
   const findings = [];
   for (const relPath of docs) {
     // <docsRoot>/TOC.md lives inside <docsRoot>/ itself, so it commonly links
@@ -448,4 +525,20 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
   }
 
   return findings;
+}
+
+// ---- hygieneCorpora ------------------------------------------------------------
+
+/**
+ * The corpus each hygiene scanner examines, from the same functions the
+ * scanners read (retiredTokenCorpus, linkCheckCorpus, indexCheckCorpus), so
+ * the audit Summary can state what was examined without re-deriving a corpus a
+ * different way (#401).
+ */
+export async function hygieneCorpora(repoRoot, opts = {}) {
+  return {
+    retiredToken: await retiredTokenCorpus(repoRoot, opts),
+    linkCheck: await linkCheckCorpus(repoRoot, opts),
+    indexCheck: await indexCheckCorpus(repoRoot, opts),
+  };
 }

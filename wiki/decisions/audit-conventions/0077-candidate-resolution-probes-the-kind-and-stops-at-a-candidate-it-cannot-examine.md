@@ -126,3 +126,8 @@ Accepted residuals:
 - ADR-0070 carries an amendment pointer to this record.
 
 **Related:** ADR-0070 (decision 1 refined), ADR-0015, ADR-0062, #671, #679, #672.
+
+**Amendment (2026-10-24, #731).** [ADR-0082](0082-the-audit-report-names-what-it-actually-examined.md) adds the
+one-candidate counterpart of decision 6's rendering: when a `paths` override relocated an expectation, the finding
+reads ``expects `<declared>` (→ `<resolved>` via paths)``, built by `formatOverrideTarget`. The decisions above are
+left as written.

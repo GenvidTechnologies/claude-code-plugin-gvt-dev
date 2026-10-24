@@ -437,20 +437,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "plugin/CONVENTIONS.md:102-108",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "8d50a70bb3ad"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": "plugin/CONVENTIONS.md:104",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "6c51d6f71181"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "plugin/skills/maintain-wiki/raw-readme.template.md:8-10",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",

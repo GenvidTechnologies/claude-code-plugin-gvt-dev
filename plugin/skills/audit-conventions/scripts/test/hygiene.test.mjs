@@ -10,7 +10,6 @@ import {
   scanBrokenLinks,
   scanOrphanedDocs,
   wikiCandidateFiles,
-  candidateFileCount,
 } from '../lib/hygiene.mjs';
 import * as hygieneLib from '../lib/hygiene.mjs';
 import { resolveDocsRoot } from '../lib/path-overrides.mjs';
@@ -546,34 +545,6 @@ test('scanOrphanedDocs: opts.docsIndex renames the index file, independently of 
   }
 });
 
-test('candidateFileCount: counts the same candidate set listCandidateFiles produces (docs/**.md + CLAUDE.md)', async () => {
-  const dir = await withTempRepo(async (d) => {
-    await writeRepoFile(d, 'docs/a.md', 'x\n');
-    await writeRepoFile(d, 'docs/b.md', 'x\n');
-    await writeRepoFile(d, 'CLAUDE.md', 'x\n');
-  });
-  try {
-    assert.equal(await candidateFileCount(dir), 3);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test('candidateFileCount: honors opts.docsRoot, and the default root sees none of the relocated files', async () => {
-  const dir = await withTempRepo(async (d) => {
-    await writeRepoFile(d, 'documentation/a.md', 'x\n');
-  });
-  try {
-    // listCandidateFiles always appends the 'CLAUDE.md' candidate regardless
-    // of whether it exists on disk (missing files are handled gracefully by
-    // safeReadFile downstream) — so the +1 shows up in both counts below.
-    assert.equal(await candidateFileCount(dir, { docsRoot: 'documentation' }), 2);
-    assert.equal(await candidateFileCount(dir), 1);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
 // ---------------------------------------------------------------------------
 // wikiCandidateFiles — not called by any scanner yet (a later task wires it
 // into scanRetiredTokens only, per ADR-0015 decision 2).
@@ -1057,6 +1028,237 @@ test('#583 H8: scanOrphanedDocs excludes docs/adr/ once docs/decisions/ is reloc
     assert.equal(findings.length, 1);
     assert.equal(findings[0].kind, 'orphaned-doc');
     assert.match(findings[0].detail, /docs\/stray\.md is not referenced in docs\/TOC\.md/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #453 — overlapping docs/wiki walks report each site once
+// ---------------------------------------------------------------------------
+
+function sites(findings) {
+  return findings.map((f) => `${f.file} L${f.line} ${f.token}`);
+}
+
+async function overlapFixture(files) {
+  return withTempRepo(async (d) => {
+    for (const rel of files) await writeRepoFile(d, rel, 'Use genvid-dev: here.\n');
+  });
+}
+
+test('scanRetiredTokens: docsRoot === wikiDir reports each site once (#453)', async () => {
+  const dir = await overlapFixture(['wiki/a.md', 'wiki/sub/b.md']);
+  try {
+    const findings = await scanRetiredTokens(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+    assert.deepEqual(sites(findings).sort(), [
+      'wiki/a.md L1 genvid-dev:',
+      'wiki/sub/b.md L1 genvid-dev:',
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: a trailing-slash wikiDir equal to docsRoot reports each site once (#453)', async () => {
+  const dir = await overlapFixture(['wiki/a.md', 'wiki/sub/b.md']);
+  try {
+    const findings = await scanRetiredTokens(dir, { docsRoot: 'wiki', wikiDir: 'wiki/' });
+    assert.deepEqual(sites(findings).sort(), [
+      'wiki/a.md L1 genvid-dev:',
+      'wiki/sub/b.md L1 genvid-dev:',
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: docsRoot nested inside wikiDir reports each site once (#453)', async () => {
+  const dir = await overlapFixture(['wiki/top.md', 'wiki/docs/inner.md']);
+  try {
+    const findings = await scanRetiredTokens(dir, { docsRoot: 'wiki/docs', wikiDir: 'wiki' });
+    assert.deepEqual(sites(findings).sort(), [
+      'wiki/docs/inner.md L1 genvid-dev:',
+      'wiki/top.md L1 genvid-dev:',
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: wikiDir nested inside docsRoot reports each site once (#453)', async () => {
+  const dir = await overlapFixture(['docs/top.md', 'docs/wiki/inner.md']);
+  try {
+    const findings = await scanRetiredTokens(dir, { docsRoot: 'docs', wikiDir: 'docs/wiki' });
+    assert.deepEqual(sites(findings).sort(), [
+      'docs/top.md L1 genvid-dev:',
+      'docs/wiki/inner.md L1 genvid-dev:',
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('scanRetiredTokens: disjoint roots keep every finding, in walk order (#453)', async () => {
+  const dir = await overlapFixture(['docs/a.md', 'wiki/b.md']);
+  try {
+    const findings = await scanRetiredTokens(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(sites(findings), ['docs/a.md L1 genvid-dev:', 'wiki/b.md L1 genvid-dev:']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('retiredTokenCorpus: de-duplicates by repo-relative path, first walk wins, order preserved (#453)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeRepoFile(d, 'wiki/a.md', 'x\n');
+    await writeRepoFile(d, 'wiki/sub/b.md', 'x\n');
+    await writeRepoFile(d, 'other/c.md', 'x\n');
+    await writeRepoFile(d, '.gvt-agent.json', '{}\n');
+    git(d, ['add', '.gvt-agent.json']);
+  });
+  try {
+    const opts = { docsRoot: 'wiki', wikiDir: 'wiki/' };
+    const corpus = await hygieneLib.retiredTokenCorpus(dir, opts);
+    const walked = await wikiCandidateFiles(dir, 'wiki');
+    assert.deepEqual(
+      corpus.files,
+      [
+        ...walked.map((path) => ({ path, via: 'docs' })),
+        { path: '.gvt-agent.json', via: 'config' },
+      ],
+    );
+    assert.equal(new Set(corpus.files.map((f) => f.path)).size, corpus.files.length);
+    // Disjoint roots: docs first, then wiki, then config — nothing dropped.
+    const disjoint = await hygieneLib.retiredTokenCorpus(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(
+      disjoint.files.map((f) => f.via),
+      [...walked.map(() => 'wiki'), 'config'],
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// provenance and the corpora the audit Summary reports (#401)
+// ---------------------------------------------------------------------------
+
+async function corporaFixture() {
+  return withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeRepoFile(d, 'docs/a.md', 'Use genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\n- a.md\n');
+    await writeRepoFile(d, 'wiki/b.md', 'Use genvid-dev: here.\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'x\n');
+    await writeRepoFile(d, 'package.json', '{"name": "genvid:x"}\n');
+    git(d, ['add', 'package.json']);
+  });
+}
+
+test('scanRetiredTokens: a wiki-only or config file names its provenance; a docs-root file does not (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const findings = await scanRetiredTokens(dir, { wikiDir: 'wiki/' });
+    const byFile = Object.fromEntries(findings.map((f) => [f.file, f.detail]));
+    const plain = (f) => `${f.file}:${f.line} contains retired token '${f.token}'`;
+    const docsHit = findings.find((f) => f.file === 'docs/a.md');
+    const wikiHit = findings.find((f) => f.file === 'wiki/b.md');
+    const cfgHit = findings.find((f) => f.file === 'package.json');
+    assert.equal(byFile['docs/a.md'], plain(docsHit));
+    assert.equal(byFile['wiki/b.md'], `${plain(wikiHit)} (via wiki/, retired-token scan only)`);
+    assert.equal(
+      byFile['package.json'],
+      `${plain(cfgHit)} (via tracked config file, retired-token scan only)`,
+    );
+    // docsRoot === wikiDir: the docs walk reaches the file first, so no suffix.
+    const equal = await scanRetiredTokens(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+    assert.equal(equal.find((f) => f.file === 'wiki/b.md').detail, plain(wikiHit));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: default layout — token, link and index corpora (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(Object.keys(c).sort(), ['indexCheck', 'linkCheck', 'retiredToken']);
+    assert.deepEqual(
+      c.retiredToken.files.map((f) => `${f.via} ${f.path}`).sort(),
+      ['config package.json', 'docs CLAUDE.md', 'docs docs/TOC.md', 'docs docs/a.md', 'wiki wiki/b.md'],
+    );
+    assert.deepEqual([...c.linkCheck.files].sort(), ['CLAUDE.md', 'docs/TOC.md', 'docs/a.md']);
+    assert.deepEqual(c.linkCheck.declined, []);
+    assert.equal(c.indexCheck.skipped, null);
+    assert.equal(c.indexCheck.index, 'docs/TOC.md');
+    assert.deepEqual(c.indexCheck.files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: docsRoot === wikiDir — link corpus declines bundle files, index check declined (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+    assert.deepEqual(c.linkCheck.files, ['CLAUDE.md']);
+    assert.deepEqual(c.linkCheck.declined, ['wiki/b.md']);
+    assert.equal(c.linkCheck.bundleRoot, 'wiki');
+    assert.equal(c.indexCheck.skipped, 'bundle');
+    assert.deepEqual(c.indexCheck.files, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: an absent CLAUDE.md is not counted (#401)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'x\n');
+  });
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, {});
+    assert.deepEqual(c.retiredToken.files, [{ path: 'docs/a.md', via: 'docs' }]);
+    assert.deepEqual(c.linkCheck.files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: tracked config files count toward the token corpus only (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, {});
+    assert.ok(c.retiredToken.files.some((f) => f.path === 'package.json' && f.via === 'config'));
+    assert.ok(!c.linkCheck.files.includes('package.json'));
+    assert.ok(!c.indexCheck.files.includes('package.json'));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: a relocated docs root is named in place of docs/ (#401)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'kb/TOC.md', '# TOC\n\n- a.md\n');
+    await writeRepoFile(d, 'kb/a.md', 'x\n');
+  });
+  try {
+    const { hygieneScanSummary, renderSummary } = await import('../lib/summary.mjs');
+    const c = await hygieneLib.hygieneCorpora(dir, { docsRoot: 'kb' });
+    assert.deepEqual(c.retiredToken.roots, [{ via: 'docs', root: 'kb' }]);
+    assert.deepEqual([...c.linkCheck.files].sort(), ['kb/TOC.md', 'kb/a.md']);
+    assert.deepEqual(c.linkCheck.roots, ['kb/', 'CLAUDE.md']);
+    assert.deepEqual(c.indexCheck.roots, ['kb/']);
+    assert.equal(c.indexCheck.index, 'kb/TOC.md');
+    assert.deepEqual(c.indexCheck.files, ['kb/a.md']);
+    const lines = renderSummary({ findings: [], scanSummary: hygieneScanSummary(c) });
+    assert.deepEqual(lines.slice(3), [
+      '- scanned 2 file(s) for retired tokens under kb/',
+      '- scanned 2 file(s) for links under kb/',
+      '- scanned 1 file(s) for index coverage under kb/ (index kb/TOC.md)',
+    ]);
+    assert.ok(!lines.some((l) => l.includes('docs/')));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
