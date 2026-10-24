@@ -52,3 +52,10 @@ export function formatCandidateTarget(f) {
   const notes = f.skipped.map((s) => `; \`${s.candidate}\` was passed over (${PASSED_OVER[s.kind]})`).join('');
   return `${shown} — \`${f.described}\`: ${f.detail}${notes}`;
 }
+
+// Renders the target of a finding whose expectation a `paths` override may have
+// relocated: the declared path, then (when an override moved it) the path it resolved to.
+// `viaPaths` is undefined when no override applies; an empty string renders as
+// empty backticks, verbatim.
+export const formatOverrideTarget = (target, viaPaths) =>
+  viaPaths === undefined ? `\`${target}\`` : `\`${target}\` (→ \`${viaPaths}\` via paths)`;
