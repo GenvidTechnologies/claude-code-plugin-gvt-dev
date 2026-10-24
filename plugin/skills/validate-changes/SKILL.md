@@ -24,7 +24,7 @@ Dispatches the validator agent to run the project's full validation suite and re
 
 2. **Dispatch the validator** via the Agent tool with `subagent_type: "gvt-dev:validator"`. The agent reads `commands.validate` from `.gvt-agent.json`, runs it, parses output, and returns a structured pass/fail report. Raw command output stays inside the subagent context. Include in the dispatch: *grade the tree as it stands and do not change repository state (principle #14); report any baseline you'd need rather than deriving it.*
 
-3. **Surface the validator's report** to the user. If the validator returned failures, walk through each with a suggested fix. If everything passed, confirm success.
+3. **Surface the validator's report** to the user. If the validator returned failures, walk through each with a suggested fix. Open the summary with a tally of the validator's step statuses (e.g. "1 failed, 3 NOT RUN"). A run with any `NOT RUN` step is never presented as "everything passed": name the unreached steps and offer a full-result re-dispatch. If every step passed, confirm success.
 
 ## After validation
 

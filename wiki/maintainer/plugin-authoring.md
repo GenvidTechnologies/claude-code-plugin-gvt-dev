@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: 'Authoring Genvid Plugins'
-description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, and example naming.'
+description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, example naming, and a small model''s output template.'
 tags: [maintainer, plugin-authoring]
 status: stable
 ---
@@ -88,6 +88,27 @@ implementation", a concrete real manifest shown as a worked example — legitima
 names a real plugin, but must then be kept **current** (a stale factual name is
 just a bug). When in doubt about whether a reference is illustrative or factual,
 prefer the placeholder.
+
+## Put a small model's required output shape in its template
+
+An agent that runs on a small model (`model: haiku`, as `gvt-dev:validator`
+does) follows its Output Format template and its Process steps far more
+reliably than an example tucked inside a Key Rule. When the agent must write a
+line a particular way, show that line in the Output Format template **and**
+say it in the step that produces it.
+
+Measured on `validator-evals` variant R. The requirement was that a step the
+`&&` chain never reached keeps its `NOT RUN` label even after it is run
+individually:
+
+- **Rule with an inline example only:** 0 of 3 runs complied. Each opened
+  with a bare `schema: PASS`.
+- **Plus the line in the Output Format template:** 1 of 3.
+- **Plus "the line still begins `<step>: NOT RUN`" in Process step 3:** 3 of 3.
+
+Measure the change with a harness rather than trusting the prose. Read
+correctly, every one of the non-complying reports was factually right; only the
+shape was wrong, which no review of the rule text would have predicted.
 
 ## Example
 

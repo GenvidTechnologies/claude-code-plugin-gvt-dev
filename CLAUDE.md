@@ -51,7 +51,9 @@ claude-code-plugin-gvt-dev/
 │   ├── process/issue-triage.md       # Dogfood consuming-repo triage conventions (resolved via paths)
 │   └── maintainer/plugin-authoring.md  # Maintainer authoring notes (internal, not shipped)
 ├── examples/                         # Worked, filled-in example consuming-repo files (Bunny game) for reference
-└── audit-conventions-evals/          # Skill eval harness (developer tooling)
+├── audit-conventions-evals/          # Skill eval harness (developer tooling)
+├── create-adr-evals/                 # Skill eval harness for create-adr (developer tooling)
+└── validator-evals/                  # Eval harness for the validator agent's chain reporting (developer tooling)
 ```
 
 **Important layout details:**

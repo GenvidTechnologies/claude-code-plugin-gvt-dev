@@ -7,6 +7,27 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **A failing result is a hypothesis until the check ran as intended (#409, #408; ADR-0081).** Before, a red from a check that never ran properly (a bad pattern, a suite that failed to load, an empty denominator) was graded as a real failure and manufactured work, the mirror image of the false green the empty-corpus rule already guards against.
+  - **Development principles:** new principle #15 states it: a failing result is a hypothesis until the check is confirmed to have run as intended, with exit status and stderr read, the denominator populated and one known-good item passing. A false green ships bad work and a false red manufactures work.
+  - **Validator and code-reviewer:** one identical block in both. A red is graded only after its check is confirmed to have run.
+  - **plan-task:** the false-red counterpart of the empty-corpus rule, and a mutation control's red must be the assertion's red.
+  - **build-probe:** a control's red must be the assertion's red, with the `tests 1 / fail 1` tell for a file that failed to load.
+  - **Designer:** an empty-collection bullet.
+  - **Superseded:** #408's "restore the tree between phases" gives way to the validator's read-only rule and the git-state-guard hook, as ADR-0081 records.
+
+  Behavioral skill/agent change → version bump at release.
+
+- **Validator names the steps a stopped `&&` chain never reached, and checks its own report (#724, #408; ADR-0081).** Before, when `commands.validate` was an `&&` chain that stopped at its first failure, the steps after it were silently absent or counted as passing.
+  - **Validator:** a step the chain never reached is `NOT RUN`, distinct from SKIPPED, and never counted as passing. The step map is read from the command string. A full-result dispatch runs the steps one at a time, and each line keeps `NOT RUN` before the individual result. "Exit early" distinguishes a failure that blocks dependent steps from an independent one. The read-only exemption covers running each step verbatim on a full-result dispatch and a pledged row's own command. Validate runs alone and re-runs only the failing step once, reporting "did not reproduce on re-run" when it passes. Rows that write the tree run one at a time, with `git status --porcelain` before and after. A new final step self-checks the report's totals, denominator and step tally.
+  - **validate-changes:** the summary opens with the step-status tally and never presents a run with `NOT RUN` steps as "everything passed".
+  - **plan-task:** the known-red baseline and the inline gate act on `NOT RUN`.
+
+  Behavioral skill/agent change → version bump at release.
+
+- **Maintainer harness for chain-step reporting (#724, #408; ADR-0081).** A repo-root `validator-evals/` harness measures the `gvt-dev:validator` report against fixtures whose `&&` chain stops, with a grader that has its own unit test. It is wired into this repo's `.gvt-agent.json`, run on demand with `node validator-evals/run.mjs`, and listed in `wiki/maintainer/testing-the-audit.md`. ADR-0081 records the false-red principle, the `NOT RUN` vocabulary and the validator's report self-check. Two maintainer notes record what the harness taught: `testing-the-audit.md` on grading model prose by structure and re-grading the retained reports, and `plugin-authoring.md` on putting a small model's required output shape in its template.
+
+  No consumer-facing behavior change → no version bump.
+
 ## [4.38.0] - 2026-10-21
 
 - **Criteria commands keep their meaning on every hop (#553, #640, #719; ADR-0080).** Before, a Test Criteria command changed meaning as it crossed the table, the planner, the issue body and the graders: no hop renders the table, so a cell's `\|` stayed part of the command and turned an ERE or `rg` alternation into a dead pattern, and a placeholder or a non-reproducing baseline went unnoticed.
