@@ -174,3 +174,8 @@ Alternatives considered and rejected:
   sites of the changed helpers rather than by re-reading the issues — worth
   recording as a technique, since a call-site audit catches consumers an
   issue-body-only pass would miss.
+
+**Amendment (2026-10-24, #401, #453).** [ADR-0082](../audit-conventions/0082-the-audit-report-names-what-it-actually-examined.md)
+replaces the Summary's single `scanned` line with one line per hygiene scanner, so the wiki walk and the tracked
+config files this record added are now named, and reports each retired-token site once when the docs and wiki walks
+overlap. The decisions above are left as written.
