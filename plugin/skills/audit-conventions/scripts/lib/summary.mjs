@@ -1,4 +1,5 @@
 import { LOAD_FAILURE_KINDS } from './load-diagnostics.mjs';
+import { bareDir, insideDir } from './dir-path.mjs';
 
 // Tallies expectation findings into required/optional met-vs-total counts.
 //
@@ -92,13 +93,16 @@ export function renderSummary({ findings, scanSummary = null }) {
 // <purpose> under ..."); with a purpose and no roots the "under" clause is
 // dropped. Optional `note` is a parenthesised remark placed after the roots.
 // With neither, the output is the original one-scan line, unchanged.
-export function formatScanSummary({ root, unrepresentable, fileCount, purpose, note }) {
+export function formatScanSummary({ root, unrepresentable, fileCount, purpose, note, off }) {
   const roots = Array.isArray(root) ? root : [root];
   const rootList = roots.filter(Boolean).join(', ');
 
   const fallbackNote = unrepresentable
     ? ' (configured root could not be represented; fell back to the default root)'
     : '';
+
+  // A scan that is switched off examined nothing: say so, not "scanned N".
+  if (off) return `${off}${fallbackNote}`;
 
   const forPart = purpose ? ` for ${purpose}` : '';
   const underPart = rootList || !purpose ? ` under ${rootList}` : '';
@@ -107,19 +111,6 @@ export function formatScanSummary({ root, unrepresentable, fileCount, purpose, n
 }
 
 // ---- per-scanner scan summary (#401) ----------------------------------------
-
-const BACKSLASH = String.fromCharCode(92);
-
-// A directory as a root is named: trailing separators stripped, bare form.
-function bareDir(dir) {
-  let d = String(dir);
-  while (d.endsWith('/') || d.endsWith(BACKSLASH)) d = d.slice(0, -1);
-  return d;
-}
-
-function insideDir(inner, outer) {
-  return inner === outer || inner.startsWith(`${outer}/`);
-}
 
 // Directory roots to name, in the order given, dropping any root nested inside
 // another listed root (an equal pair keeps the first).
@@ -136,7 +127,10 @@ function outermostRoots(dirs) {
 // downstream digest counts as findings (the orphan, broken-link and
 // retired-token finding phrases). `unrepresentable` marks the first entry;
 // renderSummary states the fallback once.
-export function hygieneScanSummary({ retiredToken, linkCheck, indexCheck }, { unrepresentable = false } = {}) {
+export function hygieneScanSummary({ retiredToken, linkCheck, indexCheck }, { unrepresentable = false, retiredTokens } = {}) {
+  // An effective deny-list that is empty (hygiene.retiredTokens: []) can match
+  // nothing, so the retired-token scan is reported off, not as files scanned.
+  const tokenScanOff = Array.isArray(retiredTokens) && retiredTokens.length === 0;
   const tokenPaths = retiredToken.files.map((f) => f.path);
   const tokenRoots = [
     ...outermostRoots(retiredToken.roots.map((r) => r.root)),
@@ -169,7 +163,13 @@ export function hygieneScanSummary({ retiredToken, linkCheck, indexCheck }, { un
   }
 
   return [
-    { root: tokenRoots, unrepresentable, fileCount: retiredToken.files.length, purpose: 'retired tokens' },
+    {
+      root: tokenRoots,
+      unrepresentable,
+      fileCount: retiredToken.files.length,
+      purpose: 'retired tokens',
+      off: tokenScanOff ? 'retired-token scan off (hygiene.retiredTokens is empty); 0 file(s) checked' : undefined,
+    },
     { root: linkRoots, unrepresentable: false, fileCount: linkCheck.files.length, purpose: 'links', note: linkNote },
     { root: indexNamed, unrepresentable: false, fileCount: indexCheck.files.length, purpose: 'index coverage', note: indexNote },
   ];

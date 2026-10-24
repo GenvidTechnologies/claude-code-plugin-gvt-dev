@@ -15,6 +15,7 @@ import { listMarkdown } from './fs-walk.mjs';
 import { gitTrackedFiles } from './git-info.mjs';
 import { iterateUnfencedLines, maskInlineCode } from './md-scan.mjs';
 import { resolveExpectationPath } from './path-overrides.mjs';
+import { BACKSLASH, bareDir, insideDir } from './dir-path.mjs';
 
 export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
@@ -66,7 +67,7 @@ const DECISIONS_DIR = 'docs/decisions/';
 // exclude-nothing-useful.
 export function anchoredDirEntry(value) {
   if (typeof value !== 'string') return null;
-  let v = value.trim().split(String.fromCharCode(92)).join('/');
+  let v = value.trim().split(BACKSLASH).join('/');
   while (v.startsWith('./')) v = v.slice(2);
   while (v.endsWith('/')) v = v.slice(0, -1);
   if (v === '' || v === '.') return null;
@@ -115,7 +116,7 @@ function rawDirExclude(opts) {
   if (!rawDir) return [];
   const docsRoot = opts.docsRoot ?? 'docs';
   const roots = [docsRoot, opts.wikiDir].filter(Boolean);
-  const withinWalkedRoot = roots.some((root) => rawDir === root || rawDir.startsWith(`${root}/`));
+  const withinWalkedRoot = roots.some((root) => insideDir(rawDir, root));
   return withinWalkedRoot ? [`${rawDir}/`] : [];
 }
 
@@ -249,9 +250,7 @@ export async function retiredTokenCorpus(repoRoot, opts = {}) {
 // The directory a wikiDir names, for display: trailing separators stripped,
 // then one '/' appended ('wiki/' and 'wiki' both give 'wiki/').
 function displayDir(dir) {
-  let d = String(dir);
-  while (d.endsWith('/') || d.endsWith(String.fromCharCode(92))) d = d.slice(0, -1);
-  return `${d}/`;
+  return `${bareDir(dir)}/`;
 }
 
 // Suffix naming how a retired-token finding's file was reached, for files the
@@ -286,8 +285,10 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
   // no such owner: `lint` has no retired-token check at all (`grep -i token`
   // over maintain-wiki/SKILL.md returns nothing), so token drift on the wiki
   // tier is genuinely unowned unless this scanner reaches it.
-  const { files } = await retiredTokenCorpus(repoRoot, opts);
   const findings = [];
+  // An empty deny-list can match nothing; skip the corpus walk and file reads.
+  if (retiredTokens.length === 0) return findings;
+  const { files } = await retiredTokenCorpus(repoRoot, opts);
 
   for (const { path: relPath, via } of files) {
     const content = await safeReadFile(join(repoRoot, relPath));

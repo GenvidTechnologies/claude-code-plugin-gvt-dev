@@ -97,8 +97,8 @@ test('audit: hygiene config override (retiredTokens: []) suppresses the retired-
 
     assert.doesNotMatch(
       result.stdout,
-      /contains retired token/,
-      'retired-token finding should disappear once hygiene.retiredTokens is overridden to []',
+      /retired token/,
+      'retired-token finding (and any "retired tokens" scanned line) should disappear once hygiene.retiredTokens is overridden to []',
     );
     // The other two scanners are unaffected by this override and should still fire.
     assert.match(
@@ -112,6 +112,37 @@ test('audit: hygiene config override (retiredTokens: []) suppresses the retired-
       'orphaned-doc finding should be unaffected by the retiredTokens override',
     );
     assert.equal(result.status, 0, 'audit should still exit 0');
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: an empty retired-token deny-list says the retired-token scan is off in the Summary (#401)', async () => {
+  const tmpDir = await withTempHygieneRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        { project: { name: 'foo' }, commands: { validate: 'echo ok' }, hygiene: { retiredTokens: [] } },
+        null,
+        2,
+      ),
+    );
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const lines = result.stdout.split('\n');
+    assert.ok(
+      lines.includes('- retired-token scan off (hygiene.retiredTokens is empty); 0 file(s) checked'),
+      `Summary should say the scan is off:\n${result.stdout}`,
+    );
+    assert.ok(
+      !lines.some((l) => /^- scanned [0-9]+ file[(]s[)] for retired tokens/.test(l)),
+      'a disabled scan must not read as files scanned',
+    );
+    // The other two scanners still report what they examined.
+    assert.ok(lines.some((l) => /^- scanned [0-9]+ file[(]s[)] for links /.test(l)));
+    assert.ok(lines.some((l) => /^- scanned [0-9]+ file[(]s[)] for index coverage /.test(l)));
+    assert.equal(result.status, 0);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

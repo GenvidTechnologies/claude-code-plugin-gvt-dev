@@ -139,9 +139,9 @@ async function main() {
       );
     }
     for (const entry of expects.config ?? []) {
-      const finding = await evaluateConfig(component, entry, resolveConfig);
-      const viaPaths = resolveConfig(entry).viaPaths;
-      findings.push(viaPaths !== undefined ? { ...finding, viaPaths } : finding);
+      const where = resolveConfig(entry);
+      const finding = await evaluateConfig(component, entry, () => where);
+      findings.push(where.viaPaths !== undefined ? { ...finding, viaPaths: where.viaPaths } : finding);
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
@@ -228,6 +228,7 @@ async function main() {
   // docs root. See hygieneScanSummary / formatScanSummary (lib/summary.mjs).
   const scanSummary = hygieneScanSummary(await hygieneCorpora(REPO_ROOT, hygieneOpts), {
     unrepresentable: docsRootUnrepresentable,
+    retiredTokens: hygieneOpts.retiredTokens,
   });
 
   // Practice Coverage (epic #142): the plugin-side census is derived from the

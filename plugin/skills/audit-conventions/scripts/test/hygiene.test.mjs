@@ -1237,3 +1237,29 @@ test('hygieneCorpora: tracked config files count toward the token corpus only (#
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('hygieneCorpora: a relocated docs root is named in place of docs/ (#401)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'kb/TOC.md', '# TOC\n\n- a.md\n');
+    await writeRepoFile(d, 'kb/a.md', 'x\n');
+  });
+  try {
+    const { hygieneScanSummary, renderSummary } = await import('../lib/summary.mjs');
+    const c = await hygieneLib.hygieneCorpora(dir, { docsRoot: 'kb' });
+    assert.deepEqual(c.retiredToken.roots, [{ via: 'docs', root: 'kb' }]);
+    assert.deepEqual([...c.linkCheck.files].sort(), ['kb/TOC.md', 'kb/a.md']);
+    assert.deepEqual(c.linkCheck.roots, ['kb/', 'CLAUDE.md']);
+    assert.deepEqual(c.indexCheck.roots, ['kb/']);
+    assert.equal(c.indexCheck.index, 'kb/TOC.md');
+    assert.deepEqual(c.indexCheck.files, ['kb/a.md']);
+    const lines = renderSummary({ findings: [], scanSummary: hygieneScanSummary(c) });
+    assert.deepEqual(lines.slice(3), [
+      '- scanned 2 file(s) for retired tokens under kb/',
+      '- scanned 2 file(s) for links under kb/',
+      '- scanned 1 file(s) for index coverage under kb/ (index kb/TOC.md)',
+    ]);
+    assert.ok(!lines.some((l) => l.includes('docs/')));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
