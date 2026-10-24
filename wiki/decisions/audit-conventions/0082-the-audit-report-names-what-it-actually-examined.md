@@ -44,7 +44,8 @@ when it exists.
 **3. A per-scanner Summary built from shared corpus functions.** The Summary prints one `scanned` line per hygiene
 scanner. `hygieneCorpora` builds the lines from the same corpus functions the scanners read (`retiredTokenCorpus`,
 `linkCheckCorpus`, `indexCheckCorpus`), counting only files that exist, and names any bundle files declined under
-ADR-0053. `candidateFileCount` is retired. For example, in this repo:
+ADR-0053. `candidateFileCount` is retired. With an empty deny-list (`hygiene.retiredTokens: []`) the retired-token scan does
+not run, and its line reads `retired-token scan off (hygiene.retiredTokens is empty); 0 file(s) checked`. For example, in this repo:
 
 ```
 - scanned 18 file(s) for retired tokens under docs/, wiki/, CLAUDE.md, .gvt-agent.json
@@ -90,8 +91,10 @@ Provenance:
 
 ## Consequences
 
-- The Summary's single `scanned` line becomes three. A consumer that pins the old line must change it:
-  gvt-construct3 pins `scanned 21 file(s) under wiki/, CLAUDE.md`.
+- The Summary's single `scanned` line becomes three. A consumer that matches the old line must change it:
+  gvt-construct3 documents `scanned 21 file(s) under wiki/, CLAUDE.md` in the residue table of its
+  `wiki/the-audit-contract.md`; its snapshot test does not anchor on that line. Follow-up:
+  GenvidTechnologies/claude-code-plugin-gvt-construct3#169.
 - Retired-token findings, and the advisory counts built on them, drop in layouts where the docs and wiki walks
   overlap. The gvt-construct3 snapshot went from 8 lines to 4.
 - ADR-0041's single Summary line is now per-scanner, and ADR-0053's declines show in the Summary as well as in

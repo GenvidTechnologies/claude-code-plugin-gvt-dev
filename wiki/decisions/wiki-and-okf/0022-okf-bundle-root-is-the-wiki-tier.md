@@ -80,3 +80,5 @@ Nine contradicted or open sites follow from this decision. **Nothing in this tab
 - **#191/#150 must not present `raw/` immutability as an OKF rule** — with `raw/` outside the bundle, OKF says nothing about it; `lint`'s check is a purely local convention.
 - Naming `<wikiDir>/log.md` a bundle-root reserved file puts §11.3 in force, activating §9's newest-first mandate against `wiki/log.md:3-5`'s append-only wording. Surfaced, not resolved here — #190 owns it.
 - The numbering slip: #189's title and AC 1 name ADR-0021, which #194 took instead. This ADR is its own example of the rule already recorded at `plugin/CHANGELOG.md` — do not mint a specific decision-record number into a proposed issue body, because a number parked in a backlog issue is a soft reservation nothing detects going stale.
+
+**Amendment (2026-10-24, #401).** Two `plugin/CONVENTIONS.md` line citations in this record (in the §6.3 "references" alternative and in table row 9) were re-anchored to content anchors, because the CONVENTIONS scope-table edit for ADR-0082 moved the lines. No claim changed.
