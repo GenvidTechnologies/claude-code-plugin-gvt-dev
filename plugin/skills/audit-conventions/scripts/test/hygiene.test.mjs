@@ -10,7 +10,6 @@ import {
   scanBrokenLinks,
   scanOrphanedDocs,
   wikiCandidateFiles,
-  candidateFileCount,
 } from '../lib/hygiene.mjs';
 import * as hygieneLib from '../lib/hygiene.mjs';
 import { resolveDocsRoot } from '../lib/path-overrides.mjs';
@@ -541,33 +540,6 @@ test('scanOrphanedDocs: opts.docsIndex renames the index file, independently of 
     assert.equal(withoutIndex[0].ok, false);
     assert.equal(withoutIndex[0].severity, 'info');
     assert.ok(withoutIndex[0].detail.includes('documentation/TOC.md'));
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test('candidateFileCount: counts the same candidate set listCandidateFiles produces (docs/**.md + CLAUDE.md)', async () => {
-  const dir = await withTempRepo(async (d) => {
-    await writeRepoFile(d, 'docs/a.md', 'x\n');
-    await writeRepoFile(d, 'docs/b.md', 'x\n');
-    await writeRepoFile(d, 'CLAUDE.md', 'x\n');
-  });
-  try {
-    assert.equal(await candidateFileCount(dir), 3);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test('candidateFileCount: honors opts.docsRoot, and the default root sees none of the relocated files', async () => {
-  const dir = await withTempRepo(async (d) => {
-    await writeRepoFile(d, 'documentation/a.md', 'x\n');
-  });
-  try {
-    // listCandidateFiles appends 'CLAUDE.md' only when it exists (#453), so a
-    // repo without one contributes nothing to either count below.
-    assert.equal(await candidateFileCount(dir, { docsRoot: 'documentation' }), 1);
-    assert.equal(await candidateFileCount(dir), 0);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -1164,6 +1136,103 @@ test('retiredTokenCorpus: de-duplicates by repo-relative path, first walk wins, 
       disjoint.files.map((f) => f.via),
       [...walked.map(() => 'wiki'), 'config'],
     );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// provenance and the corpora the audit Summary reports (#401)
+// ---------------------------------------------------------------------------
+
+async function corporaFixture() {
+  return withTempRepo(async (d) => {
+    git(d, ['init', '-q', '.']);
+    await writeRepoFile(d, 'docs/a.md', 'Use genvid-dev: here.\n');
+    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\n- a.md\n');
+    await writeRepoFile(d, 'wiki/b.md', 'Use genvid-dev: here.\n');
+    await writeRepoFile(d, 'CLAUDE.md', 'x\n');
+    await writeRepoFile(d, 'package.json', '{"name": "genvid:x"}\n');
+    git(d, ['add', 'package.json']);
+  });
+}
+
+test('scanRetiredTokens: a wiki-only or config file names its provenance; a docs-root file does not (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const findings = await scanRetiredTokens(dir, { wikiDir: 'wiki/' });
+    const byFile = Object.fromEntries(findings.map((f) => [f.file, f.detail]));
+    const plain = (f) => `${f.file}:${f.line} contains retired token '${f.token}'`;
+    const docsHit = findings.find((f) => f.file === 'docs/a.md');
+    const wikiHit = findings.find((f) => f.file === 'wiki/b.md');
+    const cfgHit = findings.find((f) => f.file === 'package.json');
+    assert.equal(byFile['docs/a.md'], plain(docsHit));
+    assert.equal(byFile['wiki/b.md'], `${plain(wikiHit)} (via wiki/, retired-token scan only)`);
+    assert.equal(
+      byFile['package.json'],
+      `${plain(cfgHit)} (via tracked config file, retired-token scan only)`,
+    );
+    // docsRoot === wikiDir: the docs walk reaches the file first, so no suffix.
+    const equal = await scanRetiredTokens(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+    assert.equal(equal.find((f) => f.file === 'wiki/b.md').detail, plain(wikiHit));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: default layout — token, link and index corpora (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, { wikiDir: 'wiki' });
+    assert.deepEqual(Object.keys(c).sort(), ['indexCheck', 'linkCheck', 'retiredToken']);
+    assert.deepEqual(
+      c.retiredToken.files.map((f) => `${f.via} ${f.path}`).sort(),
+      ['config package.json', 'docs CLAUDE.md', 'docs docs/TOC.md', 'docs docs/a.md', 'wiki wiki/b.md'],
+    );
+    assert.deepEqual([...c.linkCheck.files].sort(), ['CLAUDE.md', 'docs/TOC.md', 'docs/a.md']);
+    assert.deepEqual(c.linkCheck.declined, []);
+    assert.equal(c.indexCheck.skipped, null);
+    assert.equal(c.indexCheck.index, 'docs/TOC.md');
+    assert.deepEqual(c.indexCheck.files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: docsRoot === wikiDir — link corpus declines bundle files, index check declined (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, { docsRoot: 'wiki', wikiDir: 'wiki' });
+    assert.deepEqual(c.linkCheck.files, ['CLAUDE.md']);
+    assert.deepEqual(c.linkCheck.declined, ['wiki/b.md']);
+    assert.equal(c.linkCheck.bundleRoot, 'wiki');
+    assert.equal(c.indexCheck.skipped, 'bundle');
+    assert.deepEqual(c.indexCheck.files, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: an absent CLAUDE.md is not counted (#401)', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/a.md', 'x\n');
+  });
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, {});
+    assert.deepEqual(c.retiredToken.files, [{ path: 'docs/a.md', via: 'docs' }]);
+    assert.deepEqual(c.linkCheck.files, ['docs/a.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('hygieneCorpora: tracked config files count toward the token corpus only (#401)', async () => {
+  const dir = await corporaFixture();
+  try {
+    const c = await hygieneLib.hygieneCorpora(dir, {});
+    assert.ok(c.retiredToken.files.some((f) => f.path === 'package.json' && f.via === 'config'));
+    assert.ok(!c.linkCheck.files.includes('package.json'));
+    assert.ok(!c.indexCheck.files.includes('package.json'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

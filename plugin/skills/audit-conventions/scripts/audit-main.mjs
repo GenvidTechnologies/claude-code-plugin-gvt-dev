@@ -35,14 +35,14 @@ import {
 import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
-import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
+import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, hygieneCorpora } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
 import { resolveCandidate, formatCandidateTarget, formatOverrideTarget } from './lib/candidate-resolution.mjs';
 import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
-import { renderSummary } from './lib/summary.mjs';
+import { renderSummary, hygieneScanSummary } from './lib/summary.mjs';
 import { PILLARS, parsePillars } from './lib/pillars.mjs';
 import { detectWikiAdoption } from './lib/practice-detect.mjs';
 import { formatPracticeCoverage } from './lib/pillar-report.mjs';
@@ -218,17 +218,17 @@ async function main() {
   findings.push(...(await scanBrokenLinks(REPO_ROOT, hygieneOpts)));
   findings.push(...(await scanOrphanedDocs(REPO_ROOT, hygieneOpts)));
 
-  // Report-only figure for the Summary line below — NOT pushed into
-  // `findings` (that would render as a 13th Info bullet on this repo and
-  // desync the pinned bullet-count acceptance check). See formatScanSummary
-  // (lib/summary.mjs): it distinguishes "scanned N files and found nothing"
-  // from "found nothing because there was nothing to scan" — the exact
-  // false-green #384 reports for a relocated docs root.
-  const scanSummary = {
-    root: [`${docsRoot}/`, 'CLAUDE.md'],
+  // Report-only lines for the Summary below — NOT pushed into `findings`
+  // (that would render as extra Info bullets on this repo and desync the
+  // pinned bullet-count acceptance check). One line per hygiene scanner, built
+  // from the same corpora the scanners read (hygieneCorpora, lib/hygiene.mjs):
+  // each states what that scanner examined, so "scanned N files and found
+  // nothing" stays distinguishable from "found nothing because there was
+  // nothing to scan" — the exact false-green #384 reports for a relocated
+  // docs root. See hygieneScanSummary / formatScanSummary (lib/summary.mjs).
+  const scanSummary = hygieneScanSummary(await hygieneCorpora(REPO_ROOT, hygieneOpts), {
     unrepresentable: docsRootUnrepresentable,
-    fileCount: await candidateFileCount(REPO_ROOT, hygieneOpts),
-  };
+  });
 
   // Practice Coverage (epic #142): the plugin-side census is derived from the
   // same `components` walk used for expectations above (pillarCensus below

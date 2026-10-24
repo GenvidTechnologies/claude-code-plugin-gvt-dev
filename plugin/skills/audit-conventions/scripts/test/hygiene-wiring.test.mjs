@@ -97,7 +97,7 @@ test('audit: hygiene config override (retiredTokens: []) suppresses the retired-
 
     assert.doesNotMatch(
       result.stdout,
-      /retired token/,
+      /contains retired token/,
       'retired-token finding should disappear once hygiene.retiredTokens is overridden to []',
     );
     // The other two scanners are unaffected by this override and should still fire.
@@ -281,6 +281,91 @@ test('audit: docsRoot === wikiDir renders one retired-token line per site and co
     assert.ok(m, `expected an advisory count line:\n${result.stdout}`);
     // 3 = the one retired-token site + the link-check-skipped line + the orphan-check-skipped line (4 before the dedup fix).
     assert.equal(Number(m[1]), 3, `advisory count should count the site once:\n${result.stdout}`);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+function scannedLines(stdout) {
+  return stdout.split('\n').filter((l) => l.startsWith('- scanned '));
+}
+
+test('audit: the Summary names each hygiene scanner\'s corpus, including wiki/ and tracked config (#401)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        {
+          project: { name: 'genvid:foo' },
+          commands: { validate: 'echo ok' },
+          wiki: { wikiDir: 'wiki' },
+        },
+        null,
+        2,
+      ),
+    );
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'page.md'), '# Page\n\nContains a genvid-dev: token here.\n');
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeFile(join(dir, 'docs', 'doc.md'), '# Doc\n\nContains a genvid-dev: token here.\n');
+    spawnSync('git', ['init', '-q', '.'], { cwd: dir });
+    spawnSync('git', ['add', '.gvt-agent.json'], { cwd: dir });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const scanned = scannedLines(result.stdout);
+    assert.equal(scanned.length, 3, result.stdout);
+    // CLAUDE.md, docs/TOC.md, docs/doc.md, wiki/page.md, .gvt-agent.json
+    assert.equal(
+      scanned[0],
+      '- scanned 5 file(s) for retired tokens under docs/, wiki/, CLAUDE.md, .gvt-agent.json',
+    );
+    assert.equal(scanned[1], '- scanned 3 file(s) for links under docs/, CLAUDE.md');
+    assert.equal(scanned[2], '- scanned 1 file(s) for index coverage under docs/ (index docs/TOC.md)');
+    const lines = result.stdout.split('\n');
+    const hit = (file) => lines.filter((l) => l.startsWith(`- ${file}:`) && l.includes('retired token'));
+    assert.match(hit('wiki/page.md')[0], / \(via wiki\/, retired-token scan only\)$/);
+    assert.match(hit('.gvt-agent.json')[0], / \(via tracked config file, retired-token scan only\)$/);
+    assert.ok(!hit('docs/doc.md')[0].includes('(via'), 'a docs-root finding carries no provenance');
+    assert.equal(lines.filter((l) => l.startsWith('- required: ')).length, 1);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('audit: a docsRoot === wikiDir layout states the link and index declines in the Summary without a finding needle (#401)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify(
+        {
+          project: { name: 'foo' },
+          commands: { validate: 'echo ok' },
+          wiki: { wikiDir: 'wiki' },
+          paths: { 'docs/TOC.md': 'wiki/TOC.md' },
+        },
+        null,
+        2,
+      ),
+    );
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'TOC.md'), '# TOC\n\n- [Page](page.md)\n');
+    await writeFile(join(dir, 'wiki', 'page.md'), '# Page\n\nContains a genvid-dev: token here.\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const scanned = scannedLines(result.stdout);
+    assert.deepEqual(scanned, [
+      '- scanned 3 file(s) for retired tokens under wiki/, CLAUDE.md',
+      '- scanned 1 file(s) for links under CLAUDE.md (2 under wiki/ declined, see Info)',
+      '- scanned 0 file(s) for index coverage (docs root wiki/ is inside the wiki bundle wiki/; declined, see Info)',
+    ]);
+    for (const line of scanned) {
+      for (const needle of ['orphan', 'broken link', 'contains retired token']) {
+        assert.ok(!line.includes(needle), `"${needle}" in: ${line}`);
+      }
+    }
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }

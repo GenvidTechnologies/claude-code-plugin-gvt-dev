@@ -167,13 +167,6 @@ async function listCandidateFiles(repoRoot, opts = {}) {
   return files.filter((f) => !isExcluded(f, excludePaths));
 }
 
-// Count-only wrapper around listCandidateFiles, for callers (audit.mjs's
-// Summary line) that need "how many files did the walk cover" without
-// re-implementing the walk. Same opts, same graceful missing-dir handling.
-export async function candidateFileCount(repoRoot, opts = {}) {
-  return (await listCandidateFiles(repoRoot, opts)).length;
-}
-
 // Candidate file set for a repo's wiki checkout: *.md under <wikiDir>/,
 // repo-relative forward-slash paths (matches listMarkdown's shape), minus
 // excludePaths. A falsy/absent wikiDir returns [] rather than walking the
@@ -253,6 +246,24 @@ export async function retiredTokenCorpus(repoRoot, opts = {}) {
   return { files: [...byPath.values()], roots };
 }
 
+// The directory a wikiDir names, for display: trailing separators stripped,
+// then one '/' appended ('wiki/' and 'wiki' both give 'wiki/').
+function displayDir(dir) {
+  let d = String(dir);
+  while (d.endsWith('/') || d.endsWith(String.fromCharCode(92))) d = d.slice(0, -1);
+  return `${d}/`;
+}
+
+// Suffix naming how a retired-token finding's file was reached, for files the
+// docs walk did not reach (#401): a reader seeing a hit in wiki/ or a config
+// file should know this scanner alone looked there. Docs-root and CLAUDE.md
+// findings get none.
+function provenanceSuffix(via, wikiDir) {
+  if (via === 'wiki') return ` (via ${displayDir(wikiDir)}, retired-token scan only)`;
+  if (via === 'config') return ' (via tracked config file, retired-token scan only)';
+  return '';
+}
+
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
   // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
@@ -278,10 +289,11 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
   const { files } = await retiredTokenCorpus(repoRoot, opts);
   const findings = [];
 
-  for (const { path: relPath } of files) {
+  for (const { path: relPath, via } of files) {
     const content = await safeReadFile(join(repoRoot, relPath));
     if (content == null) continue;
 
+    const suffix = provenanceSuffix(via, opts.wikiDir);
     const lines = content.split('\n');
     lines.forEach((line, idx) => {
       if (line.includes('http')) return; // provenance/issue URLs are correct-as-history
@@ -291,7 +303,7 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
             kind: 'retired-token',
             ok: false,
             severity: 'info',
-            detail: `${relPath}:${idx + 1} contains retired token '${token}'`,
+            detail: `${relPath}:${idx + 1} contains retired token '${token}'${suffix}`,
             file: relPath,
             line: idx + 1,
             token,
@@ -512,4 +524,20 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
   }
 
   return findings;
+}
+
+// ---- hygieneCorpora ------------------------------------------------------------
+
+/**
+ * The corpus each hygiene scanner examines, from the same functions the
+ * scanners read (retiredTokenCorpus, linkCheckCorpus, indexCheckCorpus), so
+ * the audit Summary can state what was examined without re-deriving a corpus a
+ * different way (#401).
+ */
+export async function hygieneCorpora(repoRoot, opts = {}) {
+  return {
+    retiredToken: await retiredTokenCorpus(repoRoot, opts),
+    linkCheck: await linkCheckCorpus(repoRoot, opts),
+    indexCheck: await indexCheckCorpus(repoRoot, opts),
+  };
 }
