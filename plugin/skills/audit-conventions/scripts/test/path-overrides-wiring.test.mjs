@@ -214,3 +214,81 @@ test('audit: an override value with a trailing slash still satisfies a declared 
     await rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+// ---- #731: a relocated expectation names both the declared and resolved path ----
+
+const CREATE_ADR_NO_OVERRIDE =
+  '- **create-adr** expects `docs/decisions/` — directory not found (optional). Reason: Home for ADR files; scaffolded on first use if absent';
+
+async function auditWithPaths(paths) {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeConfig(dir, paths);
+  });
+  try {
+    return spawnAudit([], tmpDir).stdout.split('\n');
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+}
+
+test('audit: a relocated, missing docs/decisions/ names both the declared and the resolved path (#731)', async () => {
+  const lines = await auditWithPaths({ 'docs/decisions/': 'wiki/decisions/' });
+  const arrow = lines.filter((l) => l.includes('(→ `wiki/decisions/` via paths)'));
+  assert.equal(arrow.length, 3, `create-adr, plan-task and tech-writer each name the arrow:\n${arrow.join('\n')}`);
+  assert.ok(
+    arrow.includes(
+      '- **create-adr** expects `docs/decisions/` (→ `wiki/decisions/` via paths) — directory not found (optional). Reason: Home for ADR files; scaffolded on first use if absent',
+    ),
+    arrow.join('\n'),
+  );
+  assert.ok(lines.some((l) => /expects `docs\/decisions\/`/.test(l)));
+});
+
+test('audit: a relocated config file names both the declared and the resolved file on config findings (#731)', async () => {
+  const lines = await auditWithPaths({ '.gvt-agent.json': 'cfg/agent.json' });
+  const arrow = lines.filter((l) => l.includes('(→ `cfg/agent.json` via paths)'));
+  assert.ok(arrow.length >= 1, 'config findings name the resolved file');
+  assert.equal(lines.filter((l) => /in cfg\/agent\.json`/.test(l)).length, 0, 'the resolved-only target form is gone');
+  assert.ok(
+    arrow.includes(
+      '- **validator** expects `commands.validate in .gvt-agent.json` (→ `cfg/agent.json` via paths) — cfg/agent.json not found. Reason: The shell command this agent runs verbatim',
+    ),
+    arrow.join('\n'),
+  );
+});
+
+test('audit: a paths override replacing a prefer chain names the resolved path (#731)', async () => {
+  const lines = await auditWithPaths({ 'docs/wiki-schema.md': 'kb/schema.md' });
+  const line = lines.find((l) => l.startsWith('- **maintain-wiki**') && l.includes('`docs/wiki-schema.md` (→ `kb/schema.md` via paths)'));
+  assert.ok(line, lines.filter((l) => l.includes('maintain-wiki')).join('\n'));
+});
+
+test('audit: an override equal to the declared path renders no arrow (#731)', async () => {
+  const lines = await auditWithPaths({ 'docs/decisions/': 'docs/decisions/' });
+  assert.ok(lines.includes(CREATE_ADR_NO_OVERRIDE), lines.filter((l) => l.includes('create-adr')).join('\n'));
+  assert.equal(lines.filter((l) => l.includes('via paths')).length, 0);
+});
+
+test('audit: with no paths override, expectation findings render byte-identically and carry no arrow (#731)', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeFile(
+      join(dir, '.gvt-agent.json'),
+      JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' } }, null, 2),
+    );
+  });
+  try {
+    const out = spawnAudit([], tmpDir).stdout;
+    const lines = out.split('\n');
+    assert.ok(lines.includes(CREATE_ADR_NO_OVERRIDE));
+    assert.ok(
+      lines.includes(
+        '- **maintain-wiki** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional). Reason: The wiki\'s maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract), resolved as the paths override for this key, else <wikiDir>/schema.md inside the bundle, else the legacy docs/wiki-schema.md; the skill offers to scaffold it, at the override path when one is set and else at <wikiDir>/schema.md, when none of the three exists',
+      ),
+    );
+    assert.equal(out.split('via paths').length - 1, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});

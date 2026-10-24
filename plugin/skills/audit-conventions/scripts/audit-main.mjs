@@ -38,7 +38,7 @@ import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, fo
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, candidateFileCount } from './lib/hygiene.mjs';
 import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
-import { resolveCandidate, formatCandidateTarget } from './lib/candidate-resolution.mjs';
+import { resolveCandidate, formatCandidateTarget, formatOverrideTarget } from './lib/candidate-resolution.mjs';
 import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
 import { scanPrincipleCitations } from './lib/principle-citations.mjs';
 import { scanPointerAnchors } from './lib/pointer-anchors.mjs';
@@ -107,13 +107,15 @@ async function main() {
   // the stop/pass-over rule, live in lib/candidate-resolution.mjs (ADR-0070,
   // ADR-0077). evaluateFile (audit-core) probes the one path chosen here.
   const resolveFile = async (entry) => {
-    const { candidates } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
+    const { candidates, overridden } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
     const r = await resolveCandidate(REPO_ROOT, entry.path, candidates);
-    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped };
+    const viaPaths = overridden && candidates[0] !== entry.path ? candidates[0] : undefined;
+    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped, viaPaths };
   };
   const resolveConfig = (entry) => {
-    const inFile = resolveExpectationPath(pathOverrides, entry.in ?? configFilename);
-    return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${inFile}` };
+    const declaredIn = entry.in ?? configFilename;
+    const inFile = resolveExpectationPath(pathOverrides, declaredIn);
+    return { path: join(REPO_ROOT, inFile), source: inFile, target: `${entry.key} in ${declaredIn}`, viaPaths: inFile !== declaredIn ? inFile : undefined };
   };
 
   // Ungated: a component that failed to load is a plugin defect in any audit,
@@ -131,11 +133,15 @@ async function main() {
       findings.push(
         where.candidates.length > 1
           ? { ...finding, candidates: where.candidates, described: where.described, describedKind: where.found.kind, skipped: where.skipped }
-          : finding,
+          : where.viaPaths !== undefined
+            ? { ...finding, viaPaths: where.viaPaths }
+            : finding,
       );
     }
     for (const entry of expects.config ?? []) {
-      findings.push(await evaluateConfig(component, entry, resolveConfig));
+      const finding = await evaluateConfig(component, entry, resolveConfig);
+      const viaPaths = resolveConfig(entry).viaPaths;
+      findings.push(viaPaths !== undefined ? { ...finding, viaPaths } : finding);
     }
     for (const entry of expects.tools ?? []) {
       findings.push(evaluateTool(component, entry));
@@ -474,7 +480,7 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  const shown = f.candidates ? formatCandidateTarget(f) : `\`${f.target}\` — ${f.detail}`;
+  const shown = f.candidates ? formatCandidateTarget(f) : `${formatOverrideTarget(f.target, f.viaPaths)} — ${f.detail}`;
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\` — ${f.detail}` : shown}.${reason}`;
 }
 
