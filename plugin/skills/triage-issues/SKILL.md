@@ -149,8 +149,10 @@ block in `.gvt-agent.json` (access mechanics).
 5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended, but still never
    removes a stale duplicate, never auto-picks between near-miss candidates,
-   never moves a file into or inside the wiki, and never writes onto an existing
-   file (the occupied-destination rule, §0b; §0c, §4).
+   never moves a file into or inside the wiki, and never moves or copies a file
+   onto an existing one (the occupied-destination rule, §0b; §4). Creating a new
+   file, appending an index entry (§0c) and inserting a config key are not
+   moves and stay automatic as §4 states.
 
 ### 0a. Light-touch groom (no-contract path)
 
@@ -199,15 +201,16 @@ Offer three options via `AskUserQuestion`:
   `<wikiDir>/process/` exists, else `<wikiDir>/issue-triage.md`, so a
   wiki-resident candidate is never moved out of the bundle. Show that
   destination in the offer.
-  - **Occupied destination.** Nothing is ever written onto an existing file
-    unattended, whether the write is this rename's move or the scaffold's copy
+  - **Occupied destination.** No file is ever moved or copied onto an existing
+    file unattended, whether it is this rename's move or the scaffold's copy
     below. A destination counts as occupied when anything other than the
     candidate itself exists at that path (a file the derived-page veto
     excluded can sit there). Interactively it is a conflict: never write onto
     it. Report both files, and offer to keep both, to merge (preview, then
     apply, per `development-principles.md` principle #6), or to pick a
     different destination. Under `--force` and `--non-interactive` it defers:
-    write nothing, and report both paths in §5 as outstanding.
+    write nothing, and report the occupied path in §5 as outstanding (with the
+    candidate's path too, for a rename).
   - **Write order.** The rename moves the file first and then, when the wiki
     default holds, writes the `paths` override. A stop in between leaves the file at the wiki default
     with no override; the next run's wiki-default scan finds it at its own
@@ -241,7 +244,7 @@ renaming a hand-authored consumer file unattended is a write the §4 safety
 table had no row for, and deferring still prevents the double-scaffold
 outcome without an unattended mutation of the user's file. **Inside the wiki,
 nothing moves unattended:** a candidate whose source lies inside `<wikiDir>/`,
-or whose rename destination does (the wiki default, when it holds), defers
+or whose rename destination does (the wiki default or an override path), defers
 under `--force` and under `--non-interactive` alike. Report it in §5 as
 outstanding, with the destination an interactive run would offer. The
 `--force` rename (the documented default) applies only when the source and

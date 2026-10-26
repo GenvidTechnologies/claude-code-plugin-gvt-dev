@@ -52,10 +52,11 @@ This is #507 and applies A1-wide, to every §0 path. A further rule covers the w
 whose source or whose rename destination lies inside `<wikiDir>/` defers under `--force` and `--non-interactive`
 alike, because no file is moved into or inside the wiki unattended. It is reported as outstanding, with the
 destination an interactive run would offer. The rename rules above then apply only when both the source and
-the destination are outside the wiki. A second rule covers every unattended write: nothing is written onto an
-existing file. Under `--force` and `--non-interactive`, a destination where anything other than the candidate
+the destination are outside the wiki. A second rule covers every unattended move or copy: no file is moved or copied onto an
+existing file. Creating a new file, appending an index entry and inserting a config key are not moves and stay
+automatic. Under `--force` and `--non-interactive`, a destination where anything other than the candidate
 itself exists (a derived page the veto excluded can sit there) defers, for the rename and the scaffold copy
-alike, and both paths are reported. The scaffold checks this before the override write, so a deferred scaffold
+alike, and the occupied path (with the candidate's, for a rename) is reported. The scaffold checks this before the override write, so a deferred scaffold
 leaves `.gvt-agent.json` untouched.
 
 **3. Registration follows the contract's location.** §0c resolves `paths['docs/TOC.md']` and `wiki.wikiDir`.
