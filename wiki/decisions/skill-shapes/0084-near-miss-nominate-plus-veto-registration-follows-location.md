@@ -49,9 +49,14 @@ The §0b rename under `--force` is taken only for a marker-bearing candidate; a 
 With one marker-bearing candidate plus glob-only candidates, the marker-bearing one is renamed and the glob-only ones defer.
 With two or more marker-bearing candidates, `--force` defers all of them, since it never auto-picks between candidates.
 This is #507 and applies A1-wide, to every §0 path. A further rule covers the wiki: a near-miss candidate
-inside `<wikiDir>/` defers under `--force` and `--non-interactive` alike, because no file inside the wiki
-is moved unattended. It is reported as outstanding, with the destination an interactive run would offer.
-The rename rules above then apply to candidates outside the wiki only.
+whose source or whose rename destination lies inside `<wikiDir>/` defers under `--force` and `--non-interactive`
+alike, because no file is moved into or inside the wiki unattended. It is reported as outstanding, with the
+destination an interactive run would offer. The rename rules above then apply only when both the source and
+the destination are outside the wiki. A second rule covers every unattended write: nothing is written onto an
+existing file. Under `--force` and `--non-interactive`, a destination where anything other than the candidate
+itself exists (a derived page the veto excluded can sit there) defers, for the rename and the scaffold copy
+alike, and both paths are reported. The scaffold checks this before the override write, so a deferred scaffold
+leaves `.gvt-agent.json` untouched.
 
 **3. Registration follows the contract's location.** §0c resolves `paths['docs/TOC.md']` and `wiki.wikiDir`.
 A contract outside the wiki keeps its docs-index Process row. A contract inside the wiki never touches
@@ -139,5 +144,7 @@ offered is withdrawn. 0068's decision 5 is amended by removing the row it said m
 Implemented in 4bdf366 (detection and `--force`), 897df81 (registration, `wiki.indexCommand`, scaffold
 default), baf94db (CONVENTIONS), a7e7df2 (template headers), a873d4f (this repo's TOC row), 05cec90
 (review gaps in the near-miss scan, `--force`, registration and recipe checks), d7cf5b9 (wiki-resident
-near-miss renamed to the wiki default), fa120fd (CLAUDE.md and docs/TOC.md descriptions) and the final review fixes (no unattended move
-inside the wiki, the occupied-target conflict, the two write orders, the derived-page veto against the wiki default).
+near-miss renamed to the wiki default), fa120fd (CLAUDE.md and docs/TOC.md descriptions), 79fa36d (no
+unattended move inside the wiki, the occupied-target conflict), 4a0933c (this record's no-unattended-wiki-move
+rule) and the final fixes (no unattended move into the wiki, no unattended write onto an existing file, the
+two write orders, the derived-page veto against the wiki default).
