@@ -74,14 +74,27 @@ block in `.gvt-agent.json` (access mechanics).
    `docs/issue-triage.md` left behind there after the contract moves
    elsewhere (e.g. into a wiki bundle).
 
-   Either of these two independent signals qualifies a `*.md` file found by
-   the scan above as a near-miss:
+   Either positive signal nominates a candidate. A veto outranks both signals.
+   A rename is the likeliest origin of a near-miss, and that is the entire
+   population this detection addresses.
    - **Filename glob:** `*[Tt]riage*.md`.
-   - **Marker line:** the file contains the line the bundled templates emit
-     (`Project conventions consumed by …triage-issues`), matched tolerantly of
-     the pre-rename name this doc was renamed from and of any plugin
-     namespace prefix — a rename is the likeliest origin of a near-miss, and
-     that is the entire population this detection addresses.
+   - **Marker line:** a line that, after an optional `>`, begins with
+     `Project conventions consumed by` immediately followed by a reference to
+     `triage-issues` or the pre-rename `triage-bugs` (any namespace, optional
+     leading `/`, optional backticks). The skill name is load-bearing: a
+     prefix-only match is a false positive. maintain-wiki's
+     `wiki-schema.template.md` emits the same prefix naming itself, and a
+     file naming a different skill is never a match.
+
+   Vetoes (any one removes a candidate):
+   - **Index files.** An index file is never a near-miss candidate:
+     `index.md`, `TOC.md`, `log.md`, and whatever `paths['docs/TOC.md']`
+     resolves to.
+   - **Derived pages.** A file whose frontmatter `sources` cites the resolved
+     contract (an entry, or its `resource`, ending in the resolved path)
+     declares itself derived and is never a candidate. The suffix match is
+     deliberate: a `resource` value can be a URL such as
+     `https://…/blob/main/wiki/process/issue-triage.md`.
 
    Combine detection with canonical-file presence into four outcomes,
    resolved **before any routing to §0b**:
@@ -95,8 +108,9 @@ block in `.gvt-agent.json` (access mechanics).
      contract; nothing routes to §0b). Then, **during §0c**, report the
      duplicate by path and offer either removing it or merging its content
      into the canonical file. Interactively, offer that choice per-option; in
-     `--non-interactive`, defer it, leave both files untouched, and carry it
-     into the §5 closing summary as an outstanding item.
+     `--non-interactive` and `--force` alike, defer it, leave both files
+     untouched, and carry it into the §5 closing summary as an outstanding
+     item.
 2. **Read the `bugTracker` block** from `.gvt-agent.json` (full workflow only —
    the §0a groom skips this). If it is **absent**, this is not a hard stop: the
    **§0a light-touch groom** already operates directly via the tracker's native CLI
@@ -178,8 +192,10 @@ the deferral as an outstanding item. This deliberately departs from issue
 renaming a hand-authored consumer file unattended is a write the §4 safety
 table had no row for, and deferring still prevents the double-scaffold
 outcome without an unattended mutation of the user's file. With `--force`,
-take the documented default (rename), then §0c's required-headings check runs
-report-only and its TOC-index sub-block runs automatically.
+take the documented default (rename) only for a marker-bearing candidate, then
+§0c's required-headings check runs report-only and its TOC-index sub-block runs
+automatically. A glob-only candidate (matched by filename alone) defers exactly
+as under `--non-interactive` and is carried into §5 as outstanding.
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
 there — do not guess conventions. Two bundled templates exist; pick the one
@@ -296,8 +312,7 @@ and heading list so the user can judge, then offer either **removing** it or
 **merging** its content into the canonical file. Removal is destructive and a
 merge rewrites the live contract, so both take per-option approval and the
 preview-then-apply discipline of `development-principles.md` principle #6.
-In `--non-interactive`, defer and write nothing; under `--force`, take
-**remove**. Either way, carry the outcome into the §5 closing summary.
+In `--non-interactive`, defer and write nothing; `--force` defers it too and never removes it unattended. Either way, carry the outcome into the §5 closing summary.
 
 ## 1. Dispatch exploration (Phase 1)
 
@@ -395,8 +410,8 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default |
-| Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred** unless `--force`, which takes **remove** |
+| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a marker-bearing candidate; a glob-only candidate stays deferred |
+| Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
 | Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
 | Body rewrite from a verification finding (§3) | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
 | `needs-info` label + comment | approve | auto-apply |
@@ -425,7 +440,8 @@ near-miss resolution (§0b's `--non-interactive` defer, so a stopped run leaves 
 record of why); §0c's label-key warning or inconclusive result; any missing
 required headings; whether the `docs/TOC.md` index entry was added or skipped;
 and any dead duplicate carried forward from the both-present outcome or a "keep
-both" choice.
+both" choice. Report each vetoed candidate by path and the veto that removed it
+(index file, or derived page), so a wrong veto stays visible.
 
 ## Example `bugTracker` block
 
