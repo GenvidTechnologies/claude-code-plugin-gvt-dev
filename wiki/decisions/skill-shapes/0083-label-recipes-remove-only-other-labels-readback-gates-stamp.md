@@ -58,8 +58,8 @@ edited.
   the question moot, since the target is never in the remove list.
 - A label write that did not land is now caught before the stamp, whatever its cause, not only the
   self-overlap case.
-- A later companion record (not yet written) is expected to cover related triage-issues detection and
-  registration work.
+- Related triage-issues detection and registration work is recorded in
+  [0084](0084-near-miss-nominate-plus-veto-registration-follows-location.md).
 
 Implemented in a25de0b (templates), a13f796 (this repo's contract) and cc0f763 (`triage-issues`
 SKILL.md readback and legacy guard).

@@ -38,11 +38,13 @@ candidate. The marker must name `triage-issues` (or the pre-rename `triage-bugs`
 `Project conventions consumed by` prefix. Two vetoes remove a candidate regardless of which signal fired:
 index files (`index.md`, `TOC.md`, `log.md`, and whatever `paths['docs/TOC.md']` resolves to), and derived
 pages whose frontmatter `sources` cite the resolved contract. The citation is matched by suffix, because a
-`resource` can be a URL. The four outcomes, the non-recursive scan and the audit placement from 0020 are
+`resource` can be a URL, but on a path-segment boundary: the value equals the resolved path or ends in `/`
+followed by it, so `…/mydocs/issue-triage.md` does not match `docs/issue-triage.md`. The four outcomes, the non-recursive scan and the audit placement from 0020 are
 unchanged (4bdf366).
 
 **2. `--force` never removes unattended.** The both-present stale duplicate is deferred under `--force`.
 The §0b rename under `--force` is taken only for a marker-bearing candidate; a glob-only candidate defers.
+With more than one marker-bearing candidate, `--force` defers as well, since it never auto-picks between candidates.
 This is #507 and applies A1-wide, to every §0 path.
 
 **3. Registration follows the contract's location.** §0c resolves `paths['docs/TOC.md']` and `wiki.wikiDir`.
@@ -50,14 +52,20 @@ A contract outside the wiki keeps its docs-index Process row. A contract inside 
 `docs/TOC.md`, counts as indexed through `<W>/index.md` or its own subdirectory's index, and is registered
 there. When the new optional `wiki.indexCommand` key is set, the index is treated as generated: the missing
 entry is reported together with that command and is never hand-edited (897df81). `plugin/CONVENTIONS.md`
-lists the key in one edit, so consumers' copies drift once (baf94db).
+lists the key in one edit, so consumers' copies drift once (baf94db). A contract outside the wiki whose
+docs index itself lives in the wiki is reported, not registered: an out-of-bundle link in a wiki index is a
+lint finding, so the skill suggests moving the contract into the bundle through the `paths` override.
 
 **4. The wiki scaffold default is inferred, and only the default.** With no `paths['docs/issue-triage.md']`
 override and the docs index inside the wiki, §0b scaffolds at `<wikiDir>/process/issue-triage.md` when that
 directory exists, else `<wikiDir>/issue-triage.md`. The `paths` override is written before the file, so an
-interrupted run heals on the next run. The near-miss scan also covers the would-be target's parent. Because
-only the default is inferred and an explicit override still wins, this does not reopen the implicit wiki
-convention that [0062](../plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md) rejected.
+interrupted run heals on the next run. The near-miss scan also covers the would-be target's parent and the wiki root, still non-recursive,
+because the scan runs before the target is computed. This does not reopen the implicit wiki convention that
+[0062](../plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md) rejected. 0062 rejected
+inferring relocation from whether a `<wikiDir>/…` path exists, as invisible to the audit and ambiguous when
+both locations exist. Here the existence check only chooses a default for a file that does not exist yet; the
+choice is then written down as an explicit `paths` override, so resolution never infers anything afterwards.
+No contract exists at either location when the default is chosen, so there is nothing to be ambiguous about.
 The bundled templates' headers now say where the contract goes without assuming `docs/` (a7e7df2).
 
 **5. This repo's `docs/TOC.md` triage row is removed.** That discharges the "until #601 lands" condition in
