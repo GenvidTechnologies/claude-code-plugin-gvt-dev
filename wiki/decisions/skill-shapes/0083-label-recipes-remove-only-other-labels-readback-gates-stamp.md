@@ -62,4 +62,4 @@ edited.
   [0084](0084-near-miss-nominate-plus-veto-registration-follows-location.md).
 
 Implemented in a25de0b (templates), a13f796 (this repo's contract) and cc0f763 (`triage-issues`
-SKILL.md readback and legacy guard).
+SKILL.md readback and legacy guard) and 05cec90 (the legacy-recipe check change).

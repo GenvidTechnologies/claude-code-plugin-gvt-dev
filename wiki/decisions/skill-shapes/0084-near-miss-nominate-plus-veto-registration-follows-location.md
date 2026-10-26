@@ -44,7 +44,8 @@ unchanged (4bdf366).
 
 **2. `--force` never removes unattended.** The both-present stale duplicate is deferred under `--force`.
 The §0b rename under `--force` is taken only for a marker-bearing candidate; a glob-only candidate defers.
-With more than one marker-bearing candidate, `--force` defers as well, since it never auto-picks between candidates.
+With one marker-bearing candidate plus glob-only candidates, the marker-bearing one is renamed and the glob-only ones defer.
+With two or more marker-bearing candidates, `--force` defers all of them, since it never auto-picks between candidates.
 This is #507 and applies A1-wide, to every §0 path.
 
 **3. Registration follows the contract's location.** §0c resolves `paths['docs/TOC.md']` and `wiki.wikiDir`.
@@ -60,7 +61,9 @@ lint finding, so the skill suggests moving the contract into the bundle through 
 override and the docs index inside the wiki, §0b scaffolds at `<wikiDir>/process/issue-triage.md` when that
 directory exists, else `<wikiDir>/issue-triage.md`. The `paths` override is written before the file, so an
 interrupted run heals on the next run. The near-miss scan also covers the would-be target's parent and the wiki root, still non-recursive,
-because the scan runs before the target is computed. This does not reopen the implicit wiki convention that
+because the scan runs before the target is computed. A near-miss found there is renamed to the same wiki
+default, not to `docs/issue-triage.md`, so a wiki-resident contract never leaves the bundle; the override is
+written first here too, and a candidate already at the target is not moved. This does not reopen the implicit wiki convention that
 [0062](../plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md) rejected. 0062 rejected
 inferring relocation from whether a `<wikiDir>/…` path exists, as invisible to the audit and ambiguous when
 both locations exist. Here the existence check only chooses a default for a file that does not exist yet; the
@@ -73,6 +76,8 @@ The bundled templates' headers now say where the contract goes without assuming 
 `docs/TOC.md` → `wiki/index.md` → `process/index.md` (a873d4f).
 
 ## Considered options
+
+The labels below are the design's own option and requirement ids: A1 to A3 are the detection options (A1-wide extends A1's `--force` handling to every §0 path), G1 to G3 the generated-index options, (i) to (iii) the scaffold-default options, and R10 and R11 the requirements named where they first appear.
 
 Detection:
 
@@ -121,4 +126,5 @@ offered is withdrawn. 0068's decision 5 is amended by removing the row it said m
   harness.
 
 Implemented in 4bdf366 (detection and `--force`), 897df81 (registration, `wiki.indexCommand`, scaffold
-default), baf94db (CONVENTIONS), a7e7df2 (template headers) and a873d4f (this repo's TOC row).
+default), baf94db (CONVENTIONS), a7e7df2 (template headers), a873d4f (this repo's TOC row), 05cec90
+(review gaps in the near-miss scan, `--force`, registration and recipe checks) and the follow-up review fixes.
