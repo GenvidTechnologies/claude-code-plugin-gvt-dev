@@ -34,19 +34,24 @@ Three things have since changed the surface that rule scans:
 ## Decision
 
 **1. Either signal nominates; a veto outranks both.** The filename glob or the marker line nominates a
-candidate. The marker must name `triage-issues` (or the pre-rename `triage-bugs`) immediately after the
-`Project conventions consumed by` prefix. Two vetoes remove a candidate regardless of which signal fired:
+candidate. The marker must name `triage-issues` (or the pre-rename `triage-bugs`) after optional whitespace
+following the `Project conventions consumed by` prefix. Two vetoes remove a candidate regardless of which signal fired:
 index files (`index.md`, `TOC.md`, `log.md`, and whatever `paths['docs/TOC.md']` resolves to), and derived
 pages whose frontmatter `sources` cite the resolved contract. The citation is matched by suffix, because a
 `resource` can be a URL, but on a path-segment boundary: the value equals the resolved path or ends in `/`
-followed by it, so `…/mydocs/issue-triage.md` does not match `docs/issue-triage.md`. The four outcomes, the non-recursive scan and the audit placement from 0020 are
+followed by it, so `…/mydocs/issue-triage.md` does not match `docs/issue-triage.md`. When the wiki default
+holds, the comparison also covers the wiki default paths, since with no override the resolved path is
+`docs/issue-triage.md` and a wiki derived page would otherwise escape the veto. The four outcomes, the non-recursive scan and the audit placement from 0020 are
 unchanged (4bdf366).
 
 **2. `--force` never removes unattended.** The both-present stale duplicate is deferred under `--force`.
 The §0b rename under `--force` is taken only for a marker-bearing candidate; a glob-only candidate defers.
 With one marker-bearing candidate plus glob-only candidates, the marker-bearing one is renamed and the glob-only ones defer.
 With two or more marker-bearing candidates, `--force` defers all of them, since it never auto-picks between candidates.
-This is #507 and applies A1-wide, to every §0 path.
+This is #507 and applies A1-wide, to every §0 path. A further rule covers the wiki: a near-miss candidate
+inside `<wikiDir>/` defers under `--force` and `--non-interactive` alike, because no file inside the wiki
+is moved unattended. It is reported as outstanding, with the destination an interactive run would offer.
+The rename rules above then apply to candidates outside the wiki only.
 
 **3. Registration follows the contract's location.** §0c resolves `paths['docs/TOC.md']` and `wiki.wikiDir`.
 A contract outside the wiki keeps its docs-index Process row. A contract inside the wiki never touches
@@ -59,16 +64,22 @@ lint finding, so the skill suggests moving the contract into the bundle through 
 
 **4. The wiki scaffold default is inferred, and only the default.** With no `paths['docs/issue-triage.md']`
 override and the docs index inside the wiki, §0b scaffolds at `<wikiDir>/process/issue-triage.md` when that
-directory exists, else `<wikiDir>/issue-triage.md`. The `paths` override is written before the file, so an
-interrupted run heals on the next run. The near-miss scan also covers the would-be target's parent and the wiki root, still non-recursive,
-because the scan runs before the target is computed. A near-miss found there is renamed to the same wiki
-default, not to `docs/issue-triage.md`, so a wiki-resident contract never leaves the bundle; the override is
-written first here too, and a candidate already at the target is not moved. This does not reopen the implicit wiki convention that
+directory exists, else `<wikiDir>/issue-triage.md`. For the scaffold, the `paths` override is written before
+the file, so an interrupted run heals on the next run: the scaffold re-offers on Absent. The near-miss scan also covers the would-be target's parent and the wiki root, still non-recursive,
+because the scan runs before the target is computed. A near-miss found there is renamed, interactively, to the same wiki
+default, not to `docs/issue-triage.md`, so a wiki-resident contract never leaves the bundle. The rename
+checks its resolved destination: a file other than the candidate already there is a conflict, never
+overwritten, and the user is offered to keep both, merge (preview, then apply), or pick another destination.
+The rename writes in the opposite order, moving the file first and the override second. A stop in between
+leaves the file at the wiki default with no override, and the next run's wiki-default scan finds it at its
+own target, where only the override is written, so it heals too. Writing the override first would not: with
+the target under `process/` the next run would have an override, no wiki-root scan, an absent target, and
+a second scaffold. A candidate already at the target is not moved. This does not reopen the implicit wiki convention that
 [0062](../plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md) rejected. 0062 rejected
 inferring relocation from whether a `<wikiDir>/…` path exists, as invisible to the audit and ambiguous when
 both locations exist. Here the existence check only chooses a default for a file that does not exist yet; the
 choice is then written down as an explicit `paths` override, so resolution never infers anything afterwards.
-No contract exists at either location when the default is chosen, so there is nothing to be ambiguous about.
+For the scaffold, no contract exists at either location when the default is chosen, so there is nothing to be ambiguous about. For the rename, the resolved destination is checked and an occupied one is a conflict.
 The bundled templates' headers now say where the contract goes without assuming `docs/` (a7e7df2).
 
 **5. This repo's `docs/TOC.md` triage row is removed.** That discharges the "until #601 lands" condition in
@@ -127,4 +138,6 @@ offered is withdrawn. 0068's decision 5 is amended by removing the row it said m
 
 Implemented in 4bdf366 (detection and `--force`), 897df81 (registration, `wiki.indexCommand`, scaffold
 default), baf94db (CONVENTIONS), a7e7df2 (template headers), a873d4f (this repo's TOC row), 05cec90
-(review gaps in the near-miss scan, `--force`, registration and recipe checks) and the follow-up review fixes.
+(review gaps in the near-miss scan, `--force`, registration and recipe checks), d7cf5b9 (wiki-resident
+near-miss renamed to the wiki default), fa120fd (CLAUDE.md and docs/TOC.md descriptions) and the final review fixes (no unattended move
+inside the wiki, the occupied-target conflict, the two write orders, the derived-page veto against the wiki default).
