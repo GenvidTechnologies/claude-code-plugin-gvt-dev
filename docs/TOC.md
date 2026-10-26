@@ -15,10 +15,6 @@ read and update.
 - [`../wiki/maintainer/plugin-authoring.md`](../wiki/maintainer/plugin-authoring.md) — cross-plugin authoring gotchas (shipping MCP servers via `plugin.json`; `npx` package-name resolution; version pinning)
 - [`../wiki/maintainer/index.md`](../wiki/maintainer/index.md) — index of the maintainer notes: the pages `CLAUDE.md`'s `## Knowledge base` list routes to, plus the cross-plugin authoring notes
 
-## Process
-
-- [`../wiki/process/issue-triage.md`](../wiki/process/issue-triage.md) — this repo's dogfooded issue-triage conventions (types, priorities, labels, required fields, splitting/duplicate/dependency policy, and the `gh` mutation recipes) consumed by `/gvt-dev:triage-issues` and the `issue-triage-analyst`; access mechanics live in `.gvt-agent.json`'s `bugTracker` block
-
 ## Components
 
 Each skill and agent carries its own documentation in its frontmatter (`metadata.expects`) and body:
