@@ -110,6 +110,17 @@ Measure the change with a harness rather than trusting the prose. Read
 correctly, every one of the non-complying reports was factually right; only the
 shape was wrong, which no review of the rule text would have predicted.
 
+## A bundled contract template's marker line names its own skill
+
+The `triage-issues` near-miss detection (SKILL.md §0 step 1) treats the skill
+name in the `Project conventions consumed by` marker as load-bearing: a
+prefix-only match is a false positive. So a bundled contract template's
+marker line names its own skill, never a sibling's or a generic placeholder.
+The reason is concrete: maintain-wiki's `wiki-schema.template.md` shares the
+same `Project conventions consumed by` prefix (naming `/gvt-dev:maintain-wiki`),
+and a prefix-only reading would route a live wiki schema into the
+rename/replace offer (#246).
+
 ## Example
 
 A scoped MCP server, shipped via `plugin.json`, invoked by full package spec,

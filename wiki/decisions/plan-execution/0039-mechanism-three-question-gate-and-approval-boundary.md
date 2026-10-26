@@ -52,7 +52,7 @@ corollary's existing footprint —
 — returns **7 sites**. Two of them cite the corollary for a materially
 different purpose than the one this change addresses:
 `plugin/agents/issue-triage-analyst.md` (the `issue-triage-analyst`'s
-per-issue enrichment step) and `plugin/skills/triage-issues/SKILL.md:328-330`
+per-issue enrichment step) and `plugin/skills/triage-issues/SKILL.md`
 ("dropping the prescribed mechanism") — its `triage-issues` mutation-recipe
 step — both cite it to **detect an issue body that prescribes a mechanism and
 offer to rewrite it to outcome + acceptance criteria** — a concern about how
@@ -152,7 +152,7 @@ Alternatives considered and rejected:
 1. **Promoting the three-question technique (or a pointer to it) into
    `development-principles.md`'s stale-mechanism corollary (principle #8).**
    Rejected per decision (1): the corollary's other two citation sites —
-   `issue-triage-analyst.md` and `triage-issues/SKILL.md:328-330`
+   `issue-triage-analyst.md` and `triage-issues/SKILL.md`
    ("dropping the prescribed mechanism") — use it for issue-authoring
    detection, not plan-time re-verification technique, and widening it would
    hand two unrelated components prose they'd never read for its stated

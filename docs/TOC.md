@@ -15,17 +15,13 @@ read and update.
 - [`../wiki/maintainer/plugin-authoring.md`](../wiki/maintainer/plugin-authoring.md) — cross-plugin authoring gotchas (shipping MCP servers via `plugin.json`; `npx` package-name resolution; version pinning)
 - [`../wiki/maintainer/index.md`](../wiki/maintainer/index.md) — index of the maintainer notes: the pages `CLAUDE.md`'s `## Knowledge base` list routes to, plus the cross-plugin authoring notes
 
-## Process
-
-- [`../wiki/process/issue-triage.md`](../wiki/process/issue-triage.md) — this repo's dogfooded issue-triage conventions (types, priorities, labels, required fields, splitting/duplicate/dependency policy, and the `gh` mutation recipes) consumed by `/gvt-dev:triage-issues` and the `issue-triage-analyst`; access mechanics live in `.gvt-agent.json`'s `bugTracker` block
-
 ## Components
 
 Each skill and agent carries its own documentation in its frontmatter (`metadata.expects`) and body:
 
 - `../plugin/skills/*/SKILL.md` — one directory per skill
 - `../plugin/agents/*.md` — flat agent definitions (analyst, designer, planner, code-reviewer, ts-implementer, tech-writer, validator, issue-triage-analyst)
-- `../plugin/skills/triage-issues/SKILL.md` — interactive issue-backlog triage; reads project conventions from a consuming repo's `docs/issue-triage.md` + `bugTracker` block (scaffolds from `issue-triage.template.md` or the flat-label `issue-triage.flat.template.md`, auto-selected per the repo's label scheme — see SKILL.md §0)
+- `../plugin/skills/triage-issues/SKILL.md` — interactive issue-backlog triage; reads project conventions from a consuming repo's `docs/issue-triage.md` (the contract path is resolved through `paths`; where the docs index lives in the wiki, the skill scaffolds into the wiki by default) + `bugTracker` block (scaffolds from `issue-triage.template.md` or the flat-label `issue-triage.flat.template.md`, auto-selected per the repo's label scheme — see SKILL.md §0)
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - `../plugin/skills/reconcile-mcp-pin/SKILL.md` — maintainer skill: after a bundled MCP server pin is bumped in `plugin.json`, reconcile the agents' hand-enumerated tool inventories (read/mutate split, count-sanity-checked `npm pack` surface, stale-version sweep) and hand off to `release-plugin`
 - `../plugin/skills/migrate-cordova-ci/SKILL.md` — migrate a Cordova plugin's CI/CD from CircleCI to GitHub Actions; bundles parameterized `android.yml`/`ios.yml` (smoke + distribute tiers) + `version-guard.js` templates (lifted from `cordova-plugin-marketplace`), encodes the 8 known CI gotchas, and runs a manual live-CI gate
