@@ -149,7 +149,8 @@ block in `.gvt-agent.json` (access mechanics).
 5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended, but still never
    removes a stale duplicate, never auto-picks between near-miss candidates,
-   and never moves a file inside the wiki (§0b, §0c, §4).
+   never moves a file into or inside the wiki, and never writes onto an existing
+   file (the occupied-destination rule, §0b; §0c, §4).
 
 ### 0a. Light-touch groom (no-contract path)
 
@@ -198,13 +199,17 @@ Offer three options via `AskUserQuestion`:
   `<wikiDir>/process/` exists, else `<wikiDir>/issue-triage.md`, so a
   wiki-resident candidate is never moved out of the bundle. Show that
   destination in the offer.
-  - **Occupied target.** If any file other than the candidate itself already
-    exists at the destination, it is a conflict: never move onto it. Report
-    both files, and offer to keep both, to merge (preview, then apply, per
-    `development-principles.md` principle #6), or to pick a different
-    destination.
-  - **Write order.** The rename moves the file first and then writes the
-    `paths` override. A stop in between leaves the file at the wiki default
+  - **Occupied destination.** Nothing is ever written onto an existing file
+    unattended, whether the write is this rename's move or the scaffold's copy
+    below. A destination counts as occupied when anything other than the
+    candidate itself exists at that path (a file the derived-page veto
+    excluded can sit there). Interactively it is a conflict: never write onto
+    it. Report both files, and offer to keep both, to merge (preview, then
+    apply, per `development-principles.md` principle #6), or to pick a
+    different destination. Under `--force` and `--non-interactive` it defers:
+    write nothing, and report both paths in §5 as outstanding.
+  - **Write order.** The rename moves the file first and then, when the wiki
+    default holds, writes the `paths` override. A stop in between leaves the file at the wiki default
     with no override; the next run's wiki-default scan finds it at its own
     target, where only the override is written, so it heals. (The scaffold
     branch below writes the override first instead, and heals because the
@@ -235,18 +240,19 @@ the deferral as an outstanding item. This deliberately departs from issue
 renaming a hand-authored consumer file unattended is a write the §4 safety
 table had no row for, and deferring still prevents the double-scaffold
 outcome without an unattended mutation of the user's file. **Inside the wiki,
-nothing moves unattended:** a candidate that lies inside `<wikiDir>/` defers
+nothing moves unattended:** a candidate whose source lies inside `<wikiDir>/`,
+or whose rename destination does (the wiki default, when it holds), defers
 under `--force` and under `--non-interactive` alike. Report it in §5 as
-outstanding, with the destination an interactive run would offer. For a
-candidate outside the wiki, `--force`
-takes the documented default (rename) only when exactly one marker-bearing
-candidate exists, then
+outstanding, with the destination an interactive run would offer. The
+`--force` rename (the documented default) applies only when the source and
+the destination are both outside the wiki, exactly one marker-bearing
+candidate exists, and the destination is not occupied (the occupied-destination
+rule above); then
 §0c's required-headings check runs report-only and its registration sub-block
 runs automatically. In the mixed case, one marker-bearing candidate plus
-glob-only candidates, rename the marker-bearing one; the glob-only
-ones are carried into §5 as outstanding. A glob-only candidate (matched by filename alone) is carried into §5 as outstanding,
-and so are all candidates when two or more are
-marker-bearing (never auto-pick).
+glob-only candidates, rename the marker-bearing one; the glob-only candidates
+stay deferred. A glob-only candidate (matched by filename alone) is carried into §5 as outstanding, and so are all
+candidates when two or more are marker-bearing (never auto-pick).
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
 there — do not guess conventions. **Wiki default (trigger):** when there is no
@@ -256,7 +262,9 @@ there — do not guess conventions. **Wiki default (trigger):** when there is no
 `<wikiDir>/issue-triage.md`. Otherwise keep the resolved-path default. This
 check covers the scaffold only: no contract exists at either location when the
 default is chosen. (A rename checks its resolved destination, and an occupied
-one is a conflict; see above.) On
+one is a conflict; see above.) The scaffold target is checked against the
+occupied-destination rule (above) before anything is written, so a deferred or
+declined scaffold leaves `.gvt-agent.json` untouched. On
 acceptance the skill writes the override before the file: it inserts
 `paths['docs/issue-triage.md']` into `.gvt-agent.json` as a key insertion that
 preserves every other key, then copies the template. If a run stops between
@@ -371,15 +379,21 @@ contract belongs in depends on whether the resolved contract lies inside W.
   wiki index is a wiki-lint finding. Report that the contract sits outside the
   wiki bundle and that its index lives in the wiki, and suggest moving the
   contract into the bundle via the `paths['docs/issue-triage.md']` override.
-- **Contract inside W, T outside W.** This is the wiki regime: the contract is
-  registered in the wiki, and `docs/TOC.md` is never written.
 - **Docs regime** (contract outside W, T outside W). Add a one-line entry for the resolved
   path to T under a **Process** heading (create the heading if absent) —
   mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record.
   Interactively, **offer** it; in `--non-interactive`, add it
   **automatically**. Make it idempotent (skip if the entry already exists) and
   skip gracefully if T is absent.
-- **Wiki regime** (contract inside W). Never write `docs/TOC.md`.
+- **Wiki regime** (contract inside W, wherever T lies). The contract is
+  registered in the wiki, and `docs/TOC.md` is never written.
+  - **After a wiki-default rename (§0b), first,** if any wiki index that linked
+    the candidate's old path (the root index and any subdirectory index alike)
+    still links it, update each such link to the new path; when
+    `wiki.indexCommand` is set, report each stale link instead of editing.
+    Never leave a dead link silently. §5 reports each link updated or
+    reported. Do this before the indexed check below, so the updated link
+    counts and no second entry is written.
   - The contract counts as **indexed** when a link in `<W>/index.md`, or in the
     `index.md` of its own subdirectory, resolves to it — the same rule
     maintain-wiki's lint applies.
@@ -396,11 +410,6 @@ contract belongs in depends on whether the resolved contract lies inside W.
     the wiki schema requires (`wiki/schema.md`, OKF §4.1/§11.2), and still
     write the entry. If the target
     index is absent, skip and report.
-  - **After a wiki-default rename (§0b),** if any wiki index that linked the
-    candidate's old path (the root index and any subdirectory index alike)
-    still links it, update each such link to the new path; when
-    `wiki.indexCommand` is set, report each stale link instead of editing. Never
-    leave a dead link silently. §5 reports each link updated or reported.
   - **Generated index.** When `wiki.indexCommand` is set, never hand-edit a
     wiki index: report the missing entry together with that command. When it
     is unset, **offer** the entry interactively and write it **automatically**
@@ -516,9 +525,9 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a sole marker-bearing candidate outside the wiki; a candidate inside the wiki, a glob-only candidate, or more than one marker-bearing candidate stays deferred (a wiki-resident candidate is never moved unattended) |
+| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a sole marker-bearing candidate when neither it nor its destination is inside the wiki and the destination is not occupied (glob-only candidates alongside it stay deferred); a candidate or destination inside the wiki, an occupied destination (§0b), or more than one marker-bearing candidate stays deferred (nothing is moved into or inside the wiki unattended) |
 | Contract registration — a docs-index row or a wiki-index entry (§0c) | offer | auto-apply, except a generated wiki index (`wiki.indexCommand` set), which is reported, never edited |
-| Write the `paths` override for a wiki-default scaffold or rename (§0b) | part of that approval | automatic with the scaffold only; a wiki rename never runs unattended |
+| Write the `paths` override for a wiki-default scaffold or rename (§0b) | part of that approval | automatic with the scaffold only, and not when the scaffold target is occupied (§0b); a wiki rename never runs unattended |
 | Update a stale wiki-index link after a wiki-default rename (§0c) | part of the rename approval | not reached; a wiki rename never runs unattended |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
 | Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
@@ -546,8 +555,9 @@ loop's own exit codes as evidence.
 Also report, when §0 produced them: how the contract was resolved (scaffolded /
 adopted, and from which near-miss path / already canonical); any deferred
 near-miss resolution (§0b's `--non-interactive` defer, so a stopped run leaves a
-record of why), including a wiki-resident near-miss with the destination an
-interactive run would offer, and each stale wiki-index link updated or reported
+record of why), including a near-miss whose source or destination is inside the
+wiki with the destination an interactive run would offer, an occupied
+destination with both paths, and each stale wiki-index link updated or reported
 (§0c); §0c's label-key warning or inconclusive result; any missing
 required headings; which index received the entry (`docs/TOC.md` under the
 docs regime, or the wiki index written under the wiki regime), or why none did
