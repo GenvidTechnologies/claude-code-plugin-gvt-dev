@@ -9,8 +9,16 @@ metadata:
         reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
       - path: docs/TOC.md
         required: false
-        reason: §0c adds a one-line index entry for the resolved docs/issue-triage.md contract — scaffolded, adopted from a near-miss, or already canonical — when docs/TOC.md is present
+        reason: "Docs-regime registration: §0c adds a one-line Process entry for a contract outside the wiki; resolved through paths['docs/TOC.md']"
     config:
+      - key: wiki.wikiDir
+        in: .gvt-agent.json
+        required: false
+        reason: The wiki bundle root, used for registration and the scaffold default
+      - key: wiki.indexCommand
+        in: .gvt-agent.json
+        required: false
+        reason: Optional command that regenerates generated wiki indexes; when set, §0c never hand-edits a wiki index
       - key: bugTracker.actionQuery
         in: .gvt-agent.json
         required: false
@@ -193,12 +201,26 @@ renaming a hand-authored consumer file unattended is a write the §4 safety
 table had no row for, and deferring still prevents the double-scaffold
 outcome without an unattended mutation of the user's file. With `--force`,
 take the documented default (rename) only for a marker-bearing candidate, then
-§0c's required-headings check runs report-only and its TOC-index sub-block runs
-automatically. A glob-only candidate (matched by filename alone) defers exactly
+§0c's required-headings check runs report-only and its registration sub-block
+runs automatically. A glob-only candidate (matched by filename alone) defers exactly
 as under `--non-interactive` and is carried into §5 as outstanding.
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
-there — do not guess conventions. Two bundled templates exist; pick the one
+there — do not guess conventions. **Wiki default (trigger):** when there is no
+`paths['docs/issue-triage.md']` override AND the resolved `paths['docs/TOC.md']`
+(T) lies inside `wiki.wikiDir` (W, default `wiki`), the default target is
+`<wikiDir>/process/issue-triage.md` when `<wikiDir>/process/` exists, else
+`<wikiDir>/issue-triage.md`. Otherwise keep the resolved-path default. On
+acceptance the skill writes the override before the file: it inserts
+`paths['docs/issue-triage.md']` into `.gvt-agent.json` as a key insertion that
+preserves every other key, then copies the template. If a run stops between
+the two writes, the next run resolves the override, finds it Absent and
+re-offers the scaffold, so it heals itself; the reverse order would leave an
+unread file. When the trigger holds, step 1's near-miss scan also covers the
+top level of the would-be target's parent, so a `wiki/bug-triage.md` is not
+missed and double-scaffolded. This does not conflict with ADR-0062's rejected
+implicit wiki convention: only the default is inferred, and resolution stays
+the declared override. Two bundled templates exist; pick the one
 that matches the repo's label scheme:
 - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
   **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
@@ -218,12 +240,13 @@ the detected default without asking.
 
 **Wiki-bundle target.** When the resolved path lies inside `wiki.wikiDir`
 (read from `.gvt-agent.json`, default `wiki`), the scaffolded file opens with
-a minimal OKF frontmatter block — `---`, `type: convention`, `---` — before
-the template body: the wiki bundle requires a non-empty `type` on every page
-(see the wiki's schema doc, OKF §4.1/§11.2).
+a minimal OKF frontmatter block — `---`, `type: convention`, a `title`, a
+`description`, `---` — before the template body: the wiki bundle requires a
+non-empty `type` on every page (see the wiki's schema doc, OKF §4.1/§11.2),
+and the `title` and `description` give the index entry text to quote.
 
-Once scaffolded, §0c's TOC-index sub-block indexes the new contract at its
-resolved path in `docs/TOC.md`.
+Once scaffolded, §0c's "Registration follows the contract's location"
+sub-block registers the new contract in the index its location calls for.
 
 **If the user declines scaffolding, or a quick scan of the open backlog shows no
 bugs** (a tiny enhancement/chore backlog where the full taxonomy is overkill),
@@ -286,19 +309,34 @@ skill and analyst locate guidance by: `## Types`, `## Priorities`,
   template".
 - **Unattended (`--non-interactive`, including `--force`): report only.**
 
-**`docs/TOC.md` index.** Runs for the scaffolded, adopted, and
-already-canonical paths alike — not just a fresh scaffold. The origin repo's
-contract was also unindexed, which is why nothing else surfaced it: an
-unindexed contract doc is invisible to the planning/triage skills that
-discover docs through the index.
+**Registration follows the contract's location.** Runs for the scaffolded,
+adopted, and already-canonical paths alike — not just a fresh scaffold. The
+origin repo's contract was also unindexed, which is why nothing else surfaced
+it: an unindexed contract doc is invisible to the planning/triage skills that
+discover docs through the index. Resolve T = `paths['docs/TOC.md']` (default
+`docs/TOC.md`) and W = `wiki.wikiDir` (default `wiki`); which index the
+contract belongs in depends on whether the resolved contract lies inside W.
 
-Once the contract is resolved (copied from a template, renamed from a
-near-miss, or already sitting at the canonical path), add a one-line entry
-for the resolved path to `docs/TOC.md` under a **Process** heading
-(create the heading if absent) — mirroring how `plan-task` indexes a
-scaffolded `docs/decisions/` record. Interactively, **offer** it; in
-`--non-interactive`, add it **automatically**. Make it idempotent (skip if
-the entry already exists) and skip gracefully if `docs/TOC.md` is absent.
+- **Docs regime** (contract outside W). Add a one-line entry for the resolved
+  path to T under a **Process** heading (create the heading if absent) —
+  mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record.
+  Interactively, **offer** it; in `--non-interactive`, add it
+  **automatically**. Make it idempotent (skip if the entry already exists) and
+  skip gracefully if T is absent.
+- **Wiki regime** (contract inside W). Never write `docs/TOC.md`.
+  - The contract counts as **indexed** when a link in `<W>/index.md`, or in the
+    `index.md` of its own subdirectory, resolves to it — the same rule
+    maintain-wiki's lint applies.
+  - If it is listed only in a subdirectory index that `<W>/index.md` does not
+    link, report an **unreachable subtree** and do not fix it.
+  - If it is not indexed, the write target is the `index.md` in its own
+    directory when one exists, else `<W>/index.md`. Write one line under a
+    heading, quoting the contract's frontmatter `description`. If the target
+    index is absent, skip and report.
+  - **Generated index.** When `wiki.indexCommand` is set, never hand-edit a
+    wiki index: report the missing entry together with that command. When it
+    is unset, **offer** the entry interactively and write it **automatically**
+    under `--non-interactive`.
 
 **Do not write on the "keep both" outcome** from §0b — there the indexed
 path is not the contract.
@@ -411,6 +449,7 @@ regardless; only the create is best-effort (see
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
 | Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a marker-bearing candidate; a glob-only candidate stays deferred |
+| Write the `paths` override for a wiki scaffold target (§0b) | part of the scaffold approval | automatic with the scaffold |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
 | Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
 | Body rewrite from a verification finding (§3) | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
@@ -438,8 +477,10 @@ Also report, when §0 produced them: how the contract was resolved (scaffolded /
 adopted, and from which near-miss path / already canonical); any deferred
 near-miss resolution (§0b's `--non-interactive` defer, so a stopped run leaves a
 record of why); §0c's label-key warning or inconclusive result; any missing
-required headings; whether the `docs/TOC.md` index entry was added or skipped;
-and any dead duplicate carried forward from the both-present outcome or a "keep
+required headings; which index received the entry (`docs/TOC.md` under the
+docs regime, or the wiki index written under the wiki regime), or why none did
+(already indexed, index absent, generated index with its regenerate command,
+or an unreachable subtree); and any dead duplicate carried forward from the both-present outcome or a "keep
 both" choice. Report each vetoed candidate by path and the veto that removed it
 (index file, or derived page), so a wrong veto stays visible.
 
