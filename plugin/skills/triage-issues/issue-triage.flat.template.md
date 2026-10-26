@@ -78,11 +78,15 @@ GitHub task-list under a `Depends on` heading.
 ## Mutation recipes
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
-`{type}`, `{canonical}`, `{other}`, `{title}`, `{tmpfile}`,
+`{type}`, `{otherTypes}`, `{canonical}`, `{other}`, `{title}`, `{tmpfile}`,
 `{triagedLabel}`, and `{needsInfoLabel}` are substituted by the skill. (There are
 no `{p}`/`{a}` substitutions — this repo has no priority or area labels.)
 
-- Set category: `gh issue edit {id} --remove-label "bug,enhancement,documentation,question" --add-label "{type}"`
+When a recipe's set would be empty, omit its --remove-label flag.
+
+{otherTypes} is the set of category labels, written out in full, with the label being added removed.
+
+- Set category: `gh issue edit {id} --add-label "{type}" --remove-label "{otherTypes}"`
 - Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
 - Comment: `gh issue comment {id} --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
 - Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (i.e. `question`; pair with a Comment saying what's missing)
@@ -92,3 +96,5 @@ no `{p}`/`{a}` substitutions — this repo has no priority or area labels.)
 - Create split issue: `gh issue create --title "{title}" --body-file {tmpfile} --label "{type}"` — the skill writes the drafted split body to `{tmpfile}` first
 - Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
 - Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
+
+Read the labels back after this edit: confirm the issue now carries exactly the intended labels before it is stamped triaged (use the tracker's read-one query, or the native issue view).

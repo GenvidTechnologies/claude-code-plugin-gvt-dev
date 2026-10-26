@@ -82,12 +82,16 @@ GitHub task-list under a `Depends on` heading.
 ## Mutation recipes
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
-`{type}`, `{p}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
+`{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
 `{tmpfile}`, `{triagedLabel}`, and `{needsInfoLabel}` are substituted
 by the skill.
 
-- Set type: `gh issue edit {id} --remove-label "type:bug,type:crash,type:regression" --add-label "type:{type}"`
-- Set priority: `gh issue edit {id} --remove-label "priority/P0,priority/P1,priority/P2,priority/P3" --add-label "priority/{p}"`
+When a recipe's set would be empty, omit its --remove-label flag.
+
+{otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed.
+
+- Set type: `gh issue edit {id} --add-label "type:{type}" --remove-label "{otherTypes}"`
+- Set priority: `gh issue edit {id} --add-label "priority/{p}" --remove-label "{otherPriorities}"`
 - Add area: `gh issue edit {id} --add-label "area:{a}"`
 - Remove area: `gh issue edit {id} --remove-label "area:{a}"`
 - Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
@@ -98,3 +102,5 @@ by the skill.
 - Create split issue: `gh issue create --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
 - Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
+
+Read the labels back after this edit: confirm the issue now carries exactly the intended labels before it is stamped triaged (use the tracker's read-one query, or the native issue view).
