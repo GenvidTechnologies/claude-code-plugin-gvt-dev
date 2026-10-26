@@ -96,7 +96,7 @@ block in `.gvt-agent.json` (access mechanics).
    population this detection addresses.
    - **Filename glob:** `*[Tt]riage*.md`.
    - **Marker line:** a line that, after an optional `>`, begins with
-     `Project conventions consumed by` immediately followed by a reference to
+     `Project conventions consumed by` followed, after optional whitespace, by a reference to
      `triage-issues` or the pre-rename `triage-bugs` (any namespace, optional
      leading `/`, optional backticks). The skill name is load-bearing: a
      prefix-only match is a false positive. maintain-wiki's
@@ -135,8 +135,8 @@ block in `.gvt-agent.json` (access mechanics).
    For the full analyst-driven workflow, offer to add a `bugTracker` block (show the
    example block at the bottom of this skill); proceed with §1 onward only once it
    exists.
-3. **Reconcile the resolved contract** (→ §0c) — label keys, required
-   headings, TOC index. Runs for **any resolved contract** — freshly
+3. **Reconcile the resolved contract** (→ §0c) — label keys, set recipes, required
+   headings, registration. Runs for **any resolved contract** — freshly
    scaffolded, adopted via rename, or **already-canonical** — and is
    **skipped on the §0a light-touch path**.
 4. **Resolve scope:**
@@ -171,7 +171,8 @@ taxonomy, stop and offer to scaffold the contract at its resolved path
 ### 0b. Establish the contract
 
 **Near-miss found.** Step 1 detected a file (under the resolved contract's
-parent directory, or under `docs/`) that looks like the triage contract under
+parent directory, or under `docs/`, or — when the wiki default holds — at the
+top level of `<wikiDir>/` or `<wikiDir>/process/`) that looks like the triage contract under
 a different name, with no canonical file at the resolved path present.
 Report, for every candidate:
 - its path,
@@ -187,7 +188,15 @@ Offer three options via `AskUserQuestion`:
 - **Rename it to the resolved path** — the **default**. `git mv` the file
   when it is tracked, a plain filesystem move otherwise; this preserves every
   hand-authored word. Then fall through to step 3 as if the contract had
-  always lived at the resolved path.
+  always lived at the resolved path. When the wiki default holds (the
+  trigger under "No contract at all" below), the rename target is the wiki
+  default the scaffold uses: `<wikiDir>/process/issue-triage.md` when
+  `<wikiDir>/process/` exists, else `<wikiDir>/issue-triage.md`, so a
+  wiki-resident candidate is never moved out of the bundle. Show that
+  destination in the offer. The skill writes the override before the move,
+  exactly as the scaffold does, so an interrupted run heals itself. If the
+  candidate already sits at that target path, there is nothing to move: write
+  only the override. §0c then registers it under the wiki regime.
 - **Replace it with a fresh scaffold** — destructive. Enumerate exactly what
   gets discarded (the file's path, size, and heading list) and, per
   `development-principles.md` principle #6, **preview the plan in one turn and
@@ -214,9 +223,11 @@ outcome without an unattended mutation of the user's file. With `--force`,
 take the documented default (rename) only when exactly one marker-bearing
 candidate exists, then
 §0c's required-headings check runs report-only and its registration sub-block
-runs automatically. A glob-only candidate (matched by filename alone), or more
-than one marker-bearing candidate (never auto-pick), defers exactly
-as under `--non-interactive` and is carried into §5 as outstanding.
+runs automatically. In the mixed case, one marker-bearing candidate plus
+glob-only candidates, rename the marker-bearing one and defer the glob-only
+ones. A glob-only candidate (matched by filename alone) defers exactly
+as under `--non-interactive`, and so do all candidates when two or more are
+marker-bearing (never auto-pick); each is carried into §5 as outstanding.
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
 there — do not guess conventions. **Wiki default (trigger):** when there is no
@@ -292,7 +303,8 @@ against the repo's actual label set.
 set type, set priority). Warn when one
 names the label it adds in its own remove list: the add and the remove then
 cancel on that label, and the tracker can still exit 0. A legacy recipe adds a
-placeholder (`type:{type}`), so the label is not known at load: substitute each
+placeholder (`type:{type}`, a bare `{type}` in the flat template, or
+`priority/{p}`), so the label is not known at load: substitute each
 label of the recipe's own set (from the contract's taxonomy) for the
 placeholder, and warn if any substitution lands in that recipe's remove list. Print the fix: rewrite
 the recipe in the others-only form the bundled templates use, where
@@ -350,9 +362,18 @@ contract belongs in depends on whether the resolved contract lies inside W.
   - If it is listed only in a subdirectory index that `<W>/index.md` does not
     link, report an **unreachable subtree** and do not fix it.
   - If it is not indexed, the write target is the `index.md` in its own
-    directory when one exists, else `<W>/index.md`. Write one line under a
-    heading, quoting the contract's frontmatter `description`. If the target
+    directory when one exists, else `<W>/index.md`. Write one line under the
+    target index's existing `## Pages`-style list heading when it has one,
+    else under a `## Process` heading (created if absent), quoting the
+    contract's frontmatter `description`. When the contract has no
+    frontmatter `description`, use its first `#` heading as the entry text;
+    when it has no frontmatter at all, report that the page lacks the OKF
+    `type` the wiki requires, and still write the entry. If the target
     index is absent, skip and report.
+  - **After a wiki-default rename (§0b),** if the wiki index linked the
+    candidate's old path, update that link to the new path; when
+    `wiki.indexCommand` is set, report the stale link instead of editing. Never
+    leave a dead link silently.
   - **Generated index.** When `wiki.indexCommand` is set, never hand-edit a
     wiki index: report the missing entry together with that command. When it
     is unset, **offer** the entry interactively and write it **automatically**
@@ -468,7 +489,7 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a sole marker-bearing candidate; a glob-only candidate, or more than one marker-bearing candidate, stays deferred |
+| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a sole marker-bearing candidate (with glob-only candidates alongside, the marker-bearing one is renamed and the glob-only ones stay deferred); with two or more marker-bearing candidates all stay deferred; a wiki-resident candidate is renamed to the wiki default, not out of the bundle |
 | Contract registration — a docs-index row or a wiki-index entry (§0c) | offer | auto-apply, except a generated wiki index (`wiki.indexCommand` set), which is reported, never edited |
 | Write the `paths` override for a wiki scaffold target (§0b) | part of the scaffold approval | automatic with the scaffold |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
