@@ -128,6 +128,7 @@ tracker's **existing label vocabulary** — no analyst dispatch, no
   **only from labels that already exist** — never invent a taxonomy.
 - **Apply** with per-item approval, holding the same §4 safety bar: never
   batch-close or mass-create issues without per-item approval (or `--force`).
+- **Verify** the applied labels: read the labels back before reporting an issue done.
 - **Summarize** what changed.
 
 When the groom reveals a backlog large or bug-heavy enough to warrant the full
@@ -234,6 +235,15 @@ against the repo's actual label set.
   rather than warning — a truncated list would produce false "label missing"
   reports.
 - If `bugTracker` is absent there is nothing to check; say so and move on.
+
+**Set recipes.** Check each set recipe in the resolved contract (set category,
+set type, set priority). Warn when one
+names the label it adds in its own remove list: the add and the remove then
+cancel on that label, and the tracker can still exit 0. Print the fix: rewrite
+the recipe in the others-only form the bundled templates use, where
+`--remove-label` lists only the other labels of that kind and is omitted when
+there are none. **No automatic write in either mode**; §3 strips the
+overlapping label for the call in the meantime.
 
 Why this matters: the origin repo's contract declared a `needs-info` label
 that did not exist there. Nothing surfaced it, and the flag-missing-info
@@ -357,12 +367,20 @@ split). Present them together, then apply the approved changes using the **Mutat
   (or the tracker's equivalent body-file form) instead. The analyst
   stays read-only: this skill makes the write. Per `development-principles.md`
   principle #13;
+- **then read the labels back.** Read the labels back with `bugTracker.readOne` (or the tracker's native issue view) and compare them with the set you intended to leave on the issue. A tracker CLI can exit 0 while a label write did nothing, so the write's own exit code is not evidence. On a mismatch, re-apply once and re-read. If it still mismatches, it is a failed write: stop on that issue and do not stamp it;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
-  succeed. This keeps the skill idempotent: an aborted run leaves the issue
-  un-triaged, so re-running picks it up again.
+  succeed and only after a matching readback. This keeps the skill idempotent: an
+  aborted run leaves the issue un-triaged, so re-running picks it up again.
 
 Apply one issue fully before moving to the next. If a write fails, stop on that
 issue, report the failure, and do **not** stamp `triagedLabel`.
+
+**Legacy set recipes.** A contract scaffolded before the others-only form may carry a
+set recipe (set category, type or priority) that
+names the label it adds in its own remove list. Running it as written can
+strip the label it just added. When the recipe does, drop that label from the
+remove list for that call, run the call, and note the strip for §5. §0c reports
+the same pattern at load time.
 
 **A blocked create is not a plain failure — recover it.** When a split/sub-issue
 `gh issue create` is blocked by the auto-mode write-classifier (a `Bash(gh issue
@@ -384,7 +402,8 @@ regardless; only the create is best-effort (see
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
 | Close-as-duplicate / create split issues | approve per item | **deferred** unless `--force` |
-| `triaged` label | after the issue's changes | after the issue's changes |
+| Label readback (§3) | always | always |
+| `triaged` label | after the issue's changes and a matching readback | after the issue's changes and a matching readback |
 
 Never batch-close or mass-create issues without either per-item approval or an
 explicit `--force`. These actions are hard to reverse on most trackers.
@@ -395,6 +414,10 @@ Report: issues triaged; fields / labels / priorities changed; duplicates linked 
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run. Report verification findings by
 outcome, and which were rewritten into the body versus posted as a comment.
+
+Report the label readback per issue (§3): matched, re-applied, or failed. Report
+any legacy-guard strips (§3), and §0c's set-recipe warning. Do not cite the write
+loop's own exit codes as evidence.
 
 Also report, when §0 produced them: how the contract was resolved (scaffolded /
 adopted, and from which near-miss path / already canonical); any deferred
