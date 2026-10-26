@@ -27,6 +27,10 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: Wider read-only query used to detect duplicates against already-triaged or closed issues
+      - key: bugTracker.readOne
+        in: .gvt-agent.json
+        required: false
+        reason: The read-one command §3 uses to read an issue's labels back before stamping; the tracker's native issue view is the fallback
       - key: bugTracker.triagedLabel
         in: .gvt-agent.json
         required: false
@@ -80,7 +84,12 @@ block in `.gvt-agent.json` (access mechanics).
    must never be touched or flagged as a live near-miss. Scanning `docs/` in
    addition to the resolved parent catches a stale pre-migration copy of
    `docs/issue-triage.md` left behind there after the contract moves
-   elsewhere (e.g. into a wiki bundle).
+   elsewhere (e.g. into a wiki bundle). When the wiki default of §0b holds (no
+   `paths['docs/issue-triage.md']` override, and the resolved
+   `paths['docs/TOC.md']` inside `wiki.wikiDir`), the scan also covers the top
+   level of `<wikiDir>/`, and of `<wikiDir>/process/` when it exists — still
+   non-recursive — so a contract at the wiki root is seen whichever
+   subdirectory the scaffold would pick.
 
    Either positive signal nominates a candidate. A veto outranks both signals.
    A rename is the likeliest origin of a near-miss, and that is the entire
@@ -99,9 +108,9 @@ block in `.gvt-agent.json` (access mechanics).
      `index.md`, `TOC.md`, `log.md`, and whatever `paths['docs/TOC.md']`
      resolves to.
    - **Derived pages.** A file whose frontmatter `sources` cites the resolved
-     contract (an entry, or its `resource`, ending in the resolved path)
+     contract (an entry, or its `resource`, equal to the resolved path or ending in `/` followed by the resolved path)
      declares itself derived and is never a candidate. The suffix match is
-     deliberate: a `resource` value can be a URL such as
+     deliberate, and sits on a path-segment boundary (`…/mydocs/issue-triage.md` is not `docs/issue-triage.md`): a `resource` value can be a URL such as
      `https://…/blob/main/wiki/process/issue-triage.md`.
 
    Combine detection with canonical-file presence into four outcomes,
@@ -134,7 +143,9 @@ block in `.gvt-agent.json` (access mechanics).
    - Default: `actionQuery` minus `triagedLabel` (open issues not yet triaged).
    - Override: an explicit query/label, or a list of issue IDs passed as args.
 5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
-   runs unattended; `--force` additionally permits destructive actions unattended.
+   runs unattended; `--force` additionally permits destructive actions unattended, but still never
+   removes a stale duplicate and never auto-picks between near-miss candidates
+   (§0b, §0c, §4).
 
 ### 0a. Light-touch groom (no-contract path)
 
@@ -200,9 +211,11 @@ the deferral as an outstanding item. This deliberately departs from issue
 renaming a hand-authored consumer file unattended is a write the §4 safety
 table had no row for, and deferring still prevents the double-scaffold
 outcome without an unattended mutation of the user's file. With `--force`,
-take the documented default (rename) only for a marker-bearing candidate, then
+take the documented default (rename) only when exactly one marker-bearing
+candidate exists, then
 §0c's required-headings check runs report-only and its registration sub-block
-runs automatically. A glob-only candidate (matched by filename alone) defers exactly
+runs automatically. A glob-only candidate (matched by filename alone), or more
+than one marker-bearing candidate (never auto-pick), defers exactly
 as under `--non-interactive` and is carried into §5 as outstanding.
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
@@ -217,8 +230,8 @@ preserves every other key, then copies the template. If a run stops between
 the two writes, the next run resolves the override, finds it Absent and
 re-offers the scaffold, so it heals itself; the reverse order would leave an
 unread file. When the trigger holds, step 1's near-miss scan also covers the
-top level of the would-be target's parent, so a `wiki/bug-triage.md` is not
-missed and double-scaffolded. This does not conflict with ADR-0062's rejected
+top level of the would-be target's parent and the wiki root, so a
+`wiki/bug-triage.md` is not missed and double-scaffolded. This does not conflict with ADR-0062's rejected
 implicit wiki convention: only the default is inferred, and resolution stays
 the declared override. Two bundled templates exist; pick the one
 that matches the repo's label scheme:
@@ -278,7 +291,10 @@ against the repo's actual label set.
 **Set recipes.** Check each set recipe in the resolved contract (set category,
 set type, set priority). Warn when one
 names the label it adds in its own remove list: the add and the remove then
-cancel on that label, and the tracker can still exit 0. Print the fix: rewrite
+cancel on that label, and the tracker can still exit 0. A legacy recipe adds a
+placeholder (`type:{type}`), so the label is not known at load: substitute each
+label of the recipe's own set (from the contract's taxonomy) for the
+placeholder, and warn if any substitution lands in that recipe's remove list. Print the fix: rewrite
 the recipe in the others-only form the bundled templates use, where
 `--remove-label` lists only the other labels of that kind and is omitted when
 there are none. **No automatic write in either mode**; §3 strips the
@@ -317,7 +333,11 @@ discover docs through the index. Resolve T = `paths['docs/TOC.md']` (default
 `docs/TOC.md`) and W = `wiki.wikiDir` (default `wiki`); which index the
 contract belongs in depends on whether the resolved contract lies inside W.
 
-- **Docs regime** (contract outside W). Add a one-line entry for the resolved
+- **Contract outside W, T inside W.** Do not write: an out-of-bundle link in a
+  wiki index is a wiki-lint finding. Report that the contract sits outside the
+  wiki bundle and that its index lives in the wiki, and suggest moving the
+  contract into the bundle via the `paths['docs/issue-triage.md']` override.
+- **Docs regime** (contract outside W, T outside W). Add a one-line entry for the resolved
   path to T under a **Process** heading (create the heading if absent) —
   mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record.
   Interactively, **offer** it; in `--non-interactive`, add it
@@ -448,7 +468,8 @@ regardless; only the create is best-effort (see
 
 | Action | Interactive (default) | `--non-interactive` |
 |---|---|---|
-| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a marker-bearing candidate; a glob-only candidate stays deferred |
+| Near-miss contract resolution — rename to the resolved path, or replace it (§0b) | preview, then per-option approval | **deferred** unless `--force`, which takes the **rename** default for a sole marker-bearing candidate; a glob-only candidate, or more than one marker-bearing candidate, stays deferred |
+| Contract registration — a docs-index row or a wiki-index entry (§0c) | offer | auto-apply, except a generated wiki index (`wiki.indexCommand` set), which is reported, never edited |
 | Write the `paths` override for a wiki scaffold target (§0b) | part of the scaffold approval | automatic with the scaffold |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
 | Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
