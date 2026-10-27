@@ -29,7 +29,7 @@
   },
   "bugTracker": {
     "kind": "github",
-    "actionQuery": "gh issue list --state open -L 500 --json number,title,labels,body,assignees,author,createdAt",
+    "actionQuery": "gh issue list --state open -L 500 --json number,title,labels,body,assignees,author,createdAt,milestone",
     "comparisonQuery": "gh issue list --state all -L 1000 --json number,title,labels,state",
     "readOne": "gh issue view {id} --json number,title,body,labels,comments",
     "triagedLabel": "triaged",
