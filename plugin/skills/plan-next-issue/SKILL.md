@@ -339,14 +339,17 @@ just the first — this is what lets `plan-task` *detect* a multi-issue target
 rather than infer one); the **routing verdict** for this invocation —
 **combined** across the issues, or **sequential** for this one; whether each
 issue is **shortcut-eligible** (proposes a concrete change/mechanism, not just
-a problem + goal); and any **already-shipped / residual finding** from §2, so
-`plan-task` doesn't re-derive it. This describes what's *passed* into the
+a problem + goal); any **already-shipped / residual finding** from §2, so
+`plan-task` doesn't re-derive it (the premise-freshness check's result, `read at
+<sha>` and its outcome, rides inside this item); and any deadline, labelled
+**verified** (from a milestone) or **inherited** (from issue text). This describes what's *passed* into the
 invocation, not anything written — nothing here is written; the writes all
 happen inside `plan-task`.
 
-Not all four items are the same kind of fact — §2's already-shipped/residual
+Not every item is the same kind of fact — §2's already-shipped/residual
 finding, for instance, was established by reading the target this run, while
-an inherited label or issue-body claim was not — so state the invocation per
+an inherited label or issue-body claim was not, and a deadline may be either
+(verified from a milestone, inherited from issue text) — so state the invocation per
 `plan-task`'s own `### Verified vs. inherited facts in a dispatch brief`
 labeling rather than handing over an undifferentiated list.
 
@@ -356,7 +359,7 @@ labeling rather than handing over an undifferentiated list.
 |---|---|---|
 | Run `triage-issues` | offer when untriaged issues exist | auto when untriaged issues exist |
 | Destructive triage actions (close-as-duplicate, splits, contract-file resolution) | per delegated approval | **deferred** unless `--force` |
-| Pick issue(s) to plan | user selects one or more | auto-pick top-ranked |
+| Pick issue(s) to plan | user selects one or more | auto-pick the full-rule winner |
 | Combine vs sequential plans | ask when >1 selected | sequential |
 
 This skill performs **no writes itself** — every mutation happens inside the
@@ -367,7 +370,10 @@ reads the backlog to detect triage need and rank candidates.
 
 Report: whether triage ran (and what it changed, from its summary); which issue(s)
 were chosen; and how they were routed into planning (one combined plan, or N
-sequential `plan-task` runs). Point the user at the plan(s) `plan-task` produced.
+sequential `plan-task` runs). Name the **deciding signal** of each chosen issue —
+the tier that put it first (e.g. age, or deadline proximity) — and, under
+`--non-interactive`, the deciding signal of the auto-picked issue. When the
+fallback decided, say the choice was arbitrary. Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
 its `gh issue create` was blocked — the auto-mode write-classifier denied it (a
