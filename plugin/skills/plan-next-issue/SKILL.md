@@ -102,8 +102,11 @@ Detect whether the backlog needs grooming before planning:
   occurs, so tags cannot be refreshed — §2's unreleased-delta check skips
   silently here rather than reporting a possibly-stale number, consistent with
   the check being advisory: a possibly-wrong number is worse than none.
-- Run `bugTracker.actionQuery` minus `bugTracker.triagedLabel` (open issues not
-  yet triaged). This is a count/metadata check — do **not** pull bodies here.
+- Run `bugTracker.actionQuery` once, with its output (the whole open backlog)
+  written to a scratch file and not printed. Subtract `bugTracker.triagedLabel`
+  from that saved output, in memory, to get the count of open issues not yet
+  triaged. This is a count/metadata check — read no bodies from it here. §2
+  reads the same saved file.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
   filter (GitHub `gh`: `--label`/`-l` or a `label:` term — adjust for your
   tracker's equivalent), warn the user:
@@ -162,25 +165,22 @@ Build a **ranked shortlist** of candidate issues to address:
   carry the named residual into its rationale; call out `stricter-shipped`.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
-  analyst's bounded step. The report also carries `age:` and `deadline:` per
-  issue (the deadline labelled verified or inherited); use them for the tie-break
-  below, for the issues it covers. The report covers only the just-triaged
-  issues, so for any other candidate take the creation date and milestone due
-  date from §1's `actionQuery` result — its full output, before the triaged
-  subtraction; no new fetch (keep that output in a scratch file, not printed,
-  as in the next bullet). Say "unavailable" only when that result lacks the
-  field or the issue, as when the query itself already excluded triaged issues.
-- **Otherwise**, do a **lightweight inline metadata fetch** (number, title,
-  priority, labels, the creation date (gh: `createdAt`) and the milestone due
-  date (gh: `milestone.dueOn`) — **not** full bodies) via
-  `bugTracker.actionQuery` and rank from that. Run the query with its output
-  written to a scratch file, not printed, and read from it only the fields the
-  ranking needs (number, title, labels, creation date, milestone due date) plus
-  any lines carrying a date on or after today, never the bodies whole. Past
-  dates in issue text aren't extracted. If the query returns no creation date,
-  say so: the age tier is skipped, drift can't be computed, and the freshness
-  check below treats every shortlisted candidate as unverified. If
-  it returns no milestone, only issue-text dates remain, all inherited.
+  analyst's bounded step. The report's `age:` and `deadline:` slot describes the
+  just-triaged issues for the triage report itself; ranking reads the saved
+  file below, not the report.
+- **Otherwise** (triage didn't run), there is no extra fetch either: the light
+  fetch is §1's saved output, and the candidates are ranked from it. Do not run
+  the query a second time.
+- **Ranking data, on every path.** §2's ranking fields come from §1's saved
+  output: number, title, labels, the creation date (gh: `createdAt`), the
+  milestone due date (gh: `milestone.dueOn`), and only the lines carrying a date
+  on or after today. Read only those fields from the file with a short script
+  or `jq` over it, never the bodies whole, so reading it does not dump bodies
+  into the thread. Past dates in issue text aren't extracted. If the query
+  returns no creation date, say so: the age tier is skipped, drift can't be
+  computed, and the freshness check below treats every shortlisted candidate as
+  unverified. If it returns no milestone, only issue-text dates remain, all
+  inherited.
 
 Rank by readiness to plan: higher priority first, then issues that are already
 triaged/enriched and unblocked (no open dependency), de-prioritizing anything
@@ -219,19 +219,23 @@ by these tiers, each applied only when every tier above it is tied:
 1. **Priority**, as above.
 2. **Readiness**, as above.
 3. **Dated events**, by deadline proximity: one within 14 days ranks above
-   undated candidates, nearer first, verified and inherited deadlines ordered
-   together. A deadline more than 14 days out ranks as undated (it is still
-   shown). It never crosses a priority band. A past milestone due date is shown
-   but doesn't raise rank. A milestone with no due date gives no deadline. An
-   issue-text date raises rank only when its sentence ties the work to it (due,
-   close, launch, expiry, cutover); a date match alone never raises. Under
-   `--non-interactive`, only a verified deadline — a milestone due date —
-   raises; an issue-text date is shown, not acted on.
+   undated candidates, nearer first; under `--non-interactive` only verified
+   deadlines enter this ordering. A deadline more than 14 days out ranks as
+   undated (it is still shown). It never crosses a priority band. A past
+   milestone due date is shown but doesn't raise rank. A milestone with no due
+   date gives no deadline. An issue-text date raises rank only when its sentence
+   ties the work to it (due, close, launch, expiry, cutover); a date match alone never raises.
+   Under `--non-interactive`, only a verified deadline — a milestone due
+   date — raises; an inherited (issue-text) deadline is shown, not
+   acted on, even within 14 days.
 4. **Age.** Among the remaining ties the older issue ranks first, by creation
    date, never by issue number. Within a tie, candidates with "unavailable" age
    rank after those with a known age.
 5. **Fallback.** Interactively, present still-tied candidates as tied. Under
    `--non-interactive`, use the lowest issue number, and say it is arbitrary.
+
+The tiers produce the **ordered list**: the candidates in tier order, before the
+shortlist is cut.
 
 **Surface resolver.** The contention annotation and the freshness check below
 both need a candidate's surface, and it is inferred one way: take the title
@@ -253,16 +257,18 @@ premise makes planning wasted work, so a shortlisted candidate gets one
 its surface has drifted since filing (drift > 0), is unresolved, or has no
 creation date (drift can't be computed). The check is the already-shipped check
 above — read the target itself — and records `read at <sha>` from `git
-rev-parse origin/<default-branch>`, the same `read at <sha>` form the triage
+rev-parse origin/<default-branch>`, in the same `read at <sha>` form the triage
 analyst records (ADR-0072). The result is agreement (the target still matches
 the issue's claim), `partly-shipped`, `premise-false` or `proposal-stale`. A
-`premise-false` or `proposal-stale` result moves the candidate to the end of
-the ordered list, flagged as a decayed premise; `partly-shipped` keeps its rank
-and names the residual. The check runs once, with no second pass: the
-next-ranked candidate takes the demoted one's shortlist slot without itself
-being checked, and shows "freshness not checked". The shortlist is at most 4,
-the `AskUserQuestion` option limit, which also bounds the cost; if ties exceed
-4, say so.
+`premise-false` or `proposal-stale` result takes the candidate off the
+shortlist: it is shown, not offered, on its own line below the shortlist, as
+"#N demoted: decayed premise (<outcome>, read at <sha>)". `partly-shipped`
+keeps its rank and names the residual. The check runs once, with no second
+pass: the next-ranked candidate takes the demoted one's slot without itself
+being checked, and shows "freshness not checked". The check runs under
+`--non-interactive` too, before the auto-pick. The shortlist is at most 4, the
+`AskUserQuestion` option limit, which also bounds the cost; if ties exceed 4,
+say so.
 
 **Drift, recomputed each run.** The rationale shows "N commits to its surface
 since filed (<date>)", computed from the creation date as
@@ -309,8 +315,8 @@ chain is mid-flight, release-cadence judgement — is a call for the user (and
 the repo's own release skill, if it has one), not for this check.
 
 In `--non-interactive`, auto-pick the full-rule winner — the first candidate
-of the ordered list once the freshness check has run (a demoted candidate is
-already at the end).
+of the ordered list once the freshness check has run (a demoted candidate has
+already left it and is named in the closing summary).
 
 ## 3. Plan
 
@@ -388,7 +394,8 @@ were chosen; and how they were routed into planning (one combined plan, or N
 sequential `plan-task` runs). Name the **deciding signal** of each chosen issue —
 the tier that put it first (e.g. age, or deadline proximity) — and, under
 `--non-interactive`, the deciding signal of the auto-picked issue. When the
-fallback decided, say the choice was arbitrary. Point the user at the plan(s) `plan-task` produced.
+fallback decided, say the choice was arbitrary. Under `--non-interactive`, name
+any demoted candidate with its outcome. Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
 its `gh issue create` was blocked — the auto-mode write-classifier denied it (a
