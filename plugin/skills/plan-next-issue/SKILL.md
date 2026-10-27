@@ -162,10 +162,18 @@ Build a **ranked shortlist** of candidate issues to address:
   carry the named residual into its rationale; call out `stricter-shipped`.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
-  analyst's bounded step.
+  analyst's bounded step. The report also carries `age:` and `deadline:` per
+  issue (the deadline labelled verified or inherited); use them for the tie-break
+  below. A candidate the report doesn't cover has age and deadline
+  "unavailable" — don't fetch for it here.
 - **Otherwise**, do a **lightweight inline metadata fetch** (number, title,
-  priority, labels — **not** full bodies) via `bugTracker.actionQuery` and rank
-  from that.
+  priority, labels, the creation date (gh: `createdAt`) and the milestone due
+  date (gh: `milestone.dueOn`) — **not** full bodies) via
+  `bugTracker.actionQuery` and rank from that. If the query also returns
+  bodies, take only the lines carrying a date on or after today, never the bodies whole. If the query returns no creation date, say so: the age tier is
+  skipped, and the freshness check below treats every shortlisted candidate as
+  unverified. If it returns no milestone, only issue-text dates remain, all
+  inherited.
 
 Rank by readiness to plan: higher priority first, then issues that are already
 triaged/enriched and unblocked (no open dependency), de-prioritizing anything
@@ -195,12 +203,77 @@ This is a soft signal, not a hard exclude (many issues name no concrete target,
 and a partial overlap usually means *rescope*, not *skip*); surface it in the
 candidate's one-line rationale — naming which part already shipped and which
 residual is left — so the user can skip it, or confirm the residual is still
-worth planning. Present the top candidates with a one-line rationale each and ask the user
+worth planning.
+
+**Breaking ties within a priority band.** Priority and readiness leave most
+candidates tied — a backlog sits mostly in one band — so order within the band
+by these tiers, each applied only when every tier above it is tied:
+
+1. **Priority**, as above.
+2. **Readiness**, as above.
+3. **Dated events**, by deadline proximity: one within 14 days ranks above
+   undated candidates, nearer first. It never crosses a priority band. A past
+   date is shown but doesn't raise rank. An issue-text date raises rank only
+   when its sentence ties the work to it (due, close, launch, expiry,
+   cutover); a date match alone never raises. Under `--non-interactive`, only a verified
+   deadline — a milestone due date — raises; an issue-text date is shown, not
+   acted on.
+4. **Age.** Among the remaining ties the older issue ranks first, by creation
+   date, never by issue number.
+5. **Fallback.** Interactively, present still-tied candidates as tied. Under
+   `--non-interactive`, use the lowest issue number, and say it is arbitrary.
+
+**Surface resolver.** Both annotations below need a candidate's surface, and it
+is inferred one way: take the title prefix before the first `:`, split it on
+`/` and `,`, take the first word of each part, and resolve each word with
+`git ls-files` as a directory segment or a basename (with or without `.md`).
+A prefix that doesn't resolve is reported as `surface: unresolved`.
+
+**Surface contention is an annotation, not a rank term.** Name the candidate's
+surface in its rationale and up to 3 tied siblings that share it, plus "+N
+more", worded "(file collision, not a dependency)". It never removes or
+reorders a candidate; hard dependency stays with the unblocker rule above. §3's
+clustering consumes the annotation.
+
+**Premise-freshness check, before the shortlist is presented.** A decayed
+premise makes planning wasted work, so a shortlisted candidate gets one
+**premise-freshness check** when it has no in-session verification finding and
+its surface has drifted since filing (drift > 0) or is unresolved. The check is
+the already-shipped check above — read the target itself — and records
+`read at <sha>` from `git rev-parse origin/<default-branch>`, the in-session
+marker form the analyst uses (ADR-0072). A `premise-false` or `proposal-stale`
+result moves the candidate to the end of the shortlist, flagged as a decayed
+premise; `partly-shipped` keeps its rank and names the residual. It is one pass
+with no refill: a candidate that moves up to replace another shows "freshness
+not checked". The shortlist is at most 4, the `AskUserQuestion` option limit,
+which also bounds the cost; if ties exceed 4, say so.
+
+**Drift is the cross-session marker.** The rationale shows "N commits to its
+surface since filed (<date>)", computed each run from the creation date as
+`git rev-list --count --since=<created> origin/<default-branch> -- <surface
+paths>` after §1's fetch (or the no-SSH SHA-equality fallback). There is
+no stored freshness stamp: a stamp in the body, a comment, a label or a local
+cache would each be a write this skill doesn't make, or a stamp ADR-0072
+rejected.
+Drift can't go stale, and because it doesn't credit a re-verification made
+between runs, it errs toward checking more.
+
+**Rationale line.** Give every candidate one line with each field present or
+saying why it is missing:
+
+`#N title — P2 · 98 days open (filed 2026-07-21) · deadline 2026-11-03, 7 days remaining (milestone, verified) · surface plan-task: shared with #A, #B (file collision, not a dependency) · freshness: 8 commits to its surface since filed; read at 5d8d489: agreement · deciding signal: age`
+
+The **deciding signal** is the first tier that separated this candidate from
+the next. A deadline from issue text is labelled inherited; one from a
+milestone, verified.
+
+Present the top candidates, each with that rationale line, and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
-recommended candidate first). **With a single ranked candidate, skip the
+recommended candidate first). The rule is advisory: the user still picks.
+**With a single ranked candidate, skip the
 `AskUserQuestion` shortlist ceremony** — a one-option multiSelect is just
-friction; present it inline with its rationale and route straight to §3, where
-`plan-task`'s own checkpoint is the gate.
+friction; present it inline with its rationale line and route straight to §3,
+where `plan-task`'s own checkpoint is the gate.
 
 **Alongside the shortlist, check for an unreleased delta — advisory only.**
 Gate on the repo actually versioning by tag: `git tag -l` finds
@@ -221,7 +294,8 @@ delta is actually worth releasing first — CHANGELOG shape, whether a feature
 chain is mid-flight, release-cadence judgement — is a call for the user (and
 the repo's own release skill, if it has one), not for this check.
 
-In `--non-interactive`, auto-pick the single top-ranked candidate.
+In `--non-interactive`, auto-pick the full-rule winner — the first candidate
+after the freshness check.
 
 ## 3. Plan
 
