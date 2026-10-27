@@ -7,6 +7,19 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`plan-next-issue` breaks priority ties deliberately and checks old candidates before handing them off (#257, #746, #754; ADR-0085).** Before, §2 ranked by priority and readiness only, so a large same-priority tie was ordered arbitrarily, and an old candidate whose premise had since decayed was handed to planning unchecked.
+  - **Tie-break tiers (§2):** within a priority band, ties break by deadline proximity (14-day horizon, never crossing a priority band), then age (older first, by creation date), then a stated fallback. The rationale line names the deciding signal. A date match alone never raises.
+  - **Surface annotation:** the rationale names the inferred surface and up to three tied siblings as a file collision, not a dependency. It never removes or reorders a candidate; hard dependency stays with the unblocker rule.
+  - **Premise-freshness check:** shortlisted candidates whose surface has commits since filing, or whose surface is unresolved, are read against the target and record `read at <sha>` before handoff. Drift is derived each run ("N commits to its surface since filed"); there is no stored freshness stamp.
+  - **Fetch:** the metadata fetch now includes the creation date and the milestone due date; full issue bodies stay off the thread.
+  - **`--non-interactive`:** auto-picks the full-rule winner and names the deciding signal. Only verified (milestone) deadlines raise rank there.
+  - **Handoff:** carries five items; the new one is any deadline, labelled verified (milestone) or inherited (issue text).
+  - **Analyst:** `issue-triage-analyst` enrichment gains an `age:`/`deadline:` slot.
+  - **Triage example query:** the `triage-issues` example `actionQuery` now requests `milestone`. Consumers whose query omits it get inherited deadlines only.
+  - **Untested path:** the milestone and verified-deadline path is untested in this repo, which has no milestones.
+
+  Behavioral skill/agent change → minor version bump at release.
+
 ## [4.41.0] - 2026-10-26
 
 - **`triage-issues` label writes are verified, near-miss contracts are detected safely, and registration follows the contract's location (#659, #631, #246, #509, #507, #601, #606, #665; ADR-0083, ADR-0084).** Before, the bundled templates' Set category, Set type and Set priority recipes listed the label being added in their own `--remove-label`, so it could silently vanish while `gh` exited 0 and the issue was still stamped `triaged`; `--force` could remove a stale duplicate contract or rename a file that only matched a glob; and registration and scaffolding assumed the contract lives under `docs/`.
