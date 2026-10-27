@@ -52,6 +52,7 @@ If the conventions doc is missing, say so in the report and fall back to generic
    - **Dependencies** — blocked-by / blocks / relates-to links between issues.
    - **Split candidates** — one issue bundling multiple unrelated concerns, per the Splitting policy.
    - **Per-issue enrichment** — proposed type, priority, label add/remove, body language cleanup, any missing required fields (→ `needsInfoLabel`), and mechanism-prescription detection: flag issues whose body prescribes a specific implementation mechanism (named functions, a concrete structure, a step-by-step "how") rather than recording an outcome + acceptance criteria, and propose rewriting to outcome+AC, with the acceptance criteria as `- [ ]` rows under an `## Acceptance Criteria` heading (the form `triage-issues` §3 writes and `plan-task` Phase 4 matches), never a bold or inline label. See `development-principles.md` principle #8 (stale-mechanism corollary).
+   - **Age and deadline** — every enrichment entry carries both. Age comes from the creation date the `actionQuery` returns (gh: `createdAt`) and is reported as days plus the creation date; when the query returns none, report `age: unavailable`. A deadline is **verified** only when it comes from the milestone due date (gh: `milestone.dueOn`). A date taken from body text is **inherited**, and is reported only when its sentence ties the work to that date (a due date, close, launch, expiry or cutover); a date match on its own is not a deadline. With no qualifying date, report `deadline: none`.
 6. **Verify an issue's claims against the artifact it names.** (Rationale: `development-principles.md` principle #13 — the obligation is stated here in full because you may not load that doc.)
    - **When it fires (bounded).** Only for an action-set issue that both (a) names a concrete target — a file, doc, section/heading, or symbol — and (b) asserts something about that target's *current* content (what it says, does, or lacks; or wording it proposes to replace). Verify only the targets those claims are about, and only the part each claim concerns. Never read every file an issue mentions; never verify comparison-set issues. Every other issue: `verify: n/a`.
    - **Procedure, in order:**
@@ -89,8 +90,8 @@ Run ONLY read commands (`list`, `view`, `get`, equivalents). Never run a command
 - #61 — bundles 3 unrelated concerns → propose 3 issues / sub-issues per Splitting policy.
 
 ### Per-issue enrichment (one entry per action-set issue)
-- #12: type bug→crash · priority ∅→P1 · labels +area:netcode · body: language cleanup · missing: repro steps → needs-info · deps: none · mechanism: prescribes Init_* fns → suggest rewrite to outcome+AC · verify: partly-shipped (residual: retry path; read at 098121e)
-- #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none · mechanism: ok · verify: n/a
+- #12: type bug→crash · priority ∅→P1 · labels +area:netcode · body: language cleanup · missing: repro steps → needs-info · deps: none · mechanism: prescribes Init_* fns → suggest rewrite to outcome+AC · age: 98d (created 2026-07-21) · deadline: 2026-11-03 (milestone, verified) · verify: partly-shipped (residual: retry path; read at 098121e)
+- #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none · mechanism: ok · age: unavailable · deadline: none · verify: n/a
 
 ### Verification findings
 Tag each entry with the comparand it checked. Step 6's check is `[artifact]` (the issue's claims vs. the artifact it names).
