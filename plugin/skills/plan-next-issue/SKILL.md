@@ -59,7 +59,9 @@ re-implements their work.
      with a usable issue CLI, drive the backlog directly with it for this run:
      `repo.host: github` → `gh issue list` / `gh issue view` (the same commands the
      `bugTracker` example uses). Treat the host-native list as the action query and
-     `gh issue view {id}` as the read. *(Only `github` currently has a usable native
+     `gh issue view {id}` as the read. The list must request the fields §2's
+     ranking needs, e.g. `gh issue list --state open -L 500 --json
+     number,title,labels,body,createdAt,milestone`. *(Only `github` currently has a usable native
      issue CLI; `bitbucket` has none — for it, use the options below.)* This skill
      still performs **no writes**, so do not persist anything automatically; once a
      run succeeds, **print a suggested `bugTracker` block** (the example from
@@ -103,10 +105,13 @@ Detect whether the backlog needs grooming before planning:
   silently here rather than reporting a possibly-stale number, consistent with
   the check being advisory: a possibly-wrong number is worse than none.
 - Run `bugTracker.actionQuery` once, with its output (the whole open backlog)
-  written to a scratch file and not printed. Subtract `bugTracker.triagedLabel`
-  from that saved output, in memory, to get the count of open issues not yet
-  triaged. This is a count/metadata check — read no bodies from it here. §2
-  reads the same saved file.
+  written to a scratch file and not printed. If the number of issues returned
+  equals the query's `-L` limit, warn that the backlog may be truncated. Subtract
+  `bugTracker.triagedLabel` from that saved output, in memory (a `jq` filter over
+  the scratch file), to get the count of open issues not yet triaged. This is a
+  count/metadata check — read no bodies from it here. When triage runs, the
+  triage analyst runs the query itself as well; §2 still reads only this saved
+  file.
 - **First, sanity-check the query's scope.** If `actionQuery` contains a label
   filter (GitHub `gh`: `--label`/`-l` or a `label:` term — adjust for your
   tracker's equivalent), warn the user:
@@ -162,7 +167,9 @@ Build a **ranked shortlist** of candidate issues to address:
   enrichment, and **Verification findings** — no second fetch. A `premise-false`
   or `partly-shipped` finding *is* the already-shipped check below, already done
   against the target the analyst read: flag or de-prioritize the candidate and
-  carry the named residual into its rationale; call out `stricter-shipped`.
+  carry the named residual into its rationale; call out `stricter-shipped`. A
+  `premise-false` or `proposal-stale` finding demotes the candidate the way the
+  freshness check below does: listed below the shortlist, shown, not offered.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -173,10 +180,17 @@ Build a **ranked shortlist** of candidate issues to address:
   the query a second time.
 - **Ranking data, on every path.** §2's ranking fields come from §1's saved
   output: number, title, labels, the creation date (gh: `createdAt`), the
-  milestone due date (gh: `milestone.dueOn`), and only the lines carrying a date
-  on or after today. Read only those fields from the file with a short script
-  or `jq` over it, never the bodies whole, so reading it does not dump bodies
-  into the thread. Past dates in issue text aren't extracted. If the query
+  milestone due date (gh: `milestone.dueOn`), the lines carrying a date on or
+  after today, the checklist lines (for the epic rule below), and the
+  `Blocked by #N` / `Depends on #N` lines (for readiness and the unblocker rule
+  below). Read only those fields from the file with a short script or `jq` over
+  it, never the bodies whole, so reading it does not dump bodies into the
+  thread. Past dates in issue text aren't extracted. **When triage just ran**,
+  the saved file predates it: apply the changes triage actually made (labels,
+  priority, and the `triaged`/`needs-info` the user accepted and the run
+  applied, not mere proposals) on top of the saved rows, and those applied
+  changes win over the saved file. Everything else (creation date, milestone,
+  dated lines, checklist and blocker lines) comes from the saved file. If the query
   returns no creation date, say so: the age tier is skipped, drift can't be
   computed, and the freshness check below treats every shortlisted candidate as
   unverified. If it returns no milestone, only issue-text dates remain, all
@@ -186,9 +200,10 @@ Rank by readiness to plan: higher priority first, then issues that are already
 triaged/enriched and unblocked (no open dependency), de-prioritizing anything
 still `needsInfoLabel` or flagged a duplicate. **An epic / tracking / umbrella
 issue is not itself a plannable unit** — recognize one by an `epic:`/`tracking:`
-title prefix or a body that's a checklist of child issues, and don't rank it as
-a candidate; route to its next *unblocked* child instead. And when a
-higher-priority issue is **blocked by** a lower-priority one (its dependency),
+title prefix or checklist lines of child issues (extracted above, not the body),
+and don't rank it as a candidate; route to its next *unblocked* child instead.
+And when a higher-priority issue is **blocked by** a lower-priority one (its
+dependency, from the `Blocked by #N` / `Depends on #N` lines extracted above),
 surface the *unblocker* as the better candidate rather than the blocked parent —
 planning the blocker first is what actually advances the higher-priority work. **Also flag/de-prioritize any
 candidate that may already be shipped:** when an issue names a concrete target
@@ -235,7 +250,7 @@ by these tiers, each applied only when every tier above it is tied:
    `--non-interactive`, use the lowest issue number, and say it is arbitrary.
 
 The tiers produce the **ordered list**: the candidates in tier order, before the
-shortlist is cut.
+freshness check demotes any and the shortlist is cut.
 
 **Surface resolver.** The contention annotation and the freshness check below
 both need a candidate's surface, and it is inferred one way: take the title
@@ -256,14 +271,20 @@ premise makes planning wasted work, so a shortlisted candidate gets one
 **premise-freshness check** when it has no in-session verification finding and
 its surface has drifted since filing (drift > 0), is unresolved, or has no
 creation date (drift can't be computed). The check is the already-shipped check
-above — read the target itself — and records `read at <sha>` from `git
-rev-parse origin/<default-branch>`, in the same `read at <sha>` form the triage
-analyst records (ADR-0072). The result is agreement (the target still matches
-the issue's claim), `partly-shipped`, `premise-false` or `proposal-stale`. A
-`premise-false` or `proposal-stale` result takes the candidate off the
+above — read the target itself, at the recorded ref (e.g. `git show
+origin/<default-branch>:<path>`), not the working tree, so the content matches
+the sha — and records `read at <sha>` from `git rev-parse
+origin/<default-branch>`, in the same `read at <sha>` form the triage analyst
+records (ADR-0072). The result is agreement (the target still matches the
+issue's claim), `partly-shipped`, `premise-false`, `proposal-stale`,
+`target-absent` or `artifact-wrong`, with a `stricter-shipped` flag possible.
+A `premise-false` or `proposal-stale` result takes the candidate off the
 shortlist: it is shown, not offered, on its own line below the shortlist, as
-"#N demoted: decayed premise (<outcome>, read at <sha>)". `partly-shipped`
-keeps its rank and names the residual. The check runs once, with no second
+"#N demoted: decayed premise (<outcome>, read at <sha>)". Only those two
+demote. `partly-shipped` keeps its rank and names the residual; `target-absent`
+keeps its rank and flags "target not found"; `artifact-wrong` keeps its rank and
+names the artifact as the side in error; a `stricter-shipped` flag keeps the
+rank and is shown. The check runs once, with no second
 pass: the next-ranked candidate takes the demoted one's slot without itself
 being checked, and shows "freshness not checked". The check runs under
 `--non-interactive` too, before the auto-pick. The shortlist is at most 4, the
@@ -314,9 +335,9 @@ delta is actually worth releasing first — CHANGELOG shape, whether a feature
 chain is mid-flight, release-cadence judgement — is a call for the user (and
 the repo's own release skill, if it has one), not for this check.
 
-In `--non-interactive`, auto-pick the full-rule winner — the first candidate
-of the ordered list once the freshness check has run (a demoted candidate has
-already left it and is named in the closing summary).
+In `--non-interactive`, auto-pick the full-rule winner — the first candidate in
+tier order that the freshness check did not demote (a demoted candidate is
+named in the closing summary).
 
 ## 3. Plan
 
@@ -395,7 +416,9 @@ sequential `plan-task` runs). Name the **deciding signal** of each chosen issue 
 the tier that put it first (e.g. age, or deadline proximity) — and, under
 `--non-interactive`, the deciding signal of the auto-picked issue. When the
 fallback decided, say the choice was arbitrary. Under `--non-interactive`, name
-any demoted candidate with its outcome. Point the user at the plan(s) `plan-task` produced.
+any demoted candidate with its outcome, and if the auto-picked candidate took a
+demoted one's slot and so was not freshness-checked, say "freshness not
+checked". Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
 its `gh issue create` was blocked — the auto-mode write-classifier denied it (a
