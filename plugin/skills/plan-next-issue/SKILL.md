@@ -164,12 +164,13 @@ In `--non-interactive`, triage automatically when untriaged issues exist; pass
 Build a **ranked shortlist** of candidate issues to address:
 
 - **If triage just ran**, reuse the `issue-triage-analyst` report's priorities,
-  enrichment, and **Verification findings** — no second fetch. A `premise-false`
-  or `partly-shipped` finding *is* the already-shipped check below, already done
-  against the target the analyst read: flag or de-prioritize the candidate and
-  carry the named residual into its rationale; call out `stricter-shipped`. A
-  `premise-false` or `proposal-stale` finding demotes the candidate the way the
-  freshness check below does: listed below the shortlist, shown, not offered.
+  enrichment, and **Verification findings** — no second fetch. A Verification
+  finding *is* the already-shipped check below, already done against the target
+  the analyst read, and its outcome is handled exactly as the freshness check
+  below handles the same outcome: `premise-false` or `proposal-stale` demotes
+  the candidate (listed below the shortlist, shown, not offered);
+  `partly-shipped` keeps its rank and carries the named residual into its
+  rationale; call out `stricter-shipped`.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -286,7 +287,10 @@ keeps its rank and flags "target not found"; `artifact-wrong` keeps its rank and
 names the artifact as the side in error; a `stricter-shipped` flag keeps the
 rank and is shown. The check runs once, with no second
 pass: the next-ranked candidate takes the demoted one's slot without itself
-being checked, and shows "freshness not checked". The check runs under
+being checked, and shows "freshness not checked" — unless it already carries
+an in-session finding, which it shows instead and which applies as above (a
+`premise-false` or `proposal-stale` finding demotes it too, and the next one
+moves up). The check runs under
 `--non-interactive` too, before the auto-pick. The shortlist is at most 4, the
 `AskUserQuestion` option limit, which also bounds the cost; if ties exceed 4,
 say so.
