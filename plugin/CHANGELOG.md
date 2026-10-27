@@ -7,11 +7,12 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- **`plan-next-issue` breaks priority ties deliberately and checks old candidates before handing them off (#257, #746, #754; ADR-0085).** Before, §2 ranked by priority and readiness only, so a large same-priority tie was ordered arbitrarily, and an old candidate whose premise had since decayed was handed to planning unchecked.
+- **`plan-next-issue` breaks priority ties deliberately and checks old candidates before handing them off (#257, #746, #754; ADR-0085).** Before, §2 ranked by priority and readiness only, so nothing ordered candidates inside a priority band; the read of a candidate's named target was not tied to how far its surface had drifted since filing; and that read was not recorded as `read at <sha>`.
   - **Tie-break tiers (§2):** within a priority band, ties break by deadline proximity (14-day horizon, never crossing a priority band), then age (older first, by creation date), then a stated fallback. The rationale line names the deciding signal. A date match alone never raises.
   - **Surface annotation:** the rationale names the inferred surface and up to three tied siblings as a file collision, not a dependency. It never removes or reorders a candidate; hard dependency stays with the unblocker rule.
-  - **Premise-freshness check:** shortlisted candidates whose surface has commits since filing, or whose surface is unresolved, are read against the target and record `read at <sha>` before handoff. Drift is derived each run ("N commits to its surface since filed"); there is no stored freshness stamp.
-  - **Fetch:** the metadata fetch now includes the creation date and the milestone due date; full issue bodies stay off the thread.
+  - **Premise-freshness check:** shortlisted candidates whose surface has commits since filing, whose surface is unresolved, or that have no creation date are read against the target and record `read at <sha>` before handoff. The check runs once: a demoted candidate moves to the end and its replacement is shown as "freshness not checked". Drift is derived each run ("N commits to its surface since filed"); there is no stored freshness stamp.
+  - **Fetch:** the metadata fetch now includes the creation date and the milestone due date. The query output goes to a scratch file rather than being printed, and only the ranking fields plus lines carrying a date on or after today are read from it, so issue bodies are not read onto the thread. After triage, a candidate the analyst report doesn't cover takes its age and deadline from §1's `actionQuery` result.
+  - **Deadline source:** the milestone due date is the authoritative schedule; a configured schedule-file key was considered and declined, and issue-text dates are labelled inherited.
   - **`--non-interactive`:** auto-picks the full-rule winner and names the deciding signal. Only verified (milestone) deadlines raise rank there.
   - **Handoff:** carries five items; the new one is any deadline, labelled verified (milestone) or inherited (issue text).
   - **Analyst:** `issue-triage-analyst` enrichment gains an `age:`/`deadline:` slot.
