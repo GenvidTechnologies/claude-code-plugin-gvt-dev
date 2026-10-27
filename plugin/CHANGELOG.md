@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.42.0] - 2026-10-27
+
 - **`plan-next-issue` breaks priority ties deliberately and checks old candidates before handing them off (#257, #746, #754; ADR-0085).** Before, §2 ranked by priority and readiness only, so nothing ordered candidates inside a priority band; the read of a candidate's named target was not tied to how far its surface had drifted since filing; and that read was not recorded as `read at <sha>`.
   - **Tie-break tiers (§2):** within a priority band, ties break by deadline proximity (14-day horizon, never crossing a priority band), then age (older first, by creation date), then a stated fallback. The rationale line names the deciding signal. A date match alone never raises.
   - **Surface annotation:** the rationale names the inferred surface and up to three tied siblings as a file collision, not a dependency. It never removes or reorders a candidate; hard dependency stays with the unblocker rule.
