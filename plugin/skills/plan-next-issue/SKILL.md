@@ -12,6 +12,10 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: Subtracted from the action query to detect whether untriaged issues remain (and thus whether to offer triage)
+      - key: bugTracker.needsInfoLabel
+        in: .gvt-agent.json
+        required: false
+        reason: Read so candidates still flagged needs-info are demoted in the readiness tier of the ranking
       - key: repo.host
         in: .gvt-agent.json
         required: false
@@ -19,7 +23,7 @@ metadata:
     tools:
       - command: git
         required: false
-        reason: Confirms repo context before orchestrating
+        reason: Confirms repo context before orchestrating; also used locally to resolve an issue's surface (git ls-files) and to count commits to that surface since the issue was filed (git rev-list), for the shared-file annotation and the premise-freshness check, alongside fetch and the unreleased-delta check
 ---
 
 # Plan Next Issue
