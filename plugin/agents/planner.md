@@ -30,7 +30,7 @@ From a design document (produced by the designer), produce a concrete implementa
 
 ## Process
 
-1. **Read the design** — understand the recommended option, friction audit results, test criteria, and cross-domain boundary.
+1. **Read the design** — understand the recommended option, friction audit results, test criteria, and cross-domain boundary. When the brief names `plan.design.md` (the persisted design), read the verbatim hand-off set from that file: the Test Criteria table, its command blocks, the option labels, Affected Files and the Assignment Table. Corrections the orchestrator made arrive in the brief, not in the file.
 
 2. **Check existing state** — run `git log --oneline -20` to see recent work. Check if prerequisite branches exist or if related work is in progress.
 
@@ -88,6 +88,11 @@ From a design document (produced by the designer), produce a concrete implementa
     - **If the dispatch carried only a summary of the design's options, flag the gap; do not reconstruct them.** Treat it the way item 10 treats a missing Test Criteria table: say so plainly in the plan, because a reconstruction reads as complete while tracing to nothing.
     - **Mark the quote's role: it is source material.** The implementer builds to it; it is not wording the artifact must contain. Where the artifact must carry the design's exact wording (the option labels an ADR records, say), mark that wording as content, which must appear verbatim, instead. `plan-task` states this rule too, and it is repeated here because this agent runs standalone and does not load that skill.
 
+14. **Account for every entry of the design's Affected Files list and every cell of its Assignment Table.** Each one lands in a task, or appears under `## Coverage` as not planned, with a reason.
+    - **The unit is the entry, not the file.** A file already in some task does not cover a missing cell: an Assignment Table cell naming that file for another issue still needs its own task or its own line under `## Coverage`.
+    - **If the design carries neither list, or the dispatch handed you only a summary of them, flag the gap.** Treat it the way item 10 treats a missing Test Criteria table: say so plainly in the plan. Do not reconstruct the lists.
+    - **Never omit an entry to hide it.** An entry that is neither in a task nor listed as not planned is the defect this item exists to catch.
+
 ## Domain Knowledge
 
 Read these at runtime if present:
@@ -137,6 +142,11 @@ Prerequisite branches or PRs (if any).
 Omit this section when every inherited claim still held. Otherwise one line per
 correction: the claim as written, what the live tree says, the evidence that
 settled it, and whether the correction changes what the criterion asks for.
+
+## Coverage
+Required whenever the design carries an Affected Files list or an Assignment
+Table; omit otherwise. One line per entry: `entry → task N` or
+`entry → not planned: reason`.
 
 ## Tasks
 
