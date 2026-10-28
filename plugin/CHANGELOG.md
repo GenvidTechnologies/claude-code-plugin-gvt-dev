@@ -7,6 +7,17 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`issue-triage-analyst`, `triage-issues` and `plan-next-issue` check an issue's body against its own later comments (#203; ADR-0072).** Before, a comment that changed the ask left the body recording a superseded one, and nothing noticed. This is the second comparand ADR-0072 anticipated, next to the existing `[artifact]` check.
+  - **`issue-triage-analyst`:** new Process step 7 reads an action-set issue's comments in order and reports one that changes the proposed change, scope or acceptance as a `[comments]` Verification finding.
+    - The outcome is `refines`, `narrows`, `widens` or `reverses`. The finding is phrased as the corrected ask and names the comment's author and whether that is the issue author.
+    - A comment the body already reflects, or one that only cross-references, links or reports status, is skipped.
+    - Unlike step 6's `[artifact]` check, no artifact is read and the issue's later reasoning is the authority. The agent's `description` now mentions the check.
+    - Comments by anyone are reported alike. In practice triage runs post from the maintainer's account, so authorship is a weak signal; adopting a comment stays a per-issue approval.
+  - **`triage-issues`:** the §3 verification-finding rewrite is scoped to `[artifact]`, and a new `[comments]` bullet offers per-issue reconciliation: append a refined-proposal section citing the comment, or rewrite the proposed change in place. It is folded with any other rewrite into one approval. §5 reports findings by comparand.
+    - **Unattended:** the §4 verification-finding row now covers it, so `--non-interactive` posts a comment and the body is rewritten only under `--force`. This follows ADR-0072's verification-finding row, not the mechanism-rewrite row #203 first asked for, because an unattended body edit would silently pick which version is the ask.
+  - **`plan-next-issue`:** the already-shipped equivalence in §2 is scoped to `[artifact]`. A `[comments]` finding never demotes, and the candidate's rationale names the corrected ask. The §3 handoff carries that corrected ask to `plan-task`, which adopts the recorded ask rather than the body's superseded one.
+  - **`widens`:** added because #203's own second instance (via #349) was a comment that added scope, not one that narrowed or replaced it.
+
 ## [4.43.0] - 2026-10-28
 
 - **`plan-task` persists its phase artifacts and checks the hand-off entry by entry (#185, #216, #410, #413; ADR-0086).** Before, the requirements and design documents existed only as hand-back messages relayed through the orchestrator's context. Nothing checked that the design's file list reached the plan's tasks, or that a criterion row survived the trip to the issue body intact.
