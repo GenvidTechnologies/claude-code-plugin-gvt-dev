@@ -10,18 +10,18 @@ and follows [semantic versioning](https://semver.org/).
 - **`plan-task` persists its phase artifacts and checks the hand-off entry by entry (#185, #216, #410, #413; ADR-0086).** Before, the requirements and design documents existed only as hand-back messages relayed through the orchestrator's context. Nothing checked that the design's file list reached the plan's tasks, or that a criterion row survived the trip to the issue body intact.
   - **Persisted artifacts:** the orchestrator saves the analyst's report as `plan.requirements.md` and the designer's as `plan.design.md`, beside `plan.md`.
     - A new `### Phase artifacts` subsection covers both kinds of report:
-      - an auto-persisted report is copied with `cp` and checked with `cmp`, with a leading `[harness:` line dropped and reported;
+      - an auto-persisted report is copied with `cp` (raw text assumed; a JSON envelope has its text field extracted with `node` or `jq` and is then proven), with a leading `[harness:` line dropped and reported;
       - an inline report is written and the copy proven.
     - A blocked write falls back to the inline hand-off.
     - The approved design is never edited after it is persisted, and each artifact is still presented at its checkpoint.
     - The planner reads the verbatim hand-off set from the file; corrections travel in the Phase 3 brief.
     - The pipeline agents stay read-only.
     - The artifacts follow `plan.md` through the multi-session hand-off, `create-pr`'s scratch cleanup, and the plan-next-issue, split-branch and publish-npm-package exclusions.
-    - **Consuming repos:** Phase 4 now runs `git check-ignore` on all three files. A repo that ignores only `plan.md` should add a `plan.*.md` ignore pattern, or the artifacts can be staged.
+    - **Consuming repos:** Phase 4 now runs `git check-ignore` on all three files and, by default, keeps the artifacts unstaged, staging only by explicit path. A repo that ignores only `plan.md` may want a `plan.*.md` ignore pattern. Plan-task proposes it rather than editing your `.gitignore` mid-run.
   - **Coverage:** `designer` emits `## Affected Files` on every design and `## Assignment Table` on multi-issue designs (new step 10). `planner` accounts for every entry in a new `## Coverage` section (item 14). The unit is the entry: a file already in some task does not cover a missing cell.
   - **Fidelity:** a new self-audit row, "Hand-off fidelity, entry by entry", checks the hand-off in two modes.
     - Exact-copy covers criteria rows, their command blocks and option labels: each row's Verification cell must survive intact, and commands must be byte-identical.
-    - Accounted-for covers the Affected Files entries and Assignment Table cells; a `## Coverage` line is keyed by path, or by target and path for a cell.
+    - Accounted-for covers the Affected Files entries and Assignment Table cells; a `## Coverage` line is keyed by path, or by target, path and change for a cell. This mode does not apply on the shortcut paths.
     - The exact-copy mode re-runs before the Phase 4 issue-body write. Its source is the persisted design, the persisted proposal on the full-proposal shortcut, or the plan's own checklist on the simple-task shortcut and for checkpoint-authored rows.
     - Only an unrecorded difference counts as lossy.
 - **Records follow what they assert; empty-result rows need a positive control; shortcut paths apply the agents' criteria rules (#224, #404; ADR-0086).**
