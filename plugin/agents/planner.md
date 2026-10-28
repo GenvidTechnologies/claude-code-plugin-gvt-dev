@@ -146,7 +146,7 @@ settled it, and whether the correction changes what the criterion asks for.
 ## Coverage
 Required whenever the design carries an Affected Files list or an Assignment
 Table; omit otherwise. One line per entry: `path → task N` for an Affected Files
-entry, `target × path × change → task N` for a cell; either takes `→ not planned: reason`.
+entry, `target × file × change → task N` for a cell; either takes `→ not planned: reason`.
 
 ## Tasks
 
