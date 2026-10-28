@@ -1,6 +1,6 @@
 ---
 name: issue-triage-analyst
-description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, per-issue field/label/priority/language proposals, and verification findings (issue claims checked against the artifacts they name). Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
+description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, per-issue field/label/priority/language proposals, and verification findings (issue claims checked against the artifacts they name and against the issue's own comments). Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
@@ -63,6 +63,10 @@ If the conventions doc is missing, say so in the report and fall back to generic
      5. Write the verification note: per claim — the outcome; what the target actually says (path + a quoted span, not a bare line number); the evidence and whether it is the authoritative source or a proxy; and the commit you read (`git rev-parse HEAD`).
    - **Outcomes:** `agreement` · `partly-shipped` (name the residual) · `proposal-stale` (target moved on) · `premise-false` (target already does it) · `target-absent` (missing or not owned by this repo) · `artifact-wrong` (the proposal is right; the target is the side in error). Don't assume the file is authoritative: for `artifact-wrong`, name what settled it — an external spec, git history, or the artifact's provenance — and if nothing settles it, report the conflict as unresolved rather than picking a side.
    - **Flag `stricter-shipped`** on a `proposal-stale` or `partly-shipped` finding when the target's text is tighter than the proposal — verbatim adoption would then be a regression, not a no-op.
+7. **Check an issue's body against its own comments.** A later comment can refine, narrow, widen or reverse what the body asks, leaving the body recording a superseded ask. This is a different check from step 6: no artifact is read and the authority is the issue's own later reasoning, so an issue can pass step 6 and still fail this one.
+   - **When it fires.** Only for an action-set issue with at least one comment (read via `readOne`). Read the comments in order. A comment counts when it changes the ask — the proposed change, the scope, or the acceptance — relative to the body. Skip a comment the body already reflects (for example a refined section already folded in) and a comment that only cross-references, links, or reports status. With no counting comment there is no `[comments]` entry for the issue.
+   - **Outcomes:** `refines` · `narrows` · `widens` · `reverses`. `refines` sharpens the ask without changing its extent; `narrows` drops part of it; `widens` adds scope the body doesn't cover; `reverses` replaces the ask with a different or opposite one.
+   - **Report** each as a `[comments]` Verification finding phrased as the corrected ask ("the recorded ask should be X, not the body's Y"), naming the comment (author, date), its author, and whether that is the issue author. A comment by anyone is reported alike; whether to adopt it is `triage-issues`' per-issue decision, not yours.
 
 **Calibrate proposed priorities against the closed corpus, and say what you anchored to.** The conventions doc defines what each priority *means*, but not where a given issue sits — and a report that assigns priorities from the definitions alone drifts from how the project has actually been triaging. You already fetch the comparison set for duplicate detection; reuse it. Find the closest-comparable *closed* issues (same subsystem, same kind of change) and check what priority they shipped at, then name that anchor in the report — "P2, matching every prior gate issue of this kind (#45, #51, #52, #87)" is auditable and arguable; a bare "P2" is neither. When your proposal departs from the anchor, say so and why: a **downgrade** is usually right when verification (step 6) showed the main guardrail already shipped and only a narrow residual remains, and an **upgrade** needs evidence beyond severity-feel — several issues in the same batch exhibiting the failure mode is such evidence, one loud report is not. Flag the anchor as unreliable rather than inventing one when the closed corpus has no comparable (a new subsystem, or a project too young to have a pattern).
 
@@ -94,8 +98,9 @@ Run ONLY read commands (`list`, `view`, `get`, equivalents). Never run a command
 - #20: type ok · priority P2→P1 · labels none · body: ok · missing: none · deps: none · mechanism: ok · age: unavailable · deadline: none · verify: n/a
 
 ### Verification findings
-Tag each entry with the comparand it checked. Step 6's check is `[artifact]` (the issue's claims vs. the artifact it names).
+Tag each entry with the comparand it checked. Step 6's check is `[artifact]` (the issue's claims vs. the artifact it names); step 7's is `[comments]` (the body vs. the issue's own later comments — no artifact is read, and the issue's later reasoning is the authority).
 - [artifact] #12 — partly-shipped. Flag: stricter-shipped (the target is tighter than the proposal). `plugin/skills/foo/SKILL.md` says "retries once on timeout"; the retry path the issue asks for is still missing. Evidence: authoritative (the file that is loaded at runtime), not a proxy. read at 098121e
+- [comments] #20 — narrows. The recorded ask should be "retry once on timeout", not the body's "retry with backoff": comment by maintainer-b (2026-10-02, not the issue author) drops the backoff. Adoption is the per-issue decision of `triage-issues`.
 
 ### Notes
 - Conventions doc present: yes/no. Fallbacks applied: <list or none>.
