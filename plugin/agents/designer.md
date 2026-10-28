@@ -161,7 +161,7 @@ Read these at runtime if present:
 # Design: [Feature Name]
 
 ## Requirements Summary
-Brief restatement of what we're solving (the analysis is in `plan.requirements.md`).
+Brief restatement of what we're solving (link the analysis document; under plan-task it is `plan.requirements.md`).
 
 ## Design
 ### Option A: [Name] (recommended)

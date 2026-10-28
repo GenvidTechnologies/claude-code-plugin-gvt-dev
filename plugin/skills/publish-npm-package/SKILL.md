@@ -104,7 +104,7 @@ a build:
   `npm publish --dry-run`) and read the file list — a no-build package has no
   `dist/` to gate on, so the risk shifts to *over*-shipping. Tighten `.npmignore`
   (or `files`) to exclude dev/planning artifacts (tests, configs, `plan.md`,
-  scratch dirs) that a source-shipping package would otherwise include.
+  `plan.requirements.md`, `plan.design.md`, scratch dirs) that a source-shipping package would otherwise include.
 
 Everything else in this skill (OIDC publishing, the `publish.yml` filename match,
 the Phase 5 bootstrap) is identical.

@@ -97,7 +97,7 @@ Common groupings:
 
 | Commit type | Action |
 |-------------|--------|
-| `plan.md` updates | Exclude — use content for commit messages instead |
+| `plan.md` updates (and `plan.requirements.md`, `plan.design.md`) | Exclude — use content for commit messages instead |
 | `CLAUDE.md` in feature sessions | Move to process-improvements branch |
 | Process docs (skills, agents) | Move to process-improvements branch |
 | Mixed commits (feature + plan.md) | Cherry-pick, then exclude `plan.md` changes |
@@ -165,7 +165,7 @@ Use `/gvt-dev:create-pr` for each branch. Set targets to create a stack:
 - **Squash wisely** — one commit per branch makes review cleaner.
 - **Use session plans** — if a plan artifact is available, use session descriptions for commit messages.
 - **Test incrementally** — verify each branch before creating the next.
-- **Exclude tracking files** — `plan.md` stays on the original branch or is deleted.
+- **Exclude tracking files** — `plan.md` (with `plan.requirements.md` and `plan.design.md`) stays on the original branch or is deleted.
 
 ## Common Pitfalls
 

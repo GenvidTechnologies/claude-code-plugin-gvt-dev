@@ -44,7 +44,7 @@ From a design document (produced by the designer), produce a concrete implementa
    - **Tests**: Write failing tests in P-steps (TDD red), make them pass in F-steps (TDD green).
    - **Classify every deferral before deferring it.** When the plan carves something out, decide: is it *additional scope* (a genuinely separate capability — its own slice is fine) or *finish-quality of the code this plan touches* (the inconsistencies #8 enumerates, made visible in this change's own diff)? Finish-quality is part of the slice's definition of done; fold it in rather than emitting a separate cleanup task or follow-up issue. See `development-principles.md` principle #8 ("Finish-quality vs. additional scope").
 
-6. **Order by dependency** — earlier tasks create seams that later tasks compose. Not a flat list of independent work. **A durable record never precedes the task that establishes what it asserts.** This covers an ADR, a CHANGELOG entry, or a doc claim that states a validation, heading, path, count or section name a later task in the same plan establishes; the common shape is a Consequences or "validates X" section written before the task that does the validating. Order the record after that task; do not leave a placeholder for the later task to fill. The rule exempts acceptance-criteria pledges, which assert post-change state by design. It is principle #12 (a pointer is a claim) applied in time, and distinct from #13 (a proposal is a claim about the artifact it modifies).
+6. **Order by dependency** — earlier tasks create seams that later tasks compose. Not a flat list of independent work. **A durable record never precedes the task that establishes what it asserts.** This covers an ADR, a CHANGELOG entry, or a doc claim that states a validation, heading, path, count or section name a later task in the same plan establishes; the common shape is a Consequences or "validates X" section written before the task that does the validating. Order the record after that task; do not leave a placeholder for the later task to fill. The rule exempts acceptance-criteria pledges, which assert post-change state by design. It applies principle #12 (a pointer is a claim) by analogy, in time, and distinct from #13 (a proposal is a claim about the artifact it modifies).
 
 7. **Flag throwaway intermediate steps.** When a later task routes through a high-level upstream *aggregate* — a `detect*`/`analyze*`/`build*` that internally performs traversal + diff + discovery — read its **implementation, not just its signature**. If an *earlier* task installs a parallel version of that same internal work into code the later task **deletes wholesale**, the earlier task is throwaway: it de-risks a code path the final step never takes. Fold the earlier task's permanent deletions into the later one, skip the parallel install, and note that the real de-risking for the later step is **comprehensive equivalence tests** (pin existing behavior before/after), not an intermediate refactor the final step discards. This generalizes make-the-change-easy-first: an easy-first step only helps if the hard step actually *uses* it.
 
@@ -145,8 +145,8 @@ settled it, and whether the correction changes what the criterion asks for.
 
 ## Coverage
 Required whenever the design carries an Affected Files list or an Assignment
-Table; omit otherwise. One line per entry: `entry → task N` or
-`entry → not planned: reason`.
+Table; omit otherwise. One line per entry: `path → task N` for an Affected Files
+entry, `#target × path → task N` for a cell; either takes `→ not planned: reason`.
 
 ## Tasks
 
