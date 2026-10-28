@@ -28,6 +28,7 @@ and follows [semantic versioning](https://semver.org/).
   - **Record ordering:** `planner` item 6 orders an ADR, CHANGELOG entry or doc claim after the task that establishes the validation, heading, path, count or section name it asserts, never with a placeholder. Acceptance-criteria pledges are exempt. Phase 4 step 6 defers such a record, and a new self-audit row checks the order.
   - **Positive controls:** the zero-hit rule (#218) now also covers a pass condition of no output, or a skip or no-op report. For an invoked command, the control is evidence that it reaches the code under test on the pre-change tree. `designer`, `planner`, `validator` and `code-reviewer` carry matching wording, and a new self-audit row checks it.
   - **Shortcut paths:** on both shortcut paths the orchestrator authors the plan; the simple-task shortcut's "the planner can produce a minimal plan" wording is replaced to match. It applies `designer` steps 5, 8 and 9 and `planner` items 10-12 by reference, and records any positive control it adds as a defective-row correction.
+- **`tech-writer` and `ts-implementer` author file content with the Write and Edit tools, never through the shell.** Both modes forbid a heredoc, `cat > file` or a writing `node -e`. Before this, a bare `cat > file` with no input blocked on stdin and stalled a run for over an hour. A long command the harness moves to the background is waited on through its completion notice, not polled with `sleep`.
 
 ## [4.42.0] - 2026-10-27
 
