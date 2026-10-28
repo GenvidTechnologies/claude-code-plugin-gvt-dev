@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.43.0] - 2026-10-28
+
 - **`plan-task` persists its phase artifacts and checks the hand-off entry by entry (#185, #216, #410, #413; ADR-0086).** Before, the requirements and design documents existed only as hand-back messages relayed through the orchestrator's context. Nothing checked that the design's file list reached the plan's tasks, or that a criterion row survived the trip to the issue body intact.
   - **Persisted artifacts:** the orchestrator saves the analyst's report as `plan.requirements.md` and the designer's as `plan.design.md`, beside `plan.md`.
     - A new `### Phase artifacts` subsection covers both kinds of report:
