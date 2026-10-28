@@ -7,6 +7,27 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`plan-task` persists its phase artifacts and checks the hand-off entry by entry (#185, #216, #410, #413; ADR-0086).** Before, the requirements and design documents existed only as hand-back messages relayed through the orchestrator's context. Nothing checked that the design's file list reached the plan's tasks, or that a criterion row survived the trip to the issue body intact.
+  - **Persisted artifacts:** the orchestrator saves the analyst's report as `plan.requirements.md` and the designer's as `plan.design.md`, beside `plan.md`.
+    - A new `### Phase artifacts` subsection covers both kinds of report:
+      - an auto-persisted report is byte-copied, with a leading `[harness:` line dropped and reported;
+      - an inline report is written and the copy proven.
+    - A blocked write falls back to the inline hand-off.
+    - The approved design is never edited after it is persisted, and each artifact is still presented at its checkpoint.
+    - The planner reads the verbatim hand-off set from the file; corrections travel in the Phase 3 brief.
+    - The pipeline agents stay read-only.
+    - The artifacts share `plan.md`'s lifecycle: `.gitignore` (`plan.*.md`), the multi-session hand-off, and `create-pr`'s scratch cleanup.
+  - **Coverage:** `designer` emits `## Affected Files` on every design and `## Assignment Table` on multi-issue designs (new step 10). `planner` accounts for every entry in a new `## Coverage` section (item 14). The unit is the entry: a file already in some task does not cover a missing cell.
+  - **Fidelity:** a new self-audit row, "Hand-off fidelity, entry by entry", checks the hand-off in two modes.
+    - Exact-copy covers criteria rows, their command blocks and option labels: each row's Verification cell must survive intact, and commands must be byte-identical.
+    - Accounted-for covers the Affected Files entries and Assignment Table cells.
+    - The exact-copy mode re-runs before the Phase 4 issue-body write.
+    - Only an unrecorded difference counts as lossy.
+- **Records follow what they assert; empty-result rows need a positive control; shortcut paths apply the agents' criteria rules (#224, #404; ADR-0086).**
+  - **Record ordering:** `planner` item 6 orders an ADR, CHANGELOG entry or doc claim after the task that establishes the validation, heading, path, count or section name it asserts, never with a placeholder. Acceptance-criteria pledges are exempt. Phase 4 step 6 defers such a record, and a new self-audit row checks the order.
+  - **Positive controls:** the zero-hit rule (#218) now also covers a pass condition of no output, or a skip or no-op report. For an invoked command, the control is evidence that it reaches the code under test on the pre-change tree. `designer`, `planner`, `validator` and `code-reviewer` carry matching wording, and a new self-audit row checks it.
+  - **Shortcut paths:** on both shortcut paths the orchestrator authors the plan. It applies `designer` steps 5, 8 and 9 and `planner` items 10-12 by reference, and records any positive control it adds as a defective-row correction.
+
 ## [4.42.0] - 2026-10-27
 
 - **`plan-next-issue` breaks priority ties deliberately and checks old candidates before handing them off (#257, #746, #754; ADR-0085).** Before, §2 ranked by priority and readiness only, so nothing ordered candidates inside a priority band; the read of a candidate's named target was not tied to how far its surface had drifted since filing; and that read was not recorded as `read at <sha>`.
