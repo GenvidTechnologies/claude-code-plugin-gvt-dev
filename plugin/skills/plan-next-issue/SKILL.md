@@ -164,13 +164,16 @@ In `--non-interactive`, triage automatically when untriaged issues exist; pass
 Build a **ranked shortlist** of candidate issues to address:
 
 - **If triage just ran**, reuse the `issue-triage-analyst` report's priorities,
-  enrichment, and **Verification findings** — no second fetch. A Verification
-  finding *is* the already-shipped check below, already done against the target
-  the analyst read, and its outcome is handled exactly as the freshness check
-  below handles the same outcome: `premise-false` or `proposal-stale` demotes
-  the candidate (listed below the shortlist, shown, not offered);
-  `partly-shipped` keeps its rank and carries the named residual into its
-  rationale; call out `stricter-shipped`.
+  enrichment, and **Verification findings** — no second fetch. An `[artifact]`
+  Verification finding *is* the already-shipped check below, already done
+  against the target the analyst read, and its outcome is handled exactly as
+  the freshness check below handles the same outcome: `premise-false` or
+  `proposal-stale` demotes the candidate (listed below the shortlist, shown,
+  not offered); `partly-shipped` keeps its rank and carries the named residual
+  into its rationale; call out `stricter-shipped`. A `[comments]` finding is a
+  different check (the body against the issue's own later comments, no
+  artifact) and never demotes: the candidate keeps its rank, and its rationale
+  names the corrected ask — the outcome and the comment it came from.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -388,7 +391,10 @@ rather than infer one); the **routing verdict** for this invocation —
 issue is **shortcut-eligible** (proposes a concrete change/mechanism, not just
 a problem + goal); any **already-shipped / residual finding** from §2, so
 `plan-task` doesn't re-derive it (the premise-freshness check's result, `read at
-<sha>` and its outcome, rides inside this item); and any deadline, labelled
+<sha>` and its outcome, rides inside this item); any `[comments]` finding's
+**corrected ask** from §2 (with the comment it came from), so `plan-task`
+adopts the recorded ask rather than the body's superseded one — it rides with
+that item, or as its own; and any deadline, labelled
 **verified** (from a milestone) or **inherited** (from issue text). This describes what's *passed* into the
 invocation, not anything written — nothing here is written; the writes all
 happen inside `plan-task`.
