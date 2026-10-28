@@ -43,7 +43,7 @@ Creates a pull request by preparing details and either invoking `gh` (GitHub) or
 
 Check `git status` for stray scratch files at the repo root and handle them deliberately:
 
-- **Ephemeral planning files** (e.g., `plan.md` at root, typically gitignored): if all tasks are complete, delete locally — the PR replaces it as the record of work. If tasks remain, ask the user.
+- **Ephemeral planning files** (e.g., `plan.md` at root, typically gitignored, and its persisted phase artifacts `plan.requirements.md` and `plan.design.md`): if all tasks are complete, delete them locally — the PR replaces them as the record of work. If tasks remain, ask the user.
 - **Other root-level scratch artifacts** (any `*.md`, `*.csv`, `*.txt` outside `docs/` that looks like an in-progress draft): **ask the user before deleting**. These are often pre-session user scratch — offer "delete / move / keep" as explicit options.
 - **Permanent docs and tracking files** (anything in `docs/`, project tracking files the project uses): leave alone.
 

@@ -58,4 +58,4 @@ For *decision* rationale specifically — architectural choices and rejected alt
 
 ## Session Management
 
-For large plans (heavy codebase exploration or parallel subagent work), recommend splitting into separate sessions: plan in one session (commit `plan.md`), execute in the next (read `plan.md` and work through todos). This prevents context exhaustion before execution completes.
+For large plans (heavy codebase exploration or parallel subagent work), recommend splitting into separate sessions: plan in one session (commit `plan.md` where it is tracked, otherwise it and its artifacts stay in the working tree for the next session), execute in the next (read `plan.md` and work through todos). The persisted phase artifacts, `plan.requirements.md` and `plan.design.md`, travel with `plan.md`, so the next session reads the approved design from disk rather than from a summary. This prevents context exhaustion before execution completes.

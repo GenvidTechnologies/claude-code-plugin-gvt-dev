@@ -84,6 +84,7 @@ From a requirements document (produced by the analyst), propose a concrete desig
      - A grep prescribed against prose this same design authors must survive that prose's markup — the design writes the sentence and the command that checks it in one pass and nothing cross-checks them, so a literal copied out of the intended sentence breaks on emphasis markers, backticks, or a line wrap the eventual file introduces. Emphasis *around* a whole phrase is harmless; emphasis *inside* it is what kills the match. Anchor on the longest span of intended prose carrying no markup within it, short enough to survive rewrapping. (Surfaced on #218: a row greping a four-word phrase could never match because the prose the same design prescribed bolded that phrase's second word.)
      - A zero-hit result at execution time is ambiguous, not a pass — so settle it in the row, at design time, while you still can. Whoever grades the checklist (`gvt-dev:validator`, `gvt-dev:code-reviewer`) has the row and the diff, not your intent. A row shipping its own positive control is already disambiguated; one that does not delegates the disambiguation to a reader with no reason to know it is owed.
      - A zero baseline under a pass condition above zero (`→ ≥1`, baseline 0) is the same ambiguity arriving earlier: the zero can mean "absent today" or "the pattern cannot match", and the row reads identically either way. It needs a must-match control, run as `printf '%s\n' '<line that must match>' | grep -cE '<pattern>'` → 1. A pattern that mixes a literal pipe with an alternation pipe adds a must-not-match line as well. The control itself contains a pipe, so it goes in the row's command block (see the container bullet below), not in the cell. (Surfaced on burbank-playfab#325.)
+     - The zero-hit rule above also covers a pass condition of "no output, or a skip or no-op report". For a row that invokes a command or script, the control is evidence that the command reaches the code under test on the pre-change tree, run once against that tree before the row is pledged. plan-task's rule for invoked commands is the paragraph beginning "A command that fails its own baseline is a defective row" in its SKILL.md.
    - **A command containing a pipe never sits in a table cell, escaped or not.** GFM requires `\|` inside a cell, but no hop renders the table: the planner, plan-task's splice into the issue body, and both graders all read the raw text, so the backslash stays part of the command. Four shapes carry a pipe, and each is handled distinctly. ERE or rg alternation: `\|` turns alternation into a literal pipe, so the pattern goes dead (measured: `a\|b` matches 3 lines under BRE grep, 1 under `grep -E`, 1 under rg on the three lines `a`, `b`, `a|b`). A literal-pipe regex: `\|` is intended under -E or rg, and un-escaping it would break it. BRE alternation: `\|` is alternation under plain grep, so it is correct, and the `readdir` example in the token-grep bullet above is right as written. A shell pipeline: an unescaped `|` would split the cell, and an escaped one is no longer a pipe. The rule: rewrite the command without a pipe where that is natural (`-e` lists, `grep -c` instead of `| wc -l`), or put the command in a fenced block keyed by row id below the table, one line per command, and name the block in the cell. Run the row's positive control through the same command, in the same block. This replaces both a blanket ban on the escaped pipe and a blanket un-escape; the container rule decides, not the character. (Surfaced on the #193 plan, then construct3-chef#256, burbank-playfab#325 and #711's V8.)
 
    *Is the expected value right?*
@@ -130,6 +131,12 @@ From a requirements document (produced by the analyst), propose a concrete desig
    - A claim about what a named subject does — a function, tool, handler, command, flag, or a **governing document** such as an ADR, a documented convention, or a `CLAUDE.md` rule — asserted to produce, emit, return, reject, **permit**, or **forbid** something — is verified by opening that subject and is **read in full**, not pattern-matched by name or skimmed via a nearby signal (a docstring, a call site, a sibling's behavior). A whitelist and a spread are indistinguishable in effect until they aren't, and the difference is only visible in the body. **When the claim invokes a governing rule by name, read the rule itself, not only the artifact the claim edits.** A criterion naming a rule is a claim *about that rule*, and a repo's own summary of it is not a substitute — a misapplied rule propagates from wherever it was summarized, so "the author was careless" is not a filter that catches it.
    - This step owns the general rule: verify the assertion against the source; don't infer it from a nearby signal. It applies to every claim the design makes about the repo, not only to paths — later documents that cite this step are citing this rule, stated once, here. Development principle #12 is the reason a citation itself needs the same discipline: *a pointer is a claim about its target*, so a "see step 9" is exactly the kind of assertion this step requires be checked before it's written.
 
+10. **Emit the file inventory** — the design names the files it touches, and the planner needs that set stated, not inferred from the prose:
+   - **Affected Files** is emitted on every design. It lists every file the design changes, plus each file it names but deliberately leaves untouched, with the reason. New files are marked `(new)`.
+   - **Assignment Table** is emitted only when the design spans more than one target issue. One row per cell (target × file × change), and a cell is keyed by all three: a file serving two targets is two rows, and two distinct changes to one file for one target are two rows.
+   - Step 9's path check applies to every entry in both.
+   - Both sections join the verbatim hand-off set the planner receives, alongside the Test Criteria table, its command blocks and the option labels. The planner must account for every entry, either in a task or as not planned with a reason.
+
 ## Domain Knowledge
 
 Read these at runtime if present:
@@ -154,7 +161,7 @@ Read these at runtime if present:
 # Design: [Feature Name]
 
 ## Requirements Summary
-Brief restatement of what we're solving (link to analysis doc).
+Brief restatement of what we're solving (link the analysis document; under plan-task it is `plan.requirements.md`).
 
 ## Design
 ### Option A: [Name] (recommended)
@@ -188,6 +195,13 @@ Step-by-step walkthrough of how the feature is used.
 - Existing library candidate: ...
 - LOC tradeoff: ...
 - User decision: ...
+
+## Affected Files
+- `path` — change, or `path` — untouched: reason (one line per file; mark new files `(new)`)
+
+## Assignment Table (only when the design spans more than one target issue)
+| Target | File | Change |
+|--------|------|--------|
 
 ## Test Criteria
 | Requirement | Verification | Type |
