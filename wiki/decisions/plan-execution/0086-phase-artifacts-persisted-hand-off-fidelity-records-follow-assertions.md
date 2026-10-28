@@ -39,7 +39,7 @@ Measured on this machine on 2026-10-27, these facts shaped the persistence choic
 
 **Fidelity.** One approval row, "Hand-off fidelity, entry by entry", runs in two modes:
 - exact-copy, for the Test Criteria rows, their command blocks and the option labels;
-- accounted-for, for the Affected Files entries and Assignment Table cells, checked through `## Coverage` (keyed by path for a file entry, or by target, path and change for a cell).
+- accounted-for, for the Affected Files entries and Assignment Table cells, checked through `## Coverage` (keyed by path for a file entry, or by target, file and change for a cell).
 
 It is re-run at the Phase 4 step 4 issue-body write, so the check covers the second transcription as well as the first. The source is `plan.design.md` on the full pipeline and `plan.requirements.md` on the full-proposal shortcut. The simple-task shortcut and checkpoint-authored rows have no upstream copy, so they compare against the plan's own checklist. Accounted-for mode does not apply on the shortcut paths, where no designer runs.
 

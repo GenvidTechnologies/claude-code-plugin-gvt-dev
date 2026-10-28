@@ -21,7 +21,7 @@ and follows [semantic versioning](https://semver.org/).
   - **Coverage:** `designer` emits `## Affected Files` on every design and `## Assignment Table` on multi-issue designs (new step 10). `planner` accounts for every entry in a new `## Coverage` section (item 14). The unit is the entry: a file already in some task does not cover a missing cell.
   - **Fidelity:** a new self-audit row, "Hand-off fidelity, entry by entry", checks the hand-off in two modes.
     - Exact-copy covers criteria rows, their command blocks and option labels: each row's Verification cell must survive intact, and commands must be byte-identical.
-    - Accounted-for covers the Affected Files entries and Assignment Table cells; a `## Coverage` line is keyed by path, or by target, path and change for a cell. This mode does not apply on the shortcut paths.
+    - Accounted-for covers the Affected Files entries and Assignment Table cells; a `## Coverage` line is keyed by path, or by target, file and change for a cell. This mode does not apply on the shortcut paths.
     - The exact-copy mode re-runs before the Phase 4 issue-body write. Its source is the persisted design, the persisted proposal on the full-proposal shortcut, or the plan's own checklist on the simple-task shortcut and for checkpoint-authored rows.
     - Only an unrecorded difference counts as lossy.
 - **Records follow what they assert; empty-result rows need a positive control; shortcut paths apply the agents' criteria rules (#224, #404; ADR-0086).**
