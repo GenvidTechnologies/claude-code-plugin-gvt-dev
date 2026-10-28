@@ -29,51 +29,64 @@ Measured on this machine on 2026-10-27, these facts shaped the persistence choic
 
 ## Decision 1: phase artifacts are persisted by the orchestrator; hand-off coverage and fidelity are checked
 
-**Persistence (W1).** The orchestrator persists the analysis as `plan.requirements.md` and the design as `plan.design.md`, beside `plan.md`. The pipeline agents stay read-only, which preserves ADR-0004. A verbatim hand-off set travels to the next agent by path, and the artifacts follow `plan.md` for gitignore, multi-session handling and PR creation.
+**Persistence.** The orchestrator persists the analysis as `plan.requirements.md` and the design as `plan.design.md`, beside `plan.md`. The pipeline agents stay read-only, which preserves ADR-0004.
+- A harness-persisted report is copied with `cp` and proven with `cmp`, because the Write tool decodes `\u`-style escapes. An inline report is written, then proven against the message.
+- A verbatim hand-off set travels to the next agent by path. When the write is blocked, the brief carries the set inline as before.
+- The artifacts follow `plan.md` through the multi-session hand-off and `create-pr`'s cleanup.
+- `git check-ignore` is checked on each of the three files, since a repo that ignores only `plan.md` leaves the artifacts stageable. This repo ignores `plan.*.md`.
 
-**Coverage (W2).** The designer's output gains `## Affected Files` and `## Assignment Table`. The planner gains an item that produces `## Coverage`, where the unit is the entry: a file already present in some task does not cover a cell that is missing.
+**Coverage.** The designer's output gains `## Affected Files` and `## Assignment Table`. The planner gains an item that produces `## Coverage`, where the unit is the entry: a file already present in some task does not cover a cell that is missing.
 
-**Fidelity (W2).** One approval row, "Hand-off fidelity, entry by entry", runs in two modes: exact-copy for the Test Criteria rows, their command blocks and the option labels, and accounted-for for the Affected Files entries and Assignment Table cells, checked through `## Coverage`. It is re-run at the Phase 4 step 4 issue-body write, so the check covers the second transcription as well as the first.
+**Fidelity.** One approval row, "Hand-off fidelity, entry by entry", runs in two modes:
+- exact-copy, for the Test Criteria rows, their command blocks and the option labels;
+- accounted-for, for the Affected Files entries and Assignment Table cells, checked through `## Coverage` (keyed by path, or by target and path for a cell).
 
-**Exact-copy scope was narrowed after sampling.** The design first said every cell's text must be unchanged and in order, with separators allowed to differ. Sampled against this branch's own design table and the acceptance checklist transcribed from it into the #185 issue body, that wording passed none of the 33 rows: ordinary transcription folds the Type column, rewords the requirement label and capitalises "block". The shipped rule is that each row's Verification cell appears intact (case and whitespace aside, additions allowed), the requirement label may be reworded, the Type column may be folded, and commands are byte-identical. On the same pair it passes 31 of 33 rows. One of the two failures (C8 among the acceptance rows on #185) differs by a recorded correction. The other (O4) differs by one unrecorded comma, which is a true difference the rule should report. The rule still fails when a clause is dropped from a verification cell, which is its negative control. The user chose the narrowed rule.
+It is re-run at the Phase 4 step 4 issue-body write, so the check covers the second transcription as well as the first. The source is `plan.design.md` on the full pipeline and `plan.requirements.md` on the full-proposal shortcut. The simple-task shortcut and checkpoint-authored rows have no upstream copy, so they compare against the plan's own checklist.
+
+**Exact-copy scope was narrowed after sampling.** The design first said every cell's text must be unchanged and in order, with separators allowed to differ. Sampled against this branch's own design table and the acceptance checklist transcribed from it into the #185 issue body, that wording passed none of the 33 rows: ordinary transcription folds the Type column, rewords the requirement label and capitalises "block". The shipped rule is that each row's Verification cell appears intact (case and whitespace aside, additions allowed), the requirement label may be reworded, the Type column may be folded, and commands are byte-identical. On the same pair it passes 31 of 33 rows. One of the two failures (C8 among the acceptance rows on #185) differs by a recorded correction. The other (O4) differs by one unrecorded comma, which is a true difference the rule should report. The rule still fails when a clause is dropped from a verification cell, which is its negative control. The user chose the narrowed rule. The sample's design side was a gitignored planning artifact that is not in the repository, so the measurement cannot be re-run from the repository after merge. The figures stand as recorded here and in #185's acceptance section.
 
 **Adjacent items.** Item 16's remedy was reworded in place to re-dispatch with `plan.design.md`; the audit-gated optional step passed with 0 errors. ADR-0030 and ADR-0080 are unchanged, and `plan-task`'s sentence "Pass the designer's `## Test Criteria` table through verbatim" is not edited.
 
 ## Decision 2: records follow what they assert; positive controls cover empty results; the shortcut sweep is by reference
 
-**Records follow assertions (W3).** The planner's item 6 is edited in place so that a record (an ADR, a CHANGELOG entry, a doc) is ordered after the task whose outcome it asserts, deferred until that task lands rather than written with a placeholder: a placeholder ships if the later task fails, and it collides with Phase 4 step 6's no-placeholder rule. Acceptance-criteria pledges are exempt, since they state what must become true, not that it already is.
+**Records follow assertions.** The planner's item 6 is edited in place so that a record (an ADR, a CHANGELOG entry, a doc) is ordered after the task whose outcome it asserts, deferred until that task lands rather than written with a placeholder: a placeholder ships if the later task fails, and it collides with Phase 4 step 6's no-placeholder rule. Acceptance-criteria pledges are exempt, since they state what must become true, not that it already is.
 
 **Positive control widened (#404).** The zero-hit rule from #218 now also covers a check that prints no output and a skip or no-op report. For an invoked command, the control is evidence that the command reaches the code under test on the pre-change tree. The designer takes the rule as a sub-bullet after its zero-baseline sub-bullet, not at the zero-hit rule's own line, because editing that line in place breaks 7 ADR-0038 citations (measured). The planner takes it in place. Both graders carry one byte-identical sentence.
 
-**Shortcut sweep (W4).** On the shortcut paths the orchestrator authors the plan and applies designer steps 5, 8 and 9 and planner items 10 to 12 by reference, plus an approval row. Before this change, a sweep of 85 planner and designer obligations found 28 covered on the shortcut paths, 22 partly covered, 31 not covered and 4 not applicable. The by-reference rule closes the criteria-authoring gaps, which carry the defects most likely to ship because their rows go straight into the pledged checklist. The plan-shaping obligations (mirror fidelity, throwaway steps, the consumer-workflow trace, the library-versus-custom choice and similar) stay with the checklist's lightweight friction pass.
+**Shortcut sweep.** On both shortcut paths the orchestrator authors the plan, including the simple-task path's minimal plan, and applies designer steps 5, 8 and 9 and planner items 10 to 12 by reference, plus an approval row. Before this change, a sweep of 85 planner and designer obligations found 28 covered on the shortcut paths, 22 partly covered, 31 not covered and 4 not applicable. The by-reference rule closes the criteria-authoring gaps, which carry the defects most likely to ship because their rows go straight into the pledged checklist. The plan-shaping obligations (mirror fidelity, throwaway steps, the consumer-workflow trace, the library-versus-custom choice and similar) stay with the checklist's lightweight friction pass.
 
 **Dogfooded here.** The plan ordered the CHANGELOG before this record, but the CHANGELOG entry cites this record's number. The order was swapped: the record is authored first, then the CHANGELOG, per the rule this record states.
 
 ## Compromise
 
 ```
-W1-A (chosen): orchestrator persists plan.requirements.md and plan.design.md; agents stay read-only
-W1-B (rejected, follow-up): agents write via a Write tool scoped by a PreToolUse Write/Edit hook keyed on agent_type
-reverses ADR-0004's read-only pipeline; needs a hook, a lib and tests; rests on an untested Write-matcher claim; headless runs deny the write in default mode
-W1-C (rejected): the scratchpad or a tracker comment
-scratchpad does not survive the session (durability was required); a tracker comment is size-limited and an external best-effort write
+Who writes the artifacts
+  chosen:   the orchestrator persists plan.requirements.md and plan.design.md; agents stay read-only
+  rejected: the agents write via a Write tool scoped by a PreToolUse Write/Edit hook keyed on agent_type
+            (follow-up #774) - reverses ADR-0004's read-only pipeline; needs a hook, a lib and tests;
+            rests on an untested Write-matcher claim; headless runs deny the write in default mode
+  rejected: the session scratchpad or a tracker comment - the scratchpad does not survive the session
+            (durability was required); a tracker comment is size-limited and an external best-effort write
 
-W2-A (chosen): Affected Files, Assignment Table, Coverage, one approval row with two modes
-W2-B (rejected): rewrite item 16 in place
-one row with two remedies dilutes the reconstruction tell
-W2-C (rejected): use the analyst's Touch Points as the source
-the planner never receives them, they predate the design, and they have no target dimension
+How coverage and fidelity are checked
+  chosen:   Affected Files, Assignment Table, Coverage, one approval row with two modes
+  rejected: rewrite item 16 in place - one row with two remedies dilutes the reconstruction tell
+  rejected: use the analyst's Touch Points as the source - the planner never receives them,
+            they predate the design, and they have no target dimension
 
-W3-A (chosen): edit item 6 in place
-W3-B (rejected): a new item later in the list, which splits ordering away from item 6
-W3-C (rejected): a Key Principles bullet, which is not a process step
+Where the record-ordering rule lives
+  chosen:   edit planner item 6 in place
+  rejected: a new item later in the list - splits ordering away from item 6
+  rejected: a Key Principles bullet - not a process step
 
-W4-a (chosen): by reference
-W4-b (rejected): dispatch the designer for criteria authoring on the shortcut; the planner-side rows still need (a), and it costs a dispatch per run
-W4-c (rejected): copy the rules; 53 copies that drift
+How the shortcut paths get the agents' criteria rules
+  chosen:   apply them by reference
+  rejected: dispatch the designer for criteria authoring on the shortcut - the planner-side rules
+            still need the by-reference rule, and it costs a dispatch per run
+  rejected: copy the rules - 53 copies that drift
 ```
 
-W1-B is kept as a follow-up in case the inline-copy proof catches loss in practice; it is to be filed as its own issue, not decided here. W2-A is chosen over B because two remedies in one row blur which failure a reviewer is looking at. W4-a keeps the user's default of the lighter shortcut, at the cost that "by reference" relies on the orchestrator actually opening the rules it cites.
+The agent-writes alternative is tracked in #774, to be taken up if the inline-copy proof catches loss in practice. The single two-mode row is chosen over rewriting item 16 because two remedies in one row blur which failure a reviewer is looking at. Applying the rules by reference keeps the user's default of the lighter shortcut, at the cost that it relies on the orchestrator actually opening the rules it cites.
 
 **What this costs.** The orchestrator writes two more files per plan and runs one more approval row, twice. The exact-copy rule is deliberately weaker than the design's first wording, so it tolerates reworded labels; it will not catch a changed label that matters. On the shortcut paths, the plan-shaping obligations get only the lightweight friction pass, not the designer's full audit.
 
@@ -83,4 +96,5 @@ W1-B is kept as a follow-up in case the inline-copy proof catches loss in practi
 - No pointer repair was forced. Every placement sits at a measured-safe position, and `.pointer-baseline.json` is unchanged.
 - ADR-0030 and ADR-0080 are unchanged.
 - The #218 rule now has a wider reach, so a check with no output or a skip report needs a control that shows it can fire.
-- W1-B is to be filed as a follow-up issue, to be taken up if the inline-copy proof is seen to lose content.
+- #774 tracks the agent-writes alternative, to be taken up if the inline-copy proof is seen to lose content.
+- Consuming repos that ignore only `plan.md` need a `plan.*.md` ignore pattern to keep the artifacts out of commits.
