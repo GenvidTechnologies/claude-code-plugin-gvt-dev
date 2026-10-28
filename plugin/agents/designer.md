@@ -133,7 +133,7 @@ From a requirements document (produced by the analyst), propose a concrete desig
 
 10. **Emit the file inventory** — the design names the files it touches, and the planner needs that set stated, not inferred from the prose:
    - **Affected Files** is emitted on every design. It lists every file the design changes, plus each file it names but deliberately leaves untouched, with the reason. New files are marked `(new)`.
-   - **Assignment Table** is emitted only when the design spans more than one target issue. One row per cell (target × file × change); a file serving two targets is two rows.
+   - **Assignment Table** is emitted only when the design spans more than one target issue. One row per cell (target × file × change), and a cell is keyed by all three: a file serving two targets is two rows, and two distinct changes to one file for one target are two rows.
    - Step 9's path check applies to every entry in both.
    - Both sections join the verbatim hand-off set the planner receives, alongside the Test Criteria table, its command blocks and the option labels. The planner must account for every entry, either in a task or as not planned with a reason.
 
