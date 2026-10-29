@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.44.0] - 2026-10-29
+
 - **`issue-triage-analyst` checks an issue's body against its own later comments, `triage-issues` reconciles it, `plan-next-issue` carries the corrected ask, and `plan-task` adopts it (#203; ADR-0072).** Before, a comment that changed the ask left the body recording a superseded one, and nothing noticed. This is the second comparand ADR-0072 anticipated, next to the existing `[artifact]` check.
   - **`issue-triage-analyst`:** new Process step 7 reads an action-set issue's comments in order and reports one that changes the proposed change, scope or acceptance as a `[comments]` Verification finding.
     - The outcome is `refines`, `narrows`, `widens` or `reverses`. The finding is phrased as the corrected ask and names the comment's author, date and URL, and whether that is the issue author.
