@@ -499,8 +499,10 @@ split). Present them together, then apply the approved changes using the **Mutat
   `[artifact]`, and the comment's URL for `[comments]`, taken from the finding
   (a tracker whose comments have no URL uses its stable comment id). Before
   posting, check the issue's comments and skip the note when an existing
-  comment's first line matches that whole line exactly, so a re-run never posts
-  it twice. An `[artifact]` note read at a different sha is a different note and
+  comment's first line begins `Triage verification note` and carries the same
+  `[<comparand>]` and `<source>`. The outcome is not part of the match: a re-run
+  can word it differently for the same evidence, so a re-run never posts the
+  note twice. An `[artifact]` note read at a different sha is a different note and
   is posted, because the evidence moved. Post it through the
   contract's Comment recipe. A contract scaffolded before 4.32.0 still
   passes the text inline; never send a backticked note through that form — write
@@ -523,7 +525,7 @@ split). Present them together, then apply the approved changes using the **Mutat
   Under `--non-interactive` without `--force`, post the finding as a comment
   instead (§4), through the same body-file Comment recipe as the `[artifact]`
   note above, opening with the same first-line template (here `<source>` is the
-  comment's URL) and skipped on the same exact first-line match;
+  comment's URL) and skipped on the same comparand-and-source match;
 - **then read the labels back.** Read the labels back with `bugTracker.readOne` (or the tracker's native issue view) and compare them with the set you intended to leave on the issue. A tracker CLI can exit 0 while a label write did nothing, so the write's own exit code is not evidence. On a mismatch, re-apply once and re-read. If it still mismatches, it is a failed write: stop on that issue and do not stamp it;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed and only after a matching readback. This keeps the skill idempotent: an
