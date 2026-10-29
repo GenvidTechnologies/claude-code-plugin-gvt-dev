@@ -54,7 +54,7 @@ citation, not by a new bullet: baseline-must-be-measured is already owned at
 against the pre-change tree — never assert one from reading the file"*);
 vacuity (a baseline that already satisfies the pass condition) is already
 owned at `planner.md:66`; and the baseline re-run clause the planner needs at
-transcription time already shipped at `plan-task/SKILL.md:98` in #330
+transcription time already shipped in `plan-task/SKILL.md` in #330
 (*"'Verbatim' governs the row's wording, not its truth"*).
 
 **(2) The comparison-control rule is a SPECIALIZATION of `designer.md`'s

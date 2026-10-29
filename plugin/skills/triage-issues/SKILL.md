@@ -482,9 +482,9 @@ split). Present them together, then apply the approved changes using the **Mutat
   than adding a second one. `plan-task` matches the canonical heading and
   supersedes it with a mapping; a criterion left as a label is one it can only
   mark superseded or fork on;
-- when the analyst's **Verification findings** report anything other than
-  `agreement` for this issue, present the finding with the target's actual text
-  and offer a body rewrite that cites what the target says: `partly-shipped` →
+- when the analyst's **Verification findings** report an `[artifact]` finding
+  other than `agreement` for this issue, present the finding with the target's
+  actual text and offer a body rewrite that cites what the target says: `partly-shipped` →
   rescope to the residual; `proposal-stale` → drop or reframe the stale passage,
   and never adopt wording a `stricter-shipped` flag marks as weaker than what
   shipped; `premise-false` → correct the premise; `target-absent` → record that
@@ -493,13 +493,39 @@ split). Present them together, then apply the approved changes using the **Mutat
   this into the mechanism rewrite when both apply — one rewrite, one approval.
   The rewrite names the claims it checked and the commit it read, rather than a
   general "verified" stamp. Under `--non-interactive` without `--force`, post the
-  note as a comment instead (§4). Post it through the
+  note as a comment instead (§4). The note opens with this first line:
+  `Triage verification note — [<comparand>] <outcome> — <source>`, where
+  `<source>` is `<path> @ <sha>` (the target path and the read sha) for
+  `[artifact]`, and the comment's URL for `[comments]`, taken from the finding
+  (a tracker whose comments have no URL uses its stable comment id). Before
+  posting, check the issue's comments and skip the note when an existing
+  comment's first line begins `Triage verification note` and carries the same
+  `[<comparand>]` and `<source>`. The outcome is not part of the match: a re-run
+  can word it differently for the same evidence, so a re-run never posts the
+  note twice. An `[artifact]` note read at a different sha is a different note and
+  is posted, because the evidence moved. Post it through the
   contract's Comment recipe. A contract scaffolded before 4.32.0 still
   passes the text inline; never send a backticked note through that form — write
   it to `{tmpfile}` and post it with `gh issue comment {id} --body-file {tmpfile}`
   (or the tracker's equivalent body-file form) instead. The analyst
   stays read-only: this skill makes the write. Per `development-principles.md`
   principle #13;
+- when the analyst's **Verification findings** report a `[comments]` finding for
+  this issue (`refines` · `narrows` · `widens` · `reverses`), present the
+  comment (author, date, and whether that is the issue author) and the
+  corrected ask, and offer, with per-issue approval, to reconcile the body:
+  either append a refined-proposal section citing the comment (the author's
+  original framing stays as the record) or rewrite the proposed-change section
+  in place. A comment by anyone is reported alike; adopting it is this
+  per-issue approval's decision. Acceptance criteria in the rewrite follow the
+  `- [ ]` rows rule above. `[comments]` and `[artifact]` are distinct checks —
+  the first reads the issue's own later reasoning, the second an artifact — but
+  when a mechanism rewrite, an `[artifact]` rewrite and a `[comments]`
+  reconciliation apply to one issue, fold them into one rewrite, one approval.
+  Under `--non-interactive` without `--force`, post the finding as a comment
+  instead (§4), through the same body-file Comment recipe as the `[artifact]`
+  note above, opening with the same first-line template (here `<source>` is the
+  comment's URL) and skipped on the same comparand-and-source match;
 - **then read the labels back.** Read the labels back with `bugTracker.readOne` (or the tracker's native issue view) and compare them with the set you intended to leave on the issue. A tracker CLI can exit 0 while a label write did nothing, so the write's own exit code is not evidence. On a mismatch, re-apply once and re-read. If it still mismatches, it is a failed write: stop on that issue and do not stamp it;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed and only after a matching readback. This keeps the skill idempotent: an
@@ -534,7 +560,7 @@ regardless; only the create is best-effort (see
 | Update a stale wiki-index link after a wiki-default rename (§0c) | part of the rename approval | not reached; a wiki rename never runs unattended |
 | Stale-duplicate resolution — remove or merge a dead near-miss alongside a canonical contract (§0c) | preview, then per-option approval | **deferred**, including under `--force` |
 | Field / label / priority / body / language (except a verification-finding rewrite — next row) | per-issue approval | auto-apply |
-| Body rewrite from a verification finding (§3) | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
+| Body rewrite from a verification finding (§3) — an `[artifact]` rewrite or a `[comments]` reconciliation | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
 | Close-as-duplicate / create split issues | approve per item | **deferred** unless `--force` |
@@ -549,7 +575,8 @@ explicit `--force`. These actions are hard to reverse on most trackers.
 Report: issues triaged; fields / labels / priorities changed; duplicates linked or
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run. Report verification findings by
-outcome, and which were rewritten into the body versus posted as a comment.
+comparand (`[artifact]` or `[comments]`) and outcome, and which were rewritten
+into the body versus posted as a comment.
 
 Report the label readback per issue (§3): matched, re-applied, or failed. Report
 any legacy-guard strips (§3), and §0c's set-recipe warning. Do not cite the write

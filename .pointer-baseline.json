@@ -192,13 +192,6 @@
     },
     {
       "file": "wiki/decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
-      "pointer": "plan-task/SKILL.md:98",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "79839881acff"
-    },
-    {
-      "file": "wiki/decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
       "pointer": "planner.md:66",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
