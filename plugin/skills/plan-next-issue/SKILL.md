@@ -173,7 +173,9 @@ Build a **ranked shortlist** of candidate issues to address:
   into its rationale; call out `stricter-shipped`. A `[comments]` finding is a
   different check (the body against the issue's own later comments, no
   artifact) and never demotes: the candidate keeps its rank, and its rationale
-  names the corrected ask — the outcome and the comment it came from.
+  names the corrected ask — the outcome and the comment it came from. Never
+  demoting is deliberate: the finding corrects what the issue asks, not whether
+  the work is still needed.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -224,7 +226,8 @@ of those are content questions; only reading the target answers them. This is
 also the ranking-time instance of `development-principles.md` principle **#13** —
 a proposal is a claim about the artifact it modifies — so what you learn here is
 worth carrying into the handoff, since `plan-task` owes the same check at
-adoption time. When triage just ran, its Verification findings already did this read.
+adoption time. When triage just ran, its `[artifact]` Verification findings
+already did this read; a `[comments]` finding reads no target.
 This is a soft signal, not a hard exclude (many issues name no concrete target,
 and a partial overlap usually means *rescope*, not *skip*); surface it in the
 candidate's one-line rationale — naming which part already shipped and which
@@ -272,7 +275,7 @@ rule above. §3's clustering consumes the annotation.
 
 **Premise-freshness check, before the shortlist is presented.** A decayed
 premise makes planning wasted work, so a shortlisted candidate gets one
-**premise-freshness check** when it has no in-session verification finding and
+**premise-freshness check** when it has no in-session `[artifact]` finding and
 its surface has drifted since filing (drift > 0), is unresolved, or has no
 creation date (drift can't be computed). The check is the already-shipped check
 above — read the target itself, at the recorded ref (e.g. `git show
@@ -291,7 +294,7 @@ names the artifact as the side in error; a `stricter-shipped` flag keeps the
 rank and is shown. The check runs once, with no second
 pass: the next-ranked candidate takes the demoted one's slot without itself
 being checked, and shows "freshness not checked" — unless it already carries
-an in-session finding, which it shows instead and which applies as above (a
+an in-session `[artifact]` finding, which it shows instead and which applies as above (a
 `premise-false` or `proposal-stale` finding demotes it too, and the next one
 moves up). The check runs under
 `--non-interactive` too, before the auto-pick. The shortlist is at most 4, the
