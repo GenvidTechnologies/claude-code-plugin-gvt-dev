@@ -395,8 +395,9 @@ issue is **shortcut-eligible** (proposes a concrete change/mechanism, not just
 a problem + goal); any **already-shipped / residual finding** from §2, so
 `plan-task` doesn't re-derive it (the premise-freshness check's result, `read at
 <sha>` and its outcome, rides inside this item); any `[comments]` finding's
-**corrected ask** from §2 (with the comment it came from), so `plan-task`
-adopts the recorded ask rather than the body's superseded one — it rides with
+**corrected ask** from §2 (with the URL of the comment it came from, so
+`plan-task` can re-read it), so `plan-task` adopts the recorded ask rather than
+the body's superseded one — it rides with
 that item, or as its own; and any deadline, labelled
 **verified** (from a milestone) or **inherited** (from issue text). This describes what's *passed* into the
 invocation, not anything written — nothing here is written; the writes all
