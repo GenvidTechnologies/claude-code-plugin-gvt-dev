@@ -514,7 +514,8 @@ split). Present them together, then apply the approved changes using the **Mutat
   reconciliation apply to one issue, fold them into one rewrite, one approval.
   Under `--non-interactive` without `--force`, post the finding as a comment
   instead (§4), through the same body-file Comment recipe as the `[artifact]`
-  note above;
+  note above. Before posting, check the issue's comments for a note already
+  posted for the same finding, and don't post it twice;
 - **then read the labels back.** Read the labels back with `bugTracker.readOne` (or the tracker's native issue view) and compare them with the set you intended to leave on the issue. A tracker CLI can exit 0 while a label write did nothing, so the write's own exit code is not evidence. On a mismatch, re-apply once and re-read. If it still mismatches, it is a failed write: stop on that issue and do not stamp it;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed and only after a matching readback. This keeps the skill idempotent: an
@@ -564,7 +565,8 @@ explicit `--force`. These actions are hard to reverse on most trackers.
 Report: issues triaged; fields / labels / priorities changed; duplicates linked or
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run. Report verification findings by
-comparand (`[artifact]` or `[comments]`) and outcome, and which were rewritten into the body versus posted as a comment.
+comparand (`[artifact]` or `[comments]`) and outcome, and which were rewritten
+into the body versus posted as a comment.
 
 Report the label readback per issue (§3): matched, re-applied, or failed. Report
 any legacy-guard strips (§3), and §0c's set-recipe warning. Do not cite the write
