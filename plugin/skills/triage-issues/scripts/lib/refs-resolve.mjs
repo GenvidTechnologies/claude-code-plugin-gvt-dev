@@ -4,12 +4,20 @@
 // spawning, no network. Every tracker read is a command plan() PRINTS for the
 // caller to run; resolve() only reads what the caller saved.
 //
-// Parts 1 and 2 (this file today): state resolution, the lookup plan, the
-// readiness core (blockers, deferral triggers), native structure, the banner,
-// umbrella routing and precedence. A later part extends the named seams marked
-// "SEAM" below:
-//   - release consumption and the registry plan: classifyClosedCrossRepo,
-//     planRegistry
+// Parts 1 to 3: state resolution, the lookup plan, the readiness core
+// (blockers, deferral triggers), native structure, the banner, umbrella
+// routing and precedence, and release consumption for closed cross-repo
+// blockers (D3): classifyClosedCrossRepo and planRegistry.
+//
+// Release consumption reads two manifests with fs, nothing else: the
+// .gitmodules and package.json directly under options.root. This script never
+// runs git, so "tracked" is the CALLER's responsibility: options.root must
+// name a checkout whose manifests are the tracked ones. With no root, or no
+// file, nothing is read and the consumption is unknown.
+//
+// Registry keys: "npm.repository.<dep>" and "npm.time.<dep>", the dependency
+// name escaped (see registryKey). A bare "." never appears in a state key
+// ("." is escaped there), so a registry key cannot collide with one.
 //
 // Every rule is its own small named predicate or function, so each can be
 // disabled on its own (mutation run).
@@ -17,9 +25,20 @@
 // Regex hygiene: every pattern is linear (no nested quantifiers) because the
 // inputs include untrusted issue text and saved command output.
 
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { extract } from './refs-grammar.mjs';
 
 // ---- constants ----
+
+// D3: at most this many npm packages are checked per run.
+const REGISTRY_CAP_DEFAULT = 5;
+const NPM_NAME_MAX = 214;
+const NPM_NAME_RE = /^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
+const DEP_SECTIONS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+// Keys of `npm view <dep> time --json` that are not versions.
+const TIME_NON_VERSION_KEYS = new Set(['created', 'modified', 'unpublished']);
 
 const SAFE_REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 const DOTS_ONLY_RE = /^\.+$/;
@@ -203,6 +222,11 @@ function numberOption(value) {
   return Number(value);
 }
 
+function registryCapOption(value) {
+  const n = numberOption(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : REGISTRY_CAP_DEFAULT;
+}
+
 /**
  * Normalise the saved inputs and options once, and run the grammar over every
  * open issue. Exported as the seam the later parts hang their data on.
@@ -248,6 +272,8 @@ export function buildContext(input, options) {
         ? opts.stateTemplate
         : DEFAULT_STATE_TEMPLATE,
     order: opts.order,
+    root: typeof opts.root === 'string' && opts.root !== '' ? opts.root : null,
+    registryCap: registryCapOption(opts.registryCap),
     openByNumber,
     openTruncated: isOpenListTruncated(open.length, limit),
     comparison,
@@ -352,10 +378,279 @@ function cutKeysOf(targets, ctx) {
   return cut;
 }
 
-// SEAM (part 3): the registry commands for closed cross-repo blockers.
-// eslint-disable-next-line no-unused-vars
-export function planRegistry(_ctx) {
-  return [];
+// ---- rule: manifests (D3 inference input) ----
+
+function readTextOrNull(root, name) {
+  if (!root) return null;
+  try {
+    const text = fs.readFileSync(path.join(root, name), 'utf8');
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  } catch {
+    return null;
+  }
+}
+
+// The url = lines of a .gitmodules.
+function submoduleUrlsIn(text) {
+  const urls = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const eq = raw.indexOf('=');
+    if (eq < 0 || raw.slice(0, eq).trim() !== 'url') continue;
+    const value = raw.slice(eq + 1).trim();
+    if (value !== '') urls.push(value);
+  }
+  return urls;
+}
+
+// Every { name, spec } of the four dependency sections of a package.json.
+function dependenciesIn(text) {
+  let pkg;
+  try {
+    pkg = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  if (!pkg || typeof pkg !== 'object') return [];
+  const out = [];
+  for (const section of DEP_SECTIONS) {
+    const deps = pkg[section];
+    if (!deps || typeof deps !== 'object' || Array.isArray(deps)) continue;
+    for (const [name, spec] of Object.entries(deps)) {
+      if (typeof spec === 'string') out.push({ name, spec });
+    }
+  }
+  return out;
+}
+
+const manifestCache = new WeakMap();
+
+function manifestsOf(ctx) {
+  const cached = manifestCache.get(ctx);
+  if (cached) return cached;
+  const gitmodules = readTextOrNull(ctx.root, '.gitmodules');
+  const packageJson = readTextOrNull(ctx.root, 'package.json');
+  const manifests = {
+    submoduleUrls: gitmodules === null ? [] : submoduleUrlsIn(gitmodules),
+    deps: packageJson === null ? [] : dependenciesIn(packageJson),
+  };
+  manifestCache.set(ctx, manifests);
+  return manifests;
+}
+
+// ---- rule: naming a repo (source consumption, repository.url) ----
+
+// The lowercase "owner/repo" a git or GitHub spec names, or null: a
+// "github:owner/repo" or bare "owner/repo" shorthand, or a github.com URL
+// (https, ssh, git, git+..., or the scp form), with an optional ".git" and
+// "#ref". A spec on any other host names no GitHub repo.
+function githubSlugOf(spec) {
+  let s = String(spec).trim().toLowerCase();
+  const hash = s.indexOf('#');
+  if (hash >= 0) s = s.slice(0, hash);
+  if (s.startsWith('git+')) s = s.slice(4);
+  let rest;
+  if (s.startsWith('github:')) {
+    rest = s.slice(7);
+  } else {
+    const url = /^(?:(?:https?|ssh|git):\/\/(?:[^@/\s]+@)?|[^@/\s]+@)github\.com[/:](.+)$/.exec(s);
+    if (url) rest = url[1];
+    else if (SAFE_REPO_RE.test(s)) rest = s;
+    else return null;
+  }
+  rest = rest.replace(/\/+$/, '');
+  if (rest.endsWith('.git')) rest = rest.slice(0, -4);
+  return SAFE_REPO_RE.test(rest) ? rest : null;
+}
+
+function namesRepo(spec, repo) {
+  const slug = githubSlugOf(spec);
+  return slug !== null && slug === String(repo).toLowerCase();
+}
+
+// Rule: a .gitmodules URL, or a dependency spec of git or GitHub form, that
+// names the repo means its source is consumed (D3 step 1).
+function isSourceConsumed(repo, manifests) {
+  if (manifests.submoduleUrls.some((u) => namesRepo(u, repo))) return true;
+  return manifests.deps.some((d) => namesRepo(d.spec, repo));
+}
+
+// ---- rule: registry package names (SAFE) ----
+
+// A dependency name safe to print into an npm command.
+function isValidNpmName(name) {
+  return typeof name === 'string' && name.length <= NPM_NAME_MAX && NPM_NAME_RE.test(name);
+}
+
+function lastSegmentOf(name) {
+  return name.slice(name.lastIndexOf('/') + 1);
+}
+
+// Rule: a dependency whose name's last path segment equals the repo name (D3
+// step 2). The Named miss: a package named otherwise is consumption unknown.
+function isNamedAfterRepo(name, repo) {
+  return lastSegmentOf(name) === repo.split('/')[1].toLowerCase();
+}
+
+// The one dependency to confirm for a repo: valid names only, sorted so the
+// choice is stable.
+function registryDependencyFor(repo, manifests) {
+  const names = manifests.deps
+    .map((d) => d.name)
+    .filter((n) => isValidNpmName(n) && isNamedAfterRepo(n, repo));
+  return names.length ? [...new Set(names)].sort()[0] : null;
+}
+
+// D3: source-consumed, then a registry package to confirm, else unknown.
+function inferConsumption(repo, ctx) {
+  const manifests = manifestsOf(ctx);
+  if (isSourceConsumed(repo, manifests)) return { mode: 'source' };
+  const dep = registryDependencyFor(repo, manifests);
+  if (dep !== null) return { mode: 'registry', dep };
+  return { mode: 'unknown' };
+}
+
+// ---- rule: registry keys, candidates and the cap ----
+
+const REGISTRY_KEY_ESCAPES = { _: '_u', '.': '_p', '-': '_d', '@': '_a', '/': '_s', '~': '_t' };
+
+// Filename-safe and injective for a valid npm name. The "npm." prefix holds a
+// bare ".", which no state key can (escapeKeyPart escapes "."), so the shapes
+// cannot collide.
+function registryKey(kind, dep) {
+  return `npm.${kind}.${dep.replace(/[_.\-@/~]/g, (c) => REGISTRY_KEY_ESCAPES[c])}`;
+}
+
+function isRegistryCut(index, cap) {
+  return index >= cap;
+}
+
+// A reference whose closed upstream state could need a registry check: a
+// live, blocking, cross-repo, safe reference read as closed with a closed_at.
+function isRegistryCandidate(ref, ctx) {
+  if (ref.retracted || !ref.target || !ref.target.repo) return false;
+  if (unsafeTargetKind(ref.target)) return false;
+  if (ref.source === 'child-row' || !isBlockingRef(ref)) return false;
+  const st = stateOf(ref.target, ctx);
+  return st.state === 'closed' && typeof st.closedAt === 'string';
+}
+
+const registryCache = new WeakMap();
+
+// The distinct packages to check, in lookup order, each with its keys and
+// whether the cap cuts it. Only closed cross-repo blockers produce any.
+function registryEntriesOf(ctx) {
+  const cached = registryCache.get(ctx);
+  if (cached) return cached;
+  const byNumber = new Map(ctx.entries.map((e) => [e.issue.number, e]));
+  const seen = new Set();
+  const out = [];
+  for (const n of lookupIssueOrder(ctx)) {
+    for (const ref of byNumber.get(n).refs) {
+      if (!isRegistryCandidate(ref, ctx)) continue;
+      const consumption = inferConsumption(ref.target.repo, ctx);
+      if (consumption.mode !== 'registry' || seen.has(consumption.dep)) continue;
+      seen.add(consumption.dep);
+      out.push({
+        dep: consumption.dep,
+        repoKey: registryKey('repository', consumption.dep),
+        timeKey: registryKey('time', consumption.dep),
+        cut: isRegistryCut(out.length, ctx.registryCap),
+      });
+    }
+  }
+  registryCache.set(ctx, out);
+  return out;
+}
+
+/**
+ * The registry commands for closed cross-repo blockers whose consumption is a
+ * npm package: two per package, at most `registryCap` packages, the overflow
+ * listed as { key, skipped: 'cap' }.
+ * @param {ReturnType<typeof buildContext>} ctx
+ * @returns {Array<{ key: string, command?: string, skipped?: 'cap' }>}
+ */
+export function planRegistry(ctx) {
+  const out = [];
+  for (const e of registryEntriesOf(ctx)) {
+    const wanted = [
+      { key: e.repoKey, command: `npm view ${e.dep} repository.url --prefer-online` },
+      { key: e.timeKey, command: `npm view ${e.dep} time --json --prefer-online` },
+    ].filter((w) => !hasLookup(ctx, w.key));
+    if (wanted.length === 0) continue;
+    if (e.cut) out.push({ key: e.repoKey, skipped: 'cap' });
+    else out.push(...wanted);
+  }
+  return out;
+}
+
+// ---- rule: reading the saved registry output ----
+
+function savedText(ctx, key) {
+  return hasLookup(ctx, key) && typeof ctx.lookups[key] === 'string' ? ctx.lookups[key] : null;
+}
+
+// Rule: the registry's repository.url must name the blocker's own repo. The
+// first non-empty line is the URL; npm's error output names no GitHub repo.
+function repoUrlConfirms(text, repo) {
+  const first = text.split(/\r?\n/).map((l) => l.trim()).find((l) => l !== '');
+  if (first === undefined) return false;
+  return namesRepo(first.replace(/^"|"$/g, ''), repo);
+}
+
+// The published versions of `npm view <dep> time --json`, or null when the
+// output is not that (E404 and other errors, an empty body).
+function publishedVersionsOf(text) {
+  const obj = jsonObjectsIn(text)[0];
+  if (!obj || hasOwn(obj, 'error')) return null;
+  const versions = Object.entries(obj)
+    .filter(([k, v]) => !TIME_NON_VERSION_KEYS.has(k) && typeof v === 'string')
+    .map(([version, at]) => ({ version, at: Date.parse(at) }))
+    .filter((v) => Number.isFinite(v.at));
+  const tags = obj['dist-tags'];
+  const tagged = tags && typeof tags.latest === 'string' ? tags.latest : null;
+  return { versions, tagged };
+}
+
+// Rule: some version published strictly after the issue closed (SD8).
+function isPublishedAfter(versions, closedAtMs) {
+  return versions.some((v) => v.at > closedAtMs);
+}
+
+// The newest published version, else dist-tags.latest when the output has no
+// version, else null.
+function latestOf({ versions, tagged }) {
+  if (versions.length === 0) return tagged;
+  return versions.reduce((a, b) => (b.at >= a.at ? b : a)).version;
+}
+
+function releaseUnverified(extra) {
+  return { outcome: 'closed-release-unverified', ...extra };
+}
+
+// A closed cross-repo blocker (D3): consumed as source clears; a confirmed npm
+// package is checked against the registry; anything else, or any failed read,
+// stays release-unverified and is never cleared.
+export function classifyClosedCrossRepo(ref, st, ctx) {
+  const consumption = inferConsumption(ref.target.repo, ctx);
+  if (consumption.mode === 'source') return { outcome: 'cleared', via: 'source-consumed' };
+  if (consumption.mode !== 'registry') return releaseUnverified();
+
+  const entry = registryEntriesOf(ctx).find((e) => e.dep === consumption.dep);
+  const repoText = entry ? savedText(ctx, entry.repoKey) : null;
+  const timeText = entry ? savedText(ctx, entry.timeKey) : null;
+  if (repoText === null || timeText === null) {
+    return releaseUnverified(entry && entry.cut ? { skipped: 'cap' } : undefined);
+  }
+  if (!repoUrlConfirms(repoText, ref.target.repo)) return releaseUnverified();
+  const published = publishedVersionsOf(timeText);
+  const closedAtMs = Date.parse(st.closedAt);
+  if (published === null || !Number.isFinite(closedAtMs)) return releaseUnverified();
+  if (isPublishedAfter(published.versions, closedAtMs)) {
+    return { outcome: 'cleared', via: 'released (version check only)', provenance: 'registry' };
+  }
+  const latest = latestOf(published);
+  if (latest === null) return releaseUnverified();
+  return { outcome: 'closed-unreleased', latest, provenance: 'registry' };
 }
 
 /**
@@ -414,13 +709,6 @@ function unresolvableKindOf(st) {
   if (st.gap === 'absent') return 'absent';
   if (st.gap === 'truncated') return 'truncated';
   return null;
-}
-
-// SEAM (part 3): a closed cross-repo blocker. Today the consumption mode is
-// unknown, so a closed upstream blocker is never silently cleared.
-// eslint-disable-next-line no-unused-vars
-export function classifyClosedCrossRepo(_ref, _st, _ctx) {
-  return { outcome: 'closed-release-unverified' };
 }
 
 // The outcome of one resolvable reference, given what is known of its target.
