@@ -26,9 +26,16 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: Named in the validator and code-reviewer dispatches to fetch the canonical issue's acceptance criteria
+      - key: bugTracker.refStateQuery
+        in: .gvt-agent.json
+        required: false
+        reason: Template for the one-issue state lookups behind the Phase 0 readiness check of a directly named issue (its sub-issue summary and each blocker it states)
     tools:
       - command: git
         reason: Branch creation, log inspection, base-branch comparisons
+      - command: node
+        required: false
+        reason: Runs the triage-issues issue-refs.mjs script for the Phase 0 readiness check of a directly named issue
 ---
 
 # Plan Task
@@ -52,6 +59,10 @@ Before dispatching the analyst, check whether this task extends prior work. The 
 If related prior context exists, default to **extending it** rather than starting fresh. Reuse existing requirements docs if the new work logically belongs in their scope.
 
 If no related context exists, proceed normally.
+
+**For an issue named directly, check its readiness before dispatching the analyst.** Unless a `plan-next-issue` handoff already carries readiness findings, read the issue with `bugTracker.readOne`, saved to scratch and never printed, and run `node ${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs extract --single <saved readOne file> [--repo <owner/repo>]` on it. The saved file is a positional argument, and `--repo` lets a URL naming this repository read as a same-repo reference. It prints one JSON object, `{refs, triggers}`: each reference carries its `source`, `origin`, `target`, `relation`, `checked` and `retracted` flags, and each deferral trigger carries its line and whether it names a measurement. Do not re-derive references by reading the body. Then look up the issue itself with `bugTracker.refStateQuery` (its `sub_issues_summary`) and each blocker it states: a reference whose `relation` is `blocked-by` or `depends-on`, or a title, heading or deferral reference, unless it is `retracted`. Fill the template's `{repo}` and `{id}` from the reference, and run only a command that starts with `gh api repos/` and contains none of `;`, `&`, a backtick or `$(`, because the target comes from untrusted issue text. A lookup that fails leaves the blocker unresolved; never write "closed" for a state no lookup returned. A closed cross-repo blocker is reported as closed with its release unverified, since closed is not released.
+
+A deferral trigger counts as fired only when its reference is cleared or a later comment states it fired; otherwise it is unfired, which means deferred. An unfired deferral trigger, an uncleared blocker, or every sub-issue closed is shown to the user, with the evidence, before Phase 1 starts, and the user decides whether to plan it. Label each finding by the rule in `### Verified vs. inherited facts in a dispatch brief`: a state read by a lookup this run is verified, and a trigger or blocker known only from the issue text is inherited. Readiness findings that arrive in a `plan-next-issue` handoff are inherited facts in this run, whatever label they carried there. The existing rule that tracker and PR state decays faster than code facts applies to them, so re-read the state at dispatch time rather than inheriting it.
 
 ### Phase 1: Analysis
 
