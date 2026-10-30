@@ -2414,3 +2414,226 @@ test('REVIEW W7: each qualifier phrase marks its reference, case-insensitively',
   // A word that merely ends like a phrase is not one.
   assert.equal(refTo(extract(issue('Blocked by #7 reaper #9')), 9).relation, 'blocked-by');
 });
+
+// ---- RR: re-review fixes (appended; no earlier test is edited) ----
+//
+// C2: a parenthetical opened by a conjunction ("and", "or", "plus", "also",
+// "&", "+", a leading ",") is a real reference, not a qualifier. "none": a
+// blocker statement that says none names no blocker (a trailing qualifier
+// reference is dropped, not emitted). Heading sections use the same qualifier
+// rule as a statement line. A ticked row resolved by lookup to a PR or a 404 is
+// unresolvable. extract --single takes --parent. --comparison-limit marks a
+// comparison set that may have been cut. TITLE_AFTER_RE is bounded.
+
+test('RR: C2 a parenthetical opened by a conjunction holds real blockers', () => {
+  for (const opener of ['and', 'or', 'plus', 'also', '&', '+', ',', 'AND', '**and**']) {
+    const x = extract(issue(`Blocked by #5 (${opener} #6)`));
+    assert.equal(refTo(x, 5).relation, 'blocked-by', opener);
+    assert.equal(refTo(x, 6).relation, 'blocked-by', opener);
+    assert.ok(!x.refs.some((r) => r.unresolvable === 'prose'), opener);
+  }
+  const open = [issueOf(1, 'Blocked by #5 (and #6)'), issueOf(6, '')];
+  const r = recOf(resolve({ open }, OPTS), 1).readiness;
+  assert.equal(r.state, 'blocked');
+  assert.deepEqual(r.blockedBy, [{ repo: null, number: 6 }]);
+});
+
+test('RR: C2 control, "(see #6)" is still a qualifier, and a word that merely starts like a conjunction is not one', () => {
+  const x = extract(issue('Blocked by #5 (see #6)'));
+  assert.equal(refTo(x, 5).relation, 'blocked-by');
+  assert.equal(refTo(x, 6).relation, 'qualifier');
+  assert.equal(refTo(extract(issue('Blocked by #5 (android #6)')), 6).relation, 'qualifier');
+  assert.equal(refTo(extract(issue('Blocked by #5 (and see #6)')), 6).relation, 'qualifier');
+  const open = [issueOf(1, 'Blocked by #5 (see #6)'), issueOf(6, '')];
+  assert.notEqual(recOf(resolve({ open }, OPTS), 1).readiness.state, 'blocked');
+});
+
+test('RR: none a blocker statement that says none names no blocker', () => {
+  const bodies = [
+    'Blocked by: none',
+    'Blocked by none',
+    'Depends on: nothing',
+    'Blocked by: n/a',
+    `Blocked by: ${String.fromCharCode(0x2014)}`,
+    'Blocked by: -',
+    'Blocked by: **None**',
+    'Blocked by: none.',
+    'Blocked by: none (see #5 for the history)',
+  ];
+  for (const body of bodies) {
+    const x = extract(issue(body));
+    assert.equal(x.refs.length, 0, `${body}: ${JSON.stringify(x.refs)}`);
+    const open = [issueOf(1, body), issueOf(5, '')];
+    const r = recOf(resolve({ open }, OPTS), 1).readiness;
+    assert.equal(r.state, 'ready', `${body}: ${r.reason}`);
+  }
+});
+
+test('RR: none control, text that only starts like none stays a prose blocker', () => {
+  for (const body of [
+    'Blocked by: nobody knows yet',
+    'Blocked by: none yet',
+    'Blocked by: nonexistent',
+    'Blocked by: nothing but #5',
+    'Blocked by: -5',
+  ]) {
+    const x = extract(issue(body));
+    assert.ok(x.refs.length > 0, body);
+  }
+  const prose = extract(issue('Blocked by: nobody knows yet'));
+  assert.equal(prose.refs.length, 1);
+  assert.equal(prose.refs[0].unresolvable, 'prose');
+  const r = recOf(resolve({ open: [issueOf(1, 'Blocked by: nobody knows yet')] }, OPTS), 1);
+  assert.equal(r.readiness.state, 'blocked');
+});
+
+test('RR: W-c a heading section line applies the qualifier rule', () => {
+  const body = '## Blocked by\n\nThe bundle-root decision (the ADR sub-issue of #183)\n';
+  const x = extract(issue(body));
+  const q = refTo(x, 183);
+  assert.equal(q.source, 'heading');
+  assert.equal(q.relation, 'qualifier');
+  const prose = x.refs.filter((r) => r.source === 'heading' && r.unresolvable === 'prose');
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].target, null);
+  assert.ok(!x.refs.some((r) => r.unresolvable === 'heading-detached'));
+  const r = recOf(resolve({ open: [issueOf(1, body), issueOf(183, '')] }, OPTS), 1).readiness;
+  assert.equal(r.state, 'blocked');
+  assert.deepEqual(r.blockedBy, []);
+});
+
+test('RR: W-c control, a plain heading line and a conjunction parenthetical still block', () => {
+  const x = extract(issue('## Blocked by\n\n- #40\n'));
+  assert.equal(refTo(x, 40).relation, 'blocked-by');
+  assert.ok(!x.refs.some((r) => r.unresolvable));
+  const y = extract(issue('## Depends on\n\n#40 (and #41)\n'));
+  assert.equal(refTo(y, 40).relation, 'depends-on');
+  assert.equal(refTo(y, 41).relation, 'depends-on');
+});
+
+test('RR: W-a a ticked row resolved by lookup to a pull request or a 404 is unresolvable', () => {
+  const open = [issueOf(1, '- [x] #7\n- [x] #8\n')];
+  const lookups = {
+    'issue-7': JSON.stringify({ number: 7, state: 'open', pull_request: true }),
+    'issue-8': NOT_FOUND,
+  };
+  const rec = recOf(resolve({ open, lookups }, OPTS), 1);
+  const pr = refOf(rec, 7);
+  assert.equal(pr.outcome, 'unresolvable');
+  assert.equal(pr.kind, 'pr');
+  const gone = refOf(rec, 8);
+  assert.equal(gone.outcome, 'unresolvable');
+  assert.equal(gone.kind, 'nonexistent');
+  assert.notEqual(pr.outcome, 'not-open');
+  assert.notEqual(gone.outcome, 'not-open');
+  // A pull request or a missing issue can never be a child: not membership.
+  assert.equal(rec.readiness.state, 'ready');
+  assert.deepEqual(rec.readiness.unknownChildren, []);
+});
+
+test('RR: W-a control, a ticked row resolved to a closed issue is still not-open', () => {
+  const open = [issueOf(1, '- [x] #7\n')];
+  const lookups = { 'issue-7': stJson(7, 'closed') };
+  assert.equal(refOf(recOf(resolve({ open, lookups }, OPTS), 1), 7).outcome, 'not-open');
+});
+
+test('RR: W-d extract --single --parent drops a banner naming that parent', () => {
+  withTmp((dir) => {
+    const readOne = {
+      number: 190,
+      title: 'child',
+      body: 'Child of the umbrella.\n\n> This issue stays the analysis of record for #183 (the parent).\n',
+      comments: [],
+    };
+    const file = writeJson(dir, 'one.json', readOne);
+    const without = runCli(['extract', '--single', file]);
+    assert.equal(without.status, 0, without.stderr);
+    assert.notEqual(JSON.parse(without.stdout).banner, null);
+    const withParent = runCli(['extract', '--single', file, '--parent', '183']);
+    assert.equal(withParent.status, 0, withParent.stderr);
+    assert.equal(JSON.parse(withParent.stdout).banner, null);
+    const other = runCli(['extract', '--single', file, '--parent', '12']);
+    assert.notEqual(JSON.parse(other.stdout).banner, null);
+    for (const bad of ['abc', '1.5', '']) {
+      const r = runCli(['extract', '--single', file, '--parent', bad]);
+      assert.equal(r.status, 2, `--parent ${JSON.stringify(bad)}`);
+      assert.ok(r.stderr.includes('--parent'), r.stderr);
+    }
+    assert.ok(runCli(['extract']).stderr.includes('--parent <n>'));
+  });
+});
+
+function comparisonRun(limit) {
+  const open = [issueOf(1, 'Blocked by #77.'), issueOf(2, 'Other work.')];
+  const comparison = [
+    { number: 5, state: 'CLOSED' },
+    { number: 6, state: 'OPEN' },
+  ];
+  const options = { ...OPTS };
+  if (limit !== undefined) options.comparisonLimit = limit;
+  return { out: resolve({ open, comparison }, options), open, comparison, options };
+}
+
+test('RR: W-g a comparison set at its limit marks every record and makes absence truncated', () => {
+  const { out, open, comparison, options } = comparisonRun(2);
+  for (const rec of out) {
+    assert.ok(rec.notes.includes('comparison set: truncated (at its limit)'), `#${rec.number}`);
+  }
+  const ref = refOf(recOf(out, 1), 77);
+  assert.equal(ref.outcome, 'unresolvable');
+  assert.equal(ref.kind, 'truncated');
+  assert.notEqual(ref.kind, 'absent');
+  const p = plan({ open, comparison }, options);
+  assert.ok(p.some((e) => e.command && e.command.includes(`repos/${REPO}/issues/77 `)));
+});
+
+test('RR: W-g control, a comparison set under its limit, or with no limit, stays absent', () => {
+  for (const limit of [3, undefined]) {
+    const { out } = comparisonRun(limit);
+    for (const rec of out) {
+      assert.ok(!rec.notes.some((n) => n.startsWith('comparison set')), `#${rec.number}`);
+    }
+    const ref = refOf(recOf(out, 1), 77);
+    assert.equal(ref.kind, 'absent');
+  }
+  // A number the comparison set does name is still read from it.
+  const open = [issueOf(1, 'Blocked by #6.')];
+  const comparison = [{ number: 6, state: 'OPEN' }, { number: 7, state: 'CLOSED' }];
+  const ref = refOf(recOf(resolve({ open, comparison }, { ...OPTS, comparisonLimit: 2 }), 1), 6);
+  assert.equal(ref.outcome, 'live');
+});
+
+test('RR: W-g --comparison-limit is validated and reaches the resolver', () => {
+  withTmp((dir) => {
+    const issues = [issueOf(1, 'Blocked by #77.')];
+    const rows = [
+      { number: 5, state: 'CLOSED' },
+      { number: 6, state: 'OPEN' },
+    ];
+    const base = [...cliArgsFor(dir, issues), '--comparison', writeJson(dir, 'cmp.json', rows)];
+    const cut = runCli(['resolve', ...base, '--comparison-limit', '2']);
+    assert.equal(cut.status, 0, cut.stderr);
+    const rec = recOf(jsonLines(cut.stdout), 1);
+    assert.ok(rec.notes.includes('comparison set: truncated (at its limit)'));
+    assert.equal(refOf(rec, 77).kind, 'truncated');
+    const free = runCli(['resolve', ...base]);
+    assert.equal(refOf(recOf(jsonLines(free.stdout), 1), 77).kind, 'absent');
+    for (const bad of ['abc', '2.5', '']) {
+      const r = runCli(['resolve', ...base, '--comparison-limit', bad]);
+      assert.equal(r.status, 2, `--comparison-limit ${JSON.stringify(bad)}`);
+      assert.ok(r.stderr.includes('--comparison-limit'), r.stderr);
+    }
+    assert.ok(runCli(['plan']).stderr.includes('--comparison-limit <n>'));
+  });
+});
+
+test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear time', () => {
+  const title = '(after '.repeat(16000) + 'x';
+  const start = process.hrtime.bigint();
+  const out = extract({ number: 1, title, body: 'b', comments: [] });
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  assert.deepEqual(out.refs, []);
+  assert.ok(ms < 500, `took ${ms.toFixed(1)} ms`);
+  // The bound does not stop an ordinary short "(after #N)" from being read.
+  assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
+});

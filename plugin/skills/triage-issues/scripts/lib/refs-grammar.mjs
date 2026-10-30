@@ -12,8 +12,11 @@
 // parent-naming exclusion needs the parent, which extract alone does not know:
 // banner without parent exclusion unless options.parent is given.
 //
-// Regex hygiene: every pattern is linear (no nested quantifiers) because the
-// input is untrusted issue text.
+// Regex hygiene: no pattern nests quantifiers, because the input is untrusted
+// issue text. The one pattern that scans forward to a closing character,
+// TITLE_AFTER_RE, bounds its span (an open-ended `[^)]*` made a title of
+// repeated unclosed "(after " openers quadratic), so each opener costs at most
+// that bound.
 
 const PLACEHOLDER = String.fromCharCode(1);
 
@@ -39,7 +42,7 @@ const BLOCKER_HEADING_RE = /^(blocked[ -]by|depends[ -]on)$/i;
 const ACCEPTANCE_HEADING_RE = /^acceptance\b/i;
 const CHILD_ROW_RE = /^[*_]*((?:[\w.-]+\/[\w.-]+)?#(\d{1,9}))(?!\w)(.*)$/;
 const ANNOTATION_RE = /\bblocked[ -]by\b/i;
-const TITLE_AFTER_RE = /\(\s*after\s+([^)]*)\)/gi;
+const TITLE_AFTER_RE = /\(\s*after\s+([^)]{0,300})\)/gi;
 const TITLE_VERB_RE = /\b(?:blocked[ -]by|depends[ -]on)\b/i;
 
 // owner/repo#N, name#N, "name #N", "#N" and github issue/pull URLs.
@@ -61,6 +64,14 @@ const ITEM_SEPARATOR_CHARS = ',;&+';
 const QUALIFIER_TAIL_RE =
   /(?:sub-issue of|part of|child of|see|cf\.?|per|as in|from|under)[*_\s]*$/i;
 const QUALIFIER_LOOKBACK = 40;
+
+// A conjunction that opens a parenthetical (sticky: tested at one index).
+const CONJUNCTION_RE = /(?:and|or|plus|also)(?!\w)|[,&+]/iy;
+
+// What a blocker statement says when it names no blocker: after the verb, an
+// optional ":" and emphasis, exactly one of these words, then an optional
+// full stop and optional trailing qualifier text opened by "(".
+const NONE_STATEMENT_RE = /^[\s:*_]*(?:none|nothing|n\/a|—|-)[*_]*\.?\s*(?:\(.*)?$/i;
 
 const FENCE_LINE_RE = /^ {0,3}(?:`{3,}|~{3,})/;
 const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
@@ -186,18 +197,43 @@ function isQualifierReference(text, phraseEnd, depth) {
   return at === 0 || !WORD_CHAR_RE.test(text[at - 1]);
 }
 
-// The parenthesis depth at an index, for indexes asked in ascending order (one
-// pass over the text in all). An unmatched ")" never goes below zero.
+// Rule: a parenthetical opened by a conjunction ("and", "or", "plus", "also",
+// "&", "+", or a leading ",") continues the list: its references are real
+// ones, not qualifiers. `open` is the index of the "(" ; only the characters
+// after it (past whitespace and emphasis) are read.
+function opensConjunction(text, open) {
+  let i = open + 1;
+  while (i < text.length && (/\s/.test(text[i]) || text[i] === '*' || text[i] === '_')) i++;
+  CONJUNCTION_RE.lastIndex = i;
+  return CONJUNCTION_RE.test(text);
+}
+
+// The number of enclosing parentheses at an index that were NOT opened by a
+// conjunction, for indexes asked in ascending order (one pass over the text in
+// all). An unmatched ")" never goes below zero.
 function makeParenDepth(text) {
   let pos = 0;
-  let depth = 0;
+  const stack = [];
+  let plain = 0;
   return (index) => {
     for (; pos < index; pos++) {
-      if (text[pos] === '(') depth++;
-      else if (text[pos] === ')' && depth > 0) depth--;
+      if (text[pos] === '(') {
+        const conj = opensConjunction(text, pos);
+        stack.push(conj);
+        if (!conj) plain++;
+      } else if (text[pos] === ')' && stack.length > 0) {
+        if (!stack.pop()) plain--;
+      }
     }
-    return depth;
+    return plain;
   };
+}
+
+// Rule: a blocker statement whose remainder is "none" (or "nothing", "n/a",
+// an em dash, a hyphen), with at most a trailing parenthetical, names no
+// blocker. Exact words only: "nobody knows yet" is prose.
+function isNoneStatement(rest) {
+  return NONE_STATEMENT_RE.test(rest);
 }
 
 // Rule: the banner self-declaration form.
@@ -500,6 +536,12 @@ function scanText(text, origin, order, ctx, skipStatements) {
     if (stmt) {
       if (isNegatedStatement(stmt.negator)) continue;
       const blocking = stmt.relation === 'blocked-by' || stmt.relation === 'depends-on';
+      // "Blocked by: none" names no blocker: nothing is emitted (a trailing
+      // qualifier reference is dropped), and it answers its heading section.
+      if (blocking && isNoneStatement(stmt.rest)) {
+        if (section && section.kind === 'blocker') section.refCount++;
+        continue;
+      }
       const found = scanRefs(stmt.rest, ctx, true, blocking);
       const blockers = found.filter((f) => !f.qualifier);
       // A blocker line with no blocking reference left (none at all, or only
@@ -519,12 +561,19 @@ function scanText(text, origin, order, ctx, skipStatements) {
 
     // A reference-bearing line inside a Blocked by / Depends on heading section.
     if (section && section.kind === 'blocker') {
-      const found = scanRefs(lead.rest, ctx, true);
+      // The same qualifier and conjunction rules as a statement line apply.
+      const found = scanRefs(lead.rest, ctx, true, true);
       if (found.length) {
         section.refCount++;
+        if (found.every((f) => f.qualifier)) {
+          emit('heading', null, line, {
+            relation: section.relation,
+            unresolvable: 'prose',
+          });
+        }
         for (const f of found) {
           emit('heading', f.target, line, {
-            relation: section.relation,
+            relation: f.qualifier ? 'qualifier' : section.relation,
             unresolvable: f.unresolvable,
           });
         }

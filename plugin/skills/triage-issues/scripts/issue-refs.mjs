@@ -11,9 +11,10 @@
 //   node issue-refs.mjs plan    --open <f> [--comments <f>] [--structure <f>]
 //        [--comparison <f>] --repo <owner/repo> --limit <n> --cap <n>
 //        [--order <f>] [--lookups <dir>] --state-template <t>
-//        [--root <dir>] [--registry-cap <n>]
+//        [--root <dir>] [--registry-cap <n>] [--comparison-limit <n>]
 //   node issue-refs.mjs resolve <the same flags> [--non-interactive]
 //   node issue-refs.mjs extract --single <readOne.json> [--repo <owner/repo>]
+//        [--parent <n>]
 //
 // Output: `plan` and `resolve` print one JSON object per line; `extract
 // --single` prints one JSON object. Diagnostics go to stderr.
@@ -30,9 +31,9 @@ const USAGE = [
   'Usage:',
   '  node issue-refs.mjs plan --open <f> [--comments <f>] [--structure <f>] [--comparison <f>]',
   '       --repo <owner/repo> --limit <n> --cap <n> [--order <f>] [--lookups <dir>]',
-  '       --state-template <t> [--root <dir>] [--registry-cap <n>]',
+  '       --state-template <t> [--root <dir>] [--registry-cap <n>] [--comparison-limit <n>]',
   '  node issue-refs.mjs resolve <same flags> [--non-interactive]',
-  '  node issue-refs.mjs extract --single <readOne.json> [--repo <owner/repo>]',
+  '  node issue-refs.mjs extract --single <readOne.json> [--repo <owner/repo>] [--parent <n>]',
 ].join('\n');
 
 class UsageError extends Error {}
@@ -51,6 +52,8 @@ const OPTIONS = {
   'state-template': { type: 'string' },
   root: { type: 'string' },
   'registry-cap': { type: 'string' },
+  'comparison-limit': { type: 'string' },
+  parent: { type: 'string' },
   'non-interactive': { type: 'boolean' },
 };
 
@@ -137,6 +140,9 @@ function runPlanOrResolve(sub, values) {
   if (values['registry-cap'] !== undefined) {
     options.registryCap = intFlag(values, 'registry-cap');
   }
+  if (values['comparison-limit'] !== undefined) {
+    options.comparisonLimit = intFlag(values, 'comparison-limit');
+  }
   if (values.root !== undefined) options.root = values.root;
   if (values.order !== undefined) options.order = readOrder(values.order);
   if (values['non-interactive']) options.nonInteractive = true;
@@ -170,6 +176,7 @@ function main(argv) {
       if (positionals.length !== 1) throw new UsageError('extract --single takes one readOne JSON file');
       const options = {};
       if (values.repo !== undefined) options.repo = checkRepo(values.repo);
+      if (values.parent !== undefined) options.parent = intFlag(values, 'parent');
       const issue = readJson('single', positionals[0]);
       const result = extract(issue, options);
       console.log(JSON.stringify({ refs: result.refs, triggers: result.triggers, banner: result.banner }));

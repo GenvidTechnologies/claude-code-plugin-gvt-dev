@@ -216,6 +216,12 @@ function isOpenListTruncated(openCount, limit) {
   return Number.isFinite(limit) && openCount >= limit;
 }
 
+// The comparison set (issues in any state) as long as its limit may have been
+// cut: a number absent from it proves nothing, so it needs a lookup.
+function isComparisonTruncated(count, limit) {
+  return Number.isFinite(limit) && count >= limit;
+}
+
 // The bulk comment array for one issue may have been cut at the page size.
 function isCommentsTruncated(count) {
   return count >= COMMENTS_PAGE;
@@ -279,6 +285,7 @@ export function buildContext(input, options) {
           .map((r) => [r.number, String(r.state).toUpperCase()]),
       )
     : null;
+  const comparisonLimit = numberOption(opts.comparisonLimit);
 
   const commentsByNumber = new Map();
   for (const row of asArray(data.comments)) {
@@ -302,6 +309,8 @@ export function buildContext(input, options) {
     openByNumber,
     openTruncated: isOpenListTruncated(open.length, limit),
     comparison,
+    comparisonTruncated:
+      comparison !== null && isComparisonTruncated(comparisonRows.length, comparisonLimit),
     lookups: data.lookups && typeof data.lookups === 'object' ? data.lookups : {},
     structureRows: asArray(data.structure),
     bulkCommentsLength: Array.isArray(data.comments) ? data.comments.length : null,
@@ -792,7 +801,9 @@ function stateOf(target, ctx) {
     const row = ctx.comparison.get(target.number);
     if (row === 'OPEN') return { state: 'open', gap: null, provenance: 'in hand' };
     if (row === 'CLOSED') return { state: 'closed', gap: null, provenance: 'in hand' };
-    return { state: null, gap: 'absent', provenance: 'in hand' };
+    // A comparison set at its limit may have been cut: absence proves nothing.
+    const gap = ctx.comparisonTruncated ? 'truncated' : 'absent';
+    return { state: null, gap, provenance: 'in hand' };
   }
   if (ctx.openTruncated) return { state: null, gap: 'truncated', provenance: 'in hand' };
   return { state: 'not-open', gap: null, provenance: 'in hand' };
@@ -809,10 +820,12 @@ function unresolvableKindOf(st) {
   return null;
 }
 
-// Rule: a ticked row whose child has no known state (cross-repo unread, cut
-// from a truncated list, absent, lookup failed) is unresolvable, not "not-open".
+// Rule: a ticked row whose child has no usable state is unresolvable, not
+// "not-open": the state is unknown (cross-repo unread, cut from a truncated
+// list, absent, lookup failed), or the lookup says it is a pull request or
+// does not exist.
 function isTickedStateUnknown(st) {
-  return st.state === null;
+  return st.state === null || st.state === 'pr' || st.state === 'nonexistent';
 }
 
 // The outcome of one resolvable reference, given what is known of its target.
@@ -1373,6 +1386,7 @@ function buildRecord(entry, ctx) {
   const notes = [];
   if (commentsTruncated) notes.push('comments possibly truncated');
   if (ctx.openTruncated) notes.push('open list: truncated (at its limit)');
+  if (ctx.comparisonTruncated) notes.push('comparison set: truncated (at its limit)');
   const native = buildNative(entry, ctx);
   if (entry.commentsNoData) notes.push('comments: no data');
   else if (entry.commentsUnknown) notes.push('comments: truncated (bulk list at its limit)');
