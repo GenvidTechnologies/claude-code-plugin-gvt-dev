@@ -1843,3 +1843,119 @@ test('SPACE: "sub-issues #189–#192" gives #189 and #192 as plain references', 
   assert.deepEqual(numbers(out), [183, 189, 192]);
   assert.ok(out.refs.every((r) => r.unresolvable === undefined));
 });
+
+// ---- MUT: strengthenings found by the mutation run (task 12). Each fixture puts
+// the excluded text where nothing but its own rule can keep it out: a line that
+// does not start with a statement verb, so the mid-line anchor cannot mask it. ----
+
+test('MUT blockquote: a quoted reference under a Blocked by heading, and a quoted retraction, have no effect', () => {
+  const out = extract(
+    issue(['## Blocked by', '> #20 quoted from an older thread', '- #10'].join('\n'), {
+      comments: [{ body: '> #10 is unblocked now.', createdAt: '2026-01-02T00:00:00Z' }],
+    }),
+  );
+  assert.ok(numbers(out).includes(10));
+  assert.ok(!numbers(out).includes(20));
+  assert.notEqual(refTo(out, 10).retracted, true);
+});
+
+test('MUT struck: a struck reference in a statement or under a Blocked by heading, and a struck retraction, have no effect', () => {
+  const out = extract(
+    issue(
+      ['Blocked by ~~#20~~ and #10.', '', '## Depends on', '- ~~#21~~ done', '- #11'].join('\n'),
+      { comments: [{ body: '~~#10 is unblocked~~', createdAt: '2026-01-02T00:00:00Z' }] },
+    ),
+  );
+  assert.deepEqual(numbers(out).sort((a, b) => a - b), [10, 11]);
+  assert.notEqual(refTo(out, 10).retracted, true);
+});
+
+test('MUT inline code: a reference in code inside a statement, a heading section or a trigger is not extracted', () => {
+  const out = extract(
+    issue(
+      [
+        'Blocked by `#20` and #10.',
+        '',
+        '## Blocked by',
+        '- `#21` the label, not a target',
+        '- #11',
+        '',
+        'Deferral trigger: waits on `#22` and #12.',
+      ].join('\n'),
+    ),
+  );
+  assert.deepEqual(numbers(out).sort((a, b) => a - b), [10, 11, 12]);
+});
+
+test('MUT sameTarget repo: a retraction naming the same number in another repo has no effect, a case-different repo does', () => {
+  const out = extract(
+    issue('Blocked by #10.\nBlocked by Example-Org/Lib#11.', {
+      comments: [
+        {
+          body: 'No longer blocked by example-org/other#10.\nNo longer blocked by example-org/lib#11.',
+          createdAt: '2026-01-02T00:00:00Z',
+        },
+      ],
+    }),
+  );
+  assert.notEqual(refTo(out, 10).retracted, true);
+  assert.equal(refTo(out, 11).retracted, true);
+});
+
+test('MUT retraction order: a retraction withdraws only earlier references, not a later comment restating the blocker', () => {
+  const out = extract(
+    issue('Blocked by #10.', {
+      comments: [
+        { body: 'No longer blocked by #10.', createdAt: '2026-01-02T00:00:00Z' },
+        { body: 'Blocked by #10.', createdAt: '2026-01-03T00:00:00Z' },
+      ],
+    }),
+  );
+  const refs = out.refs.filter((r) => r.target && r.target.number === 10);
+  assert.equal(refs.length, 2);
+  assert.equal(refs.find((r) => r.origin === 'body').retracted, true);
+  assert.equal(refs.find((r) => r.origin === 'comment').retracted, false);
+});
+
+test('MUT retraction child row: a retraction never withdraws a checklist child row', () => {
+  const out = extract(
+    issue('- [ ] #10 the child step', {
+      comments: [{ body: 'The blocker #10 is unblocked now.', createdAt: '2026-01-02T00:00:00Z' }],
+    }),
+  );
+  assert.equal(refTo(out, 10).source, 'child-row');
+  assert.equal(refTo(out, 10).retracted, false);
+});
+
+test('MUT banner Do not plan: the "Do not plan this issue" form is a self-declared banner', () => {
+  const issues = [issueOf(170, 'Do not plan this issue; the work is tracked elsewhere.')];
+  const rec = recOf(resolve(dataOf(issues, { structure: structureOf(issues) }), OPTS), 170);
+  assert.ok(rec.banner);
+  assert.equal(rec.readiness.state, 'banner-no-open-child');
+});
+
+test('MUT SAFE target: a repo with a dots-only segment never reaches a command and is repo-ambiguous', () => {
+  const issues = [
+    issueOf(1, 'Blocked by ../lib#5.\nBlocked by example-org/..#6.\nBlocked by example-org/example-lib#98.'),
+  ];
+  const d = dataOf(issues);
+  const p = plan(d, OPTS);
+  assert.deepEqual(
+    p.map((e) => e.command).filter(Boolean).map((c) => /issues\/(\d+) /.exec(c)[1]),
+    ['98'],
+  );
+  assert.ok(!p.some((e) => /\.\.\/|\/\.\./.test(e.command || '')));
+  const rec = recOf(resolve(d, OPTS), 1);
+  assert.equal(rec.refs.find((r) => r.target && r.target.number === 5).kind, 'repo-ambiguous');
+  assert.equal(rec.refs.find((r) => r.target && r.target.number === 6).kind, 'repo-ambiguous');
+});
+
+test('MUT SAFE number: issue number 0 never reaches a command and is nonexistent', () => {
+  const issues = [issueOf(1, 'Blocked by example-org/example-lib#0.\nBlocked by example-org/example-lib#98.')];
+  const d = dataOf(issues);
+  const p = plan(d, OPTS);
+  assert.ok(!p.some((e) => /issues\/0 /.test(e.command || '')));
+  assert.ok(p.some((e) => /issues\/98 /.test(e.command || '')));
+  const rec = recOf(resolve(d, OPTS), 1);
+  assert.equal(rec.refs.find((r) => r.target && r.target.number === 0).kind, 'nonexistent');
+});
