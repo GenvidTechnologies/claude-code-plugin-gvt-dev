@@ -4,11 +4,10 @@
 // spawning, no network. Every tracker read is a command plan() PRINTS for the
 // caller to run; resolve() only reads what the caller saved.
 //
-// Part 1 (this file today): state resolution, the lookup plan, the readiness
-// core (blockers, deferral triggers, checklist umbrella). Later parts extend
-// the named seams marked "SEAM" below:
-//   - native structure, umbrella routing, banner, precedence: buildNative,
-//     detectBanner, structureReadiness
+// Parts 1 and 2 (this file today): state resolution, the lookup plan, the
+// readiness core (blockers, deferral triggers), native structure, the banner,
+// umbrella routing and precedence. A later part extends the named seams marked
+// "SEAM" below:
 //   - release consumption and the registry plan: classifyClosedCrossRepo,
 //     planRegistry
 //
@@ -535,15 +534,159 @@ function evaluateTrigger(trigger, refs, comments) {
   return { fired: false, firedBy: null, hasRefs: false };
 }
 
-// ---- SEAM (part 2): native structure and banner ----
+// ---- rule: native structure (D2, R41) ----
 
-// eslint-disable-next-line no-unused-vars
-function buildNative(_entry, _ctx) {
-  return { status: 'no-data', parent: null, total: null, completed: null };
+// Absent structure data is "no data", never "no children" (R41).
+function noNative() {
+  return { status: 'no-data', parent: null, total: null, completed: null, openChildren: [], outside: 0 };
 }
 
-// eslint-disable-next-line no-unused-vars
-function detectBanner(_entry, _ctx) {
+function nativeParentOf(row) {
+  const p = row.parent;
+  return p && Number.isInteger(p.number) ? p.number : null;
+}
+
+// A row proves "no sub-issues" only when it carries the summary counts.
+function hasSummary(row) {
+  const s = row.subIssuesSummary;
+  return Boolean(s) && Number.isInteger(s.total) && Number.isInteger(s.completed);
+}
+
+const structureIndexes = new WeakMap();
+
+// The saved structure rows indexed by issue number, plus each open parent's
+// open children (the saved rows whose parent is that umbrella), cached per ctx.
+function structureIndex(ctx) {
+  const cached = structureIndexes.get(ctx);
+  if (cached) return cached;
+  const byNumber = new Map();
+  const childrenOf = new Map();
+  for (const row of ctx.structureRows) {
+    if (!row || !Number.isInteger(row.number)) continue;
+    byNumber.set(row.number, row);
+    const parent = nativeParentOf(row);
+    if (parent === null || !ctx.openByNumber.has(row.number)) continue;
+    const list = childrenOf.get(parent) || [];
+    list.push(row.number);
+    childrenOf.set(parent, list);
+  }
+  for (const list of childrenOf.values()) list.sort((a, b) => a - b);
+  const index = { byNumber, childrenOf };
+  structureIndexes.set(ctx, index);
+  return index;
+}
+
+// Rule: native open sub-issues the summary counts but the open list does not
+// show (cross-repo or truncated). They keep the issue an umbrella.
+function outsideCount(total, completed, found) {
+  return Math.max(0, total - completed - found);
+}
+
+function buildNative(entry, ctx) {
+  const index = structureIndex(ctx);
+  const row = index.byNumber.get(entry.issue.number);
+  if (!row || !hasSummary(row)) return noNative();
+  const { total, completed } = row.subIssuesSummary;
+  const openChildren = index.childrenOf.get(entry.issue.number) || [];
+  return {
+    status: 'data',
+    parent: nativeParentOf(row),
+    total,
+    completed,
+    openChildren,
+    outside: outsideCount(total, completed, openChildren.length),
+  };
+}
+
+// Rule: every native sub-issue is closed (and there is at least one).
+function isNativeAllClosed(native) {
+  return native.status === 'data' && native.total > 0 && native.outside === 0 &&
+    native.openChildren.length === 0;
+}
+
+// ---- rule: the umbrella banner (SD9b) ----
+
+const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
+const BANNER_THIS_ISSUE_RE =
+  /^this issue (?:is|stays|remains) (?:kept )?(?:as )?the (?:umbrella|analysis of record)\b/i;
+const BANNER_KEPT_AS_RE = /^kept as the (?:umbrella|analysis of record)\b/i;
+
+// The text of a line once its markup is gone: inline code and struck spans are
+// removed; blockquote markers, heading marks, list markers, checkboxes and
+// emphasis are stripped. Blockquotes are ALLOWED here, because real banners
+// are blockquotes.
+function bannerText(raw) {
+  return raw
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/~~[^~]*~~/g, ' ')
+    .replace(/^\s{0,3}(?:>\s?)+/, '')
+    .replace(/^\s*#{1,6}\s+/, '')
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+    .replace(/^\[[ xX]\]\s+/, '')
+    .replace(/\*+/g, '')
+    .replace(/(^|\s)_+|_+(?=\s|$)/g, '$1')
+    .trim();
+}
+
+// Rule: the banner self-declaration form.
+function isSelfDeclaringBanner(text) {
+  return (
+    BANNER_DO_NOT_PLAN_RE.test(text) ||
+    BANNER_THIS_ISSUE_RE.test(text) ||
+    BANNER_KEPT_AS_RE.test(text)
+  );
+}
+
+// The issues that count as this one's parent: its native parent, and any open
+// issue whose checklist names this one as a child.
+function parentNumbersOf(entry, ctx) {
+  const parents = new Set();
+  const row = structureIndex(ctx).byNumber.get(entry.issue.number);
+  const native = row ? nativeParentOf(row) : null;
+  if (native !== null) parents.add(native);
+  for (const other of ctx.entries) {
+    if (other.issue.number === entry.issue.number) continue;
+    const lists = other.refs.some(
+      (r) =>
+        r.source === 'child-row' && r.target && !r.target.repo && r.target.number === entry.issue.number,
+    );
+    if (lists) parents.add(other.issue.number);
+  }
+  return parents;
+}
+
+// Same-repo "#N" numbers named in a line (a "#N" glued to a name or path is a
+// cross-repo or slashless form and is skipped).
+function sameRepoNumbersIn(text) {
+  const out = [];
+  for (const m of text.matchAll(/#(\d+)\b/g)) {
+    const before = m.index > 0 ? text[m.index - 1] : ' ';
+    if (!/[\w./-]/.test(before)) out.push(Number(m[1]));
+  }
+  return out;
+}
+
+// Rule: a child naming its parent as the umbrella or analysis of record is not
+// a banner.
+function namesParent(text, parents) {
+  return sameRepoNumbersIn(text).some((n) => parents.has(n));
+}
+
+// The first banner line in the body, or null. Fenced lines are skipped.
+function detectBanner(entry, ctx) {
+  const parents = parentNumbersOf(entry, ctx);
+  let fenced = false;
+  for (const raw of String(entry.issue.body == null ? '' : entry.issue.body).split(/\r?\n/)) {
+    if (FENCE_LINE_RE.test(raw)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    const text = bannerText(raw);
+    if (!isSelfDeclaringBanner(text)) continue;
+    if (namesParent(text, parents)) continue;
+    return { line: raw.trim(), origin: 'body' };
+  }
   return null;
 }
 
@@ -677,31 +820,131 @@ function isRoutable(state) {
   return state === 'ready' || state === 'ready-caveat';
 }
 
-// SEAM (part 2): umbrella structure. Today the umbrella comes from checklist
-// rows alone; part 2 unions native children, the banner and the precedence rules.
+// ---- rule: precedence of checklist, native structure and banner ----
+
+// Membership is the union of native open children and open checklist children;
+// state of each child comes from tracker data, never from a tick.
+function unionMembers(nativeOpen, checklistOpen) {
+  return [...new Set([...nativeOpen, ...checklistOpen])].sort((a, b) => a - b);
+}
+
+// Rule: the issue is an umbrella if ANY source says it has open children,
+// including native open sub-issues outside the open list.
+function isUmbrellaByChildren(members, outside) {
+  return members.length > 0 || outside > 0;
+}
+
+// Rule: done-but-unclosed needs native data showing every child closed AND no
+// open child from the checklist or banner.
+function isDoneButUnclosed(native, members) {
+  return isNativeAllClosed(native) && members.length === 0;
+}
+
+// Rule: a title prefix of "epic:" or "tracking:" (case-insensitive, leading
+// whitespace ignored) is a self-declared umbrella.
+function hasUmbrellaTitlePrefix(title) {
+  const text = typeof title === 'string' ? title : '';
+  const colon = text.indexOf(':');
+  if (colon < 0) return false;
+  return /^(?:epic|tracking)$/i.test(text.slice(0, colon).trim());
+}
+
+function checklistListed(rec) {
+  const listed = new Set();
+  for (const r of rec.refs) {
+    if (r.source === 'child-row' && r.target && !r.target.repo) listed.add(r.target.number);
+  }
+  return listed;
+}
+
+// Rule: every native-versus-checklist membership difference is shown.
+function membershipDisagreements(native, checklistOpen, rec) {
+  if (native.status !== 'data' || native.total === 0) return [];
+  const out = [];
+  const nativeOpen = new Set(native.openChildren);
+  for (const n of checklistOpen) {
+    if (nativeOpen.has(n)) continue;
+    out.push(
+      isNativeAllClosed(native)
+        ? `native structure shows every sub-issue closed, but the checklist names #${n} as open`
+        : `the checklist names #${n} as open, but it is not an open native sub-issue`,
+    );
+  }
+  const listed = checklistListed(rec);
+  if (listed.size) {
+    for (const n of native.openChildren) {
+      if (!listed.has(n)) out.push(`#${n} is an open native sub-issue missing from the checklist`);
+    }
+  }
+  return out;
+}
+
+function structureDecisions(native, banner, titlePrefix) {
+  const out = [];
+  if (titlePrefix) out.push({ source: 'title-prefix', provenance: 'in hand', outcome: 'umbrella' });
+  if (native.status === 'data') {
+    let outcome = 'no-sub-issues';
+    if (native.total > 0) {
+      outcome = isNativeAllClosed(native) ? 'all-closed' : 'open-children';
+    }
+    out.push({ source: 'native', provenance: 'in hand', outcome });
+  }
+  if (banner) out.push({ source: 'banner', provenance: 'in hand', outcome: 'declared' });
+  return out;
+}
+
+function firstRoutable(members, coreByNumber) {
+  return (
+    members.find((n) => {
+      const child = coreByNumber.get(n);
+      return child === undefined || isRoutable(child.state);
+    }) ?? null
+  );
+}
+
+function umbrellaReason(members, outside, routedTo) {
+  const parts = [];
+  if (members.length) parts.push(`open children ${members.map((n) => `#${n}`).join(', ')}`);
+  if (outside > 0) parts.push(`${outside} open sub-issues outside the open list`);
+  const routing = routedTo === null ? 'no ready child' : `routed to #${routedTo}`;
+  return `umbrella: ${parts.join('; ')}; ${routing}`;
+}
+
 function structureReadiness(core, rec, coreByNumber) {
+  const native = rec.native;
+  const members = unionMembers(native.openChildren, core.openChildren);
+  const outside = native.outside;
   let state = core.state;
   let reason = core.reason;
   let routedTo = null;
-  if (core.openChildren.length) {
-    routedTo =
-      core.openChildren.find((n) => {
-        const child = coreByNumber.get(n);
-        return child === undefined || isRoutable(child.state);
-      }) ?? null;
+  if (isUmbrellaByChildren(members, outside)) {
+    routedTo = firstRoutable(members, coreByNumber);
     state = 'umbrella';
-    const routing = routedTo === null ? 'no ready child' : `routed to #${routedTo}`;
-    reason = `umbrella: open children ${core.openChildren.map((n) => `#${n}`).join(', ')}; ${routing}`;
+    reason = umbrellaReason(members, outside, routedTo);
+  } else if (rec.umbrellaTitle) {
+    state = 'umbrella';
+    reason = 'umbrella title prefix, no open child found';
+  } else if (rec.banner) {
+    // A banner means the author keeps the issue open on purpose, so it wins
+    // over native all-closed: no close proposal.
+    state = 'banner-no-open-child';
+    reason = `banner-no-open-child: self-declared umbrella (${rec.banner.line}) with no open child`;
+  } else if (isDoneButUnclosed(native, members)) {
+    state = 'done-but-unclosed';
+    reason = `done-but-unclosed: all ${native.total} native sub-issues are closed`;
   }
   return {
     state,
     rankable: state === 'ready' || state === 'ready-caveat' || state === 'blocked',
     reason,
     blockedBy: core.blockedBy,
-    openChildren: core.openChildren,
+    openChildren: members,
     routedTo,
-    decidedBy: core.decidedBy,
-    disagreements: core.disagreements,
+    parent: native.parent,
+    decidedBy: core.decidedBy.concat(structureDecisions(native, rec.banner, rec.umbrellaTitle)),
+    disagreements: core.disagreements.concat(
+      membershipDisagreements(native, core.openChildren, rec),
+    ),
   };
 }
 
@@ -719,13 +962,16 @@ function buildRecord(entry, ctx) {
   const commentsTruncated = isCommentsTruncated(entry.bulkCount);
   const notes = [];
   if (commentsTruncated) notes.push('comments possibly truncated');
+  const native = buildNative(entry, ctx);
+  if (native.status === 'no-data') notes.push('native structure: no data');
 
   const rec = {
     number: entry.issue.number,
     refs,
     triggers,
     banner: detectBanner(entry, ctx),
-    native: buildNative(entry, ctx),
+    umbrellaTitle: hasUmbrellaTitlePrefix(entry.issue.title),
+    native,
     commentsTruncated,
     retractedCount: refs.filter((r) => r.outcome === 'retracted').length,
     notes,

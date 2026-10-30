@@ -1729,3 +1729,47 @@ test('CLI: a --repo outside owner/repo form is refused with exit 2', () => {
     assert.equal(r.stdout, '');
   });
 });
+
+// ---- EPIC: the epic: / tracking: title prefix is an umbrella signal ----
+
+test('EPIC: an epic: or tracking: title prefix makes an umbrella, and only that prefix does', () => {
+  const issues = [
+    issueOf(150, '- [ ] #151 the child', { title: 'epic: x' }),
+    issueOf(151, 'The child.'),
+    issueOf(152, 'No children.', { title: 'Tracking: y' }),
+    issueOf(153, 'Plain.', { title: 'epicenter: z' }),
+    issueOf(154, 'Plain.', { title: 'fix: epic bug' }),
+  ];
+  const out = resolve(dataOf(issues), OPTS);
+  const withChild = recOf(out, 150);
+  assert.equal(withChild.readiness.state, 'umbrella');
+  assert.equal(withChild.readiness.routedTo, 151);
+  assert.ok(withChild.readiness.decidedBy.some((x) => x.source === 'title-prefix'));
+  const bare = recOf(out, 152);
+  assert.equal(bare.readiness.state, 'umbrella');
+  assert.equal(bare.readiness.rankable, false);
+  assert.equal(bare.readiness.routedTo, null);
+  assert.ok(bare.readiness.reason.includes('umbrella title prefix, no open child found'));
+  assert.equal(recOf(out, 153).readiness.state, 'ready');
+  assert.equal(recOf(out, 154).readiness.state, 'ready');
+});
+
+// ---- BANNER: a banner wins over native all-closed ----
+
+test('BANNER: a banner with every native sub-issue closed is banner-no-open-child, not done-but-unclosed', () => {
+  const banner = '> Kept as the umbrella and the analysis of record.';
+  const withBanner = [issueOf(160, banner)];
+  const without = [issueOf(161, 'Track the migration.')];
+  const rowsOf = (n) => ({ [n]: srow(n, null, 2, 2) });
+  const a = recOf(
+    resolve(dataOf(withBanner, { structure: structureOf(withBanner, rowsOf(160)) }), OPTS),
+    160,
+  );
+  assert.equal(a.readiness.state, 'banner-no-open-child');
+  assert.equal(a.readiness.rankable, false);
+  const b = recOf(
+    resolve(dataOf(without, { structure: structureOf(without, rowsOf(161)) }), OPTS),
+    161,
+  );
+  assert.equal(b.readiness.state, 'done-but-unclosed');
+});
