@@ -53,6 +53,9 @@ const COMMENTS_PAGE = 100;
 const DEFAULT_STATE_TEMPLATE =
   "gh api repos/{repo}/issues/{id} --jq '{number,state,state_reason,closed_at,pull_request:(.pull_request != null),sub_issues_summary}'";
 
+// The pin recorded for a .gitmodules submodule: always pinned, commit unknown.
+const SUBMODULE_PIN = 'submodule';
+
 const BLOCKING_RELATIONS = new Set(['blocked-by', 'depends-on']);
 const UNCLEARED_OUTCOMES = new Set(['live', 'closed-unreleased', 'unresolvable']);
 // A deferral trigger whose reference ended in one of these has fired.
@@ -520,6 +523,38 @@ function isSourceConsumed(repo, manifests) {
   return manifests.deps.some((d) => namesRepo(d.spec, repo));
 }
 
+// The "#ref" (commit, tag or branch) a git or GitHub dependency spec carries,
+// or null when it carries none or an empty one.
+function pinOfSpec(spec) {
+  const s = String(spec).trim();
+  const hash = s.indexOf('#');
+  if (hash < 0) return null;
+  const pin = s.slice(hash + 1).trim();
+  return pin === '' ? null : pin;
+}
+
+// The pins of every source consumption of the repo, in order: a dependency
+// spec with a "#ref" gives that ref; a .gitmodules submodule is always pinned
+// to a commit the script cannot read (it spawns no git), so it gives
+// 'submodule'. An unpinned dependency spec gives nothing.
+function consumptionPinsOf(repo, manifests) {
+  const pins = [];
+  if (manifests.submoduleUrls.some((u) => namesRepo(u, repo))) pins.push(SUBMODULE_PIN);
+  for (const d of manifests.deps) {
+    if (!namesRepo(d.spec, repo)) continue;
+    const pin = pinOfSpec(d.spec);
+    if (pin !== null) pins.push(pin);
+  }
+  return pins;
+}
+
+// Rule: a pinned source consumption does not clear a closed blocker, because
+// the pin may predate the fix. Any pinned consumption counts, so an unpinned
+// dependency beside a submodule is still pinned.
+function isPinnedConsumption(repo, manifests) {
+  return consumptionPinsOf(repo, manifests).length > 0;
+}
+
 // ---- rule: registry package names (SAFE) ----
 
 // A dependency name safe to print into an npm command.
@@ -549,7 +584,10 @@ function registryDependencyFor(repo, manifests) {
 // D3: source-consumed, then a registry package to confirm, else unknown.
 function inferConsumption(repo, ctx) {
   const manifests = manifestsOf(ctx);
-  if (isSourceConsumed(repo, manifests)) return { mode: 'source' };
+  if (isSourceConsumed(repo, manifests)) {
+    if (!isPinnedConsumption(repo, manifests)) return { mode: 'source', pinned: false };
+    return { mode: 'source', pinned: true, pin: consumptionPinsOf(repo, manifests)[0] };
+  }
   const dep = registryDependencyFor(repo, manifests);
   if (dep !== null) return { mode: 'registry', dep };
   return { mode: 'unknown' };
@@ -688,7 +726,11 @@ function releaseUnverified(extra) {
 // stays release-unverified and is never cleared.
 export function classifyClosedCrossRepo(ref, st, ctx) {
   const consumption = inferConsumption(ref.target.repo, ctx);
-  if (consumption.mode === 'source') return { outcome: 'cleared', via: 'source-consumed' };
+  if (consumption.mode === 'source') {
+    // A pinned consumption may predate the fix: a caveat, never a clear.
+    if (consumption.pinned) return releaseUnverified({ pin: consumption.pin });
+    return { outcome: 'cleared', via: 'source-consumed' };
+  }
   if (consumption.mode !== 'registry') return releaseUnverified();
 
   const entry = registryEntriesOf(ctx).find((e) => e.dep === consumption.dep);
@@ -1028,7 +1070,15 @@ function describeBlocker(ref) {
   if (ref.outcome === 'closed-unreleased') {
     return `${label} (closed upstream, not yet released, latest is ${ref.latest})`;
   }
-  if (ref.outcome === 'closed-release-unverified') return `${label} (closed, release unverified)`;
+  if (ref.outcome === 'closed-release-unverified') {
+    if (ref.pin === SUBMODULE_PIN) {
+      return `${label} (closed, consumed as a pinned submodule, fix unverified)`;
+    }
+    if (ref.pin !== undefined) {
+      return `${label} (closed, consumed at pinned ref ${ref.pin}, fix unverified)`;
+    }
+    return `${label} (closed, release unverified)`;
+  }
   return `${label} (unresolvable: ${ref.kind})`;
 }
 
@@ -1260,7 +1310,8 @@ function umbrellaReason(members, outside, routedTo, other) {
   if (outside > 0) parts.push(`${outside} open sub-issues outside the open list`);
   if (other.unknown.length) {
     const named = other.unknown.map((u) => `${u.label} ${u.kind}`).join(', ');
-    parts.push(`${other.unknown.length} child rows with unknown state (${named})`);
+    const n = other.unknown.length;
+    parts.push(`${n} child ${n === 1 ? 'row' : 'rows'} with unknown state (${named})`);
   }
   const routing = routedTo === null ? noRouteText(members, other) : `routed to #${routedTo}`;
   return `umbrella: ${parts.join('; ')}; ${routing}`;

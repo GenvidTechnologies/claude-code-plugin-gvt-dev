@@ -56,6 +56,12 @@ const NOT_A_REPO_WORD_RE =
 // (Tested without slicing: see startsReferenceItem.)
 const ITEM_SEPARATOR_CHARS = ',;&+';
 
+// The tail of the text before a reference: a qualifier phrase, then optional
+// emphasis and space. Run over a bounded slice only (QUALIFIER_LOOKBACK).
+const QUALIFIER_TAIL_RE =
+  /(?:sub-issue of|part of|child of|see|cf\.?|per|as in|from|under)[*_\s]*$/i;
+const QUALIFIER_LOOKBACK = 40;
+
 const FENCE_LINE_RE = /^ {0,3}(?:`{3,}|~{3,})/;
 const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
 const BANNER_THIS_ISSUE_RE =
@@ -164,6 +170,36 @@ function startsReferenceItem(text, end, leadEnd) {
   return lastThree === 'and' && !isWordAt(i - 4);
 }
 
+// Rule: a reference on a Blocked by / Depends on line is a qualifier, not a
+// blocker, when it sits inside a parenthetical (`depth` > 0 at its start) or
+// right after a qualifier phrase ("sub-issue of", "part of", "child of", "see",
+// "cf.", "per", "as in", "from", "under"; case-insensitive, optional emphasis).
+// `phraseEnd` is where the text before the reference ends: the reference's own
+// start, or the start of its "#" when a plain word ("of", "see") was matched
+// with it. Only a bounded slice before that point is read.
+function isQualifierReference(text, phraseEnd, depth) {
+  if (depth > 0) return true;
+  const start = Math.max(0, phraseEnd - QUALIFIER_LOOKBACK);
+  const m = QUALIFIER_TAIL_RE.exec(text.slice(start, phraseEnd));
+  if (!m) return false;
+  const at = start + m.index;
+  return at === 0 || !WORD_CHAR_RE.test(text[at - 1]);
+}
+
+// The parenthesis depth at an index, for indexes asked in ascending order (one
+// pass over the text in all). An unmatched ")" never goes below zero.
+function makeParenDepth(text) {
+  let pos = 0;
+  let depth = 0;
+  return (index) => {
+    for (; pos < index; pos++) {
+      if (text[pos] === '(') depth++;
+      else if (text[pos] === ')' && depth > 0) depth--;
+    }
+    return depth;
+  };
+}
+
 // Rule: the banner self-declaration form.
 function isSelfDeclaringBanner(text) {
   return (
@@ -261,22 +297,36 @@ function sameKey(target) {
 
 // Every reference named in a text, in order. A "name#N" or "name #N" is
 // unresolvable (repo-ambiguous). spaceForm: whether "name #N" counts.
-function scanRefs(text, ctx, spaceForm) {
+// qualify: mark each reference `qualifier` (see isQualifierReference); a
+// reference named both as a qualifier and as a plain item is not a qualifier.
+function scanRefs(text, ctx, spaceForm, qualify = false) {
   const out = [];
-  const seen = new Set();
+  const byKey = new Map();
+  let qualifier = false;
   // A repo-ambiguous reference is keyed by its own text ("name #N"), so the
   // same text named twice is one reference.
   const add = (target, unresolvable, text) => {
     const key = target ? sameKey(target) : `?${String(text).toLowerCase()}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({ target, unresolvable });
+    const prev = byKey.get(key);
+    if (prev) {
+      if (!qualifier) prev.qualifier = false;
+      return;
+    }
+    const item = { target, unresolvable, qualifier };
+    byKey.set(key, item);
+    out.push(item);
   };
+  const depthAt = qualify ? makeParenDepth(text) : null;
   const leadIndex = text.search(LEAD_CHAR_RE);
   const leadEnd = leadIndex < 0 ? text.length : leadIndex;
   REF_RE.lastIndex = 0;
   let m;
   while ((m = REF_RE.exec(text)) !== null) {
+    // The "name #N" form with a plain word ("of #5", "see #5") matches the
+    // word too; the qualifier phrase then ends after that word.
+    const spaced = m[8] !== undefined && m[7] === ' ';
+    const phraseEnd = spaced ? m.index + m[6].length : m.index;
+    qualifier = qualify && isQualifierReference(text, phraseEnd, depthAt(m.index));
     if (m[3] !== undefined) {
       add({ repo: normalizeRepo(`${m[1]}/${m[2]}`, ctx), number: Number(m[3]) });
     } else if (m[5] !== undefined) {
@@ -449,20 +499,21 @@ function scanText(text, origin, order, ctx, skipStatements) {
     const stmt = findStatement(lead.rest);
     if (stmt) {
       if (isNegatedStatement(stmt.negator)) continue;
-      const found = scanRefs(stmt.rest, ctx, true);
-      if (found.length === 0) {
-        if (stmt.relation === 'blocked-by' || stmt.relation === 'depends-on') {
-          emit('statement', null, line, { relation: stmt.relation, unresolvable: 'prose' });
-        }
-      } else {
-        for (const f of found) {
-          emit('statement', f.target, line, {
-            relation: stmt.relation,
-            unresolvable: f.unresolvable,
-          });
-        }
+      const blocking = stmt.relation === 'blocked-by' || stmt.relation === 'depends-on';
+      const found = scanRefs(stmt.rest, ctx, true, blocking);
+      const blockers = found.filter((f) => !f.qualifier);
+      // A blocker line with no blocking reference left (none at all, or only
+      // qualifiers) is an unverified prose blocker.
+      if (blockers.length === 0 && blocking) {
+        emit('statement', null, line, { relation: stmt.relation, unresolvable: 'prose' });
       }
-      if (section && section.kind === 'blocker' && found.length) section.refCount++;
+      for (const f of found) {
+        emit('statement', f.target, line, {
+          relation: f.qualifier ? 'qualifier' : stmt.relation,
+          unresolvable: f.unresolvable,
+        });
+      }
+      if (section && section.kind === 'blocker' && blockers.length) section.refCount++;
       continue;
     }
 

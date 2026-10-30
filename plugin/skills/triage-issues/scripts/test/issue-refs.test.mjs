@@ -23,7 +23,12 @@
 //                   'blocks' | 'relates-to'; null for title, child-row,
 //                   row-annotation and deferral sources (inherently blocking
 //                   or child relations). Only 'blocked-by' and 'depends-on'
-//                   can make the issue blocked.
+//                   can make the issue blocked. Added (review W7): on a
+//                   blocked-by / depends-on line, a reference inside a
+//                   parenthetical or right after a qualifier phrase
+//                   ("sub-issue of", "part of", "see", ...) has relation
+//                   'qualifier' and never blocks; a blocker line left with
+//                   no other reference is unresolvable, kind 'prose'.
 //   Reference forms (added: premise correction 19): besides "#N" and
 //   "owner/repo#N", a statement may give a URL
 //   "https://github.com/<owner>/<repo>/issues/<N>" (or ".../pull/<N>", read
@@ -1283,7 +1288,7 @@ test('PROP-607-3: a closed same-repo blocker clears via same-repo, whatever the 
   });
 });
 
-test('PROP-607-3: a closed blocker consumed from a submodule clears via source-consumed, with no registry check', () => {
+test('PROP-607-3: a closed blocker consumed from a submodule is closed-release-unverified (pinned submodule), with no registry check', () => {
   withTmp((dir) => {
     // The package.json also names the repo; the submodule wins, so no npm command.
     const root = writeIn(dir, {
@@ -1297,9 +1302,11 @@ test('PROP-607-3: a closed blocker consumed from a submodule clears via source-c
     assert.deepEqual(plan(d, o), []);
     const rec = recOf(resolve(d, o), 1);
     const ref = refOf(rec, 12, LIB);
-    assert.equal(ref.outcome, 'cleared');
-    assert.equal(ref.via, 'source-consumed');
-    assert.equal(rec.readiness.state, 'ready');
+    assert.equal(ref.outcome, 'closed-release-unverified');
+    assert.equal(ref.pin, 'submodule');
+    assert.equal(rec.readiness.state, 'ready-caveat');
+    const unattended = recOf(resolve(d, { ...o, nonInteractive: true }), 1);
+    assert.equal(unattended.readiness.state, 'blocked');
   });
 });
 
@@ -1656,8 +1663,8 @@ test('NPM: a registry repository.url that names another repo is closed-release-u
 
 test('SRC: a package.json git or GitHub dependency spec is source-consumed', () => {
   for (const spec of [
-    'github:example-org/lib#main',
-    'git+https://github.com/example-org/lib.git#main',
+    'github:example-org/lib',
+    'git+https://github.com/example-org/lib.git',
   ]) {
     withTmp((dir) => {
       const root = writeIn(dir, { 'package.json': pkgJson({ 'lib-from-git': spec }) });
@@ -1669,6 +1676,26 @@ test('SRC: a package.json git or GitHub dependency spec is source-consumed', () 
       const ref = refOf(recOf(resolve(d, o), 1), 12, LIB);
       assert.equal(ref.outcome, 'cleared', spec);
       assert.equal(ref.via, 'source-consumed', spec);
+    });
+  }
+});
+
+test('SRC: a git or GitHub dependency spec with a #ref is pinned, so closed-release-unverified', () => {
+  for (const [spec, pin] of [
+    ['github:example-org/lib#main', 'main'],
+    ['git+https://github.com/example-org/lib.git#abc1234', 'abc1234'],
+    ['github:example-org/lib#abc1234', 'abc1234'],
+  ]) {
+    withTmp((dir) => {
+      const root = writeIn(dir, { 'package.json': pkgJson({ 'lib-from-git': spec }) });
+      const o = { ...OPTS, root };
+      const d = withState(dataOf([issueOf(1, `Blocked by ${LIB}#12.`)]), o, {
+        [`${LIB}#12`]: stJson(12, 'closed'),
+      });
+      assert.deepEqual(plan(d, o), [], spec);
+      const ref = refOf(recOf(resolve(d, o), 1), 12, LIB);
+      assert.equal(ref.outcome, 'closed-release-unverified', spec);
+      assert.equal(ref.pin, pin, spec);
     });
   }
 });
@@ -2286,4 +2313,104 @@ test('REVIEW: W8 the extract CLI prints the banner', () => {
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(JSON.parse(r.stdout).banner, { line: 'Do not plan this issue.', origin: 'body' });
   });
+});
+
+// W6: a pinned source dependency is a caveat, not a clear.
+function pinnedRun(deps, extraFiles, options = {}) {
+  let out;
+  withTmp((dir) => {
+    const root = writeIn(dir, { 'package.json': pkgJson(deps), ...extraFiles });
+    const o = { ...OPTS, root, ...options };
+    const d = withState(dataOf([issueOf(1, `Blocked by ${LIB}#12.`)]), o, {
+      [`${LIB}#12`]: stJson(12, 'closed'),
+    });
+    const rec = recOf(resolve(d, o), 1);
+    out = { rec, ref: refOf(rec, 12, LIB) };
+  });
+  return out;
+}
+
+test('REVIEW W6: a pinned github spec is closed-release-unverified, a caveat naming the pin', () => {
+  const { rec, ref } = pinnedRun({ lib: `github:${LIB}#abc1234` });
+  assert.equal(ref.outcome, 'closed-release-unverified');
+  assert.equal(ref.pin, 'abc1234');
+  assert.equal(rec.readiness.state, 'ready-caveat');
+  assert.ok(
+    rec.readiness.reason.includes('closed, consumed at pinned ref abc1234, fix unverified'),
+    rec.readiness.reason,
+  );
+});
+
+test('REVIEW W6: an unpinned github spec still clears via source-consumed', () => {
+  const { rec, ref } = pinnedRun({ lib: `github:${LIB}` });
+  assert.equal(ref.outcome, 'cleared');
+  assert.equal(ref.via, 'source-consumed');
+  assert.equal(ref.pin, undefined);
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('REVIEW W6: a pinned github spec blocks under --non-interactive', () => {
+  const { rec, ref } = pinnedRun({ lib: `github:${LIB}#abc1234` }, {}, { nonInteractive: true });
+  assert.equal(ref.outcome, 'closed-release-unverified');
+  assert.equal(rec.readiness.state, 'blocked');
+});
+
+test('REVIEW W6: one pinned consumption is enough, even beside an unpinned spec', () => {
+  const { rec, ref } = pinnedRun(
+    { a: `github:${LIB}`, b: `github:${LIB}#v1.2.0` },
+    {},
+  );
+  assert.equal(ref.outcome, 'closed-release-unverified');
+  assert.equal(ref.pin, 'v1.2.0');
+  assert.equal(rec.readiness.state, 'ready-caveat');
+});
+
+// W7: a qualifier reference on a blocker line never blocks.
+test('REVIEW W7: the #190 shape is a prose blocker, not the qualifier #183', () => {
+  const body =
+    '**Blocked by the bundle-root decision** (the ADR sub-issue of #183) - sources resource can not be pinned.';
+  const x = extract(issue(body, { number: 190 }));
+  assert.equal(refTo(x, 183).relation, 'qualifier');
+  assert.ok(x.refs.some((r) => r.target === null && r.unresolvable === 'prose'));
+  const out = resolve({ open: [issueOf(190, body), issueOf(183, 'Epic.')] }, OPTS);
+  const r = recOf(out, 190).readiness;
+  assert.equal(r.state, 'blocked');
+  assert.deepEqual(r.blockedBy, []);
+  assert.ok(r.reason.includes('unresolvable: prose'), r.reason);
+  assert.ok(!r.reason.includes('#183'), r.reason);
+});
+
+test('REVIEW W7: a reference right after the verb is the blocker; only the parenthetical is a qualifier', () => {
+  const x = extract(issue('Blocked by #12 (see #183)'));
+  assert.equal(refTo(x, 12).relation, 'blocked-by');
+  assert.equal(refTo(x, 183).relation, 'qualifier');
+  assert.ok(!x.refs.some((r) => r.unresolvable === 'prose'));
+  const r = recOf(resolve({ open: [issueOf(1, 'Blocked by #12 (see #183)'), issueOf(12, ''), issueOf(183, '')] }, OPTS), 1);
+  assert.deepEqual(r.readiness.blockedBy, [{ repo: null, number: 12 }]);
+});
+
+test('REVIEW W7: "Depends on part of #50" is a prose blocker', () => {
+  const x = extract(issue('Depends on part of #50'));
+  assert.equal(refTo(x, 50).relation, 'qualifier');
+  assert.ok(x.refs.some((r) => r.target === null && r.unresolvable === 'prose'));
+  const r = recOf(resolve({ open: [issueOf(1, 'Depends on part of #50'), issueOf(50, '')] }, OPTS), 1);
+  assert.equal(r.readiness.state, 'blocked');
+  assert.deepEqual(r.readiness.blockedBy, []);
+});
+
+test('REVIEW W7: "Blocked by #7, #8" is unchanged', () => {
+  const x = extract(issue('Blocked by #7, #8'));
+  assert.equal(refTo(x, 7).relation, 'blocked-by');
+  assert.equal(refTo(x, 8).relation, 'blocked-by');
+  assert.equal(x.refs.length, 2);
+});
+
+test('REVIEW W7: each qualifier phrase marks its reference, case-insensitively', () => {
+  for (const phrase of ['sub-issue of', 'part of', 'child of', 'see', 'cf.', 'per', 'as in', 'from', 'under', '**See**']) {
+    const x = extract(issue(`Blocked by #7 ${phrase} #9`));
+    assert.equal(refTo(x, 7).relation, 'blocked-by', phrase);
+    assert.equal(refTo(x, 9).relation, 'qualifier', phrase);
+  }
+  // A word that merely ends like a phrase is not one.
+  assert.equal(refTo(extract(issue('Blocked by #7 reaper #9')), 9).relation, 'blocked-by');
 });
