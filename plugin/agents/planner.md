@@ -93,6 +93,8 @@ From a design document (produced by the designer), produce a concrete implementa
     - **If the design carries neither list, or the dispatch handed you only a summary of them, flag the gap.** Treat it the way item 10 treats a missing Test Criteria table: say so plainly in the plan. Do not reconstruct the lists.
     - **Never omit an entry to hide it.** An entry that is neither in a task nor listed as not planned is the defect this item exists to catch.
 
+15. **A task that implements a classifier over real data runs it on the real corpus before anything describes its output.** The designer validates a heuristic against a sample at design time (`designer.md`, "Heuristic-vs-real-data validation"), but that checks a sketch, not the shipped code, and constructed fixtures test only the shapes their author thought of. When a task implements a matcher, classifier, filter or extractor over tracker, repo or user data, its done-when includes one run of the *implemented* code over the real corpus (saved to scratch, never printed whole), reporting the count per output class and a read of every hit in the smallest classes, where false positives hide. Order that task before any prose task that names the output's classes or figures. (Surfaced on #209: 61 fixture-floor tests were green while the first real-backlog runs found a design estimate of at most 2 lookups per issue against a measured 9, and 28 false references — self-references and ordinary words read as repository names.)
+
 ## Domain Knowledge
 
 Read these at runtime if present:
