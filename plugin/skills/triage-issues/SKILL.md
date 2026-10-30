@@ -558,7 +558,11 @@ split). Present them together, then apply the approved changes using the **Mutat
 - when the analyst's **Verification findings** report a `[refs]` finding for this
   issue (a cross-reference whose recorded state disagrees with the tracker's),
   present the reference, its relation, its outcome and the evidence, and remedy it
-  by outcome. A remedy that edits the body is offered with per-issue approval;
+  by outcome. A reference with relation `qualifier` (inside a parenthetical, or
+  right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in",
+  "from" or "under", on a `Blocked by` or `Depends on` line) never blocks and is
+  not a finding; a blocker line left with no other reference is `unresolvable`
+  kind `prose`. A remedy that edits the body is offered with per-issue approval;
   annotate the line or row and never tick or untick it, because ticking is reverse
   propagation and out of scope:
   - `cleared` (`via` is `same-repo`, `source-consumed` or `released (version check
@@ -568,7 +572,11 @@ split). Present them together, then apply the approved changes using the **Mutat
   - `ticked-open` and `unticked-closed`: annotate the sub-issue row with the
     mismatch.
   - `closed-unreleased` and `closed-release-unverified`: comment only. The blocker
-    is closed but its fix is not shown to be released.
+    is closed but its fix is not shown to be released. That includes a source
+    consumed at a pinned ref (a `.gitmodules` submodule, or a git or GitHub
+    dependency URL with a `#ref`), which is `closed-release-unverified` with
+    the pin named, since the pin may predate the fix; an unpinned consumption is
+    `cleared` via `source-consumed`.
   - `unresolvable` (kinds `prose`, `repo-ambiguous`, `cross-repo-unread`,
     `absent`, `pr`, `nonexistent` (not found or not readable), `heading-detached`,
     `truncated`, `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.

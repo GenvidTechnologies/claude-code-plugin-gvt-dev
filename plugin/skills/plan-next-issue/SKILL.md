@@ -421,7 +421,13 @@ bounded rank input, while the freshness check keeps its single pass.
 not cleared by closing alone. The script's registry check (`npm view`, at most 5
 packages per run, the overflow reported) clears it only when a version was
 published after the close, labelled `released (version check only)`, or when
-this repo consumes the source directly. A closed blocker with no publish since
+this repo consumes the source directly and unpinned (a git or GitHub dependency
+URL with no `#ref`). A source consumed at a pinned ref (a `.gitmodules`
+submodule, or a git or GitHub dependency URL with a `#ref`) is
+`closed-release-unverified` with the pin named ("closed, consumed at pinned ref
+<ref>, fix unverified" or "closed, consumed as a pinned submodule, fix
+unverified"), since the pin may predate the fix; a pinned consumption wins over
+an unpinned one beside it. A closed blocker with no publish since
 leaves the issue `blocked`, and the rationale reads "blocker closed upstream
 (<PR or issue>), not yet released, latest is X". This skill checks only the
 registry, that some version was published after the close, and never reads the

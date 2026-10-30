@@ -1,7 +1,7 @@
 ---
 type: decision-record
 title: 'A cross-repo blocker consumed as a released artifact clears on release, not on close; consumption is inferred from tracked manifests and the registry is authoritative'
-description: 'A closed cross-repo blocker clears only for a source-consumed repo or after a registry publish; otherwise it is closed-unreleased or release-unverified, and the content check runs at plan-task adoption.'
+description: 'A closed cross-repo blocker clears only for an unpinned source-consumed repo or after a registry publish; otherwise it is closed-unreleased or release-unverified, and the content check runs at plan-task adoption.'
 tags: [decisions, plan-execution]
 status: stable
 ---
@@ -23,7 +23,7 @@ The reference grammar, the `[refs]` comparand and the readiness states are decid
 
 The consumption mode is inferred from tracked manifests, in this order:
 
-1. A github `.gitmodules` URL names the repo, or a tracked `package.json` dependency spec is a git or GitHub URL naming it. This repo consumes the source directly, so closed means cleared, and the outcome is `cleared` with `via: source-consumed`.
+1. A github `.gitmodules` URL names the repo, or a tracked `package.json` dependency spec is a git or GitHub URL naming it. This repo consumes the source directly. When the consumption is unpinned (a dependency spec with no `#ref`), closed means cleared, and the outcome is `cleared` with `via: source-consumed`. When it is pinned (a `.gitmodules` submodule, or a spec with a `#ref`), the pin may predate the fix, so the outcome is `closed-release-unverified` with the pin named: "closed, consumed at pinned ref <ref>, fix unverified" or "closed, consumed as a pinned submodule, fix unverified". Any pinned consumption wins over an unpinned one beside it. This was a review decision, which amended #209's PROP-607-3 criterion in the open.
 2. A tracked `package.json` dependency whose name's last path segment equals the repo name, confirmed by the package's `repository.url` naming `owner/repo`. The blocker is a released-artifact (npm) blocker. If the registry shows a version published after the upstream issue's close, it is `cleared` with `via: released (version check only)`. Otherwise the outcome is `closed-unreleased`, with "latest is X".
 3. Anything else is `closed-release-unverified`, named: another ecosystem (pip, cargo, a marketplace `source.ref`, a vendored blob) or a package whose name differs from its repo name.
 
@@ -50,7 +50,7 @@ The cost is two registry calls per checked package, capped at 5 packages per run
 
 ### Readiness effect and `--non-interactive`
 
-- `closed-unreleased` is `blocked`, with the rationale "blocker merged upstream, not yet released, latest is X". No label is removed automatically; the remedy is a comment.
+- `closed-unreleased` is `blocked`, with the rationale "closed upstream, not yet released, latest is X". No label is removed automatically; the remedy is a comment.
 - `closed-release-unverified` is `ready-caveat` when interactive, so the user sees the caveat and decides.
 - Under `--non-interactive`, a release-unverified blocker counts as blocked. Nobody is present to confirm the caveat, which mirrors the rule that an inherited deadline is shown but not acted on there.
 
@@ -65,7 +65,7 @@ The cost is two registry calls per checked package, capped at 5 packages per run
 
 - A cross-repo dependency on a published package no longer clears the moment its issue closes, so the "ready" shortlist stops offering work whose upstream fix is unreleased.
 - Triage and ranking both call the registry, bounded by the 5-package cap, and a `plan-task` adoption of a version-checked blocker owes one content check.
-- A consumer whose dependency is consumed from source (a github `.gitmodules` URL or a git spec) sees no change: closed still means cleared.
+- A consumer whose dependency is consumed from source unpinned (a git spec with no `#ref`) sees no change: closed still means cleared. A pinned consumption (a submodule, or a spec with a `#ref`) is release-unverified, so its content check at `plan-task` adoption searches the pinned commit or tag.
 - Tracker kinds other than github, and ecosystems without a registry command, get `closed-release-unverified` rather than a false clear.
 
 **Related records:** ADR-0087 (the scripted grammar, the `[refs]` outcomes and the readiness precedence this rule sits inside; it lists `closed-unreleased` and `closed-release-unverified` among the outcomes); ADR-0085 (the `plan-next-issue` ranking and the inherited-versus-verified treatment of dates that this rule mirrors under `--non-interactive`).

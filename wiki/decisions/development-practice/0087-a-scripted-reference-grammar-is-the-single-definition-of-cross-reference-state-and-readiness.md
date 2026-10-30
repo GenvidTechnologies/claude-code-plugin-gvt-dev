@@ -52,6 +52,7 @@ Outcomes: `cleared`, `closed-unreleased`, `closed-release-unverified`, `ticked-o
 
 - Only a line that begins with a blocker verb is a statement; a mid-line mention is narrative. Fenced, blockquoted, struck-through and inline-code occurrences are excluded.
 - GitHub issue URLs count as references. Each reference carries a direction (`blocked-by`, `depends-on`, `blocks`, `relates-to`), and only the first two block.
+- A fifth relation, `qualifier`, never blocks. On a `Blocked by` or `Depends on` line, a reference inside a parenthetical, or right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in", "from" or "under", is a qualifier, as in "Blocked by the bundle-root decision (the ADR sub-issue of #183)". A blocker line left with no other reference is `unresolvable` kind `prose`. This was a review decision.
 - Self-references are dropped. The `name #N` form applies only at the start of a reference item; before that fix, 25 of 25 such matches on the real backlog were false positives.
 - A later comment naming the same target and withdrawing it makes the reference `retracted`.
 
