@@ -470,6 +470,12 @@ items — close-as-duplicate, create split issues — are **recorded but NOT app
 here**; they are carried into the per-issue walk, matched to each affected issue
 by issue number.
 
+Present each dependency with its **resolved state**: for a link the analyst
+resolved, show the target's state beside it (open, closed with its date, a PR,
+nonexistent, or unresolvable and why), so the user accepts or rejects a link
+knowing whether it still blocks. `[refs]` findings are Verification findings,
+not relational ones: they are accepted or rejected in the §3 walk, not here.
+
 In `--non-interactive`, accept the analyst's findings as-is, but still defer the
 destructive items unless `--force` was passed.
 
@@ -546,6 +552,56 @@ split). Present them together, then apply the approved changes using the **Mutat
   instead (§4), through the same body-file Comment recipe as the `[artifact]`
   note above, opening with the same first-line template (here `<source>` is the
   comment's URL) and skipped on the same comparand-and-source match;
+- when the analyst's **Verification findings** report a `[refs]` finding for this
+  issue (a cross-reference whose recorded state disagrees with the tracker's),
+  present the reference, its relation, its outcome and the evidence, and remedy it
+  by outcome. A remedy that edits the body is offered with per-issue approval;
+  annotate the line or row and never tick or untick it, because ticking is reverse
+  propagation and out of scope:
+  - `cleared` (`via` is `same-repo`, `source-consumed` or `released (version check
+    only)`): offer to append "— cleared: #N closed <date> (triage <date>)" to the
+    body line that records the dependency. A blocker taken from a comment has no
+    body line, so a comment is the only remedy.
+  - `ticked-open` and `unticked-closed`: annotate the sub-issue row with the
+    mismatch.
+  - `closed-unreleased` and `closed-release-unverified`: comment only. The blocker
+    is closed but its fix is not shown to be released.
+  - `unresolvable` (kinds `prose`, `repo-ambiguous`, `cross-repo-unread`,
+    `absent`, `pr`, `nonexistent`, `heading-detached`, `truncated`,
+    `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.
+    For a kind that rewrite cannot fix (`truncated`, `lookup-failed`), report it
+    and write nothing.
+  - `done-but-unclosed`: propose closing the issue through the contract's
+    "Close as completed or not planned (only with approval)" recipe, per the
+    close-proposal walk below.
+  - `banner-no-open-child`: report only. A banner is the author saying the issue
+    stays open on purpose, so this is never a close proposal.
+  - `retracted`: no write. A later note already withdrew the claim.
+  Under `--non-interactive` without `--force`, post the finding as a comment
+  instead (§4) and rewrite the body only under `--force`. The note opens with
+  `Triage verification note — [refs] <outcome> — <source>`, where `<source>` is
+  `<target> @ <state anchor>` and the state anchor is `closed <closed_at>`,
+  `open`, `latest <version>`, or `sub-issues <completed>/<total>` (for
+  `done-but-unclosed` the target is the issue itself). Dedup follows the same
+  rule as above: skip when an existing comment's first line carries the same
+  `[refs]` comparand and `<source>`, outcome ignored. A blocker that is reopened
+  and closed again, or a new release, moves the anchor, so that is a new note.
+  For `cleared`, add a second line, "No longer blocked by #N: #N closed <date>.",
+  so the next run reads the note as a retraction;
+- **reference findings outside the action set.** A `[refs]` finding can name an
+  issue that is not in the action set, such as an already-triaged issue. After the
+  action-set issues, walk those findings one at a time with the remedies above
+  and the same approvals. These issues are not in the walk, so do not stamp
+  `triagedLabel` on them;
+- **close proposals.** A `done-but-unclosed` finding, and a carried-in close
+  proposal (§0 step 4), are walked the same way: present the reason and its
+  evidence, and on per-item approval post the reason through the Comment recipe,
+  then close through the contract's "Close as completed or not planned (only with
+  approval)" recipe with `{closeReason}` set to `completed` or `not planned`.
+  Read the state back afterwards, as for labels. When the resolved contract
+  **has no Close recipe** (one scaffolded before it existed), do not improvise a
+  close command: report the approved close as outstanding, with the issue, the
+  reason and the evidence, and carry it into §5;
 - **then read the labels back.** Read the labels back with `bugTracker.readOne` (or the tracker's native issue view) and compare them with the set you intended to leave on the issue. A tracker CLI can exit 0 while a label write did nothing, so the write's own exit code is not evidence. On a mismatch, re-apply once and re-read. If it still mismatches, it is a failed write: stop on that issue and do not stamp it;
 - **last**, add `triagedLabel` — only after the issue's other approved changes
   succeed and only after a matching readback. This keeps the skill idempotent: an
@@ -583,6 +639,8 @@ regardless; only the create is best-effort (see
 | Body rewrite from a verification finding (§3) — an `[artifact]` rewrite or a `[comments]` reconciliation | per-issue approval | **comment only** — the finding is posted as a comment; the body is rewritten only under `--force` |
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
+| Body annotation from a `[refs]` finding (§3) — a cleared line, or a mismatched row | per-issue approval | **comment only** — posted as a comment; the body is annotated only under `--force`. Never tick or untick a row |
+| Close as completed / not planned (done-but-unclosed, or a carried-in proposal) (§3) | approve per item | **deferred** unless `--force` |
 | Close-as-duplicate / create split issues | approve per item | **deferred** unless `--force` |
 | Label readback (§3) | always | always |
 | `triaged` label | after the issue's changes and a matching readback | after the issue's changes and a matching readback |
@@ -595,8 +653,12 @@ explicit `--force`. These actions are hard to reverse on most trackers.
 Report: issues triaged; fields / labels / priorities changed; duplicates linked or
 closed; issues split or created; dependencies linked; and anything left
 `needs-info` or deferred for a follow-up run. Report verification findings by
-comparand (`[artifact]` or `[comments]`) and outcome, and which were rewritten
-into the body versus posted as a comment.
+comparand (`[artifact]`, `[comments]` or `[refs]`) and outcome, and which were
+rewritten into the body versus posted as a comment. For `[refs]`, also report the
+`retracted` count (findings withdrawn by an earlier note, so nothing was written),
+the truncated count (lists or comment sets cut off at their limit, so some
+references were not resolved), and each close applied or deferred, with any
+approved close left outstanding for lack of a Close recipe.
 
 Report the label readback per issue (§3): matched, re-applied, or failed. Report
 any legacy-guard strips (§3), and §0c's set-recipe warning. Do not cite the write
