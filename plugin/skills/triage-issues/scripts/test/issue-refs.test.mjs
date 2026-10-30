@@ -1773,3 +1773,73 @@ test('BANNER: a banner with every native sub-issue closed is banner-no-open-chil
   );
   assert.equal(b.readiness.state, 'done-but-unclosed');
 });
+
+// ---- SELF: an issue never references itself ----
+
+const SELF_REPO = 'example-org/example-repo';
+
+test('SELF: a same-repo #N naming the issue itself is not emitted, a sibling on the line is', () => {
+  const out = extract(
+    issue('Relates to #51 (adjacent: #50 owns detection, #51 owns lint).', { number: 50 }),
+    { repo: SELF_REPO },
+  );
+  assert.deepEqual(numbers(out), [51]);
+});
+
+test('SELF: a same-repo URL naming the issue itself is not emitted, a sibling URL is', () => {
+  const base = `https://github.com/${SELF_REPO}/issues`;
+  const out = extract(issue(`Blocked by ${base}/50 and ${base}/52`, { number: 50 }), {
+    repo: SELF_REPO,
+  });
+  assert.deepEqual(numbers(out), [52]);
+});
+
+test('SELF: owner/repo#N naming --repo and the issue itself is not emitted, a sibling is', () => {
+  const out = extract(
+    issue(`Depends on ${SELF_REPO}#50, ${SELF_REPO}#53`, { number: 50 }),
+    { repo: SELF_REPO },
+  );
+  assert.deepEqual(numbers(out), [53]);
+});
+
+test('SELF: the same number in another repo is a real reference', () => {
+  const out = extract(issue('Blocked by example-org/example-lib#50', { number: 50 }), {
+    repo: SELF_REPO,
+  });
+  assert.deepEqual(numbers(out), [50]);
+});
+
+// ---- SPACE: the "name #N" form applies to reference items only ----
+
+test('SPACE: "Blocked by audit-core #12" is repo-ambiguous', () => {
+  const out = extract(issue('Blocked by audit-core #12'));
+  assert.equal(out.refs.length, 1);
+  assert.equal(out.refs[0].target, null);
+  assert.equal(out.refs[0].unresolvable, 'repo-ambiguous');
+});
+
+test('SPACE: "Depends on mcp-utils #35, c3source #9" gives one repo-ambiguous ref per item', () => {
+  const out = extract(issue('Depends on mcp-utils #35, c3source #9'));
+  assert.equal(out.refs.length, 2);
+  for (const r of out.refs) {
+    assert.equal(r.target, null);
+    assert.equal(r.unresolvable, 'repo-ambiguous');
+  }
+});
+
+test('SPACE: a word after "and" starts an item', () => {
+  const out = extract(issue('Blocked by audit-core #12 and mcp-utils #35'));
+  assert.equal(out.refs.filter((r) => r.unresolvable === 'repo-ambiguous').length, 2);
+});
+
+test('SPACE: "its split #740" is a plain same-repo reference', () => {
+  const out = extract(issue('Relates to #737 and its split #740'));
+  assert.deepEqual(numbers(out), [737, 740]);
+  assert.ok(out.refs.every((r) => r.unresolvable === undefined));
+});
+
+test('SPACE: "sub-issues #189–#192" gives #189 and #192 as plain references', () => {
+  const out = extract(issue('Relates to #183 and its sub-issues #189–#192'));
+  assert.deepEqual(numbers(out), [183, 189, 192]);
+  assert.ok(out.refs.every((r) => r.unresolvable === undefined));
+});

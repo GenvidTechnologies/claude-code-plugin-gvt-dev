@@ -47,7 +47,13 @@ const REF_RE =
 
 // Words that precede "#N" in ordinary prose and are not a repository name.
 const NOT_A_REPO_WORD_RE =
-  /^(?:and|or|issue|issues|pr|prs|pull|ticket|bug|see|also|plus|then|the|a|an|to|in|on|of|for|with|by|from|is|are|was|be|as|at|after|before|until|when|if|needs|need|via|per|both|all|than|that|this|these|those|it|its|refs|ref|fixes|closes)$/i;
+  /^(?:open|closed|merged|shipped|released|parent|child|sibling|split|and|or|issue|issues|pr|prs|pull|ticket|bug|see|also|plus|then|the|a|an|to|in|on|of|for|with|by|from|is|are|was|be|as|at|after|before|until|when|if|needs|need|via|per|both|all|than|that|this|these|those|it|its|refs|ref|fixes|closes)$/i;
+
+// What may sit between the statement verb (or a list separator) and a
+// "repo-name #N" item: only the optional ":" and emphasis marks plus space,
+// or a list separator (",", ";", "&", "+", "and", "or") then space.
+const ITEM_LEAD_RE = /^[\s:*_]*$/;
+const ITEM_SEPARATOR_RE = /(?:[,;&+]|(?<![\w])(?:and|or))\s*$/i;
 
 const RELATIONS = {
   'blocked by': 'blocked-by',
@@ -128,6 +134,20 @@ function isTriageNote(body) {
   return TRIAGE_NOTE_RE.test(first);
 }
 
+// Rule: the space form "name #N" names a repository only when the word starts
+// a reference item, i.e. it follows the statement verb (after an optional ":")
+// or a list separator. Anywhere else ("its split #740", "sub-issues #189")
+// the word is ordinary prose and "#N" is a plain same-repo reference.
+// `before` is the text preceding the word within the scanned text.
+function startsReferenceItem(before) {
+  return ITEM_LEAD_RE.test(before) || ITEM_SEPARATOR_RE.test(before);
+}
+
+// Rule: an issue never references itself (same-repo reference to its own number).
+function isSelfRef(target, issueNumber) {
+  return Boolean(target) && target.repo === null && target.number === Number(issueNumber);
+}
+
 // ---- helpers ----
 
 function normalizeRepo(repo, ctx) {
@@ -162,7 +182,7 @@ function scanRefs(text, ctx, spaceForm) {
       const plain = !/[a-z]/i.test(word) || NOT_A_REPO_WORD_RE.test(word);
       if (m[7] === '' ) {
         add(null, 'repo-ambiguous');
-      } else if (spaceForm && !plain) {
+      } else if (spaceForm && !plain && startsReferenceItem(text.slice(0, m.index))) {
         add(null, 'repo-ambiguous');
       } else {
         add({ repo: null, number: Number(m[8]) });
@@ -395,6 +415,11 @@ export function extract(issue, options = {}) {
     triggers.push(...p.triggers);
     retractions.push(...p.retractions);
   }
+
+  // Self-references are never emitted, from any source.
+  const kept = entries.filter((e) => !isSelfRef(e.ref.target, issue.number));
+  entries.length = 0;
+  entries.push(...kept);
 
   // Retraction pass (R7): a later comment withdraws a reference to the same target.
   for (const r of retractions) {
