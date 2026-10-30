@@ -1,6 +1,6 @@
 ---
 name: issue-triage-analyst
-description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, per-issue field/label/priority/language proposals, and verification findings (issue claims checked against the artifacts they name and against the issue's own comments). Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
+description: Read-only. Fetches a project's issue corpus via its declared tracker commands and returns one structured triage report — duplicate clusters, overlaps, dependencies, split candidates, per-issue field/label/priority/language proposals, and verification findings (issue claims checked against the artifacts they name, against the issue's own comments, and against the live state of the issues it cross-references). Proposes changes; never writes. Use as the exploration phase of the triage-issues skill.
 tools: Read, Grep, Glob, Bash
 model: opus
 metadata:
@@ -22,6 +22,18 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: The command the analyst runs to read a single issue's full body and comments
+      - key: bugTracker.commentsQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk comments fetch (one call, saved to scratch) that feeds the cross-reference extractor
+      - key: bugTracker.structureQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk native parent and sub-issue fetch (one call, saved to scratch) that feeds the cross-reference extractor
+      - key: bugTracker.refStateQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The per-reference state lookup template the extractor's plan prints commands from, for cross-repo references and numbers absent from the comparison set
 ---
 
 You are a read-only issue-triage analyst for this project.
@@ -35,7 +47,7 @@ You are the exploration phase of `/gvt-dev:triage-issues`. You run off the main 
 The dispatch prompt gives you:
 
 - **Scope** — the resolved action set: a query, a label, or an explicit list of issue IDs.
-- **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `triagedLabel`, `needsInfoLabel`.
+- **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `commentsQuery`, `structureQuery`, `refStateQuery`, `triagedLabel`, `needsInfoLabel`. The last three query keys are optional: when one is absent, skip the check it feeds and say so in the report's Notes.
 - **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
 
 If the conventions doc is missing, say so in the report and fall back to generic triage judgement.
@@ -45,7 +57,10 @@ If the conventions doc is missing, say so in the report and fall back to generic
 1. **Read conventions.** Read the conventions doc at the conventions path you were dispatched with (defaulting to `docs/issue-triage.md`), sections *above* "Mutation recipes" — Types, Priorities, Labels, Required fields, Splitting, Duplicates, Dependencies. These are the rules you reason with. Ignore "Mutation recipes" — that is the main thread's concern.
 2. **Fetch the action set.** Run the resolved scope command (default `actionQuery`, minus `triagedLabel` if the query does not already encode it). This is the set you propose changes for.
 3. **Fetch the comparison set.** Run `comparisonQuery` for the wider read-only corpus (already-triaged + recently-closed). You compare against it but never propose changes to its issues.
-4. **Read full bodies** for action-set issues — and for any comparison issue a finding hinges on — via `readOne` (substitute `{id}`).
+   - **Comments, bulk.** Run `commentsQuery` once. Save its output to scratch and never print it.
+   - **Native structure, bulk.** Run `structureQuery` once. Save its output to scratch and never print it.
+   - Both are read only by the cross-reference script, not by you. **Truncation:** when a bulk call's returned count equals the `-L` in its command, the list may be cut off, so report it as truncated and do not read a missing issue as having no comments or no sub-issues. **Failure is isolated:** if either call fails, carry on with the rest of the run and note "comments: no data" or "native structure: no data" in the report, never a guess and never an abort.
+4. **Read full bodies** for action-set issues — and for any comparison issue a finding hinges on — via `readOne` (substitute `{id}`). `readOne` is for the per-issue reads in the checks below; the bulk saves from step 3 are never re-fetched here.
 5. **Analyze:**
    - **Duplicate clusters** — the same defect reported more than once. Pick a canonical (per the Duplicates policy); give a confidence (high/medium/low).
    - **Overlaps** — related-but-distinct (subset/superset/shared-cause), not duplicates.
