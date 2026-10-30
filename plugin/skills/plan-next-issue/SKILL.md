@@ -434,9 +434,10 @@ data was missing.
 offered gets its own line below the shortlist, beside the "#N demoted" line:
 `#N deferred: <trigger text> (body, unfired)`; `#N umbrella → routed to #M
 (native: 2 of 3 sub-issues open)`; and `#N likely done-but-unclosed (native: 3 of
-3 sub-issues closed) — close proposal, not offered`. A deferral trigger that
-names a measurement gets a **measure-first** offer: interactively, ask whether
-to measure first, and on acceptance invoke `gvt-dev:build-probe` and relay its
+3 sub-issues closed) — close proposal, not offered`. A deferral trigger the
+script flags `measurement: true` in the record's `triggers[]` gets a
+**measure-first** offer: interactively, ask whether to measure first, and on
+acceptance invoke `gvt-dev:build-probe` and relay its
 concrete answer on this thread; the close decision is never build-probe's. A
 done-but-unclosed issue, or a deferred one whose measurement met its close rule,
 gets a close proposal. This skill does not close anything: it invokes
@@ -497,7 +498,14 @@ the repo's own release skill, if it has one), not for this check.
 
 In `--non-interactive`, auto-pick the full-rule winner — the first candidate in
 tier order that the freshness check did not demote (a demoted candidate is
-named in the closing summary).
+named in the closing summary). It never auto-picks a deferred issue, an
+umbrella, a done-but-unclosed issue, a blocked issue (a blocker that is
+unresolved and so unverified counts), a `closed-unreleased` blocker's issue, or
+a `closed-release-unverified` blocker's issue, which under `--non-interactive`
+is `blocked`; a `banner-no-open-child` issue is not rankable either. A
+measurement is never auto-run, and a close proposal is never applied. Each
+candidate skipped for one of these reasons is named in the closing summary with
+its reason.
 
 ## 3. Plan
 
@@ -549,7 +557,17 @@ a problem + goal); any **already-shipped / residual finding** from §2, so
 no URL, of the comment it came from, so `plan-task` can re-read it), so `plan-task` adopts the recorded ask rather than
 the body's superseded one — it rides with
 that item, or as its own; and any deadline, labelled
-**verified** (from a milestone) or **inherited** (from issue text). This describes what's *passed* into the
+**verified** (from a milestone) or **inherited** (from issue text); and the
+**readiness findings** for that issue: each blocker, deferral or umbrella fact
+with its outcome, source and provenance (`in hand`, `lookup` or `registry`), any
+measurement answer, and any `released (version check only)` blocker, so
+`plan-task` owes the content check for it. A state read by a lookup or registry
+check this run is verified; open-list absence and issue text are inherited.
+`plan-task` treats these as inherited whatever label they carry here
+("Readiness findings that arrive in a `plan-next-issue` handoff are inherited
+facts in this run, whatever label they carried there") and re-reads the state at
+dispatch; the label here records how this run learned the fact. This describes
+what's *passed* into the
 invocation, not anything written — nothing here is written; the writes all
 happen inside `plan-task`.
 
@@ -568,6 +586,8 @@ labeling rather than handing over an undifferentiated list.
 | Destructive triage actions (close-as-duplicate, splits, contract-file resolution) | per delegated approval | **deferred** unless `--force` |
 | Pick issue(s) to plan | user selects one or more | auto-pick the full-rule winner |
 | Combine vs sequential plans | ask when >1 selected | sequential |
+| Offer a measurement (build-probe) | offer for a deferral trigger flagged `measurement: true`; invoke `gvt-dev:build-probe` on acceptance | never |
+| Close proposal (done-but-unclosed, measured-zero) | propose, and on approval delegate to `gvt-dev:triage-issues` as a carried-in close proposal | named in the closing summary only, never applied |
 
 This skill performs **no writes itself** — every mutation happens inside the
 delegated `triage-issues` (tracker edits) or `plan-task` (plan + branch). It only
@@ -583,7 +603,10 @@ the tier that put it first (e.g. age, or deadline proximity) — and, under
 fallback decided, say the choice was arbitrary. Under `--non-interactive`, name
 any demoted candidate with its outcome, and if the auto-picked candidate took a
 demoted one's slot and so was not freshness-checked, say "freshness not
-checked". Point the user at the plan(s) `plan-task` produced.
+checked". Name every candidate skipped for readiness (deferred, umbrella,
+done-but-unclosed, banner-no-open-child, blocked, or release-unverified under
+`--non-interactive`) with its state and reason, and every close proposal made
+or left unapplied. Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
 its `gh issue create` was blocked — the auto-mode write-classifier denied it (a
