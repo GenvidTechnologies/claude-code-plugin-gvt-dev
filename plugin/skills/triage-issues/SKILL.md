@@ -558,11 +558,16 @@ split). Present them together, then apply the approved changes using the **Mutat
 - when the analyst's **Verification findings** report a `[refs]` finding for this
   issue (a cross-reference whose recorded state disagrees with the tracker's),
   present the reference, its relation, its outcome and the evidence, and remedy it
-  by outcome. A reference with relation `qualifier` (inside a parenthetical, or
+  by outcome. A reference with relation `qualifier` never blocks and is not a
+  finding. On a `Blocked by` or `Depends on` line, or a plain line under a
+  `Blocked by` or `Depends on` heading, a reference inside a parenthetical, or
   right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in",
-  "from" or "under", on a `Blocked by` or `Depends on` line) never blocks and is
-  not a finding; a blocker line left with no other reference is `unresolvable`
-  kind `prose`. A remedy that edits the body is offered with per-issue approval;
+  "from" or "under", has relation `qualifier`, unless the parenthetical opens
+  with "and", "or", "plus", "also", "&", "+" or ",", as in `Blocked by #5 (and #6)`,
+  which holds a real blocker; a blocker line left with no other reference is
+  `unresolvable` kind `prose`. A blocker statement whose remainder is `none`
+  (also `nothing`, `n/a` or a dash), optionally followed by a parenthetical, is
+  no statement and yields no reference. A remedy that edits the body is offered with per-issue approval;
   annotate the line or row and never tick or untick it, because ticking is reverse
   propagation and out of scope:
   - `cleared` (`via` is `same-repo`, `source-consumed` or `released (version check

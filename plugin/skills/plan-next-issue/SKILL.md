@@ -428,8 +428,8 @@ submodule, or a git or GitHub dependency URL with a `#ref`) is
 <ref>, fix unverified" or "closed, consumed as a pinned submodule, fix
 unverified"), since the pin may predate the fix; a pinned consumption wins over
 an unpinned one beside it. A closed blocker with no publish since
-leaves the issue `blocked`, and the rationale reads "blocker closed upstream
-(<PR or issue>), not yet released, latest is X". This skill checks only the
+leaves the issue `blocked`, and the rationale reads "<label> (closed upstream,
+not yet released, latest is X)", where `<label>` is the blocker's reference. This skill checks only the
 registry, that some version was published after the close, and never reads the
 artifact: the label says the fix is probably there, not that it is, and the
 content check belongs to `plan-task` at adoption.
@@ -439,7 +439,8 @@ content check belongs to `plan-task` at adoption.
 `comments: truncated (bulk list at its limit)`, `native structure:
 truncated (bulk list at its limit)` and `open list: truncated (at its limit)`. An issue under one of them gets no
 conclusion drawn from the missing data, and the candidate's rationale says which
-data was missing.
+data was missing. The note `comparison set: truncated (at its limit)` is not in
+this list, because this skill passes no `--comparison`.
 
 **Off the shortlist, three line forms.** A candidate that is shown but not
 offered gets its own line below the shortlist, beside the "#N demoted" line:
@@ -477,8 +478,8 @@ provenance of the data that settled it: `in hand` (the saved lists), `lookup`
 (a state read this run) or `registry` (the version check). Further forms:
 `readiness: ready — #193 cleared (body, lookup: closed 2026-10-12); check
 for follow-up work #193's closure unlocked`, and `readiness: blocked —
-example-org/example-lib#12 closed upstream (example-org/example-lib#13), not yet
-released, latest is 1.4.0 (registry)`.
+example-org/example-lib#12 (closed upstream, not yet released, latest is 1.4.0)
+(registry)`.
 
 Present the top candidates, each with that rationale line, and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
