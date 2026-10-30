@@ -33,6 +33,10 @@
 //   reference (repo null). A trailing
 //   fragment such as "#issuecomment-123" is ignored. Only a URL on a
 //   statement line is extracted.
+//   banner  (added: review fix) extract() also returns banner, { line, origin }
+//     or null: the first self-declared umbrella line of the body (fenced lines
+//     skipped), without parent exclusion unless options.parent (a number) is
+//     given, in which case a banner line naming that parent is not a banner.
 //   Trigger { line, origin, measurement }
 //     measurement is true when the text names a count, measure, probe,
 //     benchmark or threshold. A trigger carrying a resolvable reference is
@@ -2068,4 +2072,218 @@ test('NOCOMM: control, the same issues each carrying comments: [] get no note', 
 test('NOCOMM: control, a bulk comments array present carries no note', () => {
   const out = resolve(dataOf(noCommentIssues(), { comments: { 1: [cm('Hello.')] } }), OPTS);
   for (const n of [1, 2]) assert.ok(!recOf(out, n).notes.includes(NO_COMMENT_NOTE));
+});
+
+// ---- REVIEW: code-review hardening (appended; no earlier test is edited) ----
+//
+// Added by the review fix: readiness also carries crossRepoOpenChildren
+// (labels of open cross-repo children) and unknownChildren (labels of child
+// rows whose state is unknown); a ticked row with no known state is
+// unresolvable with provenance 'lookup'; extract() returns banner.
+
+const OPEN_STATE = JSON.stringify({ number: 9, state: 'open', pull_request: false });
+const CLOSED_STATE = JSON.stringify({
+  number: 9,
+  state: 'closed',
+  closed_at: '2026-10-01T00:00:00Z',
+  pull_request: false,
+});
+
+test('REVIEW: W1 a child row whose state is unknown keeps the issue an umbrella', () => {
+  const epic = issueOf(10, '## Children\n- [x] #77 ticked, cut\n- [ ] #78 unticked, cut');
+  const out = resolve({ open: [epic, issueOf(11, '')] }, { ...OPTS, limit: 2 });
+  const r = recOf(out, 10).readiness;
+  assert.equal(r.state, 'umbrella');
+  assert.equal(r.routedTo, null);
+  assert.deepEqual(r.unknownChildren, ['#77', '#78']);
+  assert.ok(r.reason.includes('2 child rows with unknown state'), r.reason);
+  assert.ok(r.reason.includes('#78 truncated'), r.reason);
+});
+
+test('REVIEW: W1 control, a closed child row is not membership', () => {
+  const body = '- [ ] example-org/lib#9 done upstream\n';
+  const d = withState(dataOf([issueOf(3, body)]), OPTS, { [`${LIB}#9`]: CLOSED_STATE });
+  const r = recOf(resolve(d, OPTS), 3).readiness;
+  assert.equal(r.state, 'ready');
+  assert.deepEqual(r.unknownChildren, []);
+  assert.deepEqual(r.crossRepoOpenChildren, []);
+});
+
+test('REVIEW: W1 open cross-repo children make an umbrella with nothing to route to', () => {
+  const body = `- [ ] ${LIB}#9 upstream piece\n- [ ] ${LIB}#10 another\n`;
+  const d = withState(dataOf([issueOf(3, body)]), OPTS, {
+    [`${LIB}#9`]: OPEN_STATE,
+    [`${LIB}#10`]: JSON.stringify({ number: 10, state: 'open', pull_request: false }),
+  });
+  const r = recOf(resolve(d, OPTS), 3).readiness;
+  assert.equal(r.state, 'umbrella');
+  assert.equal(r.routedTo, null);
+  assert.deepEqual(r.crossRepoOpenChildren, [`${LIB}#9`, `${LIB}#10`]);
+  assert.deepEqual(r.openChildren, []);
+  assert.ok(r.reason.includes('no same-repo child to route to'), r.reason);
+});
+
+test('REVIEW: W1 routing still prefers a same-repo ready child over cross-repo ones', () => {
+  const body = `- [ ] ${LIB}#9 upstream\n- [ ] #4 local\n`;
+  const d = withState(dataOf([issueOf(3, body), issueOf(4, 'Leaf.')]), OPTS, {
+    [`${LIB}#9`]: OPEN_STATE,
+  });
+  const r = recOf(resolve(d, OPTS), 3).readiness;
+  assert.equal(r.state, 'umbrella');
+  assert.equal(r.routedTo, 4);
+  assert.deepEqual(r.crossRepoOpenChildren, [`${LIB}#9`]);
+});
+
+test('REVIEW: W1 a cut open list is noted on every record', () => {
+  const cut = resolve({ open: [issueOf(1, 'a'), issueOf(2, 'b')] }, { ...OPTS, limit: 2 });
+  for (const n of [1, 2]) assert.ok(recOf(cut, n).notes.includes('open list: truncated (at its limit)'));
+  const whole = resolve({ open: [issueOf(1, 'a'), issueOf(2, 'b')] }, OPTS);
+  for (const n of [1, 2]) {
+    assert.ok(!recOf(whole, n).notes.includes('open list: truncated (at its limit)'));
+  }
+});
+
+test('REVIEW: W2 a ticked cross-repo row with no lookup is unresolvable, not not-open in hand', () => {
+  const data = dataOf([issueOf(3, `- [x] ${LIB}#9 upstream piece\n`)]);
+  const ref = refOf(recOf(resolve(data, OPTS), 3), 9, LIB);
+  assert.equal(ref.outcome, 'unresolvable');
+  assert.equal(ref.kind, 'cross-repo-unread');
+  assert.notEqual(ref.provenance, 'in hand');
+  assert.equal(recOf(resolve(data, OPTS), 3).readiness.state, 'umbrella');
+  // The plan now asks for it.
+  assert.ok(plan(data, OPTS).some((e) => e.command && e.command.includes(`repos/${LIB}/issues/9 `)));
+});
+
+test('REVIEW: W2 a ticked row cut from a truncated list is unresolvable and planned', () => {
+  const data = dataOf([issueOf(10, '- [x] #77 ticked\n'), issueOf(11, '')]);
+  const o = { ...OPTS, limit: 2 };
+  const ref = refOf(recOf(resolve(data, o), 10), 77);
+  assert.equal(ref.outcome, 'unresolvable');
+  assert.equal(ref.kind, 'truncated');
+  assert.ok(plan(data, o).some((e) => e.command && e.command.includes('/issues/77 ')));
+});
+
+test('REVIEW: W2 control, a ticked same-repo row absent from an untruncated list stays not-open', () => {
+  const data = dataOf([issueOf(10, '- [x] #77 ticked\n')]);
+  const ref = refOf(recOf(resolve(data, OPTS), 10), 77);
+  assert.equal(ref.outcome, 'not-open');
+  assert.equal(ref.provenance, 'in hand');
+  assert.deepEqual(plan(data, OPTS), []);
+  assert.equal(recOf(resolve(data, OPTS), 10).readiness.state, 'ready');
+});
+
+test('REVIEW: W2 a ticked cross-repo row read as closed is not-open and not membership', () => {
+  const d = withState(dataOf([issueOf(3, `- [x] ${LIB}#9 done\n`)]), OPTS, {
+    [`${LIB}#9`]: CLOSED_STATE,
+  });
+  const out = resolve(d, OPTS);
+  assert.equal(refOf(recOf(out, 3), 9, LIB).outcome, 'not-open');
+  assert.equal(recOf(out, 3).readiness.state, 'ready');
+});
+
+test('REVIEW: W4 a bare E404 body with a date-like string is not a published version', () => {
+  withTmp((dir) => {
+    const root = writeIn(dir, { 'package.json': pkgJson({ lib: '^1.0.0' }) });
+    const o = { ...OPTS, root };
+    const bare = '{"code":"E404","summary":"Not Found 2026-11-01","detail":"x"}';
+    const d = throughRegistry(dataOf([issueOf(1, `Blocked by ${LIB}#12.`)]), o, `${LIB}#12`, 'lib', {
+      repoUrl: REPO_URL(LIB),
+      times: bare,
+    });
+    assert.equal(refOf(recOf(resolve(d, o), 1), 12, LIB).outcome, 'closed-release-unverified');
+  });
+});
+
+test('REVIEW: W4 a non-semver key and a missing created key do not count; a real publish clears', () => {
+  withTmp((dir) => {
+    const root = writeIn(dir, { 'package.json': pkgJson({ lib: '^1.0.0' }) });
+    const o = { ...OPTS, root };
+    const run = (times) => {
+      const d = throughRegistry(dataOf([issueOf(1, `Blocked by ${LIB}#12.`)]), o, `${LIB}#12`, 'lib', {
+        repoUrl: REPO_URL(LIB),
+        times,
+      });
+      return refOf(recOf(resolve(d, o), 1), 12, LIB);
+    };
+    const odd = JSON.stringify({ created: '2026-01-01T00:00:00Z', note: '2026-11-01T00:00:00Z' });
+    assert.equal(run(odd).outcome, 'closed-release-unverified');
+    const noCreated = JSON.stringify({ '1.0.0': '2026-11-01T00:00:00Z' });
+    assert.equal(run(noCreated).outcome, 'closed-release-unverified');
+    assert.equal(run(timeJson({ '1.1.0': '2026-10-12T00:00:00Z' })).outcome, 'cleared');
+  });
+});
+
+test('REVIEW: S2 a dependency name starting with "-" is never printed into an npm command', () => {
+  withTmp((dir) => {
+    const root = writeIn(dir, { 'package.json': pkgJson({ '-x': '^1.0.0' }) });
+    const o = { ...OPTS, root };
+    const lib = 'example-org/-x';
+    const d = withState(dataOf([issueOf(1, `Blocked by ${lib}#12.`)]), o, {
+      [`${lib}#12`]: stJson(12, 'closed'),
+    });
+    assert.ok(!plan(d, o).some((e) => e.command && e.command.startsWith('npm view')));
+    assert.equal(refOf(recOf(resolve(d, o), 1), 12, lib).outcome, 'closed-release-unverified');
+  });
+});
+
+test('REVIEW: W11 a 60,000-underscore line resolves in linear time', () => {
+  const body = `a${'_'.repeat(60000)}x`;
+  const t0 = Date.now();
+  resolve({ open: [issueOf(1, body)] }, OPTS);
+  const ms = Date.now() - t0;
+  assert.ok(ms < 500, `took ${ms} ms`);
+});
+
+test('REVIEW: W11 8,000 name-and-number items extract in linear time', () => {
+  const body = `Blocked by ${Array.from({ length: 8000 }, (_, i) => `foo #${i + 1}`).join(', ')}`;
+  const t0 = Date.now();
+  const out = extract(issue(body, { number: 99999 }));
+  const ms = Date.now() - t0;
+  assert.equal(out.refs.length, 8000);
+  assert.ok(out.refs.every((r) => r.unresolvable === 'repo-ambiguous'));
+  assert.ok(ms < 500, `took ${ms} ms`);
+});
+
+test('REVIEW: W11 the same repo-ambiguous text named twice is one reference; different text is not', () => {
+  const same = extract(issue('Blocked by foo #1, foo #1'));
+  assert.equal(same.refs.filter((r) => r.unresolvable === 'repo-ambiguous').length, 1);
+  const different = extract(issue('Blocked by foo #1, bar #1'));
+  assert.equal(different.refs.filter((r) => r.unresolvable === 'repo-ambiguous').length, 2);
+});
+
+test('REVIEW: W11 emphasis underscores around a banner are still stripped', () => {
+  assert.ok(extract(issue('__Do not plan this issue__ - umbrella.\n')).banner);
+  assert.ok(extract(issue('_Do not plan this issue_\n')).banner);
+  // Interior underscores are kept, so this is not a banner form.
+  assert.equal(extract(issue('Do_not plan this issue\n')).banner, null);
+});
+
+test('REVIEW: W8 extract reports a self-declared banner', () => {
+  const out = extract(issue('> **Do not plan this issue** - it is the umbrella.\n\nBody.'));
+  assert.deepEqual(out.banner, {
+    line: '> **Do not plan this issue** - it is the umbrella.',
+    origin: 'body',
+  });
+});
+
+test('REVIEW: W8 extract reports no banner for ordinary text and for fenced text', () => {
+  assert.equal(extract(issue('Ordinary body.')).banner, null);
+  assert.equal(extract(issue(['```', 'Do not plan this issue', '```'].join('\n'))).banner, null);
+});
+
+test('REVIEW: W8 a banner naming the given parent is excluded only when options.parent is given', () => {
+  const body = 'This issue is the analysis of record for #50.\n';
+  assert.ok(extract(issue(body)).banner);
+  assert.equal(extract(issue(body), { parent: 50 }).banner, null);
+  assert.ok(extract(issue(body), { parent: 51 }).banner);
+});
+
+test('REVIEW: W8 the extract CLI prints the banner', () => {
+  withTmp((dir) => {
+    const file = path.join(dir, 'one.json');
+    fs.writeFileSync(file, JSON.stringify(issue('Do not plan this issue.\n')));
+    const r = spawnSync(process.execPath, [CLI, 'extract', '--single', file], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout).banner, { line: 'Do not plan this issue.', origin: 'body' });
+  });
 });

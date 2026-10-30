@@ -35,10 +35,13 @@ import { extract } from './refs-grammar.mjs';
 // D3: at most this many npm packages are checked per run.
 const REGISTRY_CAP_DEFAULT = 5;
 const NPM_NAME_MAX = 214;
-const NPM_NAME_RE = /^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
+// A name (and a scope) starts with a letter or digit: never "-" or "~", which
+// a printed command could read as an option.
+const NPM_NAME_RE = /^(@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
 const DEP_SECTIONS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
-// Keys of `npm view <dep> time --json` that are not versions.
-const TIME_NON_VERSION_KEYS = new Set(['created', 'modified', 'unpublished']);
+// Keys of `npm view <dep> time --json` that are versions: semver-shaped only.
+// A date-parseable value under any other key (an error body's "summary") is not.
+const SEMVER_KEY_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 
 const SAFE_REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 const DOTS_ONLY_RE = /^\.+$/;
@@ -342,14 +345,24 @@ function isStateInHand(target, ctx) {
   return Boolean(ctx.comparison && ctx.comparison.has(target.number));
 }
 
+// Rule: a ticked row is settled in hand only when its absence proves
+// something: a same-repo target missing from an untruncated open list (and no
+// comparison set) is plainly not open. A cross-repo target, or one absent from
+// a truncated list or from the comparison set, is not settled.
+function isTickedRowSettled(target, ctx) {
+  if (target.repo) return false;
+  return !ctx.openTruncated && !ctx.comparison;
+}
+
 // A lookup is spent only where it can change what is reported: not on a
-// retracted or unsafe reference, not on a ticked child row, not on a Blocks or
-// Relates to reference, and not where the state is already in hand.
+// retracted or unsafe reference, not on a ticked child row that is settled in
+// hand, not on a Blocks or Relates to reference, and not where the state is
+// already in hand.
 function needsLookup(ref, ctx) {
   if (ref.retracted) return false;
   if (!ref.target || unsafeTargetKind(ref.target)) return false;
   if (ref.source === 'child-row') {
-    if (ref.checked) return false;
+    if (ref.checked && isTickedRowSettled(ref.target, ctx)) return false;
   } else if (!isBlockingRef(ref)) {
     return false;
   }
@@ -632,11 +645,21 @@ function repoUrlConfirms(text, repo) {
 
 // The published versions of `npm view <dep> time --json`, or null when the
 // output is not that (E404 and other errors, an empty body).
+// Rule: a key counts as a version only when it looks like semver.
+function isVersionKey(key) {
+  return SEMVER_KEY_RE.test(key);
+}
+
+// Rule: the object is a `time` result only when it carries "created".
+function isTimeResult(obj) {
+  return typeof obj.created === 'string';
+}
+
 function publishedVersionsOf(text) {
   const obj = jsonObjectsIn(text)[0];
-  if (!obj || hasOwn(obj, 'error')) return null;
+  if (!obj || hasOwn(obj, 'error') || !isTimeResult(obj)) return null;
   const versions = Object.entries(obj)
-    .filter(([k, v]) => !TIME_NON_VERSION_KEYS.has(k) && typeof v === 'string')
+    .filter(([k, v]) => isVersionKey(k) && typeof v === 'string')
     .map(([version, at]) => ({ version, at: Date.parse(at) }))
     .filter((v) => Number.isFinite(v.at));
   const tags = obj['dist-tags'];
@@ -744,11 +767,23 @@ function unresolvableKindOf(st) {
   return null;
 }
 
+// Rule: a ticked row whose child has no known state (cross-repo unread, cut
+// from a truncated list, absent, lookup failed) is unresolvable, not "not-open".
+function isTickedStateUnknown(st) {
+  return st.state === null;
+}
+
 // The outcome of one resolvable reference, given what is known of its target.
 function classifyRef(ref, st, ctx) {
   const child = ref.source === 'child-row';
-  // A ticked row is consistent unless its child is still open.
-  if (child && ref.checked) return { outcome: st.state === 'open' ? 'ticked-open' : 'not-open' };
+  // A ticked row is consistent unless its child is still open or unknown.
+  if (child && ref.checked) {
+    if (st.state === 'open') return { outcome: 'ticked-open' };
+    if (isTickedStateUnknown(st)) {
+      return { outcome: 'unresolvable', kind: unresolvableKindOf(st), provenance: 'lookup' };
+    }
+    return { outcome: 'not-open' };
+  }
   // Blocks and Relates to are reported nowhere unless the form is broken.
   if (!child && !isBlockingRef(ref)) return { outcome: st.state === 'open' ? 'live' : 'not-open' };
   const kind = unresolvableKindOf(st);
@@ -927,36 +962,9 @@ function isNativeAllClosed(native) {
 
 // ---- rule: the umbrella banner (SD9b) ----
 
-const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
-const BANNER_THIS_ISSUE_RE =
-  /^this issue (?:is|stays|remains) (?:kept )?(?:as )?the (?:umbrella|analysis of record)\b/i;
-const BANNER_KEPT_AS_RE = /^kept as the (?:umbrella|analysis of record)\b/i;
-
-// The text of a line once its markup is gone: inline code and struck spans are
-// removed; blockquote markers, heading marks, list markers, checkboxes and
-// emphasis are stripped. Blockquotes are ALLOWED here, because real banners
-// are blockquotes.
-function bannerText(raw) {
-  return raw
-    .replace(/`[^`]*`/g, ' ')
-    .replace(/~~[^~]*~~/g, ' ')
-    .replace(/^\s{0,3}(?:>\s?)+/, '')
-    .replace(/^\s*#{1,6}\s+/, '')
-    .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
-    .replace(/^\[[ xX]\]\s+/, '')
-    .replace(/\*+/g, '')
-    .replace(/(^|\s)_+|_+(?=\s|$)/g, '$1')
-    .trim();
-}
-
-// Rule: the banner self-declaration form.
-function isSelfDeclaringBanner(text) {
-  return (
-    BANNER_DO_NOT_PLAN_RE.test(text) ||
-    BANNER_THIS_ISSUE_RE.test(text) ||
-    BANNER_KEPT_AS_RE.test(text)
-  );
-}
+// The self-declaration form, the markup stripping and the parent-naming
+// exclusion live in the grammar module (extract() returns the banner), so both
+// halves share one predicate; this half only supplies the parents.
 
 // The issues that count as this one's parent: its native parent, and any open
 // issue whose checklist names this one as a child.
@@ -976,39 +984,15 @@ function parentNumbersOf(entry, ctx) {
   return parents;
 }
 
-// Same-repo "#N" numbers named in a line (a "#N" glued to a name or path is a
-// cross-repo or slashless form and is skipped).
-function sameRepoNumbersIn(text) {
-  const out = [];
-  for (const m of text.matchAll(/#(\d+)\b/g)) {
-    const before = m.index > 0 ? text[m.index - 1] : ' ';
-    if (!/[\w./-]/.test(before)) out.push(Number(m[1]));
-  }
-  return out;
-}
-
-// Rule: a child naming its parent as the umbrella or analysis of record is not
-// a banner.
-function namesParent(text, parents) {
-  return sameRepoNumbersIn(text).some((n) => parents.has(n));
-}
-
-// The first banner line in the body, or null. Fenced lines are skipped.
+// The first banner line in the body, or null. extract() already found the
+// first self-declaring line without parent exclusion; only when there is one
+// and the issue has parents is the body read again, with the parents given.
 function detectBanner(entry, ctx) {
+  if (!entry.banner) return null;
   const parents = parentNumbersOf(entry, ctx);
-  let fenced = false;
-  for (const raw of String(entry.issue.body == null ? '' : entry.issue.body).split(/\r?\n/)) {
-    if (FENCE_LINE_RE.test(raw)) {
-      fenced = !fenced;
-      continue;
-    }
-    if (fenced) continue;
-    const text = bannerText(raw);
-    if (!isSelfDeclaringBanner(text)) continue;
-    if (namesParent(text, parents)) continue;
-    return { line: raw.trim(), origin: 'body' };
-  }
-  return null;
+  if (parents.size === 0) return entry.banner;
+  const { number, title, body } = entry.issue;
+  return extract({ number, title, body, comments: [] }, { repo: ctx.repo, parent: parents }).banner;
 }
 
 // ---- readiness core ----
@@ -1058,10 +1042,47 @@ function checklistOpenChildren(rec) {
         r.target &&
         !r.target.repo &&
         r.target.number !== rec.number &&
-        (r.outcome === 'ticked-open' || r.outcome === 'live'),
+        isOpenChildRow(r),
     )
     .map((r) => r.target.number);
   return [...new Set(numbers)].sort((a, b) => a - b);
+}
+
+// Rule: a child row whose child is open (ticked or not).
+function isOpenChildRow(r) {
+  return r.outcome === 'ticked-open' || r.outcome === 'live';
+}
+
+// The unresolvable kinds that mean "state unknown", as opposed to a row that
+// can never be a child (a PR, a nonexistent issue, an unsafe reference).
+const UNKNOWN_STATE_KINDS = new Set(['truncated', 'cross-repo-unread', 'absent', 'lookup-failed']);
+
+// Rule: a child row whose state is unknown still counts as membership: the
+// issue may well be an umbrella, so it must not read as a leaf.
+function isUnknownChildRow(r) {
+  return r.outcome === 'unresolvable' && UNKNOWN_STATE_KINDS.has(r.kind);
+}
+
+// The checklist members that are not same-repo open children: open cross-repo
+// children (members, not routable) and rows with unknown state.
+function checklistOtherMembers(rec) {
+  const crossOpen = [];
+  const unknown = [];
+  const seen = new Set();
+  for (const r of rec.refs) {
+    if (r.source !== 'child-row' || !r.target) continue;
+    if (!r.target.repo && r.target.number === rec.number) continue;
+    const label = targetLabel(r.target);
+    if (seen.has(label)) continue;
+    if (r.target.repo && isOpenChildRow(r)) {
+      seen.add(label);
+      crossOpen.push(label);
+    } else if (isUnknownChildRow(r)) {
+      seen.add(label);
+      unknown.push({ label, kind: r.kind });
+    }
+  }
+  return { crossOpen, unknown };
 }
 
 // One line per tick-versus-state mismatch (never resolved silently).
@@ -1132,6 +1153,7 @@ function coreReadiness(rec, facts, ctx) {
     reason,
     blockedBy: uniqueTargets(uncleared),
     openChildren: checklistOpenChildren(rec),
+    otherMembers: checklistOtherMembers(rec),
     decidedBy,
     disagreements: checklistDisagreements(rec),
   };
@@ -1151,8 +1173,9 @@ function unionMembers(nativeOpen, checklistOpen) {
 
 // Rule: the issue is an umbrella if ANY source says it has open children,
 // including native open sub-issues outside the open list.
-function isUmbrellaByChildren(members, outside) {
-  return members.length > 0 || outside > 0;
+// Open cross-repo children and unknown-state child rows are members too.
+function isUmbrellaByChildren(members, outside, other = { crossOpen: [], unknown: [] }) {
+  return members.length > 0 || outside > 0 || other.crossOpen.length > 0 || other.unknown.length > 0;
 }
 
 // Rule: done-but-unclosed needs native data showing every child closed AND no
@@ -1223,11 +1246,23 @@ function firstRoutable(members, coreByNumber) {
   );
 }
 
-function umbrellaReason(members, outside, routedTo) {
+// Rule: with only cross-repo open children there is nothing here to route to.
+function noRouteText(members, other) {
+  return members.length === 0 && other.crossOpen.length > 0
+    ? 'no same-repo child to route to'
+    : 'no ready child';
+}
+
+function umbrellaReason(members, outside, routedTo, other) {
   const parts = [];
   if (members.length) parts.push(`open children ${members.map((n) => `#${n}`).join(', ')}`);
+  if (other.crossOpen.length) parts.push(`open cross-repo children ${other.crossOpen.join(', ')}`);
   if (outside > 0) parts.push(`${outside} open sub-issues outside the open list`);
-  const routing = routedTo === null ? 'no ready child' : `routed to #${routedTo}`;
+  if (other.unknown.length) {
+    const named = other.unknown.map((u) => `${u.label} ${u.kind}`).join(', ');
+    parts.push(`${other.unknown.length} child rows with unknown state (${named})`);
+  }
+  const routing = routedTo === null ? noRouteText(members, other) : `routed to #${routedTo}`;
   return `umbrella: ${parts.join('; ')}; ${routing}`;
 }
 
@@ -1238,10 +1273,11 @@ function structureReadiness(core, rec, coreByNumber) {
   let state = core.state;
   let reason = core.reason;
   let routedTo = null;
-  if (isUmbrellaByChildren(members, outside)) {
+  const other = core.otherMembers;
+  if (isUmbrellaByChildren(members, outside, other)) {
     routedTo = firstRoutable(members, coreByNumber);
     state = 'umbrella';
-    reason = umbrellaReason(members, outside, routedTo);
+    reason = umbrellaReason(members, outside, routedTo, other);
   } else if (rec.umbrellaTitle) {
     state = 'umbrella';
     reason = 'umbrella title prefix, no open child found';
@@ -1260,6 +1296,8 @@ function structureReadiness(core, rec, coreByNumber) {
     reason,
     blockedBy: core.blockedBy,
     openChildren: members,
+    crossRepoOpenChildren: other.crossOpen,
+    unknownChildren: other.unknown.map((u) => u.label),
     routedTo,
     parent: native.parent,
     decidedBy: core.decidedBy.concat(structureDecisions(native, rec.banner, rec.umbrellaTitle)),
@@ -1283,6 +1321,7 @@ function buildRecord(entry, ctx) {
   const commentsTruncated = isCommentsTruncated(entry.bulkCount);
   const notes = [];
   if (commentsTruncated) notes.push('comments possibly truncated');
+  if (ctx.openTruncated) notes.push('open list: truncated (at its limit)');
   const native = buildNative(entry, ctx);
   if (entry.commentsNoData) notes.push('comments: no data');
   else if (entry.commentsUnknown) notes.push('comments: truncated (bulk list at its limit)');

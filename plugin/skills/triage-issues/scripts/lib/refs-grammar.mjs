@@ -7,9 +7,10 @@
 // records (never whole bodies). Every exclusion below is its own small named
 // function or branch, so each can be disabled on its own (mutation run).
 //
-// Not here: the SD9 banner. The extract() contract has no banner field, so
-// banner detection (self-declaration and parent-naming exclusions) is left to
-// the resolve half.
+// The SD9 banner (a self-declared umbrella line in the body) is detected here
+// too, so extract() and resolve share one self-declaration predicate. The
+// parent-naming exclusion needs the parent, which extract alone does not know:
+// banner without parent exclusion unless options.parent is given.
 //
 // Regex hygiene: every pattern is linear (no nested quantifiers) because the
 // input is untrusted issue text.
@@ -52,8 +53,16 @@ const NOT_A_REPO_WORD_RE =
 // What may sit between the statement verb (or a list separator) and a
 // "repo-name #N" item: only the optional ":" and emphasis marks plus space,
 // or a list separator (",", ";", "&", "+", "and", "or") then space.
-const ITEM_LEAD_RE = /^[\s:*_]*$/;
-const ITEM_SEPARATOR_RE = /(?:[,;&+]|(?<![\w])(?:and|or))\s*$/i;
+// (Tested without slicing: see startsReferenceItem.)
+const ITEM_SEPARATOR_CHARS = ',;&+';
+
+const FENCE_LINE_RE = /^ {0,3}(?:`{3,}|~{3,})/;
+const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
+const BANNER_THIS_ISSUE_RE =
+  /^this issue (?:is|stays|remains) (?:kept )?(?:as )?the (?:umbrella|analysis of record)\b/i;
+const BANNER_KEPT_AS_RE = /^kept as the (?:umbrella|analysis of record)\b/i;
+const WORD_CHAR_RE = /\w/;
+const LEAD_CHAR_RE = /[^\s:*_]/;
 
 const RELATIONS = {
   'blocked by': 'blocked-by',
@@ -138,9 +147,100 @@ function isTriageNote(body) {
 // a reference item, i.e. it follows the statement verb (after an optional ":")
 // or a list separator. Anywhere else ("its split #740", "sub-issues #189")
 // the word is ordinary prose and "#N" is a plain same-repo reference.
-// `before` is the text preceding the word within the scanned text.
-function startsReferenceItem(before) {
-  return ITEM_LEAD_RE.test(before) || ITEM_SEPARATOR_RE.test(before);
+// Slice-free and linear: `end` is the index where the word starts in `text`,
+// `leadEnd` the index of the first character that is not ":", emphasis or
+// whitespace (computed once per text). The decision reads only the lead index
+// and the few characters just before the word.
+function startsReferenceItem(text, end, leadEnd) {
+  if (end <= leadEnd) return true;
+  let i = end;
+  while (i > 0 && /\s/.test(text[i - 1])) i--;
+  if (i === 0) return false;
+  if (ITEM_SEPARATOR_CHARS.includes(text[i - 1])) return true;
+  const isWordAt = (k) => k >= 0 && WORD_CHAR_RE.test(text[k]);
+  const lastTwo = text.slice(i - 2, i).toLowerCase();
+  if (lastTwo === 'or' && !isWordAt(i - 3)) return true;
+  const lastThree = text.slice(i - 3, i).toLowerCase();
+  return lastThree === 'and' && !isWordAt(i - 4);
+}
+
+// Rule: the banner self-declaration form.
+function isSelfDeclaringBanner(text) {
+  return (
+    BANNER_DO_NOT_PLAN_RE.test(text) ||
+    BANNER_THIS_ISSUE_RE.test(text) ||
+    BANNER_KEPT_AS_RE.test(text)
+  );
+}
+
+// Rule: a child naming its parent as the umbrella or analysis of record is not
+// a banner. `parents` is a Set of issue numbers.
+function namesParent(text, parents) {
+  for (const m of text.matchAll(/#(\d+)\b/g)) {
+    const before = m.index > 0 ? text[m.index - 1] : ' ';
+    if (!/[\w./-]/.test(before) && parents.has(Number(m[1]))) return true;
+  }
+  return false;
+}
+
+// Emphasis underscores are removed from the edges of each whitespace-separated
+// token: a leading run (after whitespace or at the start) and a trailing run
+// (before whitespace or at the end). One pass, linear on any input.
+function stripEmphasisUnderscores(s) {
+  return s
+    .split(/(\s+)/)
+    .map((tok, i) => {
+      if (i % 2 === 1) return tok;
+      let a = 0;
+      let b = tok.length;
+      while (a < b && tok[a] === '_') a++;
+      while (b > a && tok[b - 1] === '_') b--;
+      return tok.slice(a, b);
+    })
+    .join('');
+}
+
+// The text of a line once its markup is gone: inline code and struck spans are
+// removed; blockquote markers, heading marks, list markers, checkboxes and
+// emphasis are stripped. Blockquotes are ALLOWED here, because real banners
+// are blockquotes.
+function bannerText(raw) {
+  return stripEmphasisUnderscores(
+    raw
+      .replace(/`[^`]*`/g, ' ')
+      .replace(/~~[^~]*~~/g, ' ')
+      .replace(/^\s{0,3}(?:>\s?)+/, '')
+      .replace(/^\s*#{1,6}\s+/, '')
+      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+      .replace(/^\[[ xX]\]\s+/, '')
+      .replace(/\*+/g, ''),
+  ).trim();
+}
+
+// The first banner line in the body, or null. Fenced lines are skipped.
+function detectBanner(body, parents) {
+  let fenced = false;
+  for (const raw of body.split(/\r?\n/)) {
+    if (FENCE_LINE_RE.test(raw)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    const text = bannerText(raw);
+    if (!isSelfDeclaringBanner(text)) continue;
+    if (namesParent(text, parents)) continue;
+    return { line: raw.trim(), origin: 'body' };
+  }
+  return null;
+}
+
+// options.parent: a number, or an iterable of numbers (several parents).
+function parentSetOf(parent) {
+  if (Number.isInteger(parent)) return new Set([parent]);
+  if (parent && typeof parent !== 'string' && typeof parent[Symbol.iterator] === 'function') {
+    return new Set([...parent].filter(Number.isInteger));
+  }
+  return new Set();
 }
 
 // Rule: an issue never references itself (same-repo reference to its own number).
@@ -164,12 +264,16 @@ function sameKey(target) {
 function scanRefs(text, ctx, spaceForm) {
   const out = [];
   const seen = new Set();
-  const add = (target, unresolvable) => {
-    const key = target ? sameKey(target) : `?${out.length}`;
-    if (target && seen.has(key)) return;
+  // A repo-ambiguous reference is keyed by its own text ("name #N"), so the
+  // same text named twice is one reference.
+  const add = (target, unresolvable, text) => {
+    const key = target ? sameKey(target) : `?${String(text).toLowerCase()}`;
+    if (seen.has(key)) return;
     seen.add(key);
     out.push({ target, unresolvable });
   };
+  const leadIndex = text.search(LEAD_CHAR_RE);
+  const leadEnd = leadIndex < 0 ? text.length : leadIndex;
   REF_RE.lastIndex = 0;
   let m;
   while ((m = REF_RE.exec(text)) !== null) {
@@ -180,10 +284,11 @@ function scanRefs(text, ctx, spaceForm) {
     } else if (m[8] !== undefined) {
       const word = m[6];
       const plain = !/[a-z]/i.test(word) || NOT_A_REPO_WORD_RE.test(word);
-      if (m[7] === '' ) {
-        add(null, 'repo-ambiguous');
-      } else if (spaceForm && !plain && startsReferenceItem(text.slice(0, m.index))) {
-        add(null, 'repo-ambiguous');
+      const named = `${word}${m[7]}#${m[8]}`;
+      if (m[7] === '') {
+        add(null, 'repo-ambiguous', named);
+      } else if (spaceForm && !plain && startsReferenceItem(text, m.index, leadEnd)) {
+        add(null, 'repo-ambiguous', named);
       } else {
         add({ repo: null, number: Number(m[8]) });
       }
@@ -383,9 +488,13 @@ function scanText(text, origin, order, ctx, skipStatements) {
  * Extract the references from one issue's raw record.
  * @param {{ number?: number, title?: string, body?: string,
  *           comments?: Array<{ body?: string, createdAt?: string }> }} issue
- * @param {{ repo?: string }} [options] repo: the tracker's owner/repo, so a
- *   reference naming it is a same-repo one (repo null)
- * @returns {{ refs: object[], triggers: object[] }}
+ * @param {{ repo?: string, parent?: number | Iterable<number> }} [options]
+ *   repo: the tracker's owner/repo, so a reference naming it is a same-repo
+ *   one (repo null). parent: the issue number(s) of this issue's parent, so a
+ *   banner line naming it is not a banner (banner without parent exclusion
+ *   unless options.parent is given).
+ * @returns {{ refs: object[], triggers: object[],
+ *             banner: { line: string, origin: 'body' } | null }}
  */
 export function extract(issue, options = {}) {
   const ctx = { repo: options && options.repo ? String(options.repo).toLowerCase() : null };
@@ -430,5 +539,9 @@ export function extract(issue, options = {}) {
     }
   }
 
-  return { refs: entries.map((e) => e.ref), triggers };
+  return {
+    refs: entries.map((e) => e.ref),
+    triggers,
+    banner: detectBanner(body, parentSetOf(options && options.parent)),
+  };
 }
