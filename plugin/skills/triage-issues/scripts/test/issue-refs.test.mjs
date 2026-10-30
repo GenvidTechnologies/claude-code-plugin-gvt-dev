@@ -2025,3 +2025,47 @@ test('BULKTRUNC: control, the same structure fixture under a larger limit gets t
   assert.ok(missing.notes.includes('native structure: no data'));
   assert.ok(!missing.notes.includes(CUT_NOTE_STRUCTURE));
 });
+
+// ---- NOCOMM: no comments input at all is "no data", never "no comments" ----
+
+const NO_COMMENT_NOTE = 'comments: no data';
+
+function noCommentIssues(extra = {}) {
+  return [
+    issueOf(1, 'Prerequisite.', extra),
+    issueOf(2, 'Blocked by #1.', extra),
+  ];
+}
+
+test('NOCOMM: no comments input and issues without a comments field get the note and no comment-sourced conclusion', () => {
+  const out = resolve({ open: noCommentIssues() }, OPTS);
+  for (const n of [1, 2]) {
+    assert.ok(recOf(out, n).notes.includes(NO_COMMENT_NOTE));
+    assert.ok(!recOf(out, n).notes.includes(CUT_NOTE_COMMENTS));
+  }
+  // Body references still resolve normally.
+  assert.equal(refOf(recOf(out, 2), 1).target.number, 1);
+  assert.equal(recOf(out, 2).retractedCount, 0);
+});
+
+test('NOCOMM: a retraction that would sit in comments is not concluded when no comments were given', () => {
+  const issues = [issueOf(1, 'Prerequisite.'), issueOf(2, 'Blocked by #1.')];
+  const withData = resolve(
+    dataOf(issues, { comments: { 2: [cm('No longer blocked by #1.')] } }),
+    OPTS,
+  );
+  assert.equal(recOf(withData, 2).retractedCount, 1);
+  const without = resolve({ open: issues }, OPTS);
+  assert.equal(recOf(without, 2).retractedCount, 0);
+  assert.ok(recOf(without, 2).notes.includes(NO_COMMENT_NOTE));
+});
+
+test('NOCOMM: control, the same issues each carrying comments: [] get no note', () => {
+  const out = resolve({ open: noCommentIssues({ comments: [] }) }, OPTS);
+  for (const n of [1, 2]) assert.ok(!recOf(out, n).notes.includes(NO_COMMENT_NOTE));
+});
+
+test('NOCOMM: control, a bulk comments array present carries no note', () => {
+  const out = resolve(dataOf(noCommentIssues(), { comments: { 1: [cm('Hello.')] } }), OPTS);
+  for (const n of [1, 2]) assert.ok(!recOf(out, n).notes.includes(NO_COMMENT_NOTE));
+});

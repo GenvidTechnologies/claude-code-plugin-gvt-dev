@@ -227,6 +227,13 @@ function isBulkStructureTruncated(ctx) {
   return ctx.bulkStructureLength !== null && isOpenListTruncated(ctx.bulkStructureLength, ctx.limit);
 }
 
+// No bulk comments array was given and the issue carries no comments field of
+// its own (absent, which is not the same as an empty array): the comments were
+// never fetched, so their absence proves nothing.
+function hasNoCommentData(ctx, issue) {
+  return ctx.bulkCommentsLength === null && !Array.isArray(issue.comments);
+}
+
 // ---- context ----
 
 function numberOption(value) {
@@ -300,7 +307,10 @@ export function buildContext(input, options) {
   ctx.entries = open.map((issue) => {
     const bulk = commentsByNumber.get(issue.number);
     // Absent from a cut bulk list: the comments are unknown, so none are read.
-    const commentsUnknown = bulk === undefined && isBulkCommentsTruncated(ctx);
+    const commentsCut = bulk === undefined && isBulkCommentsTruncated(ctx);
+    // No bulk input at all and no inline field: the comments were never fetched.
+    const commentsNoData = bulk === undefined && hasNoCommentData(ctx, issue);
+    const commentsUnknown = commentsCut || commentsNoData;
     const comments = commentsUnknown ? [] : bulk !== undefined ? bulk : asArray(issue.comments);
     const out = extract(
       { number: issue.number, title: issue.title, body: issue.body, comments },
@@ -310,6 +320,7 @@ export function buildContext(input, options) {
       issue,
       comments,
       commentsUnknown,
+      commentsNoData,
       bulkCount: bulk !== undefined ? bulk.length : 0,
       ...out,
     };
@@ -1273,7 +1284,8 @@ function buildRecord(entry, ctx) {
   const notes = [];
   if (commentsTruncated) notes.push('comments possibly truncated');
   const native = buildNative(entry, ctx);
-  if (entry.commentsUnknown) notes.push('comments: truncated (bulk list at its limit)');
+  if (entry.commentsNoData) notes.push('comments: no data');
+  else if (entry.commentsUnknown) notes.push('comments: truncated (bulk list at its limit)');
   if (native.status === 'no-data') {
     const cut = !structureIndex(ctx).byNumber.has(entry.issue.number) &&
       isBulkStructureTruncated(ctx);
