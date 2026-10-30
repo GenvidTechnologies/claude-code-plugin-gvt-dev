@@ -8,6 +8,18 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: Read on the auto-detect and light-fetch paths to list open issues and rank candidates when triage was skipped
+      - key: bugTracker.commentsQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk comments fetch (one call, saved to scratch) that feeds the cross-reference extractor, so a blocker stated in a comment is seen; absent, comments are reported as no data
+      - key: bugTracker.structureQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk native parent and sub-issue fetch (one call, saved to scratch) that feeds the cross-reference extractor; absent, native structure is reported as no data
+      - key: bugTracker.refStateQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The per-reference state lookup template the extractor's plan prints commands from, for referenced issues the saved backlog does not settle (cross-repo, or closed)
       - key: bugTracker.triagedLabel
         in: .gvt-agent.json
         required: false
@@ -24,6 +36,12 @@ metadata:
       - command: git
         required: false
         reason: Confirms repo context before orchestrating; also used locally to resolve an issue's surface (git ls-files) and to count commits to that surface since the issue was filed (git rev-list), for the shared-file annotation and the premise-freshness check, alongside fetch and the unreleased-delta check
+      - command: node
+        required: false
+        reason: Runs the issue-refs.mjs cross-reference script (extract, plan, resolve) that reads blockers, deferral triggers and native structure from the saved backlog
+      - command: npm
+        required: false
+        reason: Runs the npm view registry commands the script prints, to learn whether a closed cross-repo blocker has been published since it closed
 ---
 
 # Plan Next Issue
@@ -46,7 +64,10 @@ re-implements their work.
 
 - **Exploration → subagent.** Candidate fetching/ranking reuses
   `triage-issues`'s analyst (or a lightweight metadata fetch); full issue bodies
-  stay off this thread.
+  stay off this thread. Reading the references an issue states (blockers,
+  deferral triggers, native structure) is likewise off-thread work, done by the
+  `issue-refs.mjs` script over the saved fetch, so only its per-issue records
+  reach this thread.
 - **Decisions → here.** Whether to triage, which issue(s) to address, and how
   multiple selections flow into planning are all decided on this thread.
 
@@ -68,7 +89,9 @@ re-implements their work.
      `gvt-dev:triage-issues`, adjusted to the repo) and invite the user to add it
      so the next run is fully configured.
    - **Name the issue(s) directly** — the user supplies issue numbers and we skip
-     to step 3 (no fetch needed).
+     to step 3 (no fetch needed). The readiness of a directly named issue is
+     checked by `plan-task` in its Phase 0, before it dispatches the analyst, so
+     this path is covered where it forks.
    - **Add a `bugTracker` block** — see the example in `gvt-dev:triage-issues`.
 2. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally lets the delegated `triage-issues`
