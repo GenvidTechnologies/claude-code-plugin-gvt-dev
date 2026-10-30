@@ -238,7 +238,8 @@ Build a **ranked shortlist** of candidate issues to address:
   40 --order <f> --lookups <dir> --state-template "<refStateQuery>"`, where
   `--limit` is the `-L` of the saved queries, `--order` is a file of the ranked
   candidate numbers in the order the priority, dated-event and age tiers give
-  them, one per line, and there is no `--comparison`. `plan` prints `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
+  them, one per line, and there is no `--comparison`. `plan` prints
+  `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
   command starts with `gh api repos/` or `npm view ` and holds none of `;`, `&`,
   a backtick or `$(`, run only those that pass with stdout and stderr both
   written to `<dir>/<key>.json`, and repeat `plan` with `--lookups <dir>` until it
@@ -260,7 +261,8 @@ Build a **ranked shortlist** of candidate issues to address:
   inherited.
 
 Rank by readiness to plan: higher priority first, then issues that are already
-triaged/enriched and unblocked (no open dependency), de-prioritizing anything
+triaged/enriched and `ready` per the readiness definition below (state from the
+tracker, membership from the union), de-prioritizing anything
 still `needsInfoLabel` or flagged a duplicate. **An epic / tracking / umbrella
 issue is not itself a plannable unit** — recognize one by an `epic:`/`tracking:`
 title prefix or checklist lines of child issues (extracted above, not the body),
@@ -290,6 +292,43 @@ and a partial overlap usually means *rescope*, not *skip*); surface it in the
 candidate's one-line rationale — naming which part already shipped and which
 residual is left — so the user can skip it, or confirm the residual is still
 worth planning.
+
+**Readiness, defined once: state from the tracker, membership from the union.**
+Each candidate's `readiness.state` is the script's, and is exactly one of
+`ready`, `ready-caveat`, `blocked`, `deferred`, `umbrella`, `done-but-unclosed`
+or `banner-no-open-child`. A child's or a blocker's state is always read from
+tracker data (the saved open list, the native structure, a lookup), never from a
+checklist tick. An issue is an umbrella if any source says so: open native
+sub-issues, a self-declared banner, an `epic:`/`tracking:` title prefix, or
+checklist child rows; its routable children are the union of the native open
+children and the checklist rows whose child is open, and where the native
+summary shows open sub-issues outside the open list the issue stays an umbrella
+and the rationale says "N open sub-issues outside the open list". Where sources
+conflict, the order is umbrella, then deferred, then blocked, then ready-caveat,
+then ready, and each disagreement (a tick against a state, native against
+checklist membership) is shown in the rationale, never resolved silently. An
+`umbrella` is not ranked: route to its next ready open child (a `ticked-open`
+child stays routable, an `unticked-closed` row is never a routing target). A
+`deferred` issue has an unfired deferral trigger and is shown, not offered,
+unless it is the only candidate; a trigger is fired only when its reference is
+cleared or no longer open, or a later comment says it fired, and any other
+trigger is unfired, since firing the text cannot observe needs a human. A
+`blocked` issue has an uncleared blocker from any source (title, body, heading
+section, comment, deferral or native `blockedBy`), including a blocker the
+script could not resolve (blocked, unverified, with the kind named); it is
+de-prioritized within its band, and a same-repo open plannable blocker triggers
+the unblocker rule above. A `closed-release-unverified` blocker makes the issue
+`ready-caveat` interactively and `blocked` under `--non-interactive`, mirroring
+the inherited-deadline rule. A cleared blocker leaves the issue `ready`: the
+rationale names it and adds "check for follow-up work #N's closure unlocked",
+and it never promotes the issue above other ready ones; a `retracted` reference
+has no effect, and a native open parent only annotates the child ("child of
+#P"). A `done-but-unclosed` issue has every native sub-issue closed and no
+checklist row or banner naming an open child; it is not ranked and is shown with
+a close proposal. A `banner-no-open-child` issue has a banner and no open child
+from any source, even when every native sub-issue is closed, because a banner is
+the author keeping the issue open on purpose: it is shown, not offered, with
+triage suggested.
 
 **Breaking ties within a priority band.** Priority and readiness leave most
 candidates tied — a backlog sits mostly in one band — so order within the band
@@ -358,6 +397,54 @@ moves up). The check runs under
 `AskUserQuestion` option limit, which also bounds the cost; if ties exceed 4,
 say so.
 
+**Lookups and refill.** Comment and structure data are bulk and already in hand,
+so readiness is computed for every candidate before the cut and needs no refill
+read for them. A lookup is spent only to name a state precisely (closed, a pull
+request, nonexistent) for a shortlisted candidate's blockers, or where the open
+list cannot settle the question: a cross-repo reference, a truncated list, or an
+unticked row of a shortlisted umbrella. Absence from an untruncated open list
+proves only that the number is not an open issue in this repo, so report it as
+"not open", never "closed". Lookups follow the ranked order, top first, so a
+candidate a lookup demotes is replaced by the next one, which is looked up too,
+until the cap of 40 lookups per run (each distinct reference once, shared with
+§1). Past the cap a candidate shows "blocker state not checked (lookup cap)",
+and the overflow is reported by count and key, never dropped. This refill
+differs from the premise-freshness check on purpose: lookups are a cheap,
+bounded rank input, while the freshness check keeps its single pass.
+
+**Closed is not released (cross-repo blockers).** A closed cross-repo blocker is
+not cleared by closing alone. The script's registry check (`npm view`, at most 5
+packages per run, the overflow reported) clears it only when a version was
+published after the close, labelled `released (version check only)`, or when
+this repo consumes the source directly. A closed blocker with no publish since
+leaves the issue `blocked`, and the rationale reads "blocker merged upstream
+(<PR or issue>), not yet released, latest is X". This skill checks only the
+registry, that some version was published after the close, and never reads the
+artifact: the label says the fix is probably there, not that it is, and the
+content check belongs to `plan-task` at adoption.
+
+**Data gaps are reported, never read as "none".** The record's notes name them:
+`comments: no data`, `comments possibly truncated`, `native structure: no data`,
+and `comments: truncated (bulk list at its limit)` or `native structure:
+truncated (bulk list at its limit)`. An issue under one of them gets no
+conclusion drawn from the missing data, and the candidate's rationale says which
+data was missing.
+
+**Off the shortlist, three line forms.** A candidate that is shown but not
+offered gets its own line below the shortlist, beside the "#N demoted" line:
+`#N deferred: <trigger text> (body, unfired)`; `#N umbrella → routed to #M
+(native: 2 of 3 sub-issues open)`; and `#N likely done-but-unclosed (native: 3 of
+3 sub-issues closed) — close proposal, not offered`. A deferral trigger that
+names a measurement gets a **measure-first** offer: interactively, ask whether
+to measure first, and on acceptance invoke `gvt-dev:build-probe` and relay its
+concrete answer on this thread; the close decision is never build-probe's. A
+done-but-unclosed issue, or a deferred one whose measurement met its close rule,
+gets a close proposal. This skill does not close anything: it invokes
+`gvt-dev:triage-issues` scoped to that issue with a carried-in close proposal
+`{issue, reason, evidence}`, which presents it for per-item approval and applies
+it through the contract's "Close as completed or not planned (only with
+approval)" Close recipe.
+
 **Drift, recomputed each run.** The rationale shows "N commits to its surface
 since filed (<date>)", computed from the creation date as
 `git rev-list --count --since=<created> origin/<default-branch> -- <surface
@@ -369,11 +456,17 @@ would be a write this skill doesn't make.
 **Rationale line.** Give every candidate one line with each field present or
 saying why it is missing:
 
-`#N title — P2 · 98 days open (filed 2026-07-21) · deadline 2026-11-03, 7 days remaining (milestone, verified) · surface plan-task: shared with #A, #B (file collision, not a dependency) · freshness: 8 commits to its surface since filed; read at 5d8d489: agreement · deciding signal: age`
+`#N title — P2 · 98 days open (filed 2026-07-21) · deadline 2026-11-03, 7 days remaining (milestone, verified) · surface plan-task: shared with #A, #B (file collision, not a dependency) · freshness: 8 commits to its surface since filed; read at 5d8d489: agreement · readiness: blocked by #440 (comment, in hand) · deciding signal: age`
 
 The **deciding signal** is the first tier that separated this candidate from
 the next. A deadline from issue text is labelled inherited; one from a
-milestone, verified.
+milestone, verified. The `· readiness:` slot names the readiness reason with the
+provenance of the data that settled it: `in hand` (the saved lists), `lookup`
+(a state read this run) or `registry` (the version check). Further forms:
+`readiness: unblocked — #193 cleared (body, lookup: closed 2026-10-12); check
+for follow-up work #193's closure unlocked`, and `readiness: blocked —
+example-org/example-lib#12 merged upstream (example-org/example-lib#13), not yet
+released, latest is 1.4.0 (registry)`.
 
 Present the top candidates, each with that rationale line, and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
