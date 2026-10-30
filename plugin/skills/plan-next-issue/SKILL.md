@@ -235,15 +235,20 @@ Build a **ranked shortlist** of candidate issues to address:
   to scratch and never printed; they feed readiness, the epic rule and the
   unblocker rule below. Run it as the analyst's step 8 does: `plan --open <saved
   file> [--comments <f>] [--structure <f>] --repo <owner/repo> --limit <n> --cap
-  40 --order <f> --lookups <dir> --state-template "<refStateQuery>"`, where
-  `--limit` is the `-L` of the saved queries, `--order` is a file of the ranked
-  candidate numbers in the order the priority, dated-event and age tiers give
-  them, one per line, and there is no `--comparison`. `plan` prints
+  40 --order <f> --lookups <dir> [--non-interactive] --state-template
+  "<refStateQuery>"`, where `--limit` is the `-L` of the saved queries, `--order`
+  is a file of the ranked candidate numbers in the order the priority,
+  dated-event and age tiers give them, one per line, there is no `--comparison`,
+  and `--non-interactive` is passed when this skill runs under
+  `--non-interactive`, so a `closed-release-unverified` blocker reads `blocked`
+  rather than `ready-caveat`. `plan` prints
   `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
   command starts with `gh api repos/` or `npm view ` and holds none of `;`, `&`,
   a backtick or `$(`, run only those that pass with stdout and stderr both
   written to `<dir>/<key>.json`, and repeat `plan` with `--lookups <dir>` until it
-  prints nothing, then run `resolve` with the same arguments. It prints one JSON
+  prints no `{key, command}` line (only `skipped` lines, or nothing; the
+  `skipped` lines are the cap overflow to report, not work left to do), then run
+  `resolve` with the same arguments. It prints one JSON
   record per open issue (`refs[]`, `triggers[]`, `banner`, `native`, `notes`,
   `readiness`); read those records and never the bodies whole, so bodies do not
   reach the thread. A missing key, a failed fetch or a cut bulk list is
@@ -407,8 +412,8 @@ proves only that the number is not an open issue in this repo, so report it as
 "not open", never "closed". Lookups follow the ranked order, top first, so a
 candidate a lookup demotes is replaced by the next one, which is looked up too,
 until the cap of 40 lookups per run (each distinct reference once, shared with
-§1). Past the cap a candidate shows "blocker state not checked (lookup cap)",
-and the overflow is reported by count and key, never dropped. This refill
+§1). A candidate with a reference the record marks `skipped: "cap"` shows
+"blocker state not checked (lookup cap)", and the overflow is reported by count and key, never dropped. This refill
 differs from the premise-freshness check on purpose: lookups are a cheap,
 bounded rank input, while the freshness check keeps its single pass.
 
@@ -417,7 +422,7 @@ not cleared by closing alone. The script's registry check (`npm view`, at most 5
 packages per run, the overflow reported) clears it only when a version was
 published after the close, labelled `released (version check only)`, or when
 this repo consumes the source directly. A closed blocker with no publish since
-leaves the issue `blocked`, and the rationale reads "blocker merged upstream
+leaves the issue `blocked`, and the rationale reads "blocker closed upstream
 (<PR or issue>), not yet released, latest is X". This skill checks only the
 registry, that some version was published after the close, and never reads the
 artifact: the label says the fix is probably there, not that it is, and the
@@ -425,8 +430,8 @@ content check belongs to `plan-task` at adoption.
 
 **Data gaps are reported, never read as "none".** The record's notes name them:
 `comments: no data`, `comments possibly truncated`, `native structure: no data`,
-and `comments: truncated (bulk list at its limit)` or `native structure:
-truncated (bulk list at its limit)`. An issue under one of them gets no
+`comments: truncated (bulk list at its limit)`, `native structure:
+truncated (bulk list at its limit)` and `open list: truncated (at its limit)`. An issue under one of them gets no
 conclusion drawn from the missing data, and the candidate's rationale says which
 data was missing.
 
@@ -464,9 +469,9 @@ the next. A deadline from issue text is labelled inherited; one from a
 milestone, verified. The `· readiness:` slot names the readiness reason with the
 provenance of the data that settled it: `in hand` (the saved lists), `lookup`
 (a state read this run) or `registry` (the version check). Further forms:
-`readiness: unblocked — #193 cleared (body, lookup: closed 2026-10-12); check
+`readiness: ready — #193 cleared (body, lookup: closed 2026-10-12); check
 for follow-up work #193's closure unlocked`, and `readiness: blocked —
-example-org/example-lib#12 merged upstream (example-org/example-lib#13), not yet
+example-org/example-lib#12 closed upstream (example-org/example-lib#13), not yet
 released, latest is 1.4.0 (registry)`.
 
 Present the top candidates, each with that rationale line, and ask the user

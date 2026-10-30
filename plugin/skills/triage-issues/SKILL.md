@@ -163,8 +163,11 @@ block in `.gvt-agent.json` (access mechanics).
      `plan-next-issue` for a done-but-unclosed issue, or a deferred issue whose
      measurement met its close rule), the scope is that one issue. The proposal
      is presented for per-item approval and applied through the contract's
-     "Close as completed or not planned (only with approval)" recipe, with
-     `reason` as `{closeReason}`. It is never applied unattended unless
+     "Close as completed or not planned (only with approval)" recipe. The
+     proposal's `reason` and `evidence` are posted through the Comment recipe,
+     and `{closeReason}` is the recipe's enumerated value chosen per §3:
+     `completed` for a done-but-unclosed issue or a measured-zero deferral,
+     unless the user picks `not planned`. It is never applied unattended unless
      `--force`.
 5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended, but still never
@@ -567,15 +570,17 @@ split). Present them together, then apply the approved changes using the **Mutat
   - `closed-unreleased` and `closed-release-unverified`: comment only. The blocker
     is closed but its fix is not shown to be released.
   - `unresolvable` (kinds `prose`, `repo-ambiguous`, `cross-repo-unread`,
-    `absent`, `pr`, `nonexistent`, `heading-detached`, `truncated`,
-    `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.
+    `absent`, `pr`, `nonexistent` (not found or not readable), `heading-detached`,
+    `truncated`, `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.
     For a kind that rewrite cannot fix (`truncated`, `lookup-failed`), report it
     and write nothing.
-  - `done-but-unclosed`: propose closing the issue through the contract's
-    "Close as completed or not planned (only with approval)" recipe, per the
-    close-proposal walk below.
-  - `banner-no-open-child`: report only. A banner is the author saying the issue
-    stays open on purpose, so this is never a close proposal.
+  - Two issue-level findings come from the record's `readiness.state`, not from a
+    reference's `refs[].outcome`:
+    - `done-but-unclosed`: propose closing the issue through the contract's
+      "Close as completed or not planned (only with approval)" recipe, per the
+      close-proposal walk below.
+    - `banner-no-open-child`: report only. A banner is the author saying the
+      issue stays open on purpose, so this is never a close proposal.
   - `retracted`: no write. A later note already withdrew the claim.
   Under `--non-interactive` without `--force`, post the finding as a comment
   instead (§4) and rewrite the body only under `--force`. The note opens with
