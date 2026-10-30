@@ -1959,3 +1959,69 @@ test('MUT SAFE number: issue number 0 never reaches a command and is nonexistent
   const rec = recOf(resolve(d, OPTS), 1);
   assert.equal(rec.refs.find((r) => r.target && r.target.number === 0).kind, 'nonexistent');
 });
+
+// ---- BULKTRUNC: the bulk comments and structure lists may be cut at -L ----
+
+const CUT_NOTE_COMMENTS = 'comments: truncated (bulk list at its limit)';
+const CUT_NOTE_STRUCTURE = 'native structure: truncated (bulk list at its limit)';
+
+function bulkCommentsIssues() {
+  return [
+    issueOf(1, 'Prerequisite.'),
+    issueOf(2, 'Prerequisite.'),
+    issueOf(3, 'Prerequisite.'),
+    issueOf(4, 'Blocked by #5.', { comments: [cm('No longer blocked by #5.')] }),
+    issueOf(5, 'Prerequisite.'),
+  ];
+}
+
+function bulkCommentsData() {
+  return dataOf(bulkCommentsIssues(), {
+    comments: { 1: [cm('Hello.')], 2: [cm('Hello.')], 3: [cm('Hello.')] },
+  });
+}
+
+test('BULKTRUNC: an issue missing from a bulk comments list at its limit is flagged and its comments are unknown', () => {
+  const out = resolve(bulkCommentsData(), { ...OPTS, limit: 3 });
+  const missing = recOf(out, 4);
+  assert.ok(missing.notes.includes(CUT_NOTE_COMMENTS));
+  assert.notEqual(refOf(missing, 5).retracted, true);
+  assert.notEqual(refOf(missing, 5).outcome, 'retracted');
+  assert.equal(missing.retractedCount, 0);
+  assert.ok(!recOf(out, 1).notes.includes(CUT_NOTE_COMMENTS));
+  assert.ok(!recOf(out, 3).notes.includes(CUT_NOTE_COMMENTS));
+});
+
+test('BULKTRUNC: control, the same comments fixture under a larger limit carries no note', () => {
+  const out = resolve(bulkCommentsData(), { ...OPTS, limit: 10 });
+  assert.ok(!recOf(out, 4).notes.includes(CUT_NOTE_COMMENTS));
+  assert.equal(recOf(out, 4).retractedCount, 1);
+});
+
+function bulkStructureData() {
+  const issues = [
+    issueOf(1, 'Prerequisite.'),
+    issueOf(2, 'Prerequisite.'),
+    issueOf(3, 'Prerequisite.'),
+    issueOf(4, 'Prerequisite.'),
+  ];
+  return dataOf(issues, { structure: structureOf(issues.slice(0, 3)) });
+}
+
+test('BULKTRUNC: an issue missing from a bulk structure list at its limit is no-data, never no sub-issues', () => {
+  const out = resolve(bulkStructureData(), { ...OPTS, limit: 3 });
+  const missing = recOf(out, 4);
+  assert.equal(missing.native.status, 'no-data');
+  assert.ok(missing.notes.includes(CUT_NOTE_STRUCTURE));
+  assert.ok(!missing.notes.includes('native structure: no data'));
+  assert.notEqual(missing.readiness.state, 'done-but-unclosed');
+  assert.equal(recOf(out, 1).native.status, 'data');
+  assert.ok(!recOf(out, 1).notes.includes(CUT_NOTE_STRUCTURE));
+});
+
+test('BULKTRUNC: control, the same structure fixture under a larger limit gets the plain no-data note', () => {
+  const missing = recOf(resolve(bulkStructureData(), { ...OPTS, limit: 10 }), 4);
+  assert.equal(missing.native.status, 'no-data');
+  assert.ok(missing.notes.includes('native structure: no data'));
+  assert.ok(!missing.notes.includes(CUT_NOTE_STRUCTURE));
+});

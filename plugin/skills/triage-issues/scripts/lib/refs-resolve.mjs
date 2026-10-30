@@ -215,6 +215,18 @@ function isCommentsTruncated(count) {
   return count >= COMMENTS_PAGE;
 }
 
+// The bulk comments array as long as its -L limit may have been cut: an issue
+// missing from it proves nothing about its comments.
+function isBulkCommentsTruncated(ctx) {
+  return ctx.bulkCommentsLength !== null && isOpenListTruncated(ctx.bulkCommentsLength, ctx.limit);
+}
+
+// The bulk structure array as long as its -L limit may have been cut: an issue
+// missing from it proves nothing about its sub-issues.
+function isBulkStructureTruncated(ctx) {
+  return ctx.bulkStructureLength !== null && isOpenListTruncated(ctx.bulkStructureLength, ctx.limit);
+}
+
 // ---- context ----
 
 function numberOption(value) {
@@ -279,18 +291,28 @@ export function buildContext(input, options) {
     comparison,
     lookups: data.lookups && typeof data.lookups === 'object' ? data.lookups : {},
     structureRows: asArray(data.structure),
+    bulkCommentsLength: Array.isArray(data.comments) ? data.comments.length : null,
+    bulkStructureLength: Array.isArray(data.structure) ? data.structure.length : null,
     cutKeys: new Set(),
     entries: [],
   };
 
   ctx.entries = open.map((issue) => {
     const bulk = commentsByNumber.get(issue.number);
-    const comments = bulk !== undefined ? bulk : asArray(issue.comments);
+    // Absent from a cut bulk list: the comments are unknown, so none are read.
+    const commentsUnknown = bulk === undefined && isBulkCommentsTruncated(ctx);
+    const comments = commentsUnknown ? [] : bulk !== undefined ? bulk : asArray(issue.comments);
     const out = extract(
       { number: issue.number, title: issue.title, body: issue.body, comments },
       { repo },
     );
-    return { issue, comments, bulkCount: bulk !== undefined ? bulk.length : 0, ...out };
+    return {
+      issue,
+      comments,
+      commentsUnknown,
+      bulkCount: bulk !== undefined ? bulk.length : 0,
+      ...out,
+    };
   });
   return ctx;
 }
@@ -1251,7 +1273,14 @@ function buildRecord(entry, ctx) {
   const notes = [];
   if (commentsTruncated) notes.push('comments possibly truncated');
   const native = buildNative(entry, ctx);
-  if (native.status === 'no-data') notes.push('native structure: no data');
+  if (entry.commentsUnknown) notes.push('comments: truncated (bulk list at its limit)');
+  if (native.status === 'no-data') {
+    const cut = !structureIndex(ctx).byNumber.has(entry.issue.number) &&
+      isBulkStructureTruncated(ctx);
+    notes.push(
+      cut ? 'native structure: truncated (bulk list at its limit)' : 'native structure: no data',
+    );
+  }
 
   const rec = {
     number: entry.issue.number,
