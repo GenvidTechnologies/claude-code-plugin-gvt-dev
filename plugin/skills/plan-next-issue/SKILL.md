@@ -170,6 +170,13 @@ Detect whether the backlog needs grooming before planning:
   file, and runs **after** this skip decision, so it cannot inform it — triage
   instead reads full bodies and the closed-issue comparison set.
 
+  A reference stated in an issue's **title**, or the blocker a blocked-labelled
+  issue states, is also a reason to offer, once it has cleared: the label may
+  outlive the block, and for a released artifact "closed is not cleared until the
+  fix is released". A cleared blocker's rationale then says "check for follow-up
+  work #N's closure unlocked". This stays a metadata check: titles, plus the
+  extracted lines of §2's ranking data, never bodies.
+
   **Skip straight to ranking (§2) only when the backlog is both small and
   recently triaged.** When it's genuinely marginal, **ask rather than
   pre-recommending the skip**, and state the **asymmetry**: an unnecessary
@@ -198,7 +205,17 @@ Build a **ranked shortlist** of candidate issues to address:
   artifact) and never demotes: the candidate keeps its rank, and its rationale
   names the corrected ask — the outcome and the comment it came from. Never
   demoting is deliberate: the finding corrects what the issue asks, not whether
-  the work is still needed.
+  the work is still needed. A `[refs]` finding is a third check (a stated
+  reference against the referenced issue's live state), and it sets the
+  candidate's readiness through the readiness definition below:
+  `cleared` is ready; `closed-unreleased` and an `unresolvable` blocker are
+  blocked; `closed-release-unverified` is ready with a caveat interactively and
+  blocked under `--non-interactive`; `done-but-unclosed` and
+  `banner-no-open-child` are not ranked; `retracted` has no effect. The outcome
+  names are the analyst's own, listed in its step 8 ("**Outcomes:** `cleared`
+  (`via`: …) · `closed-unreleased` … · `retracted` · `unresolvable`"). The report
+  predates this run's ranking, so where §2's own resolution below read fresher
+  tracker state and differs, §2's state wins and the rationale says so.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -209,17 +226,34 @@ Build a **ranked shortlist** of candidate issues to address:
   the query a second time.
 - **Ranking data, on every path.** §2's ranking fields come from §1's saved
   output: number, title, labels, the creation date (gh: `createdAt`), the
-  milestone due date (gh: `milestone.dueOn`), the lines carrying a date on or
-  after today, the checklist lines (for the epic rule below), and the
-  `Blocked by #N` / `Depends on #N` lines (for readiness and the unblocker rule
-  below). Read only those fields from the file with a short script or `jq` over
-  it, never the bodies whole, so reading it does not dump bodies into the
-  thread. Past dates in issue text aren't extracted. **When triage just ran**,
+  milestone due date (gh: `milestone.dueOn`) and the lines carrying a date on or
+  after today. The stated references come from the extractor's per-issue records
+  (title, body, heading-section and comment references, checklist rows,
+  deferral-trigger lines, banners, native structure), produced by
+  `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs` over §1's
+  saved file plus one `commentsQuery` and one `structureQuery` fetch, each saved
+  to scratch and never printed; they feed readiness, the epic rule and the
+  unblocker rule below. Run it as the analyst's step 8 does: `plan --open <saved
+  file> [--comments <f>] [--structure <f>] --repo <owner/repo> --limit <n> --cap
+  40 --order <f> --lookups <dir> --state-template "<refStateQuery>"`, where
+  `--limit` is the `-L` of the saved queries, `--order` is a file of the ranked
+  candidate numbers in the order the priority, dated-event and age tiers give
+  them, one per line, and there is no `--comparison`. `plan` prints `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
+  command starts with `gh api repos/` or `npm view ` and holds none of `;`, `&`,
+  a backtick or `$(`, run only those that pass with stdout and stderr both
+  written to `<dir>/<key>.json`, and repeat `plan` with `--lookups <dir>` until it
+  prints nothing, then run `resolve` with the same arguments. It prints one JSON
+  record per open issue (`refs[]`, `triggers[]`, `banner`, `native`, `notes`,
+  `readiness`); read those records and never the bodies whole, so bodies do not
+  reach the thread. A missing key, a failed fetch or a cut bulk list is
+  reported by the record's notes (`comments: no data`, `native structure: no
+  data`, `truncated (bulk list at its limit)`), never read as "none". Past dates
+  in issue text aren't extracted. **When triage just ran**,
   the saved file predates it: apply the changes triage actually made (labels,
   priority, and the `triaged`/`needs-info` the user accepted and the run
   applied, not mere proposals) on top of the saved rows, and those applied
   changes win over the saved file. Everything else (creation date, milestone,
-  dated lines, checklist and blocker lines) comes from the saved file. If the query
+  dated lines and the extractor's records) comes from the saved file. If the query
   returns no creation date, say so: the age tier is skipped, drift can't be
   computed, and the freshness check below treats every shortlisted candidate as
   unverified. If it returns no milestone, only issue-text dates remain, all
