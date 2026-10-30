@@ -31,6 +31,18 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: The read-one command §3 uses to read an issue's labels back before stamping; the tracker's native issue view is the fallback
+      - key: bugTracker.commentsQuery
+        in: .gvt-agent.json
+        required: false
+        reason: Bulk comments fetch the analyst feeds to the `[refs]` cross-reference check; absent, the check reports comments as no data
+      - key: bugTracker.structureQuery
+        in: .gvt-agent.json
+        required: false
+        reason: Bulk parent and sub-issue summary fetch the analyst feeds to the `[refs]` cross-reference check; absent, the check reports native structure as no data
+      - key: bugTracker.refStateQuery
+        in: .gvt-agent.json
+        required: false
+        reason: Per-reference state lookup ({repo}, {id}) that resolves the state of each issue a `[refs]` finding names
       - key: bugTracker.triagedLabel
         in: .gvt-agent.json
         required: false
@@ -146,6 +158,14 @@ block in `.gvt-agent.json` (access mechanics).
 4. **Resolve scope:**
    - Default: `actionQuery` minus `triagedLabel` (open issues not yet triaged).
    - Override: an explicit query/label, or a list of issue IDs passed as args.
+   - Carried-in close proposal: when invoked scoped to one issue with a
+     **carried-in close proposal** `{issue, reason, evidence}` (offered by
+     `plan-next-issue` for a done-but-unclosed issue, or a deferred issue whose
+     measurement met its close rule), the scope is that one issue. The proposal
+     is presented for per-item approval and applied through the contract's
+     "Close as completed or not planned (only with approval)" recipe, with
+     `reason` as `{closeReason}`. It is never applied unattended unless
+     `--force`.
 5. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally permits destructive actions unattended, but still never
    removes a stale duplicate, never auto-picks between near-miss candidates,
@@ -607,6 +627,9 @@ and the CLI for your tracker):
   "actionQuery": "gh issue list --state open -L 200 --json number,title,labels,body,assignees,author,createdAt,milestone",
   "comparisonQuery": "gh issue list --state all -L 500 --json number,title,labels,state",
   "readOne": "gh issue view {id} --json number,title,body,labels,comments",
+  "commentsQuery": "gh issue list --state open -L 200 --json number,comments",
+  "structureQuery": "gh issue list --state open -L 200 --json number,parent,subIssuesSummary",
+  "refStateQuery": "gh api repos/{repo}/issues/{id} --jq '{number,state,state_reason,closed_at,pull_request:(.pull_request != null),sub_issues_summary}'",
   "triagedLabel": "triaged",
   "needsInfoLabel": "needs-info"
 }
@@ -617,3 +640,11 @@ single label (e.g. `--label bug`). The triage-need detection subtracts only
 `triagedLabel`, so a label-scoped `actionQuery` silently hides untriaged issues
 that don't match the label (enhancements, docs, tech-debt), making the backlog look
 groomed when it isn't.
+
+`commentsQuery`, `structureQuery` and `refStateQuery` feed the analyst's `[refs]`
+cross-reference check, and all three are optional. `commentsQuery` and
+`structureQuery` are bulk fetches: give them the **same `-L` as `actionQuery`**
+(200 in the example above), so truncation (a
+returned count equal to `-L`) is detected consistently across them. JSON has no
+comments, so the constraint lives here. `refStateQuery` is a per-reference lookup
+and takes `{repo}` and `{id}`; it has no `-L`.
