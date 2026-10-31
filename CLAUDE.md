@@ -21,6 +21,7 @@ Maintainer rules that are not loaded automatically. Read the page before its tri
 - Before adding audit logic or a content-scanning check, proving a scanner ignores a surface, or deciding whether a skill needs an eval harness → [`wiki/maintainer/testing-the-audit.md`](wiki/maintainer/testing-the-audit.md)
 - Before starting a multi-issue chain, bumping `plugin.json` `version`, writing or reviewing a CHANGELOG entry or a version bump, or importing audit-core from outside `plugin/` → [`wiki/maintainer/release-cycle-rules.md`](wiki/maintainer/release-cycle-rules.md)
 - Before bumping a leaf pin such as `@genvidtech/audit-core`, or deciding whether a capability belongs upstream → [`wiki/maintainer/leaf-dependency-posture.md`](wiki/maintainer/leaf-dependency-posture.md)
+- Before writing or editing prose under `plugin/` (a skill or agent body, a shipped doc, a CHANGELOG entry) → [`plugin/docs/writing-style.md`](plugin/docs/writing-style.md)
 
 ## Repo layout
 
@@ -51,6 +52,7 @@ claude-code-plugin-gvt-dev/
 │   ├── process/issue-triage.md       # Dogfood consuming-repo triage conventions (resolved via paths)
 │   └── maintainer/plugin-authoring.md  # Maintainer authoring notes (internal, not shipped)
 ├── examples/                         # Worked, filled-in example consuming-repo files (Bunny game) for reference
+├── test/                             # Repo-level tests (shared-block drift test)
 ├── audit-conventions-evals/          # Skill eval harness (developer tooling)
 ├── create-adr-evals/                 # Skill eval harness for create-adr (developer tooling)
 └── validator-evals/                  # Eval harness for the validator agent's chain reporting (developer tooling)
@@ -136,6 +138,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 6. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` entry. A new invocable skill is consumer-visible surface, so it needs a version bump and a changelog note.
 7. **`docs/TOC.md`** — add a one-line Components entry for discoverability (especially orchestrators or skills carrying notable config — the `triage-issues` line is the precedent).
 8. Smoke-test by updating the local install (`claude plugin update gvt-dev@gvt-plugins`) and checking `claude plugin details gvt-dev`.
+9. If the skill writes technical text, add a `## Writing style` section. Copy the paragraph from the "The short form" section of `plugin/docs/writing-style.md` without change. Then add the file to the `writing-style` entry's file list in `test/shared-blocks.test.mjs`.
 
 **If the new skill orchestrates other skills** (invokes them via the Skill tool rather than doing the work itself — e.g. `plan-next-issue` chains `triage-issues` → `plan-task`), keep it a *pure orchestrator*: it owns no exploration and no writes, it sequences the delegated skills and makes only the decisions *between* them. Redeclare any config it reads (e.g. a `bugTracker` key consulted to rank candidates) in its own `metadata.expects` as `required: false` — accurate, and since it's optional the audit's aggregated contract is unaffected. This differs from the agent-dispatching orchestrators (`plan-task`) and from the two-surface external-system pattern below: a pure orchestrator introduces no new agent, template, or contract file of its own.
 
@@ -151,6 +154,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 1. Create `plugin/agents/<name>.md` — **flat file**, not a directory.
 2. Agent frontmatter supports `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, plus custom `metadata`. **`hooks`, `permissionMode` and `mcpServers` are ignored for plugin agents**. Claude Code warns "which is ignored for plugin agents. Use .claude/agents/ for this level of control." So a per-agent hook must live in `plugin/hooks/hooks.json` and scope itself by the payload's `agent_id`/`agent_type`, whose value for a plugin agent is `gvt-dev:<name>` (see ADR-0061). `tools`/`disallowedTools` take whole tool names only, not `Bash(<pattern>)` rules.
 3. Skills dispatching the agent use `subagent_type: "gvt-dev:<name>"` — plugin agents are namespaced.
+4. If the agent writes technical text, add a `## Writing style` section. Copy the paragraph from the "The short form" section of `plugin/docs/writing-style.md` without change. Then add the file to the `writing-style` entry's file list in `test/shared-blocks.test.mjs`.
 
 ## Renaming a skill or agent
 
