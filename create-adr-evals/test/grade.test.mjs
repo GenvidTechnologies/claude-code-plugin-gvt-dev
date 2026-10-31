@@ -343,11 +343,61 @@ test('gradeRun: C-voice task-id class is whole-token only and does not fire on S
   }
 });
 
+// Clean prose that an over-wide class would reject: each case sits where only
+// the narrowed rule (not another class) decides the outcome.
+test('gradeRun: C-voice passes clean prose near the writer and "Record the" classes (brief voice negative controls)', async () => {
+  const clean = [
+    ['hyphenated tech-writer in a parenthetical list', ' Dispatch (ts-implementer, tech-writer, or a domain implementer) per task.'],
+    ['lone (tech-writer)', ' Handled by the (tech-writer) agent.'],
+    ['hard-wrapped continuation line', ' The retry budget is fixed at three.\nRecord the outcome in the index.'],
+  ];
+  for (const [title, extra] of clean) {
+    const { root, before, meta } = buildFixture('C-voice');
+    try {
+      placeVoiceRecord(root, voiceRecord({
+        decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+        extra,
+      }));
+      appendToIndex(root, 'wiki/decisions/alpha/index.md', `* [Retry failed alpha webhook deliveries](0004-retry-webhooks.md) - ${title.includes('wrapped') ? 'bounded' : '(tech-writer) bounded'}\n`);
+
+      const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+      assert.equal(result.assertions.voice, true, `${title}: ${JSON.stringify(result.reasons)}`);
+      assert.equal(result.allDeterministicPass, true, `${title}: ${JSON.stringify(result.reasons)}`);
+    } finally {
+      cleanup(root);
+    }
+  }
+});
+
+test('gradeRun: C-voice still fails the narrowed classes on true positives (brief voice)', async () => {
+  const leaks = [
+    [" (writer's note)", 'writer possessive parenthetical', 'writer-addressed parenthetical'],
+    ['\n\nRecord the outcome: keep it short.', 'paragraph-start Record the', 'lead-in "Record the"'],
+    ['\n\n## Record the alternatives', 'heading Record the', 'lead-in "Record the"'],
+    ['\n- Record the reasons', 'bullet Record the', 'lead-in "Record the"'],
+  ];
+  for (const [leak, title, label] of leaks) {
+    const { root, before, meta } = buildFixture('C-voice');
+    try {
+      placeVoiceRecord(root, voiceRecord({
+        decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+        extra: leak,
+      }));
+
+      const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+      assert.equal(result.assertions.voice, false, title);
+      assert.ok(result.reasons.some((r) => r.startsWith('Voice:') && r.includes(label)), `${title}: ${JSON.stringify(result.reasons)}`);
+    } finally {
+      cleanup(root);
+    }
+  }
+});
+
 test('gradeRun: C-voice tell classes keep the exact regex source (brief voice)', () => {
   assert.deepEqual(VOICE_TELL_CLASSES.map((c) => String(c.re)), [
-    String.raw`/^[ \t#*-]*Record the\b/im`,
+    String.raw`/(?<![^])[ \t]*Record the\b|\n[ \t]*\r?\n[ \t]*Record the\b|^[ \t]*[#*-][ \t#*-]*Record the\b/im`,
     String.raw`/\bverified (?:in )?this run\b/i`,
-    String.raw`/\([^()\r\n]*\bwriter\b[^()\r\n]*\)/i`,
+    String.raw`/\([^()\r\n]*(?<![\w-])writer\b[^()\r\n]*\)/i`,
     String.raw`/\bT\d+\b|\bonce T\d+ lands\b/`,
   ]);
 });

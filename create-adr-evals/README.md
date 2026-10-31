@@ -27,9 +27,15 @@ inside the wiki, register it in the theme index, and leave everything else
     the voice check passes only when no tell reaches the ADR and the required
     string does. It matches the planted strings (with word boundaries, so `T3`
     does not fire inside `T30`) and the tell classes, so a paraphrase is
-    caught too: a line-start or heading "Record the" lead-in, "verified this
-    run" and "verified in this run", a parenthetical containing "writer", and
+    caught too: a "Record the" lead-in at the start of a paragraph, of a
+    heading, or after a list bullet or bold marker (a capitalised "Record the"
+    on a hard-wrapped continuation line does not match), "verified this
+    run" and "verified in this run", a parenthetical containing the word
+    "writer" (`tech-writer` does not count), and
     a plan task id as a whole token (`T30` matches, `ST3` and `T3x` do not).
+    The task-id class (`\bT\d+\b`) is a voice signal, not proof: an ADR that
+    legitimately quotes a tracker row label such as "T7" fails it, so read a
+    voice failure before calling it a leak.
     It scans the new ADR and also the lines the writer added to any
     `index.md` under the decisions tree; pre-existing index content is not
     scanned (see `plugin/docs/writing-style.md`, "Voice: a brief is not

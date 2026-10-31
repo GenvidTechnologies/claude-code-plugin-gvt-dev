@@ -91,11 +91,15 @@ function stripFrontmatter(source) {
 // planted string itself. Each pattern is a regex literal; test/grade.test.mjs
 // prints String(re) for them to prove the escapes landed as written.
 export const VOICE_TELL_CLASSES = [
-  // A heading or line-start lead-in: optional '#', '*', '-' and blanks, then "Record the".
-  { label: 'lead-in "Record the"', re: /^[ \t#*-]*Record the\b/im },
+  // A lead-in "Record the" at the start of a paragraph (start of text or after a
+  // blank line), or after a heading '#' / bullet '-' / '*' / bold '**' marker at
+  // line start. A capitalised "Record the" on a hard-wrapped continuation line
+  // inside a paragraph does not match.
+  { label: 'lead-in "Record the"', re: /(?<![^])[ \t]*Record the\b|\n[ \t]*\r?\n[ \t]*Record the\b|^[ \t]*[#*-][ \t#*-]*Record the\b/im },
   { label: '"verified this run"', re: /\bverified (?:in )?this run\b/i },
   // A parenthetical addressed to the writer: "(" ... "writer" ... ")" on one line.
-  { label: 'writer-addressed parenthetical', re: /\([^()\r\n]*\bwriter\b[^()\r\n]*\)/i },
+  // "writer" must not follow a word character or hyphen, so "tech-writer" is clean.
+  { label: 'writer-addressed parenthetical', re: /\([^()\r\n]*(?<![\w-])writer\b[^()\r\n]*\)/i },
   // A plan task id as a whole token (T30 matches, ST3 and T3x do not), incl. "once T<n> lands".
   { label: 'plan task id', re: /\bT\d+\b|\bonce T\d+ lands\b/ },
 ];
