@@ -8,6 +8,18 @@ metadata:
         in: .gvt-agent.json
         required: false
         reason: Read on the auto-detect and light-fetch paths to list open issues and rank candidates when triage was skipped
+      - key: bugTracker.commentsQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk comments fetch (one call, saved to scratch) that feeds the cross-reference extractor, so a blocker stated in a comment is seen; absent, comments are reported as no data
+      - key: bugTracker.structureQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The bulk native parent and sub-issue fetch (one call, saved to scratch) that feeds the cross-reference extractor; absent, native structure is reported as no data
+      - key: bugTracker.refStateQuery
+        in: .gvt-agent.json
+        required: false
+        reason: The per-reference state lookup template the extractor's plan prints commands from, for referenced issues the saved backlog does not settle (cross-repo, or closed)
       - key: bugTracker.triagedLabel
         in: .gvt-agent.json
         required: false
@@ -24,6 +36,12 @@ metadata:
       - command: git
         required: false
         reason: Confirms repo context before orchestrating; also used locally to resolve an issue's surface (git ls-files) and to count commits to that surface since the issue was filed (git rev-list), for the shared-file annotation and the premise-freshness check, alongside fetch and the unreleased-delta check
+      - command: node
+        required: false
+        reason: Runs the issue-refs.mjs cross-reference script (extract, plan, resolve) that reads blockers, deferral triggers and native structure from the saved backlog
+      - command: npm
+        required: false
+        reason: Runs the npm view registry commands the script prints, to learn whether a closed cross-repo blocker has been published since it closed
 ---
 
 # Plan Next Issue
@@ -46,7 +64,10 @@ re-implements their work.
 
 - **Exploration → subagent.** Candidate fetching/ranking reuses
   `triage-issues`'s analyst (or a lightweight metadata fetch); full issue bodies
-  stay off this thread.
+  stay off this thread. Reading the references an issue states (blockers,
+  deferral triggers, native structure) is likewise off-thread work, done by the
+  `issue-refs.mjs` script over the saved fetch, so only its per-issue records
+  reach this thread.
 - **Decisions → here.** Whether to triage, which issue(s) to address, and how
   multiple selections flow into planning are all decided on this thread.
 
@@ -68,7 +89,9 @@ re-implements their work.
      `gvt-dev:triage-issues`, adjusted to the repo) and invite the user to add it
      so the next run is fully configured.
    - **Name the issue(s) directly** — the user supplies issue numbers and we skip
-     to step 3 (no fetch needed).
+     to step 3 (no fetch needed). The readiness of a directly named issue is
+     checked by `plan-task` in its Phase 0, before it dispatches the analyst, so
+     this path is covered where it forks.
    - **Add a `bugTracker` block** — see the example in `gvt-dev:triage-issues`.
 2. **Confirm mode:** interactive by default. `--non-interactive` (alias `--auto`)
    runs unattended; `--force` additionally lets the delegated `triage-issues`
@@ -147,6 +170,13 @@ Detect whether the backlog needs grooming before planning:
   file, and runs **after** this skip decision, so it cannot inform it — triage
   instead reads full bodies and the closed-issue comparison set.
 
+  A reference stated in an issue's **title**, or the blocker a blocked-labelled
+  issue states, is also a reason to offer, once it has cleared: the label may
+  outlive the block, and for a released artifact "closed is not cleared until the
+  fix is released". A cleared blocker's rationale then says "check for follow-up
+  work #N's closure unlocked". This stays a metadata check: titles, plus the
+  extracted lines of §2's ranking data, never bodies.
+
   **Skip straight to ranking (§2) only when the backlog is both small and
   recently triaged.** When it's genuinely marginal, **ask rather than
   pre-recommending the skip**, and state the **asymmetry**: an unnecessary
@@ -175,7 +205,17 @@ Build a **ranked shortlist** of candidate issues to address:
   artifact) and never demotes: the candidate keeps its rank, and its rationale
   names the corrected ask — the outcome and the comment it came from. Never
   demoting is deliberate: the finding corrects what the issue asks, not whether
-  the work is still needed.
+  the work is still needed. A `[refs]` finding is a third check (a stated
+  reference against the referenced issue's live state), and it sets the
+  candidate's readiness through the readiness definition below:
+  `cleared` is ready; `closed-unreleased` and an `unresolvable` blocker are
+  blocked; `closed-release-unverified` is ready with a caveat interactively and
+  blocked under `--non-interactive`; `done-but-unclosed` and
+  `banner-no-open-child` are not ranked; `retracted` has no effect. The outcome
+  names are the analyst's own, listed in its step 8 ("**Outcomes:** `cleared`
+  (`via`: …) · `closed-unreleased` … · `retracted` · `unresolvable`"). The report
+  predates this run's ranking, so where §2's own resolution below read fresher
+  tracker state and differs, §2's state wins and the rationale says so.
   Re-read a target only for a candidate the report marked `verify: n/a` or didn't
   cover — that read is this skill's own ranking-time check below, not the
   analyst's bounded step. The report's `age:` and `deadline:` slot describes the
@@ -186,24 +226,48 @@ Build a **ranked shortlist** of candidate issues to address:
   the query a second time.
 - **Ranking data, on every path.** §2's ranking fields come from §1's saved
   output: number, title, labels, the creation date (gh: `createdAt`), the
-  milestone due date (gh: `milestone.dueOn`), the lines carrying a date on or
-  after today, the checklist lines (for the epic rule below), and the
-  `Blocked by #N` / `Depends on #N` lines (for readiness and the unblocker rule
-  below). Read only those fields from the file with a short script or `jq` over
-  it, never the bodies whole, so reading it does not dump bodies into the
-  thread. Past dates in issue text aren't extracted. **When triage just ran**,
+  milestone due date (gh: `milestone.dueOn`) and the lines carrying a date on or
+  after today. The stated references come from the extractor's per-issue records
+  (title, body, heading-section and comment references, checklist rows,
+  deferral-trigger lines, banners, native structure), produced by
+  `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs` over §1's
+  saved file plus one `commentsQuery` and one `structureQuery` fetch, each saved
+  to scratch and never printed; they feed readiness, the epic rule and the
+  unblocker rule below. Run it as the analyst's step 8 does: `plan --open <saved
+  file> [--comments <f>] [--structure <f>] --repo <owner/repo> --limit <n> --cap
+  40 --order <f> --lookups <dir> [--non-interactive] --state-template
+  "<refStateQuery>"`, where `--limit` is the `-L` of the saved queries, `--order`
+  is a file of the ranked candidate numbers in the order the priority,
+  dated-event and age tiers give them, one per line, there is no `--comparison`,
+  and `--non-interactive` is passed when this skill runs under
+  `--non-interactive`, so a `closed-release-unverified` blocker reads `blocked`
+  rather than `ready-caveat`. `plan` prints
+  `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
+  command starts with `gh api repos/` or `npm view ` and holds none of `;`, `&`,
+  a backtick or `$(`, run only those that pass with stdout and stderr both
+  written to `<dir>/<key>.json`, and repeat `plan` with `--lookups <dir>` until it
+  prints no `{key, command}` line (only `skipped` lines, or nothing; the
+  `skipped` lines are the cap overflow to report, not work left to do), then run
+  `resolve` with the same arguments. It prints one JSON
+  record per open issue (`refs[]`, `triggers[]`, `banner`, `native`, `notes`,
+  `readiness`); read those records and never the bodies whole, so bodies do not
+  reach the thread. A missing key, a failed fetch or a cut bulk list is
+  reported by the record's notes (`comments: no data`, `native structure: no
+  data`, `truncated (bulk list at its limit)`), never read as "none". Past dates
+  in issue text aren't extracted. **When triage just ran**,
   the saved file predates it: apply the changes triage actually made (labels,
   priority, and the `triaged`/`needs-info` the user accepted and the run
   applied, not mere proposals) on top of the saved rows, and those applied
   changes win over the saved file. Everything else (creation date, milestone,
-  dated lines, checklist and blocker lines) comes from the saved file. If the query
+  dated lines and the extractor's records) comes from the saved file. If the query
   returns no creation date, say so: the age tier is skipped, drift can't be
   computed, and the freshness check below treats every shortlisted candidate as
   unverified. If it returns no milestone, only issue-text dates remain, all
   inherited.
 
 Rank by readiness to plan: higher priority first, then issues that are already
-triaged/enriched and unblocked (no open dependency), de-prioritizing anything
+triaged/enriched and `ready` per the readiness definition below (state from the
+tracker, membership from the union), de-prioritizing anything
 still `needsInfoLabel` or flagged a duplicate. **An epic / tracking / umbrella
 issue is not itself a plannable unit** — recognize one by an `epic:`/`tracking:`
 title prefix or checklist lines of child issues (extracted above, not the body),
@@ -233,6 +297,43 @@ and a partial overlap usually means *rescope*, not *skip*); surface it in the
 candidate's one-line rationale — naming which part already shipped and which
 residual is left — so the user can skip it, or confirm the residual is still
 worth planning.
+
+**Readiness, defined once: state from the tracker, membership from the union.**
+Each candidate's `readiness.state` is the script's, and is exactly one of
+`ready`, `ready-caveat`, `blocked`, `deferred`, `umbrella`, `done-but-unclosed`
+or `banner-no-open-child`. A child's or a blocker's state is always read from
+tracker data (the saved open list, the native structure, a lookup), never from a
+checklist tick. An issue is an umbrella if any source says so: open native
+sub-issues, a self-declared banner, an `epic:`/`tracking:` title prefix, or
+checklist child rows; its routable children are the union of the native open
+children and the checklist rows whose child is open, and where the native
+summary shows open sub-issues outside the open list the issue stays an umbrella
+and the rationale says "N open sub-issues outside the open list". Where sources
+conflict, the order is umbrella, then deferred, then blocked, then ready-caveat,
+then ready, and each disagreement (a tick against a state, native against
+checklist membership) is shown in the rationale, never resolved silently. An
+`umbrella` is not ranked: route to its next ready open child (a `ticked-open`
+child stays routable, an `unticked-closed` row is never a routing target). A
+`deferred` issue has an unfired deferral trigger and is shown, not offered,
+unless it is the only candidate; a trigger is fired only when its reference is
+cleared or no longer open, or a later comment says it fired, and any other
+trigger is unfired, since firing the text cannot observe needs a human. A
+`blocked` issue has an uncleared blocker from any source (title, body, heading
+section, comment, deferral or native `blockedBy`), including a blocker the
+script could not resolve (blocked, unverified, with the kind named); it is
+de-prioritized within its band, and a same-repo open plannable blocker triggers
+the unblocker rule above. A `closed-release-unverified` blocker makes the issue
+`ready-caveat` interactively and `blocked` under `--non-interactive`, mirroring
+the inherited-deadline rule. A cleared blocker leaves the issue `ready`: the
+rationale names it and adds "check for follow-up work #N's closure unlocked",
+and it never promotes the issue above other ready ones; a `retracted` reference
+has no effect, and a native open parent only annotates the child ("child of
+#P"). A `done-but-unclosed` issue has every native sub-issue closed and no
+checklist row or banner naming an open child; it is not ranked and is shown with
+a close proposal. A `banner-no-open-child` issue has a banner and no open child
+from any source, even when every native sub-issue is closed, because a banner is
+the author keeping the issue open on purpose: it is shown, not offered, with
+triage suggested.
 
 **Breaking ties within a priority band.** Priority and readiness leave most
 candidates tied — a backlog sits mostly in one band — so order within the band
@@ -301,6 +402,62 @@ moves up). The check runs under
 `AskUserQuestion` option limit, which also bounds the cost; if ties exceed 4,
 say so.
 
+**Lookups and refill.** Comment and structure data are bulk and already in hand,
+so readiness is computed for every candidate before the cut and needs no refill
+read for them. A lookup is spent only to name a state precisely (closed, a pull
+request, nonexistent) for a shortlisted candidate's blockers, or where the open
+list cannot settle the question: a cross-repo reference, a truncated list, or an
+unticked row of a shortlisted umbrella. Absence from an untruncated open list
+proves only that the number is not an open issue in this repo, so report it as
+"not open", never "closed". Lookups follow the ranked order, top first, so a
+candidate a lookup demotes is replaced by the next one, which is looked up too,
+until the cap of 40 lookups per run (each distinct reference once, shared with
+§1). A candidate with a reference the record marks `skipped: "cap"` shows
+"blocker state not checked (lookup cap)", and the overflow is reported by count and key, never dropped. This refill
+differs from the premise-freshness check on purpose: lookups are a cheap,
+bounded rank input, while the freshness check keeps its single pass.
+
+**Closed is not released (cross-repo blockers).** A closed cross-repo blocker is
+not cleared by closing alone. The script's registry check (`npm view`, at most 5
+packages per run, the overflow reported) clears it only when a version was
+published after the close, labelled `released (version check only)`, or when
+this repo consumes the source directly and unpinned (a git or GitHub dependency
+URL with no `#ref`). A source consumed at a pinned ref (a `.gitmodules`
+submodule, or a git or GitHub dependency URL with a `#ref`) is
+`closed-release-unverified` with the pin named ("closed, consumed at pinned ref
+<ref>, fix unverified" or "closed, consumed as a pinned submodule, fix
+unverified"), since the pin may predate the fix; a pinned consumption wins over
+an unpinned one beside it. A closed blocker with no publish since
+leaves the issue `blocked`, and the rationale reads "<label> (closed upstream,
+not yet released, latest is X)", where `<label>` is the blocker's reference. This skill checks only the
+registry, that some version was published after the close, and never reads the
+artifact: the label says the fix is probably there, not that it is, and the
+content check belongs to `plan-task` at adoption.
+
+**Data gaps are reported, never read as "none".** The record's notes name them:
+`comments: no data`, `comments possibly truncated`, `native structure: no data`,
+`comments: truncated (bulk list at its limit)`, `native structure:
+truncated (bulk list at its limit)` and `open list: truncated (at its limit)`. An issue under one of them gets no
+conclusion drawn from the missing data, and the candidate's rationale says which
+data was missing. The note `comparison set: truncated (at its limit)` is not in
+this list, because this skill passes no `--comparison`.
+
+**Off the shortlist, three line forms.** A candidate that is shown but not
+offered gets its own line below the shortlist, beside the "#N demoted" line:
+`#N deferred: <trigger text> (body, unfired)`; `#N umbrella → routed to #M
+(native: 2 of 3 sub-issues open)`; and `#N likely done-but-unclosed (native: 3 of
+3 sub-issues closed) — close proposal, not offered`. A deferral trigger the
+script flags `measurement: true` in the record's `triggers[]` gets a
+**measure-first** offer: interactively, ask whether to measure first, and on
+acceptance invoke `gvt-dev:build-probe` and relay its
+concrete answer on this thread; the close decision is never build-probe's. A
+done-but-unclosed issue, or a deferred one whose measurement met its close rule,
+gets a close proposal. This skill does not close anything: it invokes
+`gvt-dev:triage-issues` scoped to that issue with a carried-in close proposal
+`{issue, reason, evidence}`, which presents it for per-item approval and applies
+it through the contract's "Close as completed or not planned (only with
+approval)" Close recipe.
+
 **Drift, recomputed each run.** The rationale shows "N commits to its surface
 since filed (<date>)", computed from the creation date as
 `git rev-list --count --since=<created> origin/<default-branch> -- <surface
@@ -312,11 +469,17 @@ would be a write this skill doesn't make.
 **Rationale line.** Give every candidate one line with each field present or
 saying why it is missing:
 
-`#N title — P2 · 98 days open (filed 2026-07-21) · deadline 2026-11-03, 7 days remaining (milestone, verified) · surface plan-task: shared with #A, #B (file collision, not a dependency) · freshness: 8 commits to its surface since filed; read at 5d8d489: agreement · deciding signal: age`
+`#N title — P2 · 98 days open (filed 2026-07-21) · deadline 2026-11-03, 7 days remaining (milestone, verified) · surface plan-task: shared with #A, #B (file collision, not a dependency) · freshness: 8 commits to its surface since filed; read at 5d8d489: agreement · readiness: blocked by #440 (comment, in hand) · deciding signal: age`
 
 The **deciding signal** is the first tier that separated this candidate from
 the next. A deadline from issue text is labelled inherited; one from a
-milestone, verified.
+milestone, verified. The `· readiness:` slot names the readiness reason with the
+provenance of the data that settled it: `in hand` (the saved lists), `lookup`
+(a state read this run) or `registry` (the version check). Further forms:
+`readiness: ready — #193 cleared (body, lookup: closed 2026-10-12); check
+for follow-up work #193's closure unlocked`, and `readiness: blocked —
+example-org/example-lib#12 (closed upstream, not yet released, latest is 1.4.0)
+(registry)`.
 
 Present the top candidates, each with that rationale line, and ask the user
 to pick **one or more** (an `AskUserQuestion` with `multiSelect: true`,
@@ -347,7 +510,14 @@ the repo's own release skill, if it has one), not for this check.
 
 In `--non-interactive`, auto-pick the full-rule winner — the first candidate in
 tier order that the freshness check did not demote (a demoted candidate is
-named in the closing summary).
+named in the closing summary). It never auto-picks a deferred issue, an
+umbrella, a done-but-unclosed issue, a blocked issue (a blocker that is
+unresolved and so unverified counts), a `closed-unreleased` blocker's issue, or
+a `closed-release-unverified` blocker's issue, which under `--non-interactive`
+is `blocked`; a `banner-no-open-child` issue is not rankable either. A
+measurement is never auto-run, and a close proposal is never applied. Each
+candidate skipped for one of these reasons is named in the closing summary with
+its reason.
 
 ## 3. Plan
 
@@ -399,7 +569,17 @@ a problem + goal); any **already-shipped / residual finding** from §2, so
 no URL, of the comment it came from, so `plan-task` can re-read it), so `plan-task` adopts the recorded ask rather than
 the body's superseded one — it rides with
 that item, or as its own; and any deadline, labelled
-**verified** (from a milestone) or **inherited** (from issue text). This describes what's *passed* into the
+**verified** (from a milestone) or **inherited** (from issue text); and the
+**readiness findings** for that issue: each blocker, deferral or umbrella fact
+with its outcome, source and provenance (`in hand`, `lookup` or `registry`), any
+measurement answer, and any `released (version check only)` blocker, so
+`plan-task` owes the content check for it. A state read by a lookup or registry
+check this run is verified; open-list absence and issue text are inherited.
+`plan-task` treats these as inherited whatever label they carry here
+("Readiness findings that arrive in a `plan-next-issue` handoff are inherited
+facts in this run, whatever label they carried there") and re-reads the state at
+dispatch; the label here records how this run learned the fact. This describes
+what's *passed* into the
 invocation, not anything written — nothing here is written; the writes all
 happen inside `plan-task`.
 
@@ -418,6 +598,8 @@ labeling rather than handing over an undifferentiated list.
 | Destructive triage actions (close-as-duplicate, splits, contract-file resolution) | per delegated approval | **deferred** unless `--force` |
 | Pick issue(s) to plan | user selects one or more | auto-pick the full-rule winner |
 | Combine vs sequential plans | ask when >1 selected | sequential |
+| Offer a measurement (build-probe) | offer for a deferral trigger flagged `measurement: true`; invoke `gvt-dev:build-probe` on acceptance | never |
+| Close proposal (done-but-unclosed, measured-zero) | propose, and on approval delegate to `gvt-dev:triage-issues` as a carried-in close proposal | named in the closing summary only, never applied |
 
 This skill performs **no writes itself** — every mutation happens inside the
 delegated `triage-issues` (tracker edits) or `plan-task` (plan + branch). It only
@@ -433,7 +615,10 @@ the tier that put it first (e.g. age, or deadline proximity) — and, under
 fallback decided, say the choice was arbitrary. Under `--non-interactive`, name
 any demoted candidate with its outcome, and if the auto-picked candidate took a
 demoted one's slot and so was not freshness-checked, say "freshness not
-checked". Point the user at the plan(s) `plan-task` produced.
+checked". Name every candidate skipped for readiness (deferred, umbrella,
+done-but-unclosed, banner-no-open-child, blocked, or release-unverified under
+`--non-interactive`) with its state and reason, and every close proposal made
+or left unapplied. Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
 its `gh issue create` was blocked — the auto-mode write-classifier denied it (a

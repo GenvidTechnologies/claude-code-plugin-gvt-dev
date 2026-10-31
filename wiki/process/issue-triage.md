@@ -87,7 +87,7 @@ GitHub task-list under a `Depends on` heading.
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
-`{tmpfile}`, `{triagedLabel}`, and `{needsInfoLabel}` are substituted
+`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, and `{closeReason}` are substituted
 by the skill.
 
 When a recipe's set would be empty, omit its --remove-label flag.
@@ -103,6 +103,7 @@ When a recipe's set would be empty, omit its --remove-label flag.
 - Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
 - Close duplicate (only with approval): `gh issue close {id} --reason "not planned" --comment "Duplicate of #{canonical}"`
+- Close as completed or not planned (only with approval): `gh issue close {id} --reason "{closeReason}"` — post the reason first through the Comment recipe; `{closeReason}` is `completed` or `not planned`
 - Create split issue: `gh issue create --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
 - Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
