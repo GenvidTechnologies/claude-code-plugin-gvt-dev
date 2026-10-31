@@ -16,8 +16,8 @@ import assert from 'node:assert/strict';
 import { rmSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
-import { buildFixture } from '../fixtures.mjs';
-import { gradeRun } from '../grade.mjs';
+import { buildFixture, snapshotTree, snapshotTexts } from '../fixtures.mjs';
+import { gradeRun, VOICE_TELL_CLASSES } from '../grade.mjs';
 
 function write(root, relPath, content) {
   const abs = join(root, ...relPath.split('/'));
@@ -291,6 +291,110 @@ test('gradeRun: variant C applies no voice check (brief voice)', async () => {
     const result = await gradeRun({ variant: 'C', root, before, meta });
     assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
     assert.equal('voice' in result.assertions, false);
+  } finally {
+    cleanup(root);
+  }
+});
+
+// Paraphrases and variants of the planted tells: none of these equals a
+// planted string, so only the tell-CLASS patterns can reject them.
+test('gradeRun: C-voice fails on paraphrased tells in the ADR (brief voice classes)', async () => {
+  const leaks = [
+    ['\n\nRecord the decision: keep it short.', 'lead-in at line start', 'lead-in "Record the"'],
+    ['\n\n## Record the outcome', 'lead-in as a heading', 'lead-in "Record the"'],
+    ['\n\n- **Record the** reason', 'lead-in after bullet and bold', 'lead-in "Record the"'],
+    [' This was verified in this run.', 'verified in this run', '"verified this run"'],
+    [' VERIFIED THIS RUN.', 'verified this run, upper case', '"verified this run"'],
+    [' (writer: be brief)', 'parenthetical with other wording', 'writer-addressed parenthetical'],
+    [' Ship it after T30 is done.', 'T30 as its own token', 'plan task id'],
+    [' Rollout happens once T12 lands.', 'once T<n> lands', 'plan task id'],
+  ];
+  for (const [leak, title, label] of leaks) {
+    const { root, before, meta } = buildFixture('C-voice');
+    try {
+      placeVoiceRecord(root, voiceRecord({
+        decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+        extra: leak,
+      }));
+
+      const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+      assert.equal(result.assertions.d1, true, `${title}: ${JSON.stringify(result.reasons)}`);
+      assert.equal(result.assertions.voice, false, title);
+      assert.ok(result.reasons.some((r) => r.startsWith('Voice:') && r.includes(label)), `${title}: ${JSON.stringify(result.reasons)}`);
+    } finally {
+      cleanup(root);
+    }
+  }
+});
+
+test('gradeRun: C-voice task-id class is whole-token only and does not fire on ST3, T3x or "Record the" mid-line (brief voice)', async () => {
+  const { root, before, meta } = buildFixture('C-voice');
+  try {
+    placeVoiceRecord(root, voiceRecord({
+      decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+      extra: ' The ST3 queue and the T3x header are unrelated. We will record the budget in config. A (writing) aid.',
+    }));
+
+    const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+    assert.equal(result.assertions.voice, true, JSON.stringify(result.reasons));
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: C-voice tell classes keep the exact regex source (brief voice)', () => {
+  assert.deepEqual(VOICE_TELL_CLASSES.map((c) => String(c.re)), [
+    String.raw`/^[ \t#*-]*Record the\b/im`,
+    String.raw`/\bverified (?:in )?this run\b/i`,
+    String.raw`/\([^()\r\n]*\bwriter\b[^()\r\n]*\)/i`,
+    String.raw`/\bT\d+\b|\bonce T\d+ lands\b/`,
+  ]);
+});
+
+test('gradeRun: C-voice fails when a tell appears only in a row added to the index (brief voice)', async () => {
+  const rows = [
+    ['verified in this run', '* [Retry failed alpha webhook deliveries](0004-retry-webhooks.md) - verified in this run\n'],
+    ['Record the lead-in', 'Record the decision: [Retry failed alpha webhook deliveries](0004-retry-webhooks.md)\n'],
+    ['planted writer parenthetical', '* [Retry failed alpha webhook deliveries](0004-retry-webhooks.md) - bounded (keep this short, writer)\n'],
+    ['task id', '* [Retry failed alpha webhook deliveries](0004-retry-webhooks.md) - after T30\n'],
+  ];
+  for (const [title, row] of rows) {
+    const { root, before, meta } = buildFixture('C-voice');
+    try {
+      // The ADR itself is clean; only the index row carries the tell.
+      write(root, 'wiki/decisions/alpha/0004-retry-webhooks.md', voiceRecord({
+        decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+      }));
+      appendToIndex(root, 'wiki/decisions/alpha/index.md', row);
+
+      const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+      assert.equal(result.assertions.d1, true, `${title}: ${JSON.stringify(result.reasons)}`);
+      assert.equal(result.assertions.d4, true, `${title}: ${JSON.stringify(result.reasons)}`);
+      assert.equal(result.assertions.voice, false, title);
+      assert.ok(result.reasons.some((r) => r.includes('lines added to wiki/decisions/alpha/index.md')), `${title}: ${JSON.stringify(result.reasons)}`);
+    } finally {
+      cleanup(root);
+    }
+  }
+});
+
+test('gradeRun: C-voice ignores a tell already present in the index before the run, and passes with a clean added row (brief voice)', async () => {
+  const { root, before: _seedBefore, meta } = buildFixture('C-voice');
+  try {
+    // Pre-existing index content carries a tell. Re-take the snapshots so it
+    // counts as "before" the run, exactly as buildFixture does for the seed.
+    appendToIndex(root, 'wiki/decisions/alpha/index.md', 'Record the older decisions below, verified in this run (writer note), T7.\n');
+    const before = snapshotTree(root);
+    meta.voice.indexBefore = snapshotTexts(root, meta.decisionsDir);
+
+    placeVoiceRecord(root, voiceRecord({
+      decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+    }));
+
+    const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+    assert.equal(result.assertions.voice, true, JSON.stringify(result.reasons));
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
   } finally {
     cleanup(root);
   }

@@ -90,6 +90,22 @@ export function snapshotTree(root) {
   return files;
 }
 
+/**
+ * Map of repo-relative POSIX path -> UTF-8 text for every `index.md` under
+ * `prefix` (e.g. `wiki/decisions/`). snapshotTree keeps only hashes, which
+ * cannot say which index lines the writer added; grade.mjs's voice check
+ * needs the pre-run text to scan only the added lines.
+ */
+export function snapshotTexts(root, prefix) {
+  const texts = new Map();
+  for (const rel of snapshotTree(root).keys()) {
+    if (!rel.startsWith(prefix)) continue;
+    if (rel !== 'index.md' && !rel.endsWith('/index.md')) continue;
+    texts.set(rel, readFileSync(join(root, ...rel.split('/')), 'utf8'));
+  }
+  return texts;
+}
+
 // ---------------------------------------------------------------------------
 // Shared themed-wiki tree (A / A-infer / C)
 // ---------------------------------------------------------------------------
@@ -471,6 +487,7 @@ export function buildFixture(variant, { tmpRoot } = {}) {
 
   gitSeed(root);
   const before = snapshotTree(root);
+  if (meta.voice) meta.voice.indexBefore = snapshotTexts(root, meta.decisionsDir);
 
   return { root, before, meta, prompt: PROMPTS[variant] };
 }
