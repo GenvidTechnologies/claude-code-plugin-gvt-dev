@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **A new shared doc, `plugin/docs/writing-style.md`, sets one writing style for the technical text that agents and skills write, and 23 agent and skill bodies now point to it (#733, #522).** The style is inspired by ASD-STE100. It has seven sentence-level rules, a voice section for text written from a dispatch brief, and a short-form paragraph. Each of the 8 agents (`tech-writer`, `ts-implementer`, `code-reviewer`, `issue-triage-analyst`, `analyst`, `designer`, `planner`, `validator`) and 15 skills (`plan-task`, `plan-next-issue`, `triage-issues`, `create-adr`, `maintain-wiki`, `run-retro`, `condense-lessons`, `cleanup-initiative`, `commit-changes`, `create-pr`, `release-plugin`, `release-npm-package`, `reconcile-mcp-pin`, `split-branch`, `build-probe`) carries the same paragraph under a new `## Writing style` section. The doc holds the full rules; each body carries only the short form.
+  - **`tech-writer`:** treats a brief as a specification of what the document must say, not as wording to copy, and names the tells of copied brief text.
+  - **`ts-implementer`:** keeps plan task ids and plan jargon out of shipped comments, test names and docstrings.
+  - **`code-reviewer`:** reports a leaked tell as a Warning.
+  - **`issue-triage-analyst`:** its body language cleanup is now a rewrite in this style that keeps every claim, condition and uncertainty.
+  - **Consumers:** no config change is needed.
+  - Behavioral skill/agent change → version bump at release.
+
 ## [4.45.0] - 2026-10-31
 
 - **A new script, `issue-refs.mjs`, reads an issue's stated references once, and the analyst, `triage-issues`, `plan-next-issue` and `plan-task` all use it (#209, #230, #607, #636, #775, #783).** Before, each skill judged "blocked", "ready" and "done" from its own reading of issue prose, so a blocker that had since closed, a blocker named only in a comment, and a parent whose sub-issues were all closed went unnoticed or were judged differently from one skill to the next.
