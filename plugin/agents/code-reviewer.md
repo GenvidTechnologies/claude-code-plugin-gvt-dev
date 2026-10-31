@@ -98,7 +98,7 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
-**Check added text for a dispatch brief's voice.** Flag an added heading or lead-in that begins "Record the…", a parenthetical addressed to the writer, a phrase that is true of the dispatch but false of the document (such as "verified this run"), and a plan task id such as "T3" in a comment, test name, docstring or commit message. Report each hit as a 🟡 Warning that quotes the line. An acceptance-row id and a string the brief marked as required wording are not hits. A grep for these words is not the check: they also appear legitimately, so read each hit in context. The rule is in `${CLAUDE_PLUGIN_ROOT}/docs/writing-style.md`.
+**Check added text for a dispatch brief's voice.** Flag an added heading or lead-in that begins "Record the…", a parenthetical addressed to the writer, a phrase that is true of the dispatch but false of the document (such as "verified this run"), and a plan task id or sequencing word, such as "T3" or "once T3 lands", in a comment, test name, docstring or commit message. Report each hit as a 🟡 Warning that quotes the line. An acceptance-row id and a string the brief marked as required wording are not hits. A grep for these words is not the check: they also appear legitimately, so read each hit in context. The rule is in `${CLAUDE_PLUGIN_ROOT}/docs/writing-style.md`.
 
 ### Acceptance Criteria Verification
 
