@@ -47,7 +47,7 @@ Two things still ship: a string the brief marks as required wording ships verbat
 
 ### An identical paragraph in 23 bodies, held by a permanent drift test
 
-One paragraph of about 105 words, the shared block, goes under a `## Writing style` heading in 23 bodies: 8 agents and 15 skills. Its lead is the bold sentence "Write technical text in the gvt-dev writing style." It states the style in one pass, says that shipped text is written in its own voice, carries the disclaimer that the style is inspired by ASD-STE100 and is not compliance with it, and points at the doc. The copy is deliberate: an agent dispatched standalone may never open the doc (the #167 precedent, restated in ADR-0061).
+One paragraph of 122 words, the shared block, goes under a `## Writing style` heading in 23 bodies: 8 agents and 15 skills. Its lead is the bold sentence "Write technical text in the gvt-dev writing style." It states the style in one pass, says that shipped text is written in its own voice, carries the disclaimer that the style is inspired by ASD-STE100 and is not compliance with it, and points at the doc. The copy is deliberate: an agent dispatched standalone may never open the doc (the #167 precedent, restated in ADR-0061).
 
 The block names shipped text on purpose. The planner and `plan-task` write task ids into a plan, and the plan does not ship.
 
@@ -55,7 +55,7 @@ The block names shipped text on purpose. The planner and `plan-task` write task 
 
 This extends two earlier practices from a task gate to a standing check. `plan-task` already requires that text pledged identical across files is authored once and hash-checked at its own task's gate. ADR-0079 mirrors a criteria block between the grader bodies by the same discipline. Both check once, at the change that introduces the copies; the test checks on every later change too. Only the writing-style block is enrolled. The ADR-0079 grader block could be enrolled in the same table later.
 
-The block restates a summary of the doc, which `tech-writer`'s own "Link, don't duplicate" rule warns against. That rule exists because copies drift. The drift test removes the drift, so the exception is accepted. The doc's short-form sentence says so.
+The block restates a summary of the doc, which `tech-writer`'s own "Link, don't duplicate" rule warns against. That rule exists because copies drift. The drift test removes the drift, so the exception is accepted. The doc's short-form section says only that the copy is deliberate; this record carries the reasoning.
 
 ### Four receivers carry a tailored rule
 
@@ -80,7 +80,7 @@ There is no bulk retrofit. A change that rewrites a passage brings that passage 
 - The `code-reviewer` check reports voice tells as a 🟡 Warning. It is never a gate.
 - No zero-hit grep gate covers any tell. The tells also appear legitimately: "verified this run" occurs in rules about dispatches in several agent bodies, a skill body and an earlier ADR, and "Record the" occurs mid-sentence in `designer.md` and `planner.md`. A reader judges each hit in context.
 - `plan-task`'s existing step, read an authored document as its reader would before committing it, is cited and unchanged.
-- A `C-voice` variant in `create-adr-evals` is the behavioural test of `tech-writer`. Its brief plants the tells and one required string, and the grader checks that no tell reaches the ADR and that the required string is present verbatim. The variant exists and its grader has unit tests. Its metered runs have not been executed, so this record states no result for it.
+- A `C-voice` variant in `create-adr-evals` is the behavioural test of `tech-writer`. Its brief plants the four tells and one required string. The grader matches each planted string as a whole word, and it also matches each tell class as a pattern: a line-start "Record the" lead-in, "verified (in) this run", a parenthetical that addresses the writer, and a whole-token plan task id. It applies these checks to the ADR and to the lines the writer adds to a decisions index. It also requires the required string verbatim in the ADR. Its unit tests cover paraphrased leaks and an index-only leak. Three metered runs on this branch, against the four-tell `tech-writer` bullet, all passed. That shows `tech-writer` did not echo the planted tells for this one brief. It does not show behaviour for other document types or for tells the patterns do not describe, and there is no pre-change run to compare against.
 
 ## Compromise
 
@@ -95,7 +95,7 @@ There is no bulk retrofit. A change that rewrites a passage brings that passage 
 - A session hook that injects the style: it is global and consumer-visible, with a cost on every session.
 - A wiki/maintainer page: it would be a copy of the doc.
 
-**Cost in body length.** The block adds about 105 words to each of 23 bodies, and the four receivers add a tailored rule on top. Added prose competes for attention with the rest of a body (ADR-0081 makes the same point), and the validator body is already long. This cost is not measured. The `C-voice` variant is the only behavioural measure planned, and it covers `tech-writer` only.
+**Cost in body length.** The block adds 122 words to each of 23 bodies, and the four receivers add a tailored rule on top. Added prose competes for attention with the rest of a body (ADR-0081 makes the same point), and the validator body is already long. This cost is not measured. The `C-voice` variant is the only behavioural measure planned, and it covers `tech-writer` only.
 
 **Accepted tension with "Link, don't duplicate".** See the decision above: the copy is deliberate, and the drift test is what makes it safe.
 
