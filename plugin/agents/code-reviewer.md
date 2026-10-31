@@ -98,6 +98,8 @@ If the doc isn't present, default to:
 - Are any docs listed in `docs/TOC.md` newly stale because of this change?
 - Are public API changes reflected in any reference docs?
 
+**Check added text for a dispatch brief's voice.** Flag an added heading or lead-in that begins "Record the…", a parenthetical addressed to the writer, a phrase that is true of the dispatch but false of the document (such as "verified this run"), and a plan task id such as "T3" in a comment, test name, docstring or commit message. Report each hit as a 🟡 Warning that quotes the line. An acceptance-row id and a string the brief marked as required wording are not hits. A grep for these words is not the check: they also appear legitimately, so read each hit in context. The rule is in `${CLAUDE_PLUGIN_ROOT}/docs/writing-style.md`.
+
 ### Acceptance Criteria Verification
 
 The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, `docs/acceptance/<slug>.md`.
@@ -202,3 +204,7 @@ Improvements for readability, performance, or maintainability.
 Acknowledge well-written code and good patterns — but hold every such credit to guardrail 7 above: name the specific test, check, or doc backing it, not just a general impression.
 
 Be specific: include file paths, line numbers, and concrete suggestions for fixes.
+
+## Writing style
+
+**Write technical text in the gvt-dev writing style.** Use short, direct sentences. Give each component one name and use it every time. Keep what you observed apart from what you infer and from what you checked. Put one action in each procedural step. Keep every condition, warning and statement of uncertainty. Say what each check can establish. Do not invent a measurement or a diagnosis. Text that ships (a doc, a code comment, a test name, a commit, an issue or PR body) is written in its own voice: it carries no instruction to its writer and no plan task id such as "T3". The style is inspired by ASD-STE100 and is not compliance with it. The full rules are in `${CLAUDE_PLUGIN_ROOT}/docs/writing-style.md`.
