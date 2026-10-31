@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.45.0] - 2026-10-31
+
 - **A new script, `issue-refs.mjs`, reads an issue's stated references once, and the analyst, `triage-issues`, `plan-next-issue` and `plan-task` all use it (#209, #230, #607, #636, #775, #783).** Before, each skill judged "blocked", "ready" and "done" from its own reading of issue prose, so a blocker that had since closed, a blocker named only in a comment, and a parent whose sub-issues were all closed went unnoticed or were judged differently from one skill to the next.
   - **Script:** `plugin/skills/triage-issues/scripts/issue-refs.mjs`, with `lib/refs-grammar.mjs` (what counts as a reference) and `lib/refs-resolve.mjs` (what state each one is in). Subcommands: `plan`, `resolve` and `extract --single`. `--comparison-limit <n>` reports a comparison set cut at its limit, and `extract --single --parent <n>` applies the banner parent exclusion to one issue.
     - It is pure: its imports are only `node:fs`, `node:path` and `node:util` plus relative files, with no network call and no spawned process. `plan` prints the commands the caller runs; `resolve` reads their saved output and prints one record per open issue.
