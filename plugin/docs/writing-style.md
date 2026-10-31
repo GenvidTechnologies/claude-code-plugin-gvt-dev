@@ -65,7 +65,7 @@ Name what a check shows and what it does not show. `principle #15` of `developme
 
 ### No invented measurement or diagnosis
 
-Do not write a number you did not measure. Do not write a cause you did not test. `plan-task` says this in "An implementer's authored technical claims are output, not report". `principle #13` of `development-principles.md` applies the same idea.
+Do not write a number you did not measure. Do not write a cause you did not test. `plan-task` says this in "An implementer's authored technical claims are output, not report".
 
 - Before: "The change cut load time by 40%."
 - After: "I did not measure load time."
