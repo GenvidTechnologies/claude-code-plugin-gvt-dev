@@ -21,6 +21,12 @@ inside the wiki, register it in the theme index, and leave everything else
   - **C** — dispatch `gvt-dev:tech-writer` directly (bypassing the skill),
     explicit dir/number/theme/wiki parameters, mirroring how `plan-task`
     dispatches it
+  - **C-voice** — like **C**, but the brief plants four brief-voice tells (a
+    "Record the …:" lead-in, a parenthetical addressed to the writer,
+    "verified this run", a plan task id) and one required verbatim string;
+    the voice check passes only when no tell reaches the ADR and the required
+    string does (see `plugin/docs/writing-style.md`, "Voice: a brief is not
+    the document")
   - **B** — negative control: no `paths` override, `docs/decisions/` absent
     (the first-use scaffold path), plus a decoy `wiki/decisions/` bundle the
     agent must leave untouched
@@ -31,7 +37,7 @@ inside the wiki, register it in the theme index, and leave everything else
   **real** `lintWiki` run (not a hand-rolled proxy for it), `docs/TOC.md`
   unchanged (A/A-infer/C only — B's correct behavior *is* a new TOC row),
   `wiki/log.md` unchanged, and `--next` agreeing post-run via
-  `describeAdrDir`.
+  `describeAdrDir`. For C-voice only, a voice check also applies.
 - `run.mjs` — spawns `claude -p --plugin-dir plugin` per fixture, grades the
   result, prints a per-run table, and applies the pass rule below.
 - `test/grade.test.mjs` — unit tests for `grade.mjs` against hand-built
@@ -42,10 +48,10 @@ inside the wiki, register it in the theme index, and leave everything else
 
 ```bash
 npm ci --prefix plugin --ignore-scripts --no-audit --no-fund   # audit-core, read by grade.mjs
-node create-adr-evals/run.mjs --variant A,A-infer,C,B --runs 3
+node create-adr-evals/run.mjs --variant A,A-infer,C,C-voice,B --runs 3
 ```
 
-- `--variant` — comma-separated subset of `A,A-infer,C,B` (default: all four).
+- `--variant` — comma-separated subset of `A,A-infer,C,C-voice,B` (default: all five).
 - `--runs` — runs per variant (default: 3, per the #582 design hand-off).
 - `--keep` — don't delete the fixture temp dirs after grading (useful when a
   run fails and you want to inspect the tree by hand).

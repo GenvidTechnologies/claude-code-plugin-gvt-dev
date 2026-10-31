@@ -194,6 +194,24 @@ async function gradeWikiRun({ root, before, meta }) {
   }
 
   const assertions = { d1, d2, d3, d4, d5, d6, d7 };
+
+  // Voice (C-voice only): the brief's own voice must not reach the ADR, and
+  // the string the brief marks as required wording must appear verbatim.
+  if (meta.voice) {
+    let voice = false;
+    if (newPath) {
+      const content = readFileSync(join(root, newPath), 'utf8');
+      const leaked = meta.voice.tells.filter((t) => content.includes(t.text)).map((t) => t.label);
+      const requiredPresent = content.includes(meta.voice.required);
+      voice = leaked.length === 0 && requiredPresent;
+      if (leaked.length > 0) reasons.push(`Voice: brief voice leaked into the ADR: ${leaked.join(', ')}`);
+      if (!requiredPresent) reasons.push(`Voice: required string missing verbatim: "${meta.voice.required}"`);
+    } else {
+      reasons.push('Voice: skipped — no new ADR file found');
+    }
+    assertions.voice = voice;
+  }
+
   const allDeterministicPass = Object.values(assertions).every(Boolean);
 
   return {

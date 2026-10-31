@@ -207,6 +207,96 @@ test('gradeRun: A-infer flags a new theme directory as newThemeCreated and FAILs
 });
 
 // ---------------------------------------------------------------------------
+// C-voice: a brief's voice must not reach the ADR; required wording must
+// ---------------------------------------------------------------------------
+
+const VOICE_REQUIRED_STRING = 'Retry budget: three attempts, then fail closed.';
+
+// An alpha ADR #4 whose Decision/Consequences text is supplied by the test,
+// so each test controls exactly which voice text the record carries.
+function voiceRecord({ decision, extra = '' }) {
+  return wikiRecordWithFrontmatter('0004', 'alpha', 'Retry failed alpha webhook deliveries')
+    .replace('Test decision.', decision)
+    .replace('Test consequences.', `Subscribers recover from transient errors.${extra}`);
+}
+
+function placeVoiceRecord(root, content) {
+  write(root, 'wiki/decisions/alpha/0004-retry-webhooks.md', content);
+  appendToIndex(root, 'wiki/decisions/alpha/index.md', '* [Retry failed alpha webhook deliveries](0004-retry-webhooks.md) - retry with a bounded budget\n');
+}
+
+test('gradeRun: C-voice passes when no brief voice leaks and the required string is verbatim', async () => {
+  const { root, before, meta } = buildFixture('C-voice');
+  try {
+    placeVoiceRecord(root, voiceRecord({ decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}` }));
+
+    const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+    assert.equal(result.assertions.voice, true);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: C-voice fails when a brief voice tell leaks into the ADR', async () => {
+  // One run per tell, each with the required string present, so only the
+  // leak rule can reject the record (D1-D7 hold throughout).
+  const leaks = [
+    ['Record the retry rationale:', 'lead-in'],
+    ['(keep this short, writer)', 'parenthetical'],
+    ['verified this run', 'verified this run'],
+    ['once T3 lands', 'T3'],
+  ];
+  for (const [leak, label] of leaks) {
+    const { root, before, meta } = buildFixture('C-voice');
+    try {
+      placeVoiceRecord(root, voiceRecord({
+        decision: `Retry each failed delivery with backoff. ${VOICE_REQUIRED_STRING}`,
+        extra: ` ${leak}`,
+      }));
+
+      const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+      assert.equal(result.assertions.d1, true, `${label}: ${JSON.stringify(result.reasons)}`);
+      assert.equal(result.assertions.voice, false, label);
+      assert.equal(result.allDeterministicPass, false, label);
+      assert.ok(result.reasons.some((r) => r.startsWith('Voice:') && r.includes('leaked')), label);
+    } finally {
+      cleanup(root);
+    }
+  }
+});
+
+test('gradeRun: C-voice fails when the required string is missing (brief voice)', async () => {
+  const { root, before, meta } = buildFixture('C-voice');
+  try {
+    // Clean of every tell, but the required wording was paraphrased.
+    placeVoiceRecord(root, voiceRecord({ decision: 'Retry each failed delivery up to three times, then stop.' }));
+
+    const result = await gradeRun({ variant: 'C-voice', root, before, meta });
+    assert.equal(result.assertions.d1, true, JSON.stringify(result.reasons));
+    assert.equal(result.assertions.voice, false);
+    assert.equal(result.allDeterministicPass, false);
+    assert.ok(result.reasons.some((r) => r.startsWith('Voice:') && r.includes('required string missing')));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: variant C applies no voice check (brief voice)', async () => {
+  const { root, before, meta } = buildFixture('C');
+  try {
+    write(root, 'wiki/decisions/alpha/0004-test-decision.md', wikiRecordWithFrontmatter('0004', 'alpha', 'Test decision'));
+    appendToIndex(root, 'wiki/decisions/alpha/index.md', '* [Test decision](0004-test-decision.md) - a test decision\n');
+
+    const result = await gradeRun({ variant: 'C', root, before, meta });
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+    assert.equal('voice' in result.assertions, false);
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Negative control: B
 // ---------------------------------------------------------------------------
 
