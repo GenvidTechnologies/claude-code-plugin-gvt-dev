@@ -246,6 +246,7 @@ test('gradeRun: C-voice fails when a brief voice tell leaks into the ADR', async
     ['(keep this short, writer)', 'parenthetical'],
     ['verified this run', 'verified this run'],
     ['once T3 lands', 'T3'],
+    ['As the brief asks, the budget is fixed.', 'held-out'],
   ];
   for (const [leak, label] of leaks) {
     const { root, before, meta } = buildFixture('C-voice');

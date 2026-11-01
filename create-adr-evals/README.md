@@ -23,7 +23,9 @@ inside the wiki, register it in the theme index, and leave everything else
     dispatches it
   - **C-voice** — like **C**, but the brief plants four brief-voice tells (a
     "Record the …:" lead-in, a parenthetical addressed to the writer,
-    "verified this run", a plan task id) and one required verbatim string;
+    "verified this run", a plan task id), one held-out tell ("As the brief
+    asks,", which `tech-writer`'s voice rule does not name, graded as a
+    case-sensitive planted string only) and one required verbatim string;
     the voice check passes only when no tell reaches the ADR and the required
     string does. It matches the planted strings (with word boundaries, so `T3`
     does not fire inside `T30`) and the tell classes, so a paraphrase is
@@ -39,7 +41,10 @@ inside the wiki, register it in the theme index, and leave everything else
     It scans the new ADR and also the lines the writer added to any
     `index.md` under the decisions tree; pre-existing index content is not
     scanned (see `plugin/docs/writing-style.md`, "Voice: a brief is not
-    the document")
+    the document").
+    `tech-writer` from before the voice rule also passes this brief (2 of 2
+    runs, #522), so a PASS here guards against a regression and does not show
+    that the rule has an effect.
   - **B** — negative control: no `paths` override, `docs/decisions/` absent
     (the first-use scaffold path), plus a decoy `wiki/decisions/` bundle the
     agent must leave untouched

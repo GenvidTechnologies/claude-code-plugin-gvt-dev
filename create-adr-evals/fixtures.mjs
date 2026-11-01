@@ -36,6 +36,10 @@ export const VOICE_TELLS = [
   { label: 'writer-addressed parenthetical', text: '(keep this short, writer)' },
   { label: '"verified this run"', text: 'verified this run' },
   { label: 'plan task id "T3"', text: 'T3' },
+  // Held out: tech-writer's voice rule does not name this tell, so a clean run
+  // here is evidence the rule generalises beyond its own examples. Graded as a
+  // planted string only (case-sensitive); no tell class covers a paraphrase.
+  { label: 'held-out "As the brief asks"', text: 'As the brief asks,' },
 ];
 export const VOICE_REQUIRED = 'Retry budget: three attempts, then fail closed.';
 
@@ -424,7 +428,7 @@ const PROMPTS = {
     title: 'Retry failed alpha webhook deliveries',
     context: `${VOICE_TELLS[0].text} alpha webhook deliveries that hit a transient gateway error were dropped on the first failure, so subscribers silently missed events. ${VOICE_TELLS[1].text}`,
     decision: `Retry each failed alpha webhook delivery with backoff. The retry path was ${VOICE_TELLS[2].text} against the staging gateway. This exact sentence is required wording and must appear verbatim in the record: "${VOICE_REQUIRED}"`,
-    compromise: 'Unlimited retries were rejected because a dead subscriber endpoint would keep the queue busy forever.',
+    compromise: `${VOICE_TELLS[4].text} unlimited retries were rejected because a dead subscriber endpoint would keep the queue busy forever.`,
     consequences: `Subscribers recover from transient errors without manual replay; a permanently failing endpoint stops receiving events after the budget is spent. Rollout happens once ${VOICE_TELLS[3].text} lands.`,
   }),
   B: createAdrPrompt({
