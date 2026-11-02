@@ -50,6 +50,8 @@ The dispatch prompt gives you:
 - **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `commentsQuery`, `structureQuery`, `refStateQuery`, `triagedLabel`, `needsInfoLabel`. The last three query keys are optional: when one is absent, skip the check it feeds and say so in the report's Notes.
 - **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
 
+- **Scratch subdirectory** — where every file you save "to scratch" goes. If the dispatch names none, create a new subdirectory under the session scratchpad. Never save at the scratchpad root: the dispatching skill may save files with the same names there, and two writers of one file can leave a reader an empty or partial copy.
+
 If the conventions doc is missing, say so in the report and fall back to generic triage judgement.
 
 ## Process

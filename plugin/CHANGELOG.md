@@ -7,6 +7,20 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`wiki-librarian` now resolves links as OKF §6.1 specifies, and keeps the date a page's content was produced apart from the date its file was last written (#222).** Before, the agent resolved a bundle-absolute link against the filesystem root and reported it as broken. The #192 query run did this on `wiki/llm-wiki-pattern-in-gvt-dev.md`, where the link exists. It also read a gap between `generated.at` and a later `log.md` entry as staleness.
+  - **Link resolution:** a new section, `## Resolving links (§6.1)`, mirrors the `maintain-wiki` `## lint` rule (#191). A bundle-absolute `/page.md` resolves against `<wikiDir>/`, not the filesystem root. A target outside `<wikiDir>/` is out-of-bundle, not dead.
+  - **Currency:** Process step 4 now states that `generated.at` answers how current the knowledge is, `log.md` answers when the file was last written, and a divergence between them is not staleness. The mechanical staleness verdict still comes from `stale_after` alone. The Read surface `log.md` bullet no longer says to judge currency from `log.md`. The Output Format reports two lines, `Content produced` and `File last written`.
+  - **`sources[]`:** the description now matches ADR-0024 d.9. Each capture has two sibling entries, `<id>` and `<id>-upstream`. A `[^<id>]` footnote resolves to the capture entry (ADR-0026 d.4).
+  - **ADR-0026:** its citation of the agent names Process step 4 instead of a line number.
+  - **Consumers:** no config change is needed.
+  - Behavioral skill/agent change → version bump at release.
+- **`writing-style.md`: a CHANGELOG entry's closing version-bump verdict is not a voice leak.** The doc says a CHANGELOG entry addresses a consumer. It now adds that, in this plugin's own CHANGELOG, each entry still closes with its verdict ("→ version bump at release"), which the release convention requires. Before, a reviewer that followed the style doc reported that clause as a leak and proposed deleting it, which happened on the #222 review.
+  Behavioral skill/agent change → version bump at release.
+- **`triage-issues` gives `gvt-dev:issue-triage-analyst` its own scratch subdirectory, and `plan-next-issue` keeps its scratch files apart from it.** Both save the open backlog and the comments fetch "to scratch" under the same file names. With both in the session scratchpad root, a run of `plan-next-issue` read an empty `comments.json` while the analyst was writing the same file. The analyst's Inputs now include a scratch subdirectory: when the dispatch names none, the analyst creates one and never saves at the scratchpad root.
+  Behavioral skill/agent change → version bump at release.
+- **`designer` pairs a markup-free survival row with a markup-balance check.** A survival row anchored on a span that avoids markup cannot see the rewrite around it break that markup. Step 8 now pairs such a row with an even-count check of `**` and backticks on the changed lines. On #222, a rewrite dropped the closing `**` of a bold word while the survival row stayed green.
+  Behavioral skill/agent change → version bump at release.
+
 ## [4.47.0] - 2026-11-02
 
 - **`plan-task` now resolves a fact that decides the design before design starts (Phase 2), and the analyst, designer and planner each follow the same rule (#217, ADR-0090).** Before, a question whose answer could remove design options could be carried into design and reasoned around ("the available evidence cannot discriminate"), and the design could be moot once the fact was checked. The source incident is GenvidTechnologies/c3source#68. The change touches four bodies: `plan-task`, the analyst, the designer and the planner.
