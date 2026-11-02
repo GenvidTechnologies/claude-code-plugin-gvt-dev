@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.48.0] - 2026-11-02
+
 - **`wiki-librarian` now resolves links as OKF §6.1 specifies, and keeps the date a page's content was produced apart from the date its file was last written (#222).** Before, the agent resolved a bundle-absolute link against the filesystem root and reported it as broken. The #192 query run did this on `wiki/llm-wiki-pattern-in-gvt-dev.md`, where the link exists. It also read a gap between `generated.at` and a later `log.md` entry as staleness.
   - **Link resolution:** a new section, `## Resolving links (§6.1)`, mirrors the `maintain-wiki` `## lint` rule (#191). A bundle-absolute `/page.md` resolves against `<wikiDir>/`, not the filesystem root. A target outside `<wikiDir>/` is out-of-bundle, not dead.
   - **Currency:** Process step 4 now states that `generated.at` answers how current the knowledge is, `log.md` answers when the file was last written, and a divergence between them is not staleness. The mechanical staleness verdict still comes from `stale_after` alone. The Read surface `log.md` bullet no longer says to judge currency from `log.md`. The Output Format reports two lines, `Content produced` and `File last written`.
