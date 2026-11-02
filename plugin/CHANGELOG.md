@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.46.0] - 2026-11-02
+
 - **A new shared doc, `plugin/docs/writing-style.md`, sets one writing style for the technical text that agents and skills write, and 23 agent and skill bodies now point to it (#733, #522).** The style is inspired by ASD-STE100. It has seven sentence-level rules, a voice section for text written from a dispatch brief, and a short-form paragraph. Each of the 8 agents (`tech-writer`, `ts-implementer`, `code-reviewer`, `issue-triage-analyst`, `analyst`, `designer`, `planner`, `validator`) and 15 skills (`plan-task`, `plan-next-issue`, `triage-issues`, `create-adr`, `maintain-wiki`, `run-retro`, `condense-lessons`, `cleanup-initiative`, `commit-changes`, `create-pr`, `release-plugin`, `release-npm-package`, `reconcile-mcp-pin`, `split-branch`, `build-probe`) carries the same paragraph under a new `## Writing style` section. The doc holds the full rules; each body carries only the short form.
   - **`tech-writer`:** treats a brief as a specification of what the document must say, not as wording to copy, and names the tells of copied brief text.
   - **`ts-implementer`:** keeps plan task ids and plan jargon out of shipped comments, test names and docstrings.
