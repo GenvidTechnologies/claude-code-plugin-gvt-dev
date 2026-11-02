@@ -159,3 +159,7 @@ Report to the user:
 - What was created (successor initiative path, if any).
 - Whether the original directory was deleted.
 - Any items that need user decisions (open questions, priority ordering).
+
+## Writing style
+
+**Write technical text in the gvt-dev writing style.** Use short, direct sentences. Give each component one name and use it every time. Keep what you observed apart from what you infer and from what you checked. Put one action in each procedural step. Keep every condition, warning and statement of uncertainty. Say what each check can establish. Do not invent a measurement or a diagnosis. Text that ships (a doc, a code comment, a test name, a commit, an issue or PR body) is written in its own voice: it carries no instruction to its writer and no plan task id such as "T3". The style is inspired by ASD-STE100 and is not compliance with it. The full rules are in `${CLAUDE_PLUGIN_ROOT}/docs/writing-style.md`.

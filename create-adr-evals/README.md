@@ -21,6 +21,30 @@ inside the wiki, register it in the theme index, and leave everything else
   - **C** — dispatch `gvt-dev:tech-writer` directly (bypassing the skill),
     explicit dir/number/theme/wiki parameters, mirroring how `plan-task`
     dispatches it
+  - **C-voice** — like **C**, but the brief plants four brief-voice tells (a
+    "Record the …:" lead-in, a parenthetical addressed to the writer,
+    "verified this run", a plan task id), one held-out tell ("As the brief
+    asks,", which `tech-writer`'s voice rule does not name, graded as a
+    case-sensitive planted string only) and one required verbatim string;
+    the voice check passes only when no tell reaches the ADR and the required
+    string does. It matches the planted strings (with word boundaries, so `T3`
+    does not fire inside `T30`) and the tell classes, so a paraphrase is
+    caught too: a "Record the" lead-in at the start of a paragraph, of a
+    heading, or after a list bullet or bold marker (a capitalised "Record the"
+    on a hard-wrapped continuation line does not match), "verified this
+    run" and "verified in this run", a parenthetical containing the word
+    "writer" (`tech-writer` does not count), and
+    a plan task id as a whole token (`T30` matches, `ST3` and `T3x` do not).
+    The task-id class (`\bT\d+\b`) is a voice signal, not proof: an ADR that
+    legitimately quotes a tracker row label such as "T7" fails it, so read a
+    voice failure before calling it a leak.
+    It scans the new ADR and also the lines the writer added to any
+    `index.md` under the decisions tree; pre-existing index content is not
+    scanned (see `plugin/docs/writing-style.md`, "Voice: a brief is not
+    the document").
+    `tech-writer` from before the voice rule also passes this brief (2 of 2
+    runs, #522), so a PASS here guards against a regression and does not show
+    that the rule has an effect.
   - **B** — negative control: no `paths` override, `docs/decisions/` absent
     (the first-use scaffold path), plus a decoy `wiki/decisions/` bundle the
     agent must leave untouched
@@ -31,7 +55,7 @@ inside the wiki, register it in the theme index, and leave everything else
   **real** `lintWiki` run (not a hand-rolled proxy for it), `docs/TOC.md`
   unchanged (A/A-infer/C only — B's correct behavior *is* a new TOC row),
   `wiki/log.md` unchanged, and `--next` agreeing post-run via
-  `describeAdrDir`.
+  `describeAdrDir`. For C-voice only, a voice check also applies.
 - `run.mjs` — spawns `claude -p --plugin-dir plugin` per fixture, grades the
   result, prints a per-run table, and applies the pass rule below.
 - `test/grade.test.mjs` — unit tests for `grade.mjs` against hand-built
@@ -42,10 +66,10 @@ inside the wiki, register it in the theme index, and leave everything else
 
 ```bash
 npm ci --prefix plugin --ignore-scripts --no-audit --no-fund   # audit-core, read by grade.mjs
-node create-adr-evals/run.mjs --variant A,A-infer,C,B --runs 3
+node create-adr-evals/run.mjs --variant A,A-infer,C,C-voice,B --runs 3
 ```
 
-- `--variant` — comma-separated subset of `A,A-infer,C,B` (default: all four).
+- `--variant` — comma-separated subset of `A,A-infer,C,C-voice,B` (default: all five).
 - `--runs` — runs per variant (default: 3, per the #582 design hand-off).
 - `--keep` — don't delete the fixture temp dirs after grading (useful when a
   run fails and you want to inspect the tree by hand).

@@ -11,6 +11,8 @@
 //   A        — /gvt-dev:create-adr, explicit theme `beta`
 //   A-infer  — /gvt-dev:create-adr, no theme given; the topic fits `beta`
 //   C        — dispatch gvt-dev:tech-writer directly, explicit theme `alpha`
+//   C-voice  — like C, but the brief plants brief-voice tells and a required
+//              verbatim string (grade.mjs's voice check)
 //   B        — negative control: no `paths` override, docs/decisions/
 //              absent, a decoy wiki/ bundle the agent must leave untouched
 //
@@ -24,7 +26,22 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
-export const VARIANTS = ['A', 'A-infer', 'C', 'B'];
+export const VARIANTS = ['A', 'A-infer', 'C', 'C-voice', 'B'];
+
+// C-voice plants four brief-voice tells in the decision content, plus one
+// string the brief marks as required verbatim wording. grade.mjs's voice check
+// passes only when no tell reaches the ADR and the required string does.
+export const VOICE_TELLS = [
+  { label: 'lead-in "Record the"', text: 'Record the retry rationale:' },
+  { label: 'writer-addressed parenthetical', text: '(keep this short, writer)' },
+  { label: '"verified this run"', text: 'verified this run' },
+  { label: 'plan task id "T3"', text: 'T3' },
+  // Held out: tech-writer's voice rule does not name this tell, so a clean run
+  // here is evidence the rule generalises beyond its own examples. Graded as a
+  // planted string only (case-sensitive); no tell class covers a paraphrase.
+  { label: 'held-out "As the brief asks"', text: 'As the brief asks,' },
+];
+export const VOICE_REQUIRED = 'Retry budget: three attempts, then fail closed.';
 
 // ---------------------------------------------------------------------------
 // Filesystem + git helpers
@@ -75,6 +92,22 @@ export function snapshotTree(root) {
   }
   walk(root, '');
   return files;
+}
+
+/**
+ * Map of repo-relative POSIX path -> UTF-8 text for every `index.md` under
+ * `prefix` (e.g. `wiki/decisions/`). snapshotTree keeps only hashes, which
+ * cannot say which index lines the writer added; grade.mjs's voice check
+ * needs the pre-run text to scan only the added lines.
+ */
+export function snapshotTexts(root, prefix) {
+  const texts = new Map();
+  for (const rel of snapshotTree(root).keys()) {
+    if (!rel.startsWith(prefix)) continue;
+    if (rel !== 'index.md' && !rel.endsWith('/index.md')) continue;
+    texts.set(rel, readFileSync(join(root, ...rel.split('/')), 'utf8'));
+  }
+  return texts;
 }
 
 // ---------------------------------------------------------------------------
@@ -391,6 +424,13 @@ const PROMPTS = {
     compromise: 'A global (non-per-key) rate limit was rejected because one noisy client could still exhaust the shared budget for everyone else.',
     consequences: "Well-behaved clients are now protected from noisy neighbors; a legitimate client with a sudden traffic spike must request a higher per-key limit instead of it being absorbed automatically.",
   }),
+  'C-voice': techWriterPrompt({
+    title: 'Retry failed alpha webhook deliveries',
+    context: `${VOICE_TELLS[0].text} alpha webhook deliveries that hit a transient gateway error were dropped on the first failure, so subscribers silently missed events. ${VOICE_TELLS[1].text}`,
+    decision: `Retry each failed alpha webhook delivery with backoff. The retry path was ${VOICE_TELLS[2].text} against the staging gateway. This exact sentence is required wording and must appear verbatim in the record: "${VOICE_REQUIRED}"`,
+    compromise: `${VOICE_TELLS[4].text} unlimited retries were rejected because a dead subscriber endpoint would keep the queue busy forever.`,
+    consequences: `Subscribers recover from transient errors without manual replay; a permanently failing endpoint stops receiving events after the budget is spent. Rollout happens once ${VOICE_TELLS[3].text} lands.`,
+  }),
   B: createAdrPrompt({
     themeLine: '',
     title: 'Adopt trunk-based development for this project',
@@ -442,12 +482,16 @@ export function buildFixture(variant, { tmpRoot } = {}) {
       decisionsDir: 'wiki/decisions/',
       themes: ['alpha', 'beta'],
       expectedNumber: 4,
-      expectedTheme: variant === 'A' ? 'beta' : variant === 'C' ? 'alpha' : null,
+      expectedTheme: variant === 'A' ? 'beta' : (variant === 'C' || variant === 'C-voice') ? 'alpha' : null,
     };
+    if (variant === 'C-voice') {
+      meta.voice = { tells: VOICE_TELLS, required: VOICE_REQUIRED };
+    }
   }
 
   gitSeed(root);
   const before = snapshotTree(root);
+  if (meta.voice) meta.voice.indexBefore = snapshotTexts(root, meta.decisionsDir);
 
   return { root, before, meta, prompt: PROMPTS[variant] };
 }

@@ -84,6 +84,73 @@ function stripFrontmatter(source) {
 }
 
 // ---------------------------------------------------------------------------
+// Voice check helpers (C-voice)
+// ---------------------------------------------------------------------------
+
+// Tell CLASSES, so a paraphrase of a planted tell is caught as well as the
+// planted string itself. Each pattern is a regex literal; test/grade.test.mjs
+// prints String(re) for them to prove the escapes landed as written.
+export const VOICE_TELL_CLASSES = [
+  // A lead-in "Record the" at the start of a paragraph (start of text or after a
+  // blank line), or after a heading '#' / bullet '-' / '*' / bold '**' marker at
+  // line start. A capitalised "Record the" on a hard-wrapped continuation line
+  // inside a paragraph does not match.
+  { label: 'lead-in "Record the"', re: /(?<![^])[ \t]*Record the\b|\n[ \t]*\r?\n[ \t]*Record the\b|^[ \t]*[#*-][ \t#*-]*Record the\b/im },
+  { label: '"verified this run"', re: /\bverified (?:in )?this run\b/i },
+  // A parenthetical addressed to the writer: "(" ... "writer" ... ")" on one line.
+  // "writer" must not follow a word character or hyphen, so "tech-writer" is clean.
+  { label: 'writer-addressed parenthetical', re: /\([^()\r\n]*(?<![\w-])writer\b[^()\r\n]*\)/i },
+  // A plan task id as a whole token (T30 matches, ST3 and T3x do not), incl. "once T<n> lands".
+  { label: 'plan task id', re: /\bT\d+\b|\bonce T\d+ lands\b/ },
+];
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// The planted string, matched with word boundaries at each end that is a word
+// character, so the planted "T3" does not fire inside "T30" or "ST3".
+function plantedStringRe(text) {
+  const head = /^\w/.test(text) ? '(?<!\\w)' : '';
+  const tail = /\w$/.test(text) ? '(?!\\w)' : '';
+  return new RegExp(`${head}${escapeRegExp(text)}${tail}`);
+}
+
+/** Labels of every tell (planted string or class) found in `text`, deduplicated. */
+export function findVoiceLeaks(text, tells) {
+  const labels = [];
+  for (const t of tells) {
+    if (plantedStringRe(t.text).test(text)) labels.push(t.label);
+  }
+  for (const c of VOICE_TELL_CLASSES) {
+    if (c.re.test(text)) labels.push(c.label);
+  }
+  return [...new Set(labels)];
+}
+
+/**
+ * Run the voice checks over the lines the writer ADDED to any index.md under
+ * the decisions tree. Pre-run text comes from meta.voice.indexBefore
+ * (fixtures.snapshotTexts); a line already present there is not scanned.
+ * Returns [{ path, labels }] for each index with a leak.
+ */
+function scanAddedIndexLines(root, after, meta) {
+  const out = [];
+  const indexBefore = meta.voice.indexBefore ?? new Map();
+  for (const p of after.keys()) {
+    if (!p.startsWith(meta.decisionsDir)) continue;
+    if (basename(p) !== 'index.md') continue;
+    const prior = new Set((indexBefore.get(p) ?? '').split(/\r?\n/));
+    const added = readFileSync(join(root, p), 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !prior.has(line));
+    const labels = findVoiceLeaks(added.join('\n'), meta.voice.tells);
+    if (labels.length > 0) out.push({ path: p, labels });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Wiki variants: A, A-infer, C
 // ---------------------------------------------------------------------------
 
@@ -194,6 +261,28 @@ async function gradeWikiRun({ root, before, meta }) {
   }
 
   const assertions = { d1, d2, d3, d4, d5, d6, d7 };
+
+  // Voice (C-voice only): the brief's own voice must not reach the ADR, and
+  // the string the brief marks as required wording must appear verbatim.
+  if (meta.voice) {
+    let voice = false;
+    if (newPath) {
+      const content = readFileSync(join(root, newPath), 'utf8');
+      const leaked = findVoiceLeaks(content, meta.voice.tells);
+      const requiredPresent = content.includes(meta.voice.required);
+      const indexLeaks = scanAddedIndexLines(root, after, meta);
+      voice = leaked.length === 0 && indexLeaks.length === 0 && requiredPresent;
+      if (leaked.length > 0) reasons.push(`Voice: brief voice leaked into the ADR: ${leaked.join(', ')}`);
+      for (const { path, labels } of indexLeaks) {
+        reasons.push(`Voice: brief voice leaked into lines added to ${path}: ${labels.join(', ')}`);
+      }
+      if (!requiredPresent) reasons.push(`Voice: required string missing verbatim: "${meta.voice.required}"`);
+    } else {
+      reasons.push('Voice: skipped — no new ADR file found');
+    }
+    assertions.voice = voice;
+  }
+
   const allDeterministicPass = Object.values(assertions).every(Boolean);
 
   return {
