@@ -34,7 +34,9 @@ A design-blocking question that no authoritative source can settle carries one f
 
 - A design-blocking question that the design names with a source goes back to Phase 1. The orchestrator resolves it and re-dispatches the designer with the answer.
 - A question that carries the label comes to the checkpoint as it is, with the options that depend on its answer. This holds whether Phase 1 carried it in or the designer found it.
-- A design that justifies a recommendation with "cannot discriminate" but names no open design-blocking question goes back to Phase 1.
+- A design that justifies a recommendation with "cannot discriminate" but names no open design-blocking question goes back to Phase 1. There the undecided point is stated as a question and classified, so it is resolved or labelled before the designer runs again.
+
+The dispatch briefs carry these questions between phases. The Phase 2 designer brief carries each question Phase 1 labelled, because the requirements document is never edited after the analyst writes it. The Phase 3 planner brief carries the execution-detail open questions from `plan.requirements.md`, which become tasks.
 
 ### The rule reaches four sites
 
@@ -83,7 +85,7 @@ Keying the Phase 2 check on one fixed string, and not on loose wording, is what 
 
 - A change to the label string is a three-site edit: `plan-task`, the analyst and the designer. The planner does not carry the string; it acts on any design-blocking question that reaches it still open. A change to the label meanings is a four-site edit. No drift test covers these copies. Unlike the block in ADR-0089, they are in each body's own voice, so a hash check does not apply.
 - Known seams, not decided here:
-  - The designer's Output Format has no fixed open-questions section, so the Phase 2 check reads the whole design.
+  - The designer's Output Format has no fixed open-questions section, so the Phase 2 check reads the whole design, and an execution-detail question the designer finds has no fixed place to be listed for the planner.
   - The full-proposal and simple-task shortcuts have no design-blocking and execution-detail split.
   - A question sent back to Phase 1 after Phase 2 does not say whether the requirements checkpoint is entered again.
 - The analyst insertion moved a sentence that ADR-0021 cites by line number (the analyst body's line 60 became line 61). The citation was repointed in the same change.
