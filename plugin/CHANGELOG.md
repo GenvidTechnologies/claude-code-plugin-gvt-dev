@@ -17,6 +17,8 @@ and follows [semantic versioning](https://semver.org/).
   - **ADR-0021:** its citation into the analyst body is repointed, because the new analyst bullet moved the cited sentence by one line.
   - **Consumers:** no config change is needed.
   - Behavioral skill/agent change → version bump at release.
+- **Maintainer note: a line insertion or removal also drifts a baselined bare pointer (#789).** `wiki/maintainer/audit-author-time-findings.md` now says that the audit reports `pointer-baseline-drifted` for it, that the repair is by intent and then `pointer-baseline.mjs --write`, and that `audit.mjs` runs after each edit to a cited file, not only at the full gate.
+  No consumer-facing behavior change → no version bump.
 
 ## [4.46.0] - 2026-11-02
 
