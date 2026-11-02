@@ -78,7 +78,7 @@ Write each document type in its own voice:
 
 - An ADR states decisions.
 - A skill body addresses the agent that runs it.
-- A CHANGELOG entry addresses a consumer.
+- A CHANGELOG entry addresses a consumer. In this plugin's own CHANGELOG, each entry still closes with its version-bump verdict, such as "Behavioral skill/agent change → version bump at release." The plugin's release convention requires that clause, so it is not a voice leak.
 - A reference doc addresses its reader.
 - A code comment addresses the next maintainer.
 

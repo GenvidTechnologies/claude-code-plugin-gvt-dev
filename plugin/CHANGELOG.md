@@ -14,6 +14,12 @@ and follows [semantic versioning](https://semver.org/).
   - **ADR-0026:** its citation of the agent names Process step 4 instead of a line number.
   - **Consumers:** no config change is needed.
   - Behavioral skill/agent change → version bump at release.
+- **`writing-style.md`: a CHANGELOG entry's closing version-bump verdict is not a voice leak.** The doc says a CHANGELOG entry addresses a consumer. It now adds that, in this plugin's own CHANGELOG, each entry still closes with its verdict ("→ version bump at release"), which the release convention requires. Before, a reviewer that followed the style doc reported that clause as a leak and proposed deleting it, which happened on the #222 review.
+  Behavioral skill/agent change → version bump at release.
+- **`triage-issues` gives `gvt-dev:issue-triage-analyst` its own scratch subdirectory, and `plan-next-issue` keeps its scratch files apart from it.** Both save the open backlog and the comments fetch "to scratch" under the same file names. With both in the session scratchpad root, a run of `plan-next-issue` read an empty `comments.json` while the analyst was writing the same file. The analyst's Inputs now include a scratch subdirectory: when the dispatch names none, the analyst creates one and never saves at the scratchpad root.
+  Behavioral skill/agent change → version bump at release.
+- **`designer` pairs a markup-free survival row with a markup-balance check.** A survival row anchored on a span that avoids markup cannot see the rewrite around it break that markup. Step 8 now pairs such a row with an even-count check of `**` and backticks on the changed lines. On #222, a rewrite dropped the closing `**` of a bold word while the survival row stayed green.
+  Behavioral skill/agent change → version bump at release.
 
 ## [4.47.0] - 2026-11-02
 

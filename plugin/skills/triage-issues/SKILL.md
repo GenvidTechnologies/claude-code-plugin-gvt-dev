@@ -458,7 +458,11 @@ In `--non-interactive`, defer and write nothing; `--force` defers it too and nev
 ## 1. Dispatch exploration (Phase 1)
 
 Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
-`bugTracker` block verbatim, and the resolved contract path (§0 step 1). It
+`bugTracker` block verbatim, the resolved contract path (§0 step 1), and a
+scratch subdirectory of its own for the files it saves. Name a new directory
+under the session scratchpad, not the scratchpad root: a calling skill such as
+`plan-next-issue` saves files with the same names there, and two writers of one
+file can leave a reader an empty or partial copy. It
 returns one structured triage report. **Do not fetch issue bodies
 yourself** — keeping them off this thread is the point of the split. Mode
 flags (`--non-interactive`, `--force`) govern only this thread's approval and

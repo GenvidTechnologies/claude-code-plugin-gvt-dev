@@ -128,7 +128,10 @@ Detect whether the backlog needs grooming before planning:
   silently here rather than reporting a possibly-stale number, consistent with
   the check being advisory: a possibly-wrong number is worse than none.
 - Run `bugTracker.actionQuery` once, with its output (the whole open backlog)
-  written to a scratch file and not printed. If the number of issues returned
+  written to a scratch file and not printed. Keep this run's scratch files in a
+  subdirectory of their own, not in the scratchpad root and not in the
+  subdirectory `triage-issues` gives its analyst, because the analyst saves
+  files with the same names. If the number of issues returned
   equals the query's `-L` limit, warn that the backlog may be truncated. Subtract
   `bugTracker.triagedLabel` from that saved output, in memory (a `jq` filter over
   the scratch file), to get the count of open issues not yet triaged. This is a
