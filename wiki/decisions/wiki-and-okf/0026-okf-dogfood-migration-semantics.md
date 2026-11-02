@@ -44,7 +44,7 @@ concept pages carry `2026-07-21T19:27:45Z` — the commit date of `ee95549`, the
 migration date. The migration re-expressed existing prose in a new container; it
 generated no new claim, so §5.2's `generated` block still describes July 21.
 This is not a bookkeeping nicety: `wiki-librarian` judges a page's currency from
-`generated.at` (a #191 addition, `plugin/agents/wiki-librarian.md:58`), and this
+`generated.at` (a #191 addition, Process step 4 of `plugin/agents/wiki-librarian.md`), and this
 migration is the **first real data that behavior has ever seen**. Stamping the
 migration date would make the key wrong on that very first read, and wrong in
 the direction that hides staleness — a page reformatted in 2026-08 would report

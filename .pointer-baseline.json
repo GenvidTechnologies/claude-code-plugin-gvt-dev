@@ -598,13 +598,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",
-      "pointer": "plugin/agents/wiki-librarian.md:58",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "7976fc8bd77d"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",
       "pointer": "plugin/skills/maintain-wiki/wiki-schema.template.md:88",
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
