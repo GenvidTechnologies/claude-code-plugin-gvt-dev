@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.47.0] - 2026-11-02
+
 - **`plan-task` now resolves a fact that decides the design before design starts (Phase 2), and the analyst, designer and planner each follow the same rule (#217, ADR-0090).** Before, a question whose answer could remove design options could be carried into design and reasoned around ("the available evidence cannot discriminate"), and the design could be moot once the fact was checked. The source incident is GenvidTechnologies/c3source#68. The change touches four bodies: `plan-task`, the analyst, the designer and the planner.
   - **`plan-task` Phase 1:** a new paragraph, "Resolve fact-establishing questions before Phase 2, not during execution.", cuts the factual open questions in two. It cites the existing Shortcuts classification (#45) instead of restating it. A *design-blocking* question has an answer that changes which options the design chooses between. Phase 1 resolves it against an authoritative source before the checkpoint. An *execution-detail* question has an answer that fills in a value inside an option already chosen. It goes to the planner as a task.
   - **Fixed label:** when no authoritative source exists, the question goes into Phase 2 labelled `design-blocking, no authoritative source`. The design then names it and says which options depend on its answer. Three sites carry this exact string: `plan-task`, the analyst and the designer.
