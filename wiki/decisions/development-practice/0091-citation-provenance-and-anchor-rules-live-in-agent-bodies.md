@@ -37,13 +37,13 @@ The "Five-dimension coverage" parenthetical in tech-writer's "Link, don't duplic
 
 ### Scope
 
-The non-repo rule is in four agents: tech-writer, analyst, designer and planner. The anchor rule is in tech-writer and analyst only, because the designer and planner do not write the durable prose the rule governs.
+The non-repo rule is in four agents: tech-writer, analyst, designer and planner. The anchor rule is in tech-writer and analyst only. The designer's and planner's output reaches issue bodies, which the anchor rule treats as transient, and commit messages, which are not among the committed documents it governs. tech-writer writes those documents, and the analyst's findings are often carried into them.
 
 Naming where an insight was recorded is not citing it, so `condense-lessons` is unchanged.
 
 ### Citation forms
 
-The anchor rule prescribes a strict subset of the forms the pointer-anchor scan accepts, so text that follows it always passes the scan here. The full grammar stays in `audit-conventions`.
+The anchor rule prescribes a strict subset of the anchor forms the pointer-anchor scan accepts, so a citation written to it always carries an anchor the scan recognises. The scan also checks that the anchored text is still at the cited line, which the rule cannot guarantee. The full grammar stays in `audit-conventions`.
 
 - Unnumbered anchors are preferred: a path with a quoted span and no line number, or a quoted heading or backticked symbol name. A numbered form is allowed only when the line number is immediately followed by a quoted span of that line.
 - The `file:line @ <hash>` form from #225's body is dropped. The shipped anchor grammar finds no anchor after a hash, so a hash between the number and the span breaks the pointer.
@@ -90,7 +90,7 @@ The pointer-anchor scan still runs only on the plugin's own repository ([ADR-004
 
 - A change to the provenance rule is a four-file edit, and a change to the anchor rule is a two-file edit. After a review fix to one copy, re-read the others.
 - In consuming repositories, agents follow the rules from their own bodies and nothing verifies the result.
-- In this repository, new prose also passes the pointer-anchor scan, so the rules and the scan agree.
+- In this repository, the pointer-anchor scan also checks citations written to the rules: it confirms the anchor form and that the anchored text is still where the citation points.
 - If #240 lands a cite-and-repeat mechanism, revisit Option C for these bullets.
 - Dogfooded agents run from the installed plugin cache, so they see the rules only after a release and a cache update.
 - Related records: [ADR-0031](0031-verified-vs-inherited-facts-stay-in-skill-body.md), [ADR-0033](../criteria-authoring/0033-criterion-baseline-and-evaluability-guardrails.md), [ADR-0036](../criteria-authoring/0036-three-rules-three-owners-one-cluster.md), [ADR-0047](../audit-conventions/0047-pointer-anchor-checker-error-severity-and-ratchet.md), [ADR-0064](../audit-conventions/0064-pointer-anchor-wiki-corpus-and-decisions-exclusion-paths-override.md).
