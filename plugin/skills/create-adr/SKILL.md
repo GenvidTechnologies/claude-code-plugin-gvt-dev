@@ -130,6 +130,7 @@ go to §3.
    - Template: `${CLAUDE_PLUGIN_ROOT}/docs/decision-record.template.md`
    - The resolved ADR directory (`dir`), target number N, the chosen theme (if
      any), and whether the location is inside the wiki (`wiki`)
+   - Citation form: tech-writer's "Anchor a citation to its content, not to a line number" rule governs how the record cites repo files. A record outlives edits to the files it cites, so the rule matters most here.
    - Instruction: **stage the file but do not commit** — this skill owns the commit
 3. tech-writer names the file `NNNN-kebab-title.md`, fills the template, and
    registers it per §1's regime table — self-indexing a `docs/TOC.md` row

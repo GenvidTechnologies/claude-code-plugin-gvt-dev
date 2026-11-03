@@ -7,6 +7,16 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Agents now treat non-repo content as an input and not as a citable source, and anchor a citation to its content and not to a line number (#225, #229; #318 consolidated into #225; ADR-0091).** Before, an agent could cite an auto-memory entry, a `<system-reminder>` block, a scratch file or a pasted issue body as if it were repo content, and could copy a machine-local path out of it into text that ships. A positional `file:line` citation also went stale when its target was edited. The change touches `tech-writer`, `analyst`, `designer`, `planner` and `create-adr`.
+  - **`tech-writer`:** two new Key Principles bullets hold the canonical statements. "Non-repo content is an input, never a citable source." says to find the fact in the repo and cite the repo file. Naming where something was recorded, such as an auto-memory or an upstream issue, is not citing it. "Anchor a citation to its content, not to a line number." prefers a path with a quoted span and no line number. A line number is allowed only when a quoted span of that line follows it. A bare `file:line` stays acceptable in transient text, such as a plan, a brief, a report, or an issue or PR body. A stale citation is repaired by intent: find where the cited text lives now and anchor it. The "Link, don't duplicate" bullet now names the "Five-dimension coverage" paragraph and no longer points at a line number in its own file.
+  - **`analyst`:** carries a tailored copy of both bullets. Its anchor copy applies to report text that feeds committed prose, such as a Problem Statement or Current State finding. Touch Points lists stay transient and may keep bare `file:line` sites.
+  - **`designer` and `planner`:** each carries a tailored copy of the provenance bullet only. It names the surfaces that reach the issue body or a commit: the designer's Affected Files, Assignment Table and Test Criteria rows, and the planner's `## Acceptance Criteria`, `**Commit:**` and `**Files:**`.
+  - **`create-adr`:** the §2 step 2 dispatch list gains a "Citation form" line that cites the `tech-writer` anchor rule, so a decision record is written with anchored citations.
+  - **Unchanged:** `condense-lessons`, because naming where an insight was recorded is not citing it. The pointer-anchor scan still runs only on this plugin's own repository, so consumers get the guidance and no check.
+  - **ADR-0091:** records that the rules live in agent bodies and not in a new principle, and the options rejected.
+  - **Consumers:** no config change is needed.
+  - Behavioral skill/agent change → version bump at release.
+
 ## [4.48.0] - 2026-11-02
 
 - **`wiki-librarian` now resolves links as OKF §6.1 specifies, and keeps the date a page's content was produced apart from the date its file was last written (#222).** Before, the agent resolved a bundle-absolute link against the filesystem root and reported it as broken. The #192 query run did this on `wiki/llm-wiki-pattern-in-gvt-dev.md`, where the link exists. It also read a gap between `generated.at` and a later `log.md` entry as staleness.
