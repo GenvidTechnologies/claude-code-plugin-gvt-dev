@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.49.0] - 2026-11-03
+
 - **Agents now treat non-repo content as an input and not as a citable source, and anchor a citation to its content and not to a line number (#225, #229; #318 consolidated into #225; ADR-0091).** Before, an agent could cite an auto-memory entry, a `<system-reminder>` block, a scratch file or a pasted issue body as if it were repo content, and could copy a machine-local path out of it into text that ships. A positional `file:line` citation also went stale when its target was edited. The change touches `tech-writer`, `analyst`, `designer`, `planner` and `create-adr`.
   - **`tech-writer`:** two new Key Principles bullets hold the canonical statements. "Non-repo content is an input, never a citable source." says to find the fact in the repo and cite the repo file. Naming where something was recorded, such as an auto-memory or an upstream issue, is not citing it. "Anchor a citation to its content, not to a line number." prefers a path with a quoted span and no line number. A line number is allowed only when a quoted span of that line follows it. A bare `file:line` stays acceptable in transient text, such as a plan, a brief, a report, or an issue or PR body. A stale citation is repaired by intent: find where the cited text lives now and anchor it. The "Link, don't duplicate" bullet now names the "Five-dimension coverage" paragraph and no longer points at a line number in its own file.
   - **`analyst`:** carries a tailored copy of both bullets. Its anchor copy applies to report text that feeds committed prose, such as a Problem Statement or Current State finding. Touch Points lists stay transient and may keep bare `file:line` sites.
