@@ -42,10 +42,10 @@ A normal `git rebase` fails because git tries to replay C1-C2, which conflict wi
 ## Solution: `git rebase --onto`
 
 ```bash
-git rebase --onto origin/<default-branch> <merged-branch-ref> HEAD
+git rebase --onto origin/<default-branch> <old-base> HEAD
 ```
 
-"Take commits AFTER `<merged-branch-ref>` and replay them on `origin/<default-branch>`."
+"Take commits AFTER `<old-base>` and replay them on `origin/<default-branch>`."
 
 ## Process
 
@@ -68,13 +68,13 @@ Find the branch ref that was merged — that's your `<old-base>`.
 ### 3. Rebase with `--onto`
 
 ```bash
-git rebase --onto origin/<default-branch> <merged-branch-ref> HEAD
+git rebase --onto origin/<default-branch> <old-base> HEAD
 ```
 
 For stacks with multiple branch pointers, use `--update-refs` so intermediate refs are moved during the rebase:
 
 ```bash
-git rebase --onto origin/<default-branch> <merged-branch-ref> HEAD --update-refs
+git rebase --onto origin/<default-branch> <old-base> HEAD --update-refs
 ```
 
 ### 4. If the local ref was deleted
@@ -118,6 +118,8 @@ git branch -d <merged-branch-name>     # delete obsolete local ref
 git push --force-with-lease            # after careful review
 ```
 
+`<merged-branch-name>` is the local branch name of the merged branch. It is not always the same text as `<old-base>`. After step 4, `<old-base>` can be a commit hash, and `git branch -d` takes only a branch name.
+
 ## Deep Stacks with `--update-refs`
 
 For a deep stack (A → B → C → D) where A was merged:
@@ -142,12 +144,14 @@ Squash-merging the parent **with branch deletion** orphans the child's commits. 
 gh pr view <child> --json state,baseRefName,mergeable
 ```
 
+In this section the merged branch is the parent, so `<old-base>` is the parent branch's ref, the same ref as in step 2.
+
 ### If `state: OPEN`
 
 GitHub retargeted the base to `<default-branch>` and kept the PR open — usually reporting `mergeable: CONFLICTING`, because the branch still carries the parent's pre-squash commits. The `--onto` rebase is the whole fix; the PR number and its review thread survive:
 
 ```bash
-git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git rebase --onto origin/<default-branch> <old-base> <child-branch>
 git push --force-with-lease
 ```
 
@@ -165,14 +169,14 @@ gh pr reopen <child>
 **If both succeed**, the PR is reopened and retargeted — you are now in the `OPEN` case above, and the branch content still needs fixing. Finish with the same rebase and push:
 
 ```bash
-git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git rebase --onto origin/<default-branch> <old-base> <child-branch>
 git push --force-with-lease
 ```
 
 **If either errors** — which can happen when the child's base branch was deleted — only then rebuild: the same `--onto` rebase, followed by a fresh PR:
 
 ```bash
-git rebase --onto origin/<default-branch> <old-parent-ref> <child-branch>
+git rebase --onto origin/<default-branch> <old-base> <child-branch>
 git push --force-with-lease
 gh pr create --base <default-branch> ...    # only after in-place recovery failed
 ```
@@ -206,5 +210,5 @@ git reset --hard <pre-rebase-hash>
 | Situation | Command |
 |-----------|---------|
 | Simple rebase onto default branch | `git rebase origin/<default-branch>` |
-| Rebase after squash-merge | `git rebase --onto origin/<default-branch> <merged-branch> HEAD` |
-| Stack rebase with ref updates | `git rebase --onto origin/<default-branch> <merged-branch> HEAD --update-refs` |
+| Rebase after squash-merge | `git rebase --onto origin/<default-branch> <old-base> HEAD` |
+| Stack rebase with ref updates | `git rebase --onto origin/<default-branch> <old-base> HEAD --update-refs` |

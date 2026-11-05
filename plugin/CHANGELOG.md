@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`rebase-stack` uses one placeholder, `<old-base>`, for the ref of the squash-merged branch (#200).** Before, the skill named that ref four ways: `<old-base>`, `<merged-branch-ref>`, `<merged-branch>` and `<old-parent-ref>`. A reader could take the child-PR section's `<old-parent-ref>` for a different ref. The child-PR section now states that `<old-base>` is the parent branch's ref. The cleanup step keeps `<merged-branch-name>`, with a note: it is a branch name for `git branch -d`, and `<old-base>` can be a commit hash. No command changes.
+  - **Consumers:** no config change is needed.
+  - Behavioral skill/agent change → version bump at release.
+
 ## [4.49.0] - 2026-11-03
 
 - **Agents now treat non-repo content as an input and not as a citable source, and anchor a citation to its content and not to a line number (#225, #229; #318 consolidated into #225; ADR-0091).** Before, an agent could cite an auto-memory entry, a `<system-reminder>` block, a scratch file or a pasted issue body as if it were repo content, and could copy a machine-local path out of it into text that ships. A positional `file:line` citation also went stale when its target was edited. The change touches `tech-writer`, `analyst`, `designer`, `planner` and `create-adr`.
