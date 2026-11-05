@@ -1,6 +1,6 @@
 ---
 name: build-probe
-description: Guides building a probe script that answers one checkable question blocking a decision — scaffold it in the scratchpad (never the repo tree), run it against the real system, report the concrete answer on-thread, then keep and generalize it by default, or discard it with a reason stated on-thread. Operationalizes development-principles.md principles 1 and 3 (investigate what you don't know; build tools, keep the generic ones). Use when analysis stalls on an unfamiliar system, before a plan leans on an unverified assumption, or whenever "I think X is true" needs to become "I checked."
+description: Guides building a probe script that answers one checkable question blocking a decision — scaffold it in the scratchpad (never the repo tree), run it against the real system, report the concrete answer on-thread, then keep and generalize it by default, or discard it only when keeping it costs too much, with the reason stated on-thread. Operationalizes development-principles.md principles 1 and 3 (investigate what you don't know; build tools, keep the generic ones). Use when analysis stalls on an unfamiliar system, before a plan leans on an unverified assumption, or whenever "I think X is true" needs to become "I checked."
 metadata:
   pillar: moldable
   expects:
@@ -230,14 +230,18 @@ home below. Without that move the next probe is rebuilt from scratch, which
 makes generalizing expensive and discarding look reasonable.
 
 **Discarding needs a reason, stated on-thread next to the Step 4 report.**
-Delete the scratchpad file only for one of these reasons:
+Each reason is a cost of keeping the probe (ADR-0093). Delete the scratchpad
+file only for one of these reasons:
 
-- **(a) The question cannot recur** — a one-time migration, or curiosity while drafting. The worked example below is this case.
-- **(b) An existing kept tool or a standing check already answers it** — for example `audit-conventions`. Extend that tool; do not keep a second one.
-- **(c) The answer depends on context that cannot be parameterized out.**
+- **(a) An existing kept tool or a standing check already answers it** — for example `audit-conventions`. Extend that tool; do not keep a second one.
+- **(b) The answer depends on context that cannot be parameterized out**, so keeping the probe means rewriting it.
+- **(c) Its test cannot be kept green.**
 
 A reason outside this list is not a reason to discard. A probe that cannot
-state one is kept.
+state one is kept. In particular, "the question cannot recur" and "we won't
+need it" are not reasons. Whether a tool will be needed again depends on work
+outside the current task, so it can't be judged when the probe finishes. Keeping
+the probe keeps that option open.
 
 **Where a kept tool goes.** There are two tiers.
 
@@ -247,7 +251,7 @@ state one is kept.
 **What stops rot.** Every kept tool has a test, or a recorded negative control
 that shows it can report the bad case. Every kept tool has a catalogue entry.
 The tests run in the repo's test command. A tool whose test cannot be kept
-green is deleted, with that as its stated reason.
+green is deleted, with reason (c).
 
 Testable logic goes in a `lib/`-style module with a companion test, per
 `CLAUDE.md`'s "put testable logic in `lib/`" guidance — not the probe script
@@ -327,13 +331,19 @@ grep (1): cleanup-initiative
 So yes — `git` is required by 15 of the plugin's skills (unsurprising, and
 already implied by "this is a git-hosted plugin"), and `gh`/`npm` are each
 required by the same 3 release-flavored skills, which also isn't news once you
-see the skill names. Nothing here was a genuine surprise strong enough to
-justify a standing check — this was a one-time contract-shape question asked
-to settle curiosity while drafting this skill, not a recurring gate anything
-depends on. **Discard, for reason (a): the question cannot recur.** The stated
-reason goes on-thread with the report. The script above lived in a scratchpad
-file for the run and was deleted afterward; it is reproduced here only as a
-worked example, not as a shipped tool.
+see the skill names. Nothing here was a surprise, and the question was asked
+out of curiosity while drafting this skill. Neither fact is a reason to
+discard. Check the three reasons:
+
+- **(a)** `audit-conventions` reads the same `metadata.expects.tools` declarations, but it checks each skill's tools against `PATH` one skill at a time. It does not tally them across skills, so it does not answer this question.
+- **(b)** The probe has no context to parameterize out beyond the skills directory.
+- **(c)** The probe has no test yet, so it cannot have a red one.
+
+**Keep.** Because `audit-conventions` already walks the same frontmatter, the
+natural home is an extension of the audit, not a second walker. The run on
+2026-07-24 deleted its scratchpad file under the older discard-by-default
+rule (ADR-0018). The full source above keeps the option open. No such audit
+extension ships yet.
 
 ## Writing style
 

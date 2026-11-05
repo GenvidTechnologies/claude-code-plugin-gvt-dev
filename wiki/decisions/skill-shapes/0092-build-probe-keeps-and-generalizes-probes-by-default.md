@@ -11,6 +11,7 @@ status: stable
 - **Date:** 2026-11-05
 - **Issue:** #738 (part of #737)
 - **Supersedes:** [ADR-0018](0018-build-probe-pure-discipline.md), decision 3 and its deferral of a kept-tools home. Decisions 1 and 2 of ADR-0018 stay in force.
+- **Amended by:** [ADR-0093](0093-build-probe-discards-only-for-the-cost-of-keeping.md), decision 1. Reason (a), "the question cannot recur", is no longer a discard reason; the list below is kept as the historical record.
 
 ## Context
 
