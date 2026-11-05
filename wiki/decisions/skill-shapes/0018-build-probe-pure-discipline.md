@@ -3,13 +3,20 @@ type: decision-record
 title: 'build-probe adopts a pure-discipline shape, deviating from the five-part pattern'
 description: 'build-probe ships as a pure-discipline skill with no analyst subagent and no bundled generic probes.'
 tags: [decisions, skill-shapes]
-status: stable
+status: deprecated
 ---
 # 0018. build-probe adopts a pure-discipline shape, deviating from the five-part pattern
 
-- **Status:** accepted
+- **Status:** superseded by [ADR-0092](0092-build-probe-keeps-and-generalizes-probes-by-default.md)
 - **Date:** 2026-07-24
 - **Issue:** #144 (part of epic #142)
+
+> **Superseded in part.** [ADR-0092](0092-build-probe-keeps-and-generalizes-probes-by-default.md)
+> supersedes decision 3 (no bundled generic probes) and the deferral of a
+> kept-tools home. Decisions 1 and 2 (no five-part apparatus, no off-thread
+> probe subagent, Step 4 reports on-thread) stay in force. The attribution of
+> "never a probe library" to epic #142 could not be traced to any source; see
+> ADR-0092, decision 4.
 
 ## Context
 

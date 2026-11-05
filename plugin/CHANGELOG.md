@@ -7,6 +7,10 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`build-probe` now keeps and generalizes a probe by default, and discards only with a reason stated on-thread (#738; ADR-0092).** Before, Step 5 discarded by default and promoted a probe only when its question recurred and the probe was generic. Step 5 is now "Keep or discard". Generalizing a probe means parameterizing its paths and refs and extracting the logic into a tested module. A discard reason is one of three: the question cannot recur, an existing tool or standing check already answers it, or the answer depends on context that cannot be parameterized out. Generic kept tools will live under `plugin/skills/build-probe/scripts/`, with a "Kept tools" catalogue in the skill. Repo-specific kept tools go under `tools/probes/`, with an `index.md`. Every kept tool needs a test or a recorded negative control. No kept tool ships yet. ADR-0092 supersedes decision 3 of ADR-0018 and its deferral of a kept-tools home. Decisions 1 and 2 of ADR-0018 stay in force. The scratchpad rule in Step 2 is unchanged.
+  - **Consumers:** no config change is needed now. `tools/probes/` is the default home for kept repo-specific tools, and a `.gvt-agent.json` `paths` override can relocate it.
+  - Behavioral skill/agent change → version bump at release.
+
 - **`rebase-stack` uses one placeholder, `<old-base>`, for the ref of the squash-merged branch (#200).** Before, the skill named that ref four ways: `<old-base>`, `<merged-branch-ref>`, `<merged-branch>` and `<old-parent-ref>`. A reader could take the child-PR section's `<old-parent-ref>` for a different ref. The child-PR section now states that `<old-base>` is the parent branch's ref. The cleanup step keeps `<merged-branch-name>`, with a note: it is a branch name for `git branch -d`, and `<old-base>` can be a commit hash. No command changes.
   - **Consumers:** no config change is needed.
   - Behavioral skill/agent change → version bump at release.

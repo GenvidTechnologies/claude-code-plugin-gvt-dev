@@ -1,6 +1,6 @@
 ---
 name: build-probe
-description: Guides building a throwaway probe script that answers one checkable question blocking a decision — scaffold it in the scratchpad (never the repo tree), run it against the real system, report the concrete answer on-thread, then discard by default or promote only when the question recurs and the probe is generic enough to survive re-asking. Operationalizes development-principles.md principles 1 and 3 (investigate what you don't know; build tools, keep the generic ones). Use when analysis stalls on an unfamiliar system, before a plan leans on an unverified assumption, or whenever "I think X is true" needs to become "I checked."
+description: Guides building a probe script that answers one checkable question blocking a decision — scaffold it in the scratchpad (never the repo tree), run it against the real system, report the concrete answer on-thread, then keep and generalize it by default, or discard it with a reason stated on-thread. Operationalizes development-principles.md principles 1 and 3 (investigate what you don't know; build tools, keep the generic ones). Use when analysis stalls on an unfamiliar system, before a plan leans on an unverified assumption, or whenever "I think X is true" needs to become "I checked."
 metadata:
   pillar: moldable
   expects:
@@ -19,14 +19,15 @@ Operationalizes `development-principles.md` principle 1 (investigate what you
 don't know, build tools when needed) and principle 3 (make the change easy —
 including by writing a throwaway tool to check it — and keep the generic ones
 around). A probe is a small script whose entire job is to let the real system
-contradict a guess. This skill teaches the loop; it does not ship any checks
-itself.
+contradict a guess. This skill teaches the loop. Once a probe has answered its
+question, the default is to generalize it and keep it as a tool (Step 5; ADR-0092).
+No kept tool ships yet (see "Kept tools").
 
-**Scope disclaimer.** `build-probe` is the discipline, not a catalog of checks.
-It does not ship contract-drift checks, retired-token scans, or any other
-standing gate — that surface belongs to `audit-conventions`. A probe answers
-one question, once; if the question turns into a standing gate, it graduates
-out of this skill's scope entirely (see Step 5).
+**Scope disclaimer.** `build-probe` is the discipline and a catalogue of kept
+tools, not a set of standing checks. It does not ship contract-drift checks,
+retired-token scans, or any other standing gate — that surface belongs to
+`audit-conventions`. A probe answers one question; if the question turns into
+a standing gate, it graduates out of this skill's scope entirely (see Step 5).
 
 ## 1. State the question
 
@@ -41,11 +42,12 @@ with a checkable answer, you're not ready to probe yet — go back to analysis
 
 Write the probe script to the session's scratchpad directory (the harness's
 own uncommitted temp state) — **never into the repo tree.** The scratchpad
-location *is* the throwaway mechanism: it keeps discard the zero-effort
-default and it can never accidentally show up in `git status` or get staged
-into a commit "since it's already there." Don't write it into the repo tree
-"to keep things tidy" — a probe living in tracked files has already put its
-thumb on the promote side of the scale before you've looked at the answer.
+keeps residue out of the tree: a probe there can never accidentally show up in
+`git status` or get staged into a commit "since it's already there." Keeping a
+probe is a deliberate move out of the scratchpad (Step 5), not a file left
+behind. Don't write it into the repo tree "to keep things tidy" — a probe
+living in tracked files skips the generalizing and testing that keeping
+requires.
 
 Use whatever language and tooling this repo already runs probes/scripts in —
 there's no plugin-mandated probe language. A probe is allowed to be ugly:
@@ -219,34 +221,37 @@ summary throws away exactly the signal a probe exists to produce — the
 deciding thread needs to see the raw result itself (the actual list, not a
 gist of it) to make the call in Step 5 with eyes open.
 
-## 5. Promote or discard
+## 5. Keep or discard
 
-**Discard by default.** Delete the scratchpad file; it cost nothing and its
-value was spent the moment it answered the question. A probe that answered
-perfectly is still discarded if the question was asked once — reuse was never
-the point.
+**Keep and generalize by default** (ADR-0092). Once the probe has answered its
+question, generalize it: parameterize the hardcoded paths and refs, and extract
+the logic into a tested module. Then move it out of the scratchpad into the
+home below. Without that move the next probe is rebuilt from scratch, which
+makes generalizing expensive and discarding look reasonable.
 
-**Promote only when both hold:**
+**Discarding needs a reason, stated on-thread next to the Step 4 report.**
+Delete the scratchpad file only for one of these reasons:
 
-- **Recurring** — this exact question (or a close variant of it) will get
-  asked again: a regression it should guard, a drift it should catch on a
-  schedule, a gate a CI job should enforce.
-- **Generic** — the probe is already shaped to survive being asked again
-  without a rewrite; it isn't hardcoded to today's one-off context in a way
-  that would make "reusing" it actually mean rewriting it.
+- **(a) The question cannot recur** — a one-time migration, or curiosity while drafting. The worked example below is this case.
+- **(b) An existing kept tool or a standing check already answers it** — for example `audit-conventions`. Extend that tool; do not keep a second one.
+- **(c) The answer depends on context that cannot be parameterized out.**
 
-Both conditions have to hold — a recurring question with a probe that's still
-contextual mush needs the probe rebuilt into something generic before
-promotion means anything; a generic-shaped probe answering a one-time question
-is still discarded. This is principle 3's "keep generic tools around" with a
-bar attached: keep the few that clear it, discard the many that don't.
+A reason outside this list is not a reason to discard. A probe that cannot
+state one is kept.
 
-A promoted probe becomes a kept tool in the repo, following the same shape as
-any other kept tool here: testable logic extracted to a `lib/`-style module
-with a companion test, per `CLAUDE.md`'s "put testable logic in `lib/`"
-guidance — not the promoted script wholesale. Where a promoted tool lives day
-to day is the consuming repo's own convention to decide; this skill doesn't
-prescribe a tools-home layout.
+**Where a kept tool goes.** There are two tiers.
+
+- **Generic tools** ship in this skill's `scripts/` directory in the plugin, with tests that `commands.validate` runs. Each gets a row in "Kept tools" below.
+- **Repo-specific tools** live in the consuming repo under `tools/probes/` by default. A `.gvt-agent.json` `paths` override can relocate the directory. Each gets one line in `tools/probes/index.md`: the question, the command and the test.
+
+**What stops rot.** Every kept tool has a test, or a recorded negative control
+that shows it can report the bad case. Every kept tool has a catalogue entry.
+The tests run in the repo's test command. A tool whose test cannot be kept
+green is deleted, with that as its stated reason.
+
+Testable logic goes in a `lib/`-style module with a companion test, per
+`CLAUDE.md`'s "put testable logic in `lib/`" guidance — not the probe script
+wholesale.
 
 **Escalation for what a scratchpad script structurally can't answer.** If the
 question requires interactive or visual live inspection — walking a large live
@@ -255,6 +260,20 @@ running — a batch script is the wrong tool regardless of language. Glamorous
 Toolkit is the next rung for that class of question; this skill names it only
 as an external option to reach for, declares no dependency on it, and never
 installs or wraps it.
+
+## Kept tools
+
+No kept tool ships with this skill yet. This section is the catalogue for the
+generic tools that will. Each tool gets one row:
+
+| Tool | Question it answers | Command | Negative control |
+|---|---|---|---|
+| (none yet) | | `node ${CLAUDE_PLUGIN_ROOT}/skills/build-probe/scripts/<tool>.mjs …` | |
+
+Shared building blocks go under `scripts/lib/` and tests under
+`scripts/test/`. Primitives that `@genvidtech/audit-core` already provides are
+imported through the `#audit-core` alias, never copied. Repo-specific tools are
+catalogued in the consuming repo's `tools/probes/index.md`, not here.
 
 ## Worked example — did any two skills share a required tool beyond the boring universals?
 
@@ -311,9 +330,10 @@ required by the same 3 release-flavored skills, which also isn't news once you
 see the skill names. Nothing here was a genuine surprise strong enough to
 justify a standing check — this was a one-time contract-shape question asked
 to settle curiosity while drafting this skill, not a recurring gate anything
-depends on. **Discard.** The script above lived in a scratchpad file for the
-run and was deleted afterward; it is reproduced here only as a worked example,
-not as a shipped tool.
+depends on. **Discard, for reason (a): the question cannot recur.** The stated
+reason goes on-thread with the report. The script above lived in a scratchpad
+file for the run and was deleted afterward; it is reproduced here only as a
+worked example, not as a shipped tool.
 
 ## Writing style
 
