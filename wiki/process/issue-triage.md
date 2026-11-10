@@ -83,6 +83,11 @@ Express a dependency with a comment on the blocked issue: `Blocked by #<id>`
 (optionally `Blocks #<id>` on the other). For umbrellas, list dependencies as a
 GitHub task-list under a `Depends on` heading.
 
+A link that does not block (a related issue, a shared root cause, a conflict
+between two proposals) is a comment on one issue: `Related: #<id>`, followed
+by one sentence that says how the two relate. Never write `Blocked by` for it,
+because the reference check reads that line as a blocker.
+
 ## Mutation recipes
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
@@ -94,18 +99,37 @@ When a recipe's set would be empty, omit its --remove-label flag.
 
 {otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed.
 
-- Set type: `gh issue edit {id} --add-label "type:{type}" --remove-label "{otherTypes}"`
-- Set priority: `gh issue edit {id} --add-label "priority/{p}" --remove-label "{otherPriorities}"`
-- Add area: `gh issue edit {id} --add-label "area:{a}"`
-- Remove area: `gh issue edit {id} --remove-label "area:{a}"`
-- Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
-- Comment: `gh issue comment {id} --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
-- Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
-- Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
-- Close duplicate (only with approval): `gh issue close {id} --reason "not planned" --comment "Duplicate of #{canonical}"`
-- Close as completed or not planned (only with approval): `gh issue close {id} --reason "{closeReason}"` — post the reason first through the Comment recipe; `{closeReason}` is `completed` or `not planned`
-- Create split issue: `gh issue create --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
-- Link dependency: `gh issue comment {id} --body "Blocked by #{other}"`
-- Stamp triaged: `gh issue edit {id} --add-label {triagedLabel}`
+Every recipe names the repository with `--repo`. Without it, `gh` takes the
+repository from the git remote of the current directory, so a recipe run from
+a scratch folder or from another checkout fails or writes to the wrong
+repository.
+
+- Set type: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "type:{type}" --remove-label "{otherTypes}"`
+- Set priority: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "priority/{p}" --remove-label "{otherPriorities}"`
+- Add area: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "area:{a}"`
+- Remove area: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --remove-label "area:{a}"`
+- Edit body (language fix / fill missing info): `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
+- Comment: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
+- Flag missing info: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
+- Mark duplicate: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label duplicate` then `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Duplicate of #{canonical}"`
+- Close duplicate (only with approval): `gh issue close {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --reason "not planned" --comment "Duplicate of #{canonical}"`
+- Close as completed or not planned (only with approval): `gh issue close {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --reason "{closeReason}"` — post the reason first through the Comment recipe; `{closeReason}` is `completed` or `not planned`
+- Create split issue: `gh issue create --repo GenvidTechnologies/claude-code-plugin-gvt-dev --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
+- Link dependency: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Blocked by #{other}"`
+- Link related (does not block): `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes `Related: #{other}` and one sentence on how the two relate to `{tmpfile}` first
+- Stamp triaged: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {triagedLabel}`
 
 Read the labels back after this edit: confirm the issue now carries exactly the intended labels before it is stamped triaged (use the tracker's read-one query, or the native issue view).
+
+To read back several issues in one command, use the bulk form below, with the
+issue numbers written out in place of `{ids}` (for example `870,871,872`). It
+prints one line per issue with its sorted labels:
+
+```
+gh issue list --repo GenvidTechnologies/claude-code-plugin-gvt-dev --state open -L 500 --json number,labels --jq '.[] | select([.number] | inside([{ids}])) | "\(.number) \([.labels[].name]|sort|join(","))"'
+```
+
+A session isolated in a worktree refuses a shell loop over the read-one query,
+because the loop variable is a value computed at runtime. The bulk form is one
+plain command and runs there. It lists open issues only, so read a closed
+issue with the read-one query.
