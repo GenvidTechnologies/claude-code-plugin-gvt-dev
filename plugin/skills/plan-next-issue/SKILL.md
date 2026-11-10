@@ -108,12 +108,13 @@ Detect whether the backlog needs grooming before planning:
   suppresses git's tag auto-following, and §2's unreleased-delta check depends
   on a current local tag list. The fetch updates the `origin/*` refs only; it
   **does not update the working tree**, so a file read from the checkout can
-  still be stale. After the fetch, run the behind-check `git log --oneline
-  HEAD..origin/<default-branch>`, whatever branch is checked out. This check
-  also runs on the host-API fallback path below, against the cached tracking
-  ref. When it prints commits, report the commit count to the user, and read
-  every target at `origin/<default-branch>` (§2) rather than the working tree.
-  Leave the checkout as it is: do not fast-forward it. **An open
+  still be stale. After the fetch, run the behind-check
+  `git log --oneline HEAD..origin/<default-branch>`, whatever branch is
+  checked out. This check also runs on the host-API fallback path below,
+  against the cached tracking ref. When it prints commits, report the commit
+  count to the user, and read every target at `origin/<default-branch>` (§2)
+  rather than the working tree. Leave the checkout as it is: do not
+  fast-forward it. **An open
   issue is not proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
   leaves its issue OPEN indefinitely, so already-shipped work can surface as
   plannable. Fetching first lets the ranking step (§2) catch this before any branch
@@ -126,7 +127,10 @@ Detect whether the backlog needs grooming before planning:
   fresh iff `git rev-parse origin/<default-branch>` equals `gh api
   repos/:owner/:repo/commits/<default-branch> --jq .sha` (HTTPS, no SSH); other
   hosts have their own read-only commit API. Equal SHAs ⇒ the local tracking ref
-  already matches the remote, so proceed. (Compare the **tracking ref**, not
+  already matches the remote, so proceed. When the SHAs differ, or the API
+  lookup fails, the reads are at the last-fetched `origin/<default-branch>`:
+  report that sha to the user as possibly stale, and carry on without
+  stopping. (Compare the **tracking ref**, not
   `HEAD` — a failed fetch leaves `origin/<default-branch>` at its last-fetched
   value, and you may be on any branch.) The signing/push path still legitimately
   needs the user — this fallback is only for the read. On this path no fetch
@@ -289,7 +293,8 @@ candidate that may already be shipped:** when an issue names a concrete target
 (a file, doc, or section), check it against the just-fetched default branch —
 `git log origin/<default-branch> -- <target>` for whether the file moved, and
 then **read the target itself**, at the fetched ref —
-`git show origin/<default-branch>:<path>`, not the working tree. The log alone answers *"was this file touched?"*,
+`git show origin/<default-branch>:<path>`, not the working tree. The log
+alone answers *"was this file touched?"*,
 which is neither necessary nor sufficient for *"did the proposed change land?"* —
 so treat it as a cheap pre-filter, not the check. A rule the issue asks for may
 already sit in an untouched file (log clean, work shipped anyway), and a file may

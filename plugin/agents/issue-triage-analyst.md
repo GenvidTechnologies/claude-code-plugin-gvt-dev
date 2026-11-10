@@ -50,7 +50,7 @@ The dispatch prompt gives you:
 - **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `commentsQuery`, `structureQuery`, `refStateQuery`, `triagedLabel`, `needsInfoLabel`. The last three query keys are optional: when one is absent, skip the check it feeds and say so in the report's Notes.
 - **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
 
-- **Read sha** — the commit of `origin/<default-branch>` that step 6 reads each target at. If the dispatch names none, read at `origin/<default-branch>`, record `git rev-parse origin/<default-branch>` as the sha, and say so in the report's Notes.
+- **Read sha** — the commit of `origin/<default-branch>` that step 6 reads each target at. The dispatch also names the default branch. If the dispatch names no sha, read at `origin/<default-branch>`, record `git rev-parse origin/<default-branch>` as the sha, and say so in the report's Notes. If it names no branch either, resolve the branch from `repo.default_branch` in `.gvt-agent.json`, else from `git symbolic-ref --short refs/remotes/origin/HEAD` with the `origin/` prefix stripped.
 
 - **Scratch subdirectory** — where every file you save "to scratch" goes. If the dispatch names none, create a new subdirectory under the session scratchpad. Never save at the scratchpad root: the dispatching skill may save files with the same names there, and two writers of one file can leave a reader an empty or partial copy.
 
@@ -76,10 +76,10 @@ If the conventions doc is missing, say so in the report and fall back to generic
 6. **Verify an issue's claims against the artifact it names.** (Rationale: `development-principles.md` principle #13 — the obligation is stated here in full because you may not load that doc.)
    - **When it fires (bounded).** Only for an action-set issue that both (a) names a concrete target — a file, doc, section/heading, or symbol — and (b) asserts something about that target's *current* content (what it says, does, or lacks; or wording it proposes to replace). Verify only the targets those claims are about, and only the part each claim concerns. Never read every file an issue mentions; never verify comparison-set issues. Every other issue: `verify: n/a`.
    - **Procedure, in order:**
-     1. Resolve the target. Missing, or something this repo doesn't ship → `target-absent`; stop.
-     2. Read the target itself, at the read sha: `git show <sha>:<path>`, not the working tree. `git log -- <path>` is not the check: a clean log doesn't mean the ask is unshipped, and a dirty one doesn't mean it shipped.
+     1. Resolve the target in the read sha's tree, for example `git cat-file -e <sha>:<path>`. Missing there, or something this repo doesn't ship → `target-absent`; stop.
+     2. Read the target itself, at the read sha: `git show <sha>:<path>`, not the working tree. The Read, Grep and Glob tools read the checkout, so do not read a target with them. `git log -- <path>` is not the check: a clean log doesn't mean the ask is unshipped, and a dirty one doesn't mean it shipped.
      3. Compare each content claim to what the target says now, and classify it.
-     4. Prefer the authoritative source over a convenient one, and say which you used. A file in the repo proves what's on disk, not what production uses — it may be a fixture, a fallback, or one member of a corpus served from elsewhere. When a claim is about runtime behavior, trace to the code that consumes the data rather than citing the data file. If only a proxy was available, name it as a proxy.
+     4. Prefer the authoritative source over a convenient one, and say which you used. A file in the repo proves what the read sha holds, not what production uses — it may be a fixture, a fallback, or one member of a corpus served from elsewhere. When a claim is about runtime behavior, trace to the code that consumes the data rather than citing the data file. If only a proxy was available, name it as a proxy.
      5. Write the verification note: per claim — the outcome; what the target actually says (path + a quoted span, not a bare line number); the evidence and whether it is the authoritative source or a proxy; and the read sha.
    - **Outcomes:** `agreement` · `partly-shipped` (name the residual) · `proposal-stale` (target moved on) · `premise-false` (target already does it) · `target-absent` (missing or not owned by this repo) · `artifact-wrong` (the proposal is right; the target is the side in error). Don't assume the file is authoritative: for `artifact-wrong`, name what settled it — an external spec, git history, or the artifact's provenance — and if nothing settles it, report the conflict as unresolved rather than picking a side.
    - **Flag `stricter-shipped`** on a `proposal-stale` or `partly-shipped` finding when the target's text is tighter than the proposal — verbatim adoption would then be a regression, not a no-op.
@@ -136,6 +136,7 @@ Tag each entry with the comparand it checked. Step 6's check is `[artifact]` (th
 
 ### Notes
 - Conventions doc present: yes/no. Fallbacks applied: <list or none>.
+- Read sha: <sha> (dispatched, or defaulted to `origin/<default-branch>` because the dispatch named none).
 - Step 8 data gaps and cuts: <`comments possibly truncated`, `comments: no data`, `comments: truncated (bulk list at its limit)`, `native structure: truncated (bulk list at its limit)`, `native structure: no data`, `open list: truncated (at its limit)`, `comparison set: truncated (at its limit)`, lookups skipped at the cap (count and keys), or none>.
 ```
 
