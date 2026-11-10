@@ -457,8 +457,30 @@ In `--non-interactive`, defer and write nothing; `--force` defers it too and nev
 
 ## 1. Dispatch exploration (Phase 1)
 
+Resolve `<default-branch>` first: read `repo.default_branch` from
+`.gvt-agent.json`, and when it is absent use
+`git symbolic-ref --short refs/remotes/origin/HEAD` with the `origin/` prefix
+stripped (`plan-task` uses the same rule).
+
+Then run `git fetch origin` (the whole remote, no refspec). A fetch does not
+update the working tree, so the analyst reads targets at the fetched ref, not
+the checkout. When this skill runs inside `plan-next-issue`, the fetch
+`plan-next-issue` §1 made in the same run can be reused. **If `git fetch`
+fails because the remote needs interactive auth**, use the host-API fallback
+in `plan-next-issue` §1. Stay host-aware (`repo.host`): for `github`, the
+cached `origin/<default-branch>` is current when
+`git rev-parse origin/<default-branch>` equals
+`gh api repos/:owner/:repo/commits/<default-branch> --jq .sha`; other hosts
+have their own read-only commit API. When the SHAs differ, or the API lookup
+fails, the reads are at the last-fetched `origin/<default-branch>`: report
+that sha to the user as possibly stale, and carry on without stopping. In
+every case take `git rev-parse origin/<default-branch>` as the read sha.
+Never move the checkout.
+
 Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
-`bugTracker` block verbatim, the resolved contract path (§0 step 1), and a
+`bugTracker` block verbatim, the resolved contract path (§0 step 1), the
+resolved default branch name, the read sha
+(`git rev-parse origin/<default-branch>`), and a
 scratch subdirectory of its own for the files it saves. Name a new directory
 under the session scratchpad, not the scratchpad root: a calling skill such as
 `plan-next-issue` saves files with the same names there, and two writers of one
