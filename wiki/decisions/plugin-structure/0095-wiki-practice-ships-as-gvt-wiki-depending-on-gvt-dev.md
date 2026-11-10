@@ -19,7 +19,7 @@ backlog) wait for its answer.
 
 A park comment on #440, dated 2026-08-27, reached the decision "split". The
 issue was then parked on #452. #452 closed on 2026-09-01 and #458 closed on 2026-10-11. Since
-then the records 0049 to 0094 have landed, and several of them change the
+the park comment, the records 0049 to 0094 have landed, and several of them change the
 facts the park comment rested on. This record re-confirms the split on
 current grounds. It corrects the premises that changed, and it says so where
 it does.
@@ -40,8 +40,10 @@ which adopted it (#348).
 **1. Split.** The wiki practice ships as `gvt-wiki`, from a new repository,
 `GenvidTechnologies/claude-code-plugin-gvt-wiki`. The `gvt-plugins` catalog
 publishes it from a `plugin/` subdirectory by git-subdir. It is the fourth
-instance of the pattern in ADR-0005, after `gvt-dev`, `gvt-construct3` and
-`gvt-fleet`. The park comment called it the third. The `gvt-fleet` repository was
+instance of the pattern in ADR-0005: ADR-0005 decided that layout for
+`gvt-dev`, and the `gvt-construct3` and `gvt-fleet` repositories apply it in
+their own repositories, each with a `plugin/` subdirectory. The park comment
+called it the third. The `gvt-fleet` repository was
 created on 2026-11-05.
 
 It is not a second plugin inside this repository. Three things in the
@@ -67,7 +69,7 @@ ADR-0092 decision 4 does: a thin contract-and-scaffold layer over borrowed
 runtimes, not a bespoke engine.
 
 One departure. #142 describes `gvt-dev` as the practice layer. After the
-split, the Environment practice ships from a second plugin.
+split, the Environment pillar ships from a second plugin.
 
 **4. `gvt-wiki` depends on `gvt-dev`; `gvt-dev` never depends on `gvt-wiki`.**
 `gvt-wiki` declares `"dependencies": ["gvt-dev"]` in its `plugin.json`, by
@@ -101,6 +103,13 @@ entry's arrays are appended, not subtracted. The documentation also says that
 Claude Code has no release-channel concept. `gvt-dev` ships a `plugin.json`.
 So the split lands whole, in one `gvt-dev` major release.
 
+The Claude Code pages that decisions 4 and 5 cite were read on 2026-11-10:
+
+- plugin manifest reference: https://code.claude.com/docs/en/plugins/manifest-reference.md
+- plugin troubleshooting: https://code.claude.com/docs/en/plugins/troubleshooting.md
+- marketplace reference: https://code.claude.com/docs/en/plugins/marketplace-reference.md
+- hosting a marketplace (release channels): https://code.claude.com/docs/en/plugins/host-marketplace.md
+
 **6. Clean break.** One major version bump. No shim, and no redirect stubs.
 `gvt-wiki` starts with fresh history. Its `MIGRATION.md` names the last
 `gvt-dev` commit that holds the files. #441 required that `git log --follow`
@@ -110,9 +119,17 @@ repositories, so #441 replaces it with the `MIGRATION.md` criterion.
 **7. The audit of `gvt-wiki` is `wiki-lint`, moved as it is.** `wiki-lint.mjs`
 imports only `node:` built-ins and its own `lib/` (ADR-0054), so it moves
 without change. No new audit is built on audit-core. ADR-0049 keeps hygiene
-checks out of the core and sets a re-entry condition, a second plugin that
-needs the same scan, which has not occurred. ADR-0051 rejects `npx` and makes
-the core a library.
+checks out of the core and sets a re-entry condition: a second plugin that
+needs the same scan. ADR-0051 rejects `npx` and makes the core a library.
+
+The split meets that condition in part. ADR-0049 names the fence-aware line
+iterator as the shareable unit. ADR-0054 decision 1 records that `wiki-lint`
+re-implements the fence and inline-code masking that `audit-conventions`
+provides, and that a third consumer would prompt a reconsideration. After the
+split, that second copy sits in a second plugin. This record accepts the copy:
+it is one masking routine, and moving it into audit-core would make `gvt-wiki`
+depend on audit-core for one function. The reconsideration point of ADR-0054
+stands.
 
 The `<wikiDir>/` retired-token scan stays in `audit-conventions`. **ADR-0041
 is not changed by this record.** #442 decides its fate. ADR-0053 stands: a
@@ -143,7 +160,8 @@ until #442 decides.
 This record carries no `Amends:` line. ADR-0027 is still true for the tree as
 it stands. #441 adds the marker when the census change ships.
 
-**11. Dogfood.** This repository installs `gvt-wiki` as a maintainer-side tool.
+**11. Dogfood.** After the move, this repository installs `gvt-wiki` as a
+maintainer-side tool.
 ADR-0067 decision 1 relies on `wiki-lint` to keep the theme indexes reachable,
 and ADR-0069 keeps maintainer notes in the bundle. `gvt-dev` has no runtime
 dependency on `gvt-wiki`. #441 decides how `commands.validate` runs
@@ -173,7 +191,7 @@ dependency on `gvt-wiki`. #441 decides how `commands.validate` runs
 
 - There is no wiki without `gvt-dev`.
 - `gvt-wiki` cannot state a minimum `gvt-dev` version until the `gvt-dev` tags change.
-- This repository needs `gvt-wiki` installed to keep its own decision trail healthy.
+- After the move, this repository needs `gvt-wiki` installed to keep its own decision trail healthy.
 - A repository with only `gvt-dev` loses the bundle checks (ADR-0053).
 - Two consumers face a breaking move.
 - The references to `maintain-wiki` and `wiki-librarian` are spread over many files. A count of 45 files was taken in this work and decays. #441 enumerates them again.
