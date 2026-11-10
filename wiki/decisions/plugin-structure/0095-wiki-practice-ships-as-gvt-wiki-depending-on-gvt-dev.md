@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-11-10
 - **Issue:** #440 (part of #438)
+- **Amended by:** [ADR-0097](0097-no-plugin-dependency-between-gvt-dev-and-gvt-wiki.md) — decision 4 (the direction and the dependency mechanics), the limits of decision 2 that rest on it, and the rejected "no dependency" compromise are superseded; the rest stands.
 
 ## Context
 
