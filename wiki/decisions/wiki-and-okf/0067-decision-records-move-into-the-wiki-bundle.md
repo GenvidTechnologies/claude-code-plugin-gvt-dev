@@ -35,7 +35,7 @@ number" is a repo-wide fact, not a per-theme one). Nine themes hold the existing
 without the leading number, a hand-written one-sentence `description` mirroring its index entry,
 `tags: [decisions, <theme>]`, and `status` mapped from the record's own Status field
 (`accepted` → `stable`, the only value this corpus currently needs). A `wiki/decisions/index.md`
-root index and nine per-theme `index.md` pages list every record by title and description; the
+root index lists the nine themes, and the per-theme `index.md` pages list every record by title and description; the
 bundle-root `wiki/index.md` links each theme directly, rather than only through the decisions root
 index, because `maintain-wiki`'s `lint` counts a subdirectory reachable only when the bundle root
 links it directly — an indirect-only link would read as an unreachable subtree. `docs/TOC.md`'s
