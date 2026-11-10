@@ -457,8 +457,19 @@ In `--non-interactive`, defer and write nothing; `--force` defers it too and nev
 
 ## 1. Dispatch exploration (Phase 1)
 
+First run `git fetch origin` (the whole remote, no refspec). A fetch does not
+update the working tree, so the analyst reads targets at the fetched ref, not
+the checkout. When this skill runs inside `plan-next-issue`, a fetch made
+moments earlier in the same run can be reused. **If `git fetch` fails because
+the remote needs interactive auth**, use the host-API fallback in
+`plan-next-issue` §1: for `github`, the cached `origin/<default-branch>` is
+current when `git rev-parse origin/<default-branch>` equals
+`gh api repos/:owner/:repo/commits/<default-branch> --jq .sha`. Then take
+`git rev-parse origin/<default-branch>` as the read sha. Never move the checkout.
+
 Dispatch the `gvt-dev:issue-triage-analyst` agent with: the resolved scope, the
-`bugTracker` block verbatim, the resolved contract path (§0 step 1), and a
+`bugTracker` block verbatim, the resolved contract path (§0 step 1), the read
+sha (`git rev-parse origin/<default-branch>`), and a
 scratch subdirectory of its own for the files it saves. Name a new directory
 under the session scratchpad, not the scratchpad root: a calling skill such as
 `plan-next-issue` saves files with the same names there, and two writers of one

@@ -106,8 +106,14 @@ Detect whether the backlog needs grooming before planning:
   read-only network call, consistent with this skill's no-writes stance).
   Fetch the whole remote, not `git fetch origin <branch>`: an explicit refspec
   suppresses git's tag auto-following, and §2's unreleased-delta check depends
-  on a current local tag list. This keeps candidates ranked and planned
-  against fresh `origin/<default-branch>`, not stale local state. **An open
+  on a current local tag list. The fetch updates the `origin/*` refs only; it
+  **does not update the working tree**, so a file read from the checkout can
+  still be stale. After the fetch, run the behind-check `git log --oneline
+  HEAD..origin/<default-branch>`, whatever branch is checked out. This check
+  also runs on the host-API fallback path below, against the cached tracking
+  ref. When it prints commits, report the commit count to the user, and read
+  every target at `origin/<default-branch>` (§2) rather than the working tree.
+  Leave the checkout as it is: do not fast-forward it. **An open
   issue is not proof of pending work:** a merged PR that omitted a `Closes #N` / `Fixes #N` link
   leaves its issue OPEN indefinitely, so already-shipped work can surface as
   plannable. Fetching first lets the ranking step (§2) catch this before any branch
@@ -282,7 +288,8 @@ planning the blocker first is what actually advances the higher-priority work. *
 candidate that may already be shipped:** when an issue names a concrete target
 (a file, doc, or section), check it against the just-fetched default branch —
 `git log origin/<default-branch> -- <target>` for whether the file moved, and
-then **read the target itself**. The log alone answers *"was this file touched?"*,
+then **read the target itself**, at the fetched ref —
+`git show origin/<default-branch>:<path>`, not the working tree. The log alone answers *"was this file touched?"*,
 which is neither necessary nor sufficient for *"did the proposed change land?"* —
 so treat it as a cheap pre-filter, not the check. A rule the issue asks for may
 already sit in an untouched file (log clean, work shipped anyway), and a file may

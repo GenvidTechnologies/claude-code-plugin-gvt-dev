@@ -50,6 +50,8 @@ The dispatch prompt gives you:
 - **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `commentsQuery`, `structureQuery`, `refStateQuery`, `triagedLabel`, `needsInfoLabel`. The last three query keys are optional: when one is absent, skip the check it feeds and say so in the report's Notes.
 - **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
 
+- **Read sha** — the commit of `origin/<default-branch>` that step 6 reads each target at. If the dispatch names none, read at `origin/<default-branch>`, record `git rev-parse origin/<default-branch>` as the sha, and say so in the report's Notes.
+
 - **Scratch subdirectory** — where every file you save "to scratch" goes. If the dispatch names none, create a new subdirectory under the session scratchpad. Never save at the scratchpad root: the dispatching skill may save files with the same names there, and two writers of one file can leave a reader an empty or partial copy.
 
 If the conventions doc is missing, say so in the report and fall back to generic triage judgement.
@@ -75,10 +77,10 @@ If the conventions doc is missing, say so in the report and fall back to generic
    - **When it fires (bounded).** Only for an action-set issue that both (a) names a concrete target — a file, doc, section/heading, or symbol — and (b) asserts something about that target's *current* content (what it says, does, or lacks; or wording it proposes to replace). Verify only the targets those claims are about, and only the part each claim concerns. Never read every file an issue mentions; never verify comparison-set issues. Every other issue: `verify: n/a`.
    - **Procedure, in order:**
      1. Resolve the target. Missing, or something this repo doesn't ship → `target-absent`; stop.
-     2. Read the target itself. `git log -- <path>` is not the check: a clean log doesn't mean the ask is unshipped, and a dirty one doesn't mean it shipped.
+     2. Read the target itself, at the read sha: `git show <sha>:<path>`, not the working tree. `git log -- <path>` is not the check: a clean log doesn't mean the ask is unshipped, and a dirty one doesn't mean it shipped.
      3. Compare each content claim to what the target says now, and classify it.
      4. Prefer the authoritative source over a convenient one, and say which you used. A file in the repo proves what's on disk, not what production uses — it may be a fixture, a fallback, or one member of a corpus served from elsewhere. When a claim is about runtime behavior, trace to the code that consumes the data rather than citing the data file. If only a proxy was available, name it as a proxy.
-     5. Write the verification note: per claim — the outcome; what the target actually says (path + a quoted span, not a bare line number); the evidence and whether it is the authoritative source or a proxy; and the commit you read (`git rev-parse HEAD`).
+     5. Write the verification note: per claim — the outcome; what the target actually says (path + a quoted span, not a bare line number); the evidence and whether it is the authoritative source or a proxy; and the read sha.
    - **Outcomes:** `agreement` · `partly-shipped` (name the residual) · `proposal-stale` (target moved on) · `premise-false` (target already does it) · `target-absent` (missing or not owned by this repo) · `artifact-wrong` (the proposal is right; the target is the side in error). Don't assume the file is authoritative: for `artifact-wrong`, name what settled it — an external spec, git history, or the artifact's provenance — and if nothing settles it, report the conflict as unresolved rather than picking a side.
    - **Flag `stricter-shipped`** on a `proposal-stale` or `partly-shipped` finding when the target's text is tighter than the proposal — verbatim adoption would then be a regression, not a no-op.
 7. **Check an issue's body against its own comments.** A later comment can refine, narrow, widen or reverse what the body asks, leaving the body recording a superseded ask. This is a different check from step 6: no artifact is read and the authority is the issue's own later reasoning, so an issue can pass step 6 and still fail this one.
