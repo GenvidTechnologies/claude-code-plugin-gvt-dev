@@ -7,7 +7,7 @@ status: stable
 ---
 # Wiki Maintenance Schema
 
-> Project conventions consumed by `/gvt-dev:maintain-wiki`. This is the
+> Project conventions consumed by `/gvt-wiki:maintain-wiki`. This is the
 > **maintenance schema** for this repo's three-tier wiki: `raw/` (immutable
 > captured sources) → `wiki/` (LLM-maintained pages, `index.md`, `log.md`) →
 > this schema (the rules that govern how the first two are kept in sync).
@@ -32,7 +32,7 @@ Three tiers, in order:
    migrated in or written directly, plus `wiki/index.md` (the page listing)
    and `wiki/log.md` (an append-only log of ingests and migrations).
 3. **This schema** (`wiki/schema.md`, inside the bundle) — the rules the
-   `maintain-wiki` skill follows to keep the first two in sync.
+   `maintain-wiki` skill (the gvt-wiki plugin) follows to keep the first two in sync.
 
 Pages under `wiki/` follow the [Open Knowledge Format (OKF) v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md), pinned at upstream commit `3fcbb9f828c2f23d109c855ee403c3a4c81f3a96` (see [ADR-0022](decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md)). A later spec revision obliges different things depending on its scope:
 
@@ -212,14 +212,14 @@ that touches the page.
 
 ## The verb contract
 
-`/gvt-dev:maintain-wiki` operates through three verbs:
+`/gvt-wiki:maintain-wiki` operates through three verbs:
 
 - **`ingest`** — read new or changed files under `raw/`, write new `wiki/`
   pages or update existing ones per the lifecycle rule above, and append one
   entry per source to `wiki/log.md`.
 - **`query`** — answer a question **from the wiki**, with citations back to
   the pages (and, transitively, the `raw/` sources) that support the answer.
-  Query is served by the `gvt-dev:wiki-librarian` agent so exploration stays
+  Query is served by the `gvt-wiki:wiki-librarian` agent so exploration stays
   off the main thread.
 - **`lint`** — an advisory health check, not a mutation. It flags: dead
   wiki-links (a `Related` link to a page that no longer exists), out-of-bundle

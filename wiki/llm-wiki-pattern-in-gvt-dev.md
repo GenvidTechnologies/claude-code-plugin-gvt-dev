@@ -25,7 +25,7 @@ sources:
 # The LLM-Wiki Pattern in gvt-dev
 
 How Karpathy's LLM-maintained-wiki pattern maps onto surfaces that already
-existed in the gvt-dev plugin before `maintain-wiki` was built.
+existed in the gvt-dev plugin before `maintain-wiki` (now gvt-wiki) was built.
 
 **Scope:** this page maps the LLM-wiki pattern specifically — the three-tier
 `raw/` → `wiki/` → schema structure and the `ingest`/`query`/`lint` verbs —
@@ -86,7 +86,7 @@ wiki pattern in mind:
   That scoping is now enforced rather than merely assumed:
   [ADR 0053](decisions/wiki-and-okf/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
   closes a route by which a relocated `docsRoot` could pull bundle pages into
-  these two scanners' own walk, and `maintain-wiki lint` gained a mechanical
+  these two scanners' own walk, and gvt-wiki's `maintain-wiki lint` gained a mechanical
   checker of its own,
   [`wiki-lint.mjs`](decisions/wiki-and-okf/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md).
 

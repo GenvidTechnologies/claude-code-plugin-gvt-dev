@@ -26,7 +26,6 @@ Each skill and agent carries its own documentation in its frontmatter (`metadata
 - `../plugin/skills/plan-next-issue/SKILL.md` — orchestrator that goes backlog → plan: optionally triages (`triage-issues`), proposes a ranked shortlist of issues, then hands the choice to `plan-task`
 - `../plugin/skills/reconcile-mcp-pin/SKILL.md` — maintainer skill: after a bundled MCP server pin is bumped in `plugin.json`, reconcile the agents' hand-enumerated tool inventories (read/mutate split, count-sanity-checked `npm pack` surface, stale-version sweep) and hand off to `release-plugin`
 - `../plugin/skills/migrate-cordova-ci/SKILL.md` — migrate a Cordova plugin's CI/CD from CircleCI to GitHub Actions; bundles parameterized `android.yml`/`ios.yml` (smoke + distribute tiers) + `version-guard.js` templates (lifted from `cordova-plugin-marketplace`), encodes the 8 known CI gotchas, and runs a manual live-CI gate
-- `../plugin/skills/maintain-wiki/SKILL.md` — maintain a project's LLM-wiki compounding-memory knowledge base (`ingest`/`query`/`lint`); scaffolds the three-tier `raw/`/`wiki/` layout with its schema inside the bundle at `<wikiDir>/schema.md` (a legacy `docs/wiki-schema.md` is still found, and a `paths` override wins over both); carries the `wiki-librarian` agent for its read-only `query` phase; `lint` offers `scripts/wiki-lint.mjs`, a mechanical checker (dead links, out-of-bundle notes, orphaned pages, `raw/` immutability) advisory to the LLM judgment `lint` also performs and always exiting 0 (see ADR-0054)
 - `../plugin/skills/build-probe/SKILL.md` — the Moldable pillar of the practice layer: state a checkable question → scaffold a throwaway probe in the scratchpad → run against the real system → report on-thread → keep and generalize, or discard with a stated reason. Pure-discipline skill (SKILL.md only for now), operationalizing `development-principles.md` #1/#3 (see ADR-0092, which supersedes part of ADR-0018)
 - [`create-adr`](../plugin/skills/create-adr/SKILL.md) — author or chronologically insert an ADR on demand; dispatches `tech-writer` for scaffold/fill/index, owns the numbering + renumber-and-sweep
 - [`../plugin/docs/decision-record.template.md`](../plugin/docs/decision-record.template.md) — MADR-lite decision-record (ADR) template; `tech-writer` scaffolds it into a consuming repo's `docs/decisions/` when dispatched from `plan-task` Phase 4 or the `create-adr` skill (see development-principles principle #7)
@@ -40,7 +39,7 @@ This repo dogfoods the ADR convention it ships (see `development-principles.md` 
 ## Knowledge Base
 
 This repo maintains an LLM-wiki compounding-memory knowledge base about its
-own practice, per `/gvt-dev:maintain-wiki`: immutable captured sources under
+own practice, per `/gvt-wiki:maintain-wiki` (the gvt-wiki plugin): immutable captured sources under
 the repo-root `raw/`, and the OKF bundle under the repo-root `wiki/`. The
 bundle holds the LLM-maintained pages, the decision records, the process and
 maintainer notes, `wiki/log.md`, and the maintenance schema itself

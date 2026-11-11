@@ -5,7 +5,7 @@ okf_version: "0.2"
 # Wiki Index
 
 This is the wiki's table of contents — every page under `wiki/`, grouped
-under section headings, one line each. `/gvt-dev:maintain-wiki` keeps this
+under section headings, one line each. `/gvt-wiki:maintain-wiki` keeps this
 list current: a new page is added here when it's created, and `lint` flags
 any page listed in **no** index — here, or in a subdirectory's own
 `index.md`. Each entry's description is the linked page's frontmatter
@@ -45,5 +45,5 @@ any page listed in **no** index — here, or in a subdirectory's own
 - [Criteria authoring](decisions/criteria-authoring/index.md) — Decisions about how designer and planner author and guard test-criteria rules.
 - [Audit conventions](decisions/audit-conventions/index.md) — Decisions about the audit-conventions skill's checks, severities, and scanning scope.
 - [Audit core](decisions/audit-core/index.md) — Decisions about extracting and standing up the shared audit-core package.
-- [Wiki and OKF](decisions/wiki-and-okf/index.md) — Decisions about the maintain-wiki skill's wiki and raw tiers and the OKF bundle format.
+- [Wiki and OKF](decisions/wiki-and-okf/index.md) — Decisions about the wiki and raw tiers and the OKF bundle format.
 - [Skill shapes](decisions/skill-shapes/index.md) — Decisions about how individual skills are shaped, dispatch, and gate their own behavior.

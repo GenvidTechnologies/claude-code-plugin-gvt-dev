@@ -19,7 +19,7 @@ sources:
 
 The `audit-conventions` skill's hygiene scanners already perform an informal,
 advisory content-lint over `docs/**` and `CLAUDE.md` — separate from, and
-narrower than, the `maintain-wiki lint` verb.
+narrower than, the `lint` verb of `maintain-wiki`, which the gvt-wiki plugin now ships.
 
 ## The existing scanners
 
@@ -68,7 +68,7 @@ have been one generic lint engine into three non-overlapping owners:
 - **`audit-conventions`'s hygiene scanners** own contract/hygiene of `docs/**`
   and `CLAUDE.md` — the plugin-contract surface every consuming repo has,
   whether or not it has adopted the wiki practice.
-- **`maintain-wiki lint`** owns content health of the repo-root `wiki/` tier
+- **gvt-wiki's `maintain-wiki lint`** owns content health of the repo-root `wiki/` tier
   (and, per the schema, `raw/` immutability) — meaningful only for a repo
   that has actually adopted the wiki practice.
 - **#146** owns detection/migration — whether a repo *has* the wiki practice
@@ -94,7 +94,7 @@ curated maintenance-rules doc now sits inside the bundle too, as
 outside those two scanners' walk like every other bundle page.
 
 The practical effect is unchanged: a repo can adopt the wiki practice, run
-`maintain-wiki lint` — now a mechanical checker,
+gvt-wiki's `maintain-wiki lint` — a mechanical checker,
 [`wiki-lint.mjs`](decisions/wiki-and-okf/0054-wiki-lint-mechanical-checker-shape-and-orphan-resolution.md),
 rather than a human or an LLM turn working from the schema alone — as often
 or as rarely as it likes, and its `audit-conventions` exit code is never

@@ -52,7 +52,11 @@ inside the wiki, register it in the theme index, and leave everything else
   tree against a pre-run snapshot and checks D1-D7 from the #582 design
   hand-off: new file path + number, no writes to the wrong location, OKF
   frontmatter (or its absence, for B), registration in the theme index via a
-  **real** `lintWiki` run (not a hand-rolled proxy for it), `docs/TOC.md`
+  **real** `lintWiki` run (not a hand-rolled proxy for it; `lintWiki` is
+  loaded from the gvt-wiki plugin, which must be installed, or `GVT_WIKI_ROOT`
+  must name its plugin folder, the folder that holds `skills/`;
+  `node create-adr-evals/gvt-wiki-root.mjs` prints the folder it resolves),
+  `docs/TOC.md`
   unchanged (A/A-infer/C only — B's correct behavior *is* a new TOC row),
   `wiki/log.md` unchanged, and `--next` agreeing post-run via
   `describeAdrDir`. For C-voice only, a voice check also applies.
