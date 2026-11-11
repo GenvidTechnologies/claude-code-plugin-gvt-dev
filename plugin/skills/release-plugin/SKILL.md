@@ -156,6 +156,14 @@ classifying: `git checkout <default-branch> && git merge --ff-only origin/<defau
 Otherwise Phase 3's "work on the default branch" lands you mid-flow on the wrong
 ref.
 
+**In a git worktree, release from a fresh clone instead.** A session isolated in a
+worktree cannot check out the default branch there when another worktree, usually
+the main checkout, already has it checked out. Do not switch or reset the worktree
+to get around this. Clone the plugin repo over HTTPS into the session's scratch
+directory (`git clone https://github.com/<org>/<repo>.git <scratch>/<name>`), and
+run Phases 1 to 5 in that clone. Its default branch is current, and nothing else
+uses it. Leave the worktree as it is; its branch is the merged feature branch.
+
 Then gather the facts (read the remote/authoritative side, not just local):
 
 - Default branch tip: `git rev-parse origin/<default-branch>`; local tip:

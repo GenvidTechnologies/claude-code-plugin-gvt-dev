@@ -7,6 +7,9 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`release-plugin` releases from a fresh clone when the session runs in a git worktree.** Such a session cannot check out the default branch there while another worktree has it checked out. Phase 1 now says to clone the repository into the scratch directory and release from that clone, and to leave the worktree as it is. Found in the #441 release of 5.0.0. Behavioral skill change → version bump at release.
+- **`plan-task` implementer briefs name a scratch directory.** Each brief names one directory outside the repository for probes, mutation harnesses, check scripts and captured output. In #441, two implementers given no location left scratch scripts in the user's home and the system temp directory. Behavioral skill change → version bump at release.
+
 ## [5.0.0] - 2026-11-11
 
 - **Breaking: `maintain-wiki` and `wiki-librarian` left `gvt-dev` and ship in the new `gvt-wiki` plugin (#441; ADR-0095, ADR-0097).** The skill, the agent and the wiki templates are removed from `gvt-dev`. `gvt-wiki` is in the `gvt-plugins` catalog from its v0.1.0.
