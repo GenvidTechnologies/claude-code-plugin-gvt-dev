@@ -14,11 +14,18 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { snapshotTree } from './fixtures.mjs';
+import { gvtWikiRoot } from './gvt-wiki-root.mjs';
 import { extractFrontmatter } from '../plugin/skills/audit-conventions/scripts/lib/audit-core-reexport.mjs';
-import { lintWiki } from '../plugin/skills/maintain-wiki/scripts/lib/checks.mjs';
 import { describeAdrDir } from '../plugin/skills/create-adr/scripts/renumber-adrs.mjs';
+
+// The wiki lint ships in the gvt-wiki plugin. gvtWikiRoot() throws when that
+// plugin is not installed, which fails this module's load: no skip, no fallback.
+const { lintWiki } = await import(
+  pathToFileURL(join(gvtWikiRoot(), 'skills', 'maintain-wiki', 'scripts', 'lib', 'checks.mjs')).href
+);
 
 // Mirrors renumber-adrs.mjs's own ADR_FILENAME_RE / DATE_NAMED_RE discovery
 // rule (not exported there) so this grader applies the identical exclusions:

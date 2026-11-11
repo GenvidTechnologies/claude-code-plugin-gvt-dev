@@ -139,6 +139,7 @@ test('T12: out-of-scope callers are always allowed', () => {
   assertAllow('git stash', { agent_id: '' });
   assertAllow('git stash', { agent_type: 'Explore' });
   assertAllow('git stash', { agent_type: 'other-plugin:x' });
+  assertAllow('git stash', { agent_type: 'gvt-wiki:wiki-librarian' });
   assert.equal(classify({}, parse).deny, false);
   assert.equal(classify(undefined, parse).deny, false);
 });

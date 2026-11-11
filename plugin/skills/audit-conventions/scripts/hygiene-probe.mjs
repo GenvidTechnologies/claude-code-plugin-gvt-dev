@@ -21,7 +21,7 @@
 // repoPath defaults to cwd. --wiki-dir sets opts.wikiDir, which scanRetiredTokens
 // — and only scanRetiredTokens — folds into its scan set via wikiCandidateFiles
 // (wired in b7459d8, #366). This flag never widens scanBrokenLinks or
-// scanOrphanedDocs: maintain-wiki's `lint` verb already owns dead-wiki-links
+// scanOrphanedDocs: gvt-wiki's maintain-wiki `lint` verb already owns dead-wiki-links
 // and orphaned pages there, and resolves OKF 6.1 bundle-absolute targets against
 // <wikiDir>/, which hygiene.mjs does not. See ADR-0041 and ADR-0015 decision 2.
 // Note this is a statement about --wiki-dir, not about those two scanners: since

@@ -120,11 +120,21 @@ test('formatPracticeCoverage: Environment components cell lists the declaring co
   assert.match(output, /Environment \| maintain-wiki, wiki-librarian \|/);
 });
 
-test('formatPracticeCoverage: an empty census renders "(none)" for every pillar (positive control)', () => {
+// A pillar that another plugin provides has no declarers here by design: its
+// components cell names the provider, and it is not reported as a gap.
+test('formatPracticeCoverage: a provided pillar with no declarers renders its provider and no gap line', () => {
+  const providedPillar = { id: 'provided', label: 'Provided', detectability: 'fully detectable', providedBy: 'gvt-wiki' };
+  const output = formatPracticeCoverage([], {}, [providedPillar]);
+  assert.match(output, /Provided \| provided by the gvt-wiki plugin \|/);
+  assert.doesNotMatch(output, /> Pillar gap:/);
+});
+
+test('formatPracticeCoverage: an empty census renders "(none)" for every pillar without a provider (positive control)', () => {
   const output = formatPracticeCoverage([], {});
   assert.match(output, /Spec \| \(none\) \|/);
   assert.match(output, /Verify \| \(none\) \|/);
-  assert.match(output, /Environment \| \(none\) \|/);
   assert.match(output, /Moldable \| \(none\) \|/);
-  assert.match(output, /> Pillar gap: Spec, Verify, Environment, Moldable/);
+  assert.match(output, /Environment \| provided by the gvt-wiki plugin \|/);
+  assert.doesNotMatch(output, /Environment \| \(none\) \|/);
+  assert.match(output, /> Pillar gap: Spec, Verify, Moldable/);
 });

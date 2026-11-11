@@ -1,9 +1,9 @@
 // ADR-0015 §2: this module checks *presence* of the wiki practice only —
 // never content health (dead links, staleness, orphaned pages). That check
-// is a standalone maintain-wiki verb, deliberately never wired into the
-// audit because it would risk a non-zero audit exit driven by wiki content
-// issues rather than plugin-contract violations. Do not add directory
-// listing or file-content calls, or import anything from maintain-wiki,
+// is a standalone verb of gvt-wiki's maintain-wiki skill, deliberately never
+// wired into the audit because it would risk a non-zero audit exit driven by
+// wiki content issues rather than plugin-contract violations. Do not add
+// directory listing or file-content calls, or import anything from gvt-wiki,
 // here — presence only, via stat-style existence checks. The imports are
 // ./expect-prefer.mjs, a pure path-list helper (ADR-0070) that expands an
 // expectation into the locations to stat and reads nothing; the two
@@ -21,9 +21,9 @@ import { resolveCandidate } from './candidate-resolution.mjs';
 
 const DEFAULT_WIKI_DIR = 'wiki';
 const DEFAULT_RAW_DIR = 'raw';
-// The schema expectation exactly as maintain-wiki's SKILL.md frontmatter
-// declares it (ADR-0070). practice-detect.test.mjs pins this object against
-// that frontmatter, so the two cannot drift apart silently.
+// The schema expectation as gvt-wiki's maintain-wiki skill declares it
+// (ADR-0070). practice-detect.test.mjs pins this object against the span in
+// plugin/CONVENTIONS.md that defines it, so the two cannot drift apart silently.
 export const SCHEMA_EXPECTATION = Object.freeze({ path: 'docs/wiki-schema.md', prefer: '<wikiDir>/schema.md' });
 
 export const VERDICT_ABSENT = 'absent';

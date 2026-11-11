@@ -167,7 +167,7 @@ test('descriptionLengthOf/descriptionLength differential: agree on every real sk
   const agentFiles = await listFiles(PLUGIN_ROOT, 'agents', (name) => name.endsWith('.md'));
   const allFiles = [...skillFiles, ...agentFiles];
 
-  assert.equal(allFiles.length, 32, 'expected 32 real skill/agent components in this repo');
+  assert.equal(allFiles.length, 30, 'expected 30 real skill/agent components in this repo');
 
   let agreementCount = 0;
   let nonEmptyCount = 0;
@@ -181,7 +181,7 @@ test('descriptionLengthOf/descriptionLength differential: agree on every real sk
     if (viaContent > 0) nonEmptyCount++;
   }
 
-  assert.equal(agreementCount, 32);
+  assert.equal(agreementCount, 30);
   assert.ok(nonEmptyCount > 0, 'at least one component must have a non-empty description to make the differential meaningful');
 
   // Surfaced for the task report, not asserted against a hardcoded figure:

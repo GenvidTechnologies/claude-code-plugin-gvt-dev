@@ -111,8 +111,8 @@ block in `.gvt-agent.json` (access mechanics).
      `Project conventions consumed by` followed, after optional whitespace, by a reference to
      `triage-issues` or the pre-rename `triage-bugs` (any namespace, optional
      leading `/`, optional backticks). The skill name is load-bearing: a
-     prefix-only match is a false positive. maintain-wiki's
-     `wiki-schema.template.md` emits the same prefix naming itself, and a
+     prefix-only match is a false positive. The wiki schema template of the
+     gvt-wiki plugin's `maintain-wiki` skill emits the same prefix naming itself, and a
      file naming a different skill is never a match.
 
    Vetoes (any one removes a candidate):
@@ -402,7 +402,7 @@ discover docs through the index. Resolve T = `paths['docs/TOC.md']` (default
 contract belongs in depends on whether the resolved contract lies inside W.
 
 - **Contract outside W, T inside W.** Do not write: an out-of-bundle link in a
-  wiki index is a wiki-lint finding. Report that the contract sits outside the
+  wiki index is a finding of the gvt-wiki lint. Report that the contract sits outside the
   wiki bundle and that its index lives in the wiki, and suggest moving the
   contract into the bundle via the `paths['docs/issue-triage.md']` override.
 - **Docs regime** (contract outside W, T outside W). Add a one-line entry for the resolved
@@ -422,7 +422,7 @@ contract belongs in depends on whether the resolved contract lies inside W.
     counts and no second entry is written.
   - The contract counts as **indexed** when a link in `<W>/index.md`, or in the
     `index.md` of its own subdirectory, resolves to it — the same rule
-    maintain-wiki's lint applies.
+    lint of the gvt-wiki plugin's `maintain-wiki` skill applies.
   - If it is listed only in a subdirectory index that `<W>/index.md` does not
     link, report an **unreachable subtree** and do not fix it.
   - If it is not indexed, the write target is the `index.md` in its own

@@ -9,9 +9,9 @@
 //     lib/candidate-resolution.mjs (ADR-0077).
 //
 // `<wikiDir>` is the one placeholder `prefer` recognises, resolved from
-// `wiki.wikiDir` with maintain-wiki's own default (`wiki`). That default
+// `wiki.wikiDir` with gvt-wiki's maintain-wiki default (`wiki`). That default
 // deliberately differs from the hygiene scanners' "no wikiDir, no wiki":
-// `prefer` mirrors where maintain-wiki itself looks.
+// `prefer` mirrors where gvt-wiki's maintain-wiki looks.
 
 import { resolveExpectationPath } from './path-overrides.mjs';
 

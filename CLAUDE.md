@@ -207,4 +207,6 @@ The plugin has no top-level test runner script. `plugin/package.json` exists, bu
 node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
 ```
 
+The `create-adr-evals` tests that `commands.test` and `commands.validate` run need the gvt-wiki plugin installed, or `GVT_WIKI_ROOT` set to its plugin folder; see [`wiki/maintainer/dogfooding-the-plugin.md`](wiki/maintainer/dogfooding-the-plugin.md).
+
 For skill/agent **content**, `claude plugin validate` catches schema errors, manual review catches content drift, and `claude plugin details` confirms the plugin's component inventory after changes.

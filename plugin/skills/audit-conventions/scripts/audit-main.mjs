@@ -65,7 +65,7 @@ const AUDITING_PLUGIN_SOURCE = rel === '' || (!rel.startsWith('..') && !isAbsolu
 // Report-local retired-token needles for the stale-config --fix Manual-follow-up scan.
 // Deliberately NOT merged into DEFAULT_RETIRED_TOKENS (lib/hygiene.mjs) — keeping it
 // scoped avoids newly flagging mid-migration / C3 repos in plain audit. Keep the
-// 'genvid:'/'genvid-dev:' entries in sync with DEFAULT_RETIRED_TOKENS if that changes.
+// 'genvid:'/'genvid-dev:' entries (the two defaults for the components that moved to gvt-wiki are not mirrored here) in sync with DEFAULT_RETIRED_TOKENS if that changes.
 const STALE_REPORT_TOKENS = ['genvid:', 'genvid-dev:', '.genvid-agent.json'];
 
 async function main() {
@@ -185,7 +185,7 @@ async function main() {
     // ungated, this check would impose the content-anchor convention on every
     // consumer's ADRs and fail their `commands.validate` over prose the plugin
     // does not own. The citing corpus also now reaches the repo-root `wiki/`
-    // tree, which a consumer likewise has once `maintain-wiki` scaffolds one —
+    // tree, which a consumer likewise has once gvt-wiki's `maintain-wiki` scaffolds one —
     // so the same exposure applies there too.
     //
     // What makes `error` safe is therefore the gate itself, not the scanner's

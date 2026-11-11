@@ -79,7 +79,7 @@ Gather from the user before proceeding:
      `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md`;
      inside the wiki, also add a theme row to `<dir>/index.md` **and** a link
      to the new theme index from `<wikiDir>/index.md` (skip if absent) —
-     `maintain-wiki`'s lint reports any subdirectory `index.md` the bundle-root
+     the lint of the gvt-wiki plugin's `maintain-wiki` skill reports any subdirectory `index.md` the bundle-root
      index doesn't link as an unreachable subtree. **Never create
      a new theme without an explicit instruction to do so** — a
      non-interactive run with no theme supplied falls to the next bullet

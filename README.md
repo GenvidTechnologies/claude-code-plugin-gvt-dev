@@ -50,14 +50,15 @@ For a greenfield repo or a legacy setup migrating from the old template-rendered
 | `reconcile-mcp-pin` | Reconcile agent tool inventories after a bundled MCP server pin bump / scope rename |
 | `migrate-cordova-ci` | Migrate a Cordova plugin's CI from CircleCI to GitHub Actions |
 | `audit-conventions` | Validate / migrate against the convention contract |
-| `maintain-wiki` | Maintain a project's LLM-wiki compounding-memory knowledge base (ingest / query / lint) |
 | `build-probe` | Build a throwaway probe to answer one checkable question, then promote or discard |
 
 **Agents** (dispatched via `subagent_type: "gvt-dev:<name>"`):
 
-`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`, `wiki-librarian`.
+`analyst`, `designer`, `planner`, `tech-writer`, `ts-implementer`, `validator`, `code-reviewer`, `issue-triage-analyst`.
 
 **Hooks:** `pre-commit-lint` runs `commands.lint` from `.gvt-agent.json` before every `git commit` in the Bash tool. `git-state-guard` blocks state-mutating git subcommands (`stash`, `reset`, `checkout`, `switch`, `restore`, `clean`, `merge`, `rebase`, `cherry-pick`, `revert`, `pull`, `am`) when a `gvt-dev:*` subagent runs them, per `development-principles.md` principle #14; main-thread commands are never affected, and it fails open.
+
+**Wiki practice:** the `maintain-wiki` skill and the `wiki-librarian` agent ship as the separate `gvt-wiki` plugin (`claude plugin install gvt-wiki@gvt-plugins`). It reads the `wiki` block of `.gvt-agent.json`, which `CONVENTIONS.md` defines.
 
 **Complementary official plugins:** gvt-dev stays focused on project-aware workflows and intentionally does *not* reimplement generic tooling. For standalone PR review use Anthropic's `/code-review` command (its `code-review` plugin); for quality-only refactor passes use the `code-simplifier` agent. The in-pipeline `gvt-dev:code-reviewer` agent is scoped to the `plan-task` review gate, not full PR review.
 
