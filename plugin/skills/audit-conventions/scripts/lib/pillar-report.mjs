@@ -37,11 +37,14 @@ function adoptionCellFor(pillar, adoption) {
 
 function componentsCellFor(pillar, coverage) {
   const names = coverage[pillar.id] ?? [];
-  return names.length > 0 ? names.join(', ') : '(none)';
+  if (names.length > 0) return names.join(', ');
+  return pillar.providedBy ? `provided by the ${pillar.providedBy} plugin` : '(none)';
 }
 
-export function formatPracticeCoverage(pluginCensus, adoption) {
-  if (!PILLARS || PILLARS.length === 0) return '';
+// `pillars` defaults to the real PILLARS; the optional parameter lets a test
+// inject a synthetic pillar list.
+export function formatPracticeCoverage(pluginCensus, adoption, pillars = PILLARS) {
+  if (!pillars || pillars.length === 0) return '';
 
   const coverage = computePluginCoverage(pluginCensus);
 
@@ -50,13 +53,13 @@ export function formatPracticeCoverage(pluginCensus, adoption) {
   lines.push('');
   lines.push('| Pillar | Components | Adoption |');
   lines.push('| --- | --- | --- |');
-  for (const pillar of PILLARS) {
+  for (const pillar of pillars) {
     lines.push(
       `| ${pillar.label} | ${componentsCellFor(pillar, coverage)} | ${adoptionCellFor(pillar, adoption)} |`,
     );
   }
 
-  const gaps = PILLARS.filter((p) => (coverage[p.id] ?? []).length === 0);
+  const gaps = pillars.filter((p) => !p.providedBy && (coverage[p.id] ?? []).length === 0);
   if (gaps.length > 0) {
     lines.push('');
     lines.push(`> Pillar gap: ${gaps.map((p) => p.label).join(', ')} — no declaring components yet.`);
