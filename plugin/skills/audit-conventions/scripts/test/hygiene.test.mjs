@@ -62,6 +62,22 @@ test('scanRetiredTokens: flags a retired token in a doc', async () => {
   }
 });
 
+test('scanRetiredTokens: the default deny-list flags a stale gvt-dev:maintain-wiki invocation', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'docs/foo.md', 'Run /gvt-dev:maintain-wiki lint to check.\n');
+  });
+  try {
+    const findings = await scanRetiredTokens(dir);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].kind, 'retired-token');
+    assert.equal(findings[0].severity, 'info');
+    assert.equal(findings[0].token, 'gvt-dev:maintain-wiki');
+    assert.match(findings[0].detail, /docs\/foo\.md:1 contains retired token 'gvt-dev:maintain-wiki'/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('scanRetiredTokens: a hit on a line containing "http" is NOT flagged', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, 'docs/foo.md', 'See https://example.com/genvid-dev: for history.\n');

@@ -17,7 +17,13 @@ import { iterateUnfencedLines, maskInlineCode } from './md-scan.mjs';
 import { resolveExpectationPath } from './path-overrides.mjs';
 import { BACKSLASH, bareDir, insideDir } from './dir-path.mjs';
 
-export const DEFAULT_RETIRED_TOKENS = ['genvid:', 'genvid-dev:', 'genvid-c3'];
+export const DEFAULT_RETIRED_TOKENS = [
+  'genvid:',
+  'genvid-dev:',
+  'genvid-c3',
+  'gvt-dev:maintain-wiki',
+  'gvt-dev:wiki-librarian',
+];
 export const DEFAULT_EXCLUDE_PATHS = ['CHANGELOG.md', 'docs/superpowers/', 'docs/decisions/'];
 
 // Fixed allow-list of repo-root config paths scanRetiredTokens also considers,

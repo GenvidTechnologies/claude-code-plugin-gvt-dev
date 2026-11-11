@@ -65,7 +65,7 @@ const AUDITING_PLUGIN_SOURCE = rel === '' || (!rel.startsWith('..') && !isAbsolu
 // Report-local retired-token needles for the stale-config --fix Manual-follow-up scan.
 // Deliberately NOT merged into DEFAULT_RETIRED_TOKENS (lib/hygiene.mjs) — keeping it
 // scoped avoids newly flagging mid-migration / C3 repos in plain audit. Keep the
-// 'genvid:'/'genvid-dev:' entries in sync with DEFAULT_RETIRED_TOKENS if that changes.
+// 'genvid:'/'genvid-dev:' entries (the gvt-dev:maintain-wiki / gvt-dev:wiki-librarian defaults are not mirrored here) in sync with DEFAULT_RETIRED_TOKENS if that changes.
 const STALE_REPORT_TOKENS = ['genvid:', 'genvid-dev:', '.genvid-agent.json'];
 
 async function main() {
