@@ -13,7 +13,9 @@ import {
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
+import { parseYaml } from '#audit-core';
 import { makeDanglingLink } from './helpers/temp-repo.mjs';
+import { WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
 async function withTempRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'practice-detect-test-'));
@@ -74,7 +76,7 @@ test('detectWikiAdoption: nothing present, no config -> absent', async () => {
 });
 
 // The important case: wiki/ and raw/ present, but no schema doc — a state
-// maintain-wiki explicitly calls "normal, supported" (not every wiki adopter
+// gvt-wiki's `maintain-wiki` explicitly calls "normal, supported" (not every wiki adopter
 // needs the schema doc scaffolded). This exists only as a fixture — no real
 // repo in this project is in this state.
 test('detectWikiAdoption: wiki/ + raw/ present, schema doc absent -> partial', async () => {
@@ -151,7 +153,7 @@ test('detectWikiAdoption: no wiki config block -> defaults wiki/ and raw/ are st
 });
 
 // ---------------------------------------------------------------------------
-// #385 / ADR-0070 — the schema signal follows maintain-wiki's resolution:
+// #385 / ADR-0070 — the schema signal follows gvt-wiki's `maintain-wiki` resolution:
 // paths['docs/wiki-schema.md'], else <wikiDir>/schema.md, else docs/wiki-schema.md.
 // ---------------------------------------------------------------------------
 
@@ -269,4 +271,17 @@ test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs, ./candida
   assert.equal(core.length, 1);
   const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();
   assert.deepEqual(bindings, ['dirExists', 'fileExists']);
+});
+
+// The wiring tests declare the schema expectation through a literal fixture
+// skill; this pins that literal to the expectation the detector resolves.
+// SCHEMA_EXPECTATION carries no `required` field, so the fixture's
+// `required: false` (the expectation is optional) is pinned as a literal.
+test('SCHEMA_EXPECTATION matches the wiki-fixture skill\'s declared schema expectation', () => {
+  const fm = parseYaml(WIKI_SCHEMA_SKILL_FRONTMATTER);
+  const files = fm.metadata.expects.files;
+  assert.equal(files.length, 1);
+  assert.equal(files[0].path, SCHEMA_EXPECTATION.path);
+  assert.equal(files[0].prefer, SCHEMA_EXPECTATION.prefer);
+  assert.equal(files[0].required, false);
 });

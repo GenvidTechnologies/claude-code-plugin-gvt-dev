@@ -624,7 +624,7 @@ test('wikiCandidateFiles: opts.excludePaths excludes a specific wiki page', asyn
 // ---------------------------------------------------------------------------
 // scanRetiredTokens now reaches <wikiDir>/ (F3+F4, #366) — scanBrokenLinks and
 // scanOrphanedDocs deliberately do NOT (ADR-0015 decision 2 / ADR-0041):
-// `maintain-wiki`'s own `lint` verb already owns dead-wiki-links and
+// the `lint` verb of gvt-wiki's `maintain-wiki` already owns dead-wiki-links and
 // orphaned-page checks for <wikiDir>/. Every test below includes a mutation
 // control proving the relevant scanner is live and the wiki-side emptiness is
 // scope, not incapacity.
@@ -756,7 +756,7 @@ test('T7b: nested rawDir (docs/raw) is excluded from both scanRetiredTokens and 
 // scanOrphanedDocs — bundle-collapse decline (guard 1, ADR-0053 / #454). A
 // `docs/TOC.md` `paths` override can put opts.docsRoot equal to or nested
 // inside opts.wikiDir, delivering OKF bundle pages through the ordinary docs
-// walk. Orphan checking there belongs to `maintain-wiki lint`, not this
+// walk. Orphan checking there belongs to gvt-wiki's `maintain-wiki lint`, not this
 // scanner, so guard 1 declines with a skip finding rather than silently
 // running (which would disagree with `lint`'s bundle-absolute/subdirectory-
 // index/reserved-page rules) or silently returning []. Every test below
@@ -780,7 +780,8 @@ test('scanOrphanedDocs: docsRoot === wikiDir declines with a skip naming maintai
     assert.equal(findings[0].kind, 'orphan-check-skipped');
     assert.equal(findings[0].ok, false);
     assert.equal(findings[0].severity, 'info');
-    assert.ok(findings[0].detail.includes('maintain-wiki'));
+    assert.ok(findings[0].detail.includes('/gvt-wiki:maintain-wiki lint'));
+    assert.ok(!findings[0].detail.includes('/gvt-dev:maintain-wiki'));
     assert.equal(
       findings.filter((f) => f.kind === 'orphaned-doc').length,
       0,
