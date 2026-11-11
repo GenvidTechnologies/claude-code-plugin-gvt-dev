@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: The LLM-Wiki Pattern in gvt-dev
-description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
+description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate gvt-wiki's maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
 tags: [llm-wiki, maintain-wiki, knowledge-management, plugin-architecture]
 status: stable
 generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
@@ -95,7 +95,7 @@ wiki pattern in mind:
 None of these surfaces were built as an LLM-wiki implementation — they
 predate #143 and solve their own, narrower problems. The value of the
 mapping is that it shows the pattern wasn't adopted wholesale from nothing:
-`maintain-wiki` slots a genuinely new `raw/` → `wiki/` tier in next to
+gvt-wiki's `maintain-wiki` slots a genuinely new `raw/` → `wiki/` tier in next to
 surfaces the plugin already had, rather than duplicating what `docs/TOC.md`,
 ADRs, or the existing hygiene scanners already do well.
 

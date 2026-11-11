@@ -20,12 +20,12 @@ any page listed in **no** index — here, or in a subdirectory's own
 
 - [The LLM-Wiki Pattern in gvt-dev](llm-wiki-pattern-in-gvt-dev.md) — How
   Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that
-  predate maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and
+  predate gvt-wiki's maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and
   audit-conventions' hygiene scanners.
 - [`audit-conventions` as Proto-Lint](audit-conventions-as-proto-lint.md) —
   How audit-conventions' hygiene scanners already act as an informal advisory
   content-lint over docs/** and CLAUDE.md, and where the boundary with
-  maintain-wiki lint sits per ADR-0015.
+  gvt-wiki's maintain-wiki lint sits per ADR-0015.
 
 ## Process
 

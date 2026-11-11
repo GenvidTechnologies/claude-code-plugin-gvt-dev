@@ -11,7 +11,7 @@ and follows [semantic versioning](https://semver.org/).
   - **Consumers who use the wiki practice:** install it with `claude plugin install gvt-wiki@gvt-plugins`. Invoke it as `/gvt-wiki:maintain-wiki` (`ingest`, `query`, `lint`). The old names `gvt-dev:maintain-wiki` and `/gvt-dev:maintain-wiki` no longer exist.
   - **The `wiki` block in `.gvt-agent.json` is unchanged.** `plugin/CONVENTIONS.md` still defines it (ADR-0096).
   - **Edit the marker line in `<wikiDir>/schema.md`** if it names the old namespace. The audit now reports such a line as an info finding.
-  - **`ingest` no longer dispatches `gvt-dev:tech-writer`.** `gvt-wiki` has its own writer, `gvt-wiki:wiki-editor`. It leaves changed files uncommitted. It never stages or commits.
+  - **`ingest` no longer dispatches `gvt-dev:tech-writer`.** `gvt-wiki` has its own writer, `gvt-wiki:wiki-editor`. It leaves changed files uncommitted. It never stages or commits. The caller commits the changed paths that `/gvt-wiki:maintain-wiki ingest` reports.
   - Neither plugin declares a dependency on the other (ADR-0097).
   - Removed skill and agent → major version bump at release (`plugin.json` is set to 5.0.0).
 - **The audit's Practice Coverage now names `gvt-wiki` as the Environment provider (#441).** The Environment pillar shows no gap line when no `gvt-dev` component declares it. Behavioral change → version bump at release.

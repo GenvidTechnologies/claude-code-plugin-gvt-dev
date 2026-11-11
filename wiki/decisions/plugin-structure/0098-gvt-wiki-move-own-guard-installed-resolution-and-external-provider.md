@@ -1,7 +1,7 @@
 ---
 type: decision-record
 title: 'The gvt-wiki move: gvt-wiki carries its own git-state guard, this repo resolves the installed gvt-wiki, and Practice Coverage names an external provider'
-description: 'gvt-wiki ships a copy of the git-state guard scoped to gvt-wiki: agents; gvt-dev resolves the installed gvt-wiki and fails loud; the Environment pillar carries providedBy; wiki-editor is write-only; MIGRATION.md names the copy base SHA.'
+description: 'gvt-wiki ships its own copy of the git-state guard, scoped to its own agents; gvt-dev resolves the installed gvt-wiki and fails loud; the Environment pillar carries providedBy; wiki-editor is write-only; MIGRATION.md names the copy base SHA.'
 tags: [decisions, plugin-structure]
 status: stable
 ---
@@ -81,6 +81,7 @@ Consequence: the previous `gvt-dev:tech-writer` dispatch committed by default in
 **5. `MIGRATION.md` names the copy base.** Chosen: "Option 4A: name the copy base". The `MIGRATION.md` of `gvt-wiki` names `3aa5ca5e0b5e8fe4d3118f707c14ef89b65efd28`. The moved files are unchanged on `gvt-dev` `main` from that commit until their removal. So `git log 3aa5ca5e0b5e8fe4d3118f707c14ef89b65efd28 -- plugin/skills/maintain-wiki plugin/agents/wiki-librarian.md` in `gvt-dev` is their full history. The final gate of #441 checks that with `git diff --quiet`.
 
 Rejected: "Option 4B: after the `gvt-dev` merge, amend `MIGRATION.md` to name the parent of the squash-merge commit".
+
 ## Compromise
 
 Costs accepted:
@@ -90,6 +91,8 @@ Costs accepted:
 - No automatic gate runs `wiki-lint` for this repository (decision 2).
 - The Components cell for the Environment pillar states a provider by name. It does not check that the plugin exists (decision 3).
 - Ingest no longer commits (decision 4).
+- The practice-detect pin of `gvt-dev` now checks `SCHEMA_EXPECTATION` against `plugin/CONVENTIONS.md` and a test fixture. Nothing in `gvt-dev` compares it with the real `maintain-wiki` declaration in `gvt-wiki`. Drift between the contract text and the skill of `gvt-wiki` is caught only by review.
+- The pointer baseline carries two accepted `pointer-unresolved` entries, for ADR-0022 citations of files that moved to `gvt-wiki`. They are accepted as historical, because ADR records are not rewritten.
 
 Known gap, carried to `gvt-wiki` issue #2: the schema of `gvt-wiki` needs an upstream URL for every source, so a session insight cannot be ingested yet.
 

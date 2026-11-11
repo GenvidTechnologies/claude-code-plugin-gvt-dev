@@ -52,7 +52,7 @@ requirement never reaches them and the `raw/` immutability convention
 > as its sole key, the subdirectory indexes and `wiki/log.md` carry no frontmatter at all (#192, ADR-0026). Per ADR-0022 decision 4
 > the claim is scoped to the **bundle**, never to this repo — nothing outside
 > `wiki/` is in scope, including `raw/`. Nothing mechanical enforces it yet:
-> `wiki-lint.mjs` (#150) checks links, orphans and `raw/` immutability but
+> The gvt-wiki `wiki-lint.mjs` (#150) checks links, orphans and `raw/` immutability but
 > never reads frontmatter. Parsing it is tracked as #381; until that ships,
 > the claim rests on the discipline of whoever last edited a page.
 
@@ -147,7 +147,7 @@ MUST NOT reject a bundle for missing optional frontmatter fields, a missing
 optional family (§5.3), unknown `type` values, unknown additional
 frontmatter keys, broken cross-links, or a missing `index.md` — and MUST
 treat a bare `verified` mapping as a one-element list. This bounds what
-`lint` (below) and its mechanical checker, `wiki-lint.mjs` (#150), may flag.
+`lint` (below) and its mechanical checker, the gvt-wiki `wiki-lint.mjs` (#150), may flag.
 The **binding** statement for both lives in the skill body's `lint` section
 (plugin-owned, so it survives edits to this file); this paragraph is the
 format's own statement of the same clauses.

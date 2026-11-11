@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: audit-conventions as Proto-Lint
-description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md, and where the boundary with maintain-wiki lint sits per ADR-0015.
+description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md, and where the boundary with gvt-wiki's maintain-wiki lint sits per ADR-0015.
 tags: [llm-wiki, maintain-wiki, audit-conventions, lint, hygiene-scanners]
 status: stable
 generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
