@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // CLI entrypoint for triage-issues' issue-refs script (#209). Sits beside its
-// own lib/, the same shape as maintain-wiki's wiki-lint.mjs.
+// own lib/, the same shape as the wiki-lint.mjs script in gvt-wiki's maintain-wiki.
 //
 // The lib modules are pure; this file's only job is to parse argv, read the
 // saved gh outputs it is pointed at, call the lib and print what it returns.

@@ -388,27 +388,6 @@
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": ":123-124",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "87d2002b7cfb"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": ":127",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "e3b0c44298fc"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
-      "pointer": ":127",
-      "occurrence": 1,
-      "kind": "pointer-anchor-missing",
-      "digest": "e3b0c44298fc"
-    },
-    {
-      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": ".gvt-agent.json:25",
       "occurrence": 0,
       "kind": "pointer-ambiguous",
@@ -434,6 +413,13 @@
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
       "digest": "3cbd2d5b75cc"
+    },
+    {
+      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
+      "pointer": "plugin/skills/maintain-wiki/SKILL.md:27,266-273",
+      "occurrence": 0,
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -553,6 +539,13 @@
       "occurrence": 0,
       "kind": "pointer-anchor-missing",
       "digest": "aad9c46d9e9f"
+    },
+    {
+      "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
+      "pointer": "wiki-schema.template.md:3-11",
+      "occurrence": 0,
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",

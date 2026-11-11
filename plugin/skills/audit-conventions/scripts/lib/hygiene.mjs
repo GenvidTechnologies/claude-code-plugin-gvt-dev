@@ -266,12 +266,12 @@ function provenanceSuffix(via, wikiDir) {
 export async function scanRetiredTokens(repoRoot, opts = {}) {
   const retiredTokens = opts.retiredTokens ?? DEFAULT_RETIRED_TOKENS;
   // scanRetiredTokens is the ONLY scanner that also walks opts.wikiDir
-  // (ADR-0015 decision 2 / ADR-0041). `maintain-wiki`'s own `lint` verb
+  // (ADR-0015 decision 2 / ADR-0041). gvt-wiki's `maintain-wiki` `lint` verb
   // already owns dead-wiki-links and orphaned-page checks for `<wikiDir>/`,
   // resolving OKF §6.1 bundle-absolute targets (`/page.md`) against
   // `<wikiDir>/` itself — a second, differently-rooted link/orphan
-  // implementation here would just be wrong (plugin/skills/maintain-wiki/
-  // SKILL.md: "not wired into audit.mjs and must not be"). Neither
+  // implementation here would just be wrong (that skill's SKILL.md, in the
+  // gvt-wiki plugin: "not wired into audit.mjs and must not be"). Neither
   // scanBrokenLinks nor scanOrphanedDocs calls wikiCandidateFiles, so
   // <wikiDir>/ never enters either one's walk THROUGH THIS HELPER — but
   // neither can lean on that omission as proof it never sees bundle content:
@@ -283,7 +283,7 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
   // (its candidates also include repo-root CLAUDE.md, which must still be
   // checked even when docsRoot collapses into wikiDir). The token scan has
   // no such owner: `lint` has no retired-token check at all (`grep -i token`
-  // over maintain-wiki/SKILL.md returns nothing), so token drift on the wiki
+  // over gvt-wiki's maintain-wiki SKILL.md returns nothing), so token drift on the wiki
   // tier is genuinely unowned unless this scanner reaches it.
   const findings = [];
   // An empty deny-list can match nothing; skip the corpus walk and file reads.
@@ -322,7 +322,7 @@ export async function scanRetiredTokens(repoRoot, opts = {}) {
 /**
  * The files the link check examines, and the ones it declines. `files` are the
  * candidates scanBrokenLinks reads; `declined` are the candidates it leaves to
- * `maintain-wiki lint` because they live in the OKF wiki bundle (ADR-0053).
+ * gvt-wiki's `maintain-wiki lint` because they live in the OKF wiki bundle (ADR-0053).
  * `bundleRoot` is the wikiDir the decline was measured against (null when the
  * repo declares none); `roots` labels what this corpus walks.
  */
@@ -334,7 +334,7 @@ export async function linkCheckCorpus(repoRoot, opts = {}) {
   // is <docsRoot>/**.md PLUS repo-root CLAUDE.md, so when a `docs/TOC.md`
   // `paths` override collapses docsRoot into (or nests it inside) wikiDir,
   // CLAUDE.md is STILL a candidate here — and CLAUDE.md is neither a bundle
-  // page nor covered by `maintain-wiki lint` (whose own walk is <wikiDir>/
+  // page nor covered by gvt-wiki's `maintain-wiki lint` (whose own walk is <wikiDir>/
   // only). A whole-scanner return would hand CLAUDE.md's links to nobody.
   // scanOrphanedDocs can decline wholesale because it's a whole-corpus check
   // that already filters its candidates down to the docs prefix; this check
@@ -363,7 +363,7 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
       kind: 'link-check-skipped',
       ok: false,
       severity: 'info',
-      detail: `${declined.length} file(s) under ${wikiDir}/ were not link-checked — OKF bundle pages resolve links against the bundle root, which /gvt-dev:maintain-wiki lint owns (ADR-0053). Run it for dead-link coverage of ${wikiDir}/.`,
+      detail: `${declined.length} file(s) under ${wikiDir}/ were not link-checked — OKF bundle pages resolve links against the bundle root, which /gvt-wiki:maintain-wiki lint owns (ADR-0053). Run it for dead-link coverage of ${wikiDir}/.`,
     });
   }
 
@@ -390,7 +390,7 @@ export async function scanBrokenLinks(repoRoot, opts = {}) {
         // used to make every bundle-resident file's leading-'/' link a false
         // positive; it's now correct-by-scope, because every file that still
         // reaches this line has already survived the inBundle decline above.
-        // Bundle-rooted resolution belongs to /gvt-dev:maintain-wiki lint
+        // Bundle-rooted resolution belongs to gvt-wiki's `maintain-wiki lint`
         // (ADR-0053) — do not "fix" this line to resolve against wikiDir.
         const containingDir = dirname(join(repoRoot, relPath));
         const absTarget = strippedTarget.startsWith('/')
@@ -434,7 +434,7 @@ export async function indexCheckCorpus(repoRoot, opts = {}) {
 
   // Guard 1 — checked FIRST, before the index read (ADR-0053). When the
   // resolved docs root is inside (or equal to) the OKF wiki bundle, orphan
-  // checking there belongs to `maintain-wiki lint`, which resolves
+  // checking there belongs to gvt-wiki's `maintain-wiki lint`, which resolves
   // bundle-absolute targets, honours subdirectory indexes, and skips the
   // reserved index.md/log.md pages — none of which this scanner knows.
   // Containment, not equality: this must fire both for docsRoot === wikiDir
@@ -463,7 +463,7 @@ export async function indexCheckCorpus(repoRoot, opts = {}) {
   // Guard 2 — checked AFTER guard 1 (ADR-0053). No <docsRoot>/<docsIndex>
   // found: report the skip rather than returning [], for the same
   // zero-orphans-vs-never-checked reason as guard 1 above. This mirrors a
-  // rule `maintain-wiki`'s own `lint` verb already states one tier down for
+  // rule gvt-wiki's `maintain-wiki` `lint` verb already states one tier down for
   // the bundle-root index: if it's absent, skip the check and report a
   // single informational note, because reporting every page as an orphan
   // would be a rejection in all but name.
@@ -491,7 +491,7 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
         kind: 'orphan-check-skipped',
         ok: false,
         severity: 'info',
-        detail: `orphan check skipped — the docs root '${docsRoot}/' is inside the wiki bundle '${wikiDir}/', where orphaned pages are owned by /gvt-dev:maintain-wiki lint, not this scan`,
+        detail: `orphan check skipped — the docs root '${docsRoot}/' is inside the wiki bundle '${wikiDir}/', where orphaned pages are owned by /gvt-wiki:maintain-wiki lint, not this scan`,
       },
     ];
   }

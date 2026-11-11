@@ -133,13 +133,13 @@ async function collectRealDeclaredComponents() {
   return components;
 }
 
-test('real tree: exactly the intended 11 components declare metadata.pillar, and every value is a known pillar id', async () => {
+test('real tree: exactly the intended 9 components declare metadata.pillar, and every value is a known pillar id', async () => {
   const declared = await collectRealDeclaredComponents();
 
   const expectedByPillar = {
     spec: ['plan-task', 'analyst', 'designer', 'planner'],
     verify: ['audit-conventions', 'validate-changes', 'validator', 'code-reviewer'],
-    environment: ['maintain-wiki', 'wiki-librarian'],
+    environment: [],
     moldable: ['build-probe'],
   };
   const expectedNames = Object.values(expectedByPillar).flat().sort();
@@ -170,5 +170,13 @@ test('real tree: exactly the intended 11 components declare metadata.pillar, and
       `pillar '${pillar}' declarers changed — expected ${JSON.stringify(names)}, ` +
         `got ${JSON.stringify(coverage[pillar])}`,
     );
+  }
+});
+
+test('PILLARS: environment names gvt-wiki as its provider', () => {
+  const environment = PILLARS.find((p) => p.id === 'environment');
+  assert.equal(environment.providedBy, 'gvt-wiki');
+  for (const p of PILLARS.filter((q) => q.id !== 'environment')) {
+    assert.equal(p.providedBy, undefined, `${p.id} must not set providedBy`);
   }
 });

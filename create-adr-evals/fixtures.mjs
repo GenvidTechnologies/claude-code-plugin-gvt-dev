@@ -143,7 +143,7 @@ decision records — this project hosts ADRs in the wiki, not \`docs/decisions/\
     wiki: { wikiDir: 'wiki' },
   }, null, 2)}\n`);
 
-  // maintain-wiki's `unreachable-subtree` check requires every subdirectory
+  // gvt-wiki's maintain-wiki `unreachable-subtree` check requires every subdirectory
   // index.md — at ANY depth — to be linked directly from the bundle-ROOT
   // index (probed directly: checkOrphanedPages() only consults
   // resolvedByIndexDir[rootDir], never a transitive chain through an

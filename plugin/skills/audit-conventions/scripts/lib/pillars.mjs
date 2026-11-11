@@ -31,6 +31,8 @@ export const PILLARS = [
     id: 'environment',
     label: 'Environment',
     detectability: 'fully detectable (the wiki)',
+    // ADR-0095 decision 10, ADR-0098: the practice ships from a second plugin.
+    providedBy: 'gvt-wiki',
   },
   {
     id: 'moldable',

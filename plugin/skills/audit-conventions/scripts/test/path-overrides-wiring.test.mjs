@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withFixture, writeSkill, spawnAudit as spawnFixtureAudit } from './helpers/fixture-plugin.mjs';
+import { WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/path-overrides-wiring.test.mjs -> scripts
@@ -258,10 +260,23 @@ test('audit: a relocated config file names both the declared and the resolved fi
   );
 });
 
+// The prefer expectation comes from a fixture skill in a throwaway plugin root
+// (the skill that declares the wiki schema ships from another plugin).
+async function auditPreferFixture(paths) {
+  let lines;
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    await writeSkill(pluginRoot, WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER);
+    await writeConfig(consumerRoot, paths);
+    await writeFile(join(consumerRoot, 'CLAUDE.md'), '# Test repo\n');
+    lines = spawnFixtureAudit(pluginRoot, consumerRoot).stdout.split('\n');
+  }, 'gvt-prefer-paths-');
+  return lines;
+}
+
 test('audit: a paths override replacing a prefer chain names the resolved path (#731)', async () => {
-  const lines = await auditWithPaths({ 'docs/wiki-schema.md': 'kb/schema.md' });
-  const line = lines.find((l) => l.startsWith('- **maintain-wiki**') && l.includes('`docs/wiki-schema.md` (→ `kb/schema.md` via paths)'));
-  assert.ok(line, lines.filter((l) => l.includes('maintain-wiki')).join('\n'));
+  const lines = await auditPreferFixture({ 'docs/wiki-schema.md': 'kb/schema.md' });
+  const line = lines.find((l) => l.startsWith(`- **${WIKI_SCHEMA_SKILL_NAME}**`) && l.includes('`docs/wiki-schema.md` (→ `kb/schema.md` via paths)'));
+  assert.ok(line, lines.filter((l) => l.includes(WIKI_SCHEMA_SKILL_NAME)).join('\n'));
 });
 
 test('audit: an override equal to the declared path renders no arrow (#731)', async () => {
@@ -282,13 +297,19 @@ test('audit: with no paths override, expectation findings render byte-identicall
     const out = spawnAudit([], tmpDir).stdout;
     const lines = out.split('\n');
     assert.ok(lines.includes(CREATE_ADR_NO_OVERRIDE));
-    assert.ok(
-      lines.includes(
-        '- **maintain-wiki** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional). Reason: The wiki\'s maintenance-rules schema (page format, create-vs-update lifecycle, raw/ immutability, staleness policy via stale_after, verb contract), resolved as the paths override for this key, else <wikiDir>/schema.md inside the bundle, else the legacy docs/wiki-schema.md; the skill offers to scaffold it, at the override path when one is set and else at <wikiDir>/schema.md, when none of the three exists',
-      ),
-    );
     assert.equal(out.split('via paths').length - 1, 0);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('audit: with no paths override, a prefer expectation renders byte-identically and carries no arrow (#731)', async () => {
+  const lines = await auditPreferFixture(undefined);
+  assert.ok(
+    lines.includes(
+      '- **wiki-fixture** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional). Reason: The fixture wiki schema, resolved as the paths override for this key, else <wikiDir>/schema.md, else docs/wiki-schema.md',
+    ),
+    lines.filter((l) => l.includes(WIKI_SCHEMA_SKILL_NAME)).join('\n'),
+  );
+  assert.equal(lines.filter((l) => l.includes('via paths')).length, 0);
 });

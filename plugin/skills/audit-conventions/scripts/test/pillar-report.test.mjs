@@ -129,11 +129,12 @@ test('formatPracticeCoverage: a provided pillar with no declarers renders its pr
   assert.doesNotMatch(output, /> Pillar gap:/);
 });
 
-test('formatPracticeCoverage: an empty census renders "(none)" for every pillar (positive control)', () => {
+test('formatPracticeCoverage: an empty census renders "(none)" for every pillar without a provider (positive control)', () => {
   const output = formatPracticeCoverage([], {});
   assert.match(output, /Spec \| \(none\) \|/);
   assert.match(output, /Verify \| \(none\) \|/);
-  assert.match(output, /Environment \| \(none\) \|/);
   assert.match(output, /Moldable \| \(none\) \|/);
-  assert.match(output, /> Pillar gap: Spec, Verify, Environment, Moldable/);
+  assert.match(output, /Environment \| provided by the gvt-wiki plugin \|/);
+  assert.doesNotMatch(output, /Environment \| \(none\) \|/);
+  assert.match(output, /> Pillar gap: Spec, Verify, Moldable/);
 });

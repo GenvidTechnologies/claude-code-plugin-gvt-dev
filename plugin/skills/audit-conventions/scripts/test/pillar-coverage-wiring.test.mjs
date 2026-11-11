@@ -28,6 +28,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { withTempMigratedRepo, makeDanglingLink } from './helpers/temp-repo.mjs';
+import { withFixture, writeSkill, spawnAudit as spawnFixtureAudit } from './helpers/fixture-plugin.mjs';
+import { WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/pillar-coverage-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -200,52 +202,52 @@ test('audit: "unknown pillar" is not surfaced against a consuming repo, even wit
 // an in-bundle schema, and an unmet expectation names both locations.
 // ---------------------------------------------------------------------------
 
-async function withTempWikiRepo(schemaAt) {
-  return withTempPracticeCoverageRepo(async (dir) => {
-    await mkdir(join(dir, 'wiki'), { recursive: true });
-    await writeFile(join(dir, 'wiki', 'index.md'), '# Index\n');
-    await writeFile(join(dir, 'wiki', 'log.md'), '# Log\n');
-    await mkdir(join(dir, 'raw'), { recursive: true });
-    if (schemaAt) await writeFile(join(dir, schemaAt), '# Schema\n');
+// The expectation comes from a fixture skill in a throwaway plugin root (the
+// wiki skill that declares it ships from another plugin). fn receives the
+// consumer root and a function that runs the copied audit against it.
+async function withWikiFixture(schemaAt, fn) {
+  await withFixture(async (pluginRoot, consumerRoot) => {
+    await writeSkill(pluginRoot, WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER);
     await writeFile(
-      join(dir, '.gvt-agent.json'),
+      join(consumerRoot, '.gvt-agent.json'),
       JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' }, wiki: {} }, null, 2),
     );
-  });
+    await writeFile(join(consumerRoot, 'CLAUDE.md'), '# Test repo\n');
+    await mkdir(join(consumerRoot, 'docs'), { recursive: true });
+    await mkdir(join(consumerRoot, 'wiki'), { recursive: true });
+    await writeFile(join(consumerRoot, 'wiki', 'index.md'), '# Index\n');
+    await writeFile(join(consumerRoot, 'wiki', 'log.md'), '# Log\n');
+    await mkdir(join(consumerRoot, 'raw'), { recursive: true });
+    if (schemaAt) await writeFile(join(consumerRoot, schemaAt), '# Schema\n');
+    await fn(consumerRoot, () => spawnFixtureAudit(pluginRoot, consumerRoot));
+  }, 'gvt-wiki-schema-');
 }
 
-test('audit: a schema only at wiki/schema.md satisfies the maintain-wiki expectation and reads "adopted"', async () => {
-  const tmpDir = await withTempWikiRepo(join('wiki', 'schema.md'));
-  try {
-    const result = spawnAudit([], tmpDir);
+test('audit: a schema only at wiki/schema.md satisfies a prefer expectation and reads "adopted"', async () => {
+  await withWikiFixture(join('wiki', 'schema.md'), async (_consumerRoot, run) => {
+    const result = run();
     assert.equal(result.status, 0, result.stdout);
     assert.ok(result.stdout.includes('| Environment |'), result.stdout);
     assert.match(result.stdout, /\| Environment \|[^\n]*\| adopted \|/, result.stdout);
-    assert.ok(!result.stdout.includes('**maintain-wiki** expects `docs/wiki-schema.md`'), result.stdout);
+    assert.ok(!result.stdout.includes('**wiki-fixture** expects `docs/wiki-schema.md`'), result.stdout);
     assert.ok(!result.stdout.includes('or `docs/wiki-schema.md`'), result.stdout);
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('audit: with no schema anywhere, the unmet expectation names both locations in resolution order', async () => {
-  const tmpDir = await withTempWikiRepo(null);
-  try {
-    const result = spawnAudit([], tmpDir);
+  await withWikiFixture(null, async (_consumerRoot, run) => {
+    const result = run();
     assert.equal(result.status, 0, result.stdout);
-    assert.ok(result.stdout.includes('**maintain-wiki** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional)'), result.stdout);
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+    assert.ok(result.stdout.includes('**wiki-fixture** expects `wiki/schema.md` or `docs/wiki-schema.md` — file not found (optional)'), result.stdout);
+  });
 });
 
 // #671 — the audit line names the candidate that answered, and why an earlier
 // candidate did not (ADR-0077).
 test('audit: a dangling wiki/schema.md stops the chain and is reported as unreadable, not passed over', async () => {
-  const tmpDir = await withTempWikiRepo(join('docs', 'wiki-schema.md'));
-  try {
-    await makeDanglingLink(join(tmpDir, 'wiki', 'schema.md'));
-    const result = spawnAudit([], tmpDir);
+  await withWikiFixture(join('docs', 'wiki-schema.md'), async (consumerRoot, run) => {
+    await makeDanglingLink(join(consumerRoot, 'wiki', 'schema.md'));
+    const result = run();
     assert.ok(
       result.stdout.includes(
         'expects `wiki/schema.md` or `docs/wiki-schema.md` — `wiki/schema.md`: file could not be checked (dangling link, ENOENT) (optional)',
@@ -254,38 +256,30 @@ test('audit: a dangling wiki/schema.md stops the chain and is reported as unread
     );
     // The Environment row agrees with the audit's finding: the chain stopped.
     assert.match(result.stdout, /\| Environment \|[^\n]*\| partial adoption \|/, result.stdout);
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('audit: a directory at wiki/schema.md is passed over when docs/wiki-schema.md is a real file', async () => {
-  const tmpDir = await withTempWikiRepo(join('docs', 'wiki-schema.md'));
-  try {
-    await mkdir(join(tmpDir, 'wiki', 'schema.md'), { recursive: true });
-    const result = spawnAudit([], tmpDir);
-    const maintainWikiLines = result.stdout
+  await withWikiFixture(join('docs', 'wiki-schema.md'), async (consumerRoot, run) => {
+    await mkdir(join(consumerRoot, 'wiki', 'schema.md'), { recursive: true });
+    const result = run();
+    const fixtureLines = result.stdout
       .split('\n')
-      .filter((l) => l.includes('**maintain-wiki** expects') && (l.includes('wiki/schema.md') || l.includes('docs/wiki-schema.md')));
-    assert.deepEqual(maintainWikiLines, [], result.stdout);
+      .filter((l) => l.includes('**wiki-fixture** expects') && (l.includes('wiki/schema.md') || l.includes('docs/wiki-schema.md')));
+    assert.deepEqual(fixtureLines, [], result.stdout);
     assert.match(result.stdout, /\| Environment \|[^\n]*\| adopted \|/, result.stdout);
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('audit: a directory at wiki/schema.md with no legacy file reports the legacy path and names the pass-over', async () => {
-  const tmpDir = await withTempWikiRepo(null);
-  try {
-    await mkdir(join(tmpDir, 'wiki', 'schema.md'), { recursive: true });
-    const result = spawnAudit([], tmpDir);
+  await withWikiFixture(null, async (consumerRoot, run) => {
+    await mkdir(join(consumerRoot, 'wiki', 'schema.md'), { recursive: true });
+    const result = run();
     assert.ok(
       result.stdout.includes(
         '— `docs/wiki-schema.md`: file not found (optional); `wiki/schema.md` was passed over (found a directory)',
       ),
       result.stdout,
     );
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
-  }
+  });
 });

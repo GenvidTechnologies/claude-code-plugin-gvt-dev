@@ -13,7 +13,6 @@ import {
   VERDICT_PARTIAL,
   VERDICT_ADOPTED,
 } from '../lib/practice-detect.mjs';
-import { extractFrontmatter } from '#audit-core';
 import { makeDanglingLink } from './helpers/temp-repo.mjs';
 
 async function withTempRepo(setup) {
@@ -230,10 +229,13 @@ test('detectWikiAdoption: a blank wikiDir means the default for every signal, no
   assert.deepEqual(signals, { configBlock: true, wikiDir: true, index: true, log: true, rawDir: true, schemaDoc: true });
 });
 
-test('SCHEMA_EXPECTATION matches the docs/wiki-schema.md entry maintain-wiki declares', () => {
-  const skill = fileURLToPath(new URL('../../../maintain-wiki/SKILL.md', import.meta.url));
-  const entry = extractFrontmatter(readFileSync(skill, 'utf8')).metadata.expects.files.find((e) => e.path === 'docs/wiki-schema.md');
-  assert.deepEqual({ path: entry.path, prefer: entry.prefer }, { ...SCHEMA_EXPECTATION });
+test('SCHEMA_EXPECTATION matches the wiki schema expectation CONVENTIONS.md defines', () => {
+  // gvt-dev owns CONVENTIONS.md and gvt-wiki must agree with it, so the pin
+  // reads the contract doc, not a skill that now ships from another plugin.
+  const conventions = readFileSync(fileURLToPath(new URL('../../../../CONVENTIONS.md', import.meta.url)), 'utf8');
+  const { path, prefer } = SCHEMA_EXPECTATION;
+  const span = `\`paths['${path}']\`, else \`${prefer}\`, else \`${path}\``;
+  assert.ok(conventions.includes(span), `plugin/CONVENTIONS.md does not contain: ${span}`);
 });
 
 // #671 / ADR-0077 — an error is not a wrong kind. A candidate that cannot be

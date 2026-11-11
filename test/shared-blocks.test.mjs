@@ -27,7 +27,6 @@ const BLOCKS = [
       'plugin/skills/plan-next-issue/SKILL.md',
       'plugin/skills/triage-issues/SKILL.md',
       'plugin/skills/create-adr/SKILL.md',
-      'plugin/skills/maintain-wiki/SKILL.md',
       'plugin/skills/run-retro/SKILL.md',
       'plugin/skills/condense-lessons/SKILL.md',
       'plugin/skills/cleanup-initiative/SKILL.md',

@@ -185,7 +185,7 @@ async function main() {
     // ungated, this check would impose the content-anchor convention on every
     // consumer's ADRs and fail their `commands.validate` over prose the plugin
     // does not own. The citing corpus also now reaches the repo-root `wiki/`
-    // tree, which a consumer likewise has once `maintain-wiki` scaffolds one —
+    // tree, which a consumer likewise has once gvt-wiki's `maintain-wiki` scaffolds one —
     // so the same exposure applies there too.
     //
     // What makes `error` safe is therefore the gate itself, not the scanner's
