@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-11-11
+
 - **Breaking: `maintain-wiki` and `wiki-librarian` left `gvt-dev` and ship in the new `gvt-wiki` plugin (#441; ADR-0095, ADR-0097).** The skill, the agent and the wiki templates are removed from `gvt-dev`. `gvt-wiki` is in the `gvt-plugins` catalog from its v0.1.0.
   - **Consumers who use the wiki practice:** install it with `claude plugin install gvt-wiki@gvt-plugins`. Invoke it as `/gvt-wiki:maintain-wiki` (`ingest`, `query`, `lint`). The old names `gvt-dev:maintain-wiki` and `/gvt-dev:maintain-wiki` no longer exist.
   - **The `wiki` block in `.gvt-agent.json` is unchanged.** `plugin/CONVENTIONS.md` still defines it (ADR-0096).
