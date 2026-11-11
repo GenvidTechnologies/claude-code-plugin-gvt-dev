@@ -15,6 +15,17 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-11
+
+* **Creation**: Added `decisions/plugin-structure/0098-gvt-wiki-move-own-guard-installed-resolution-and-external-provider.md`,
+  recording the guard split by prefix, the installed-`gvt-wiki` resolution,
+  the `providedBy` rendering of Practice Coverage, the write-only
+  `wiki-editor` and the `MIGRATION.md` copy-base SHA (#441, with #914), and
+  listed it in that theme's `index.md`. Not an ingest; no `raw/` source drove it.
+* **Update**: Added an `Amended by` marker for ADR-0098 to
+  `decisions/plugin-structure/0027-pillar-declaration-and-two-sided-coverage-report.md`
+  (decisions 1 and 2).
+
 ## 2026-10-13
 
 * **Creation**: Added `decisions/development-practice/0075-quoted-artifacts-vs-direction-in-dispatch-briefs.md`,

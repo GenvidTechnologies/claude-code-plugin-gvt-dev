@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-08-05
 - **Issue:** #227 (part of epic #142)
+- **Amended by:** [ADR-0098](0098-gvt-wiki-move-own-guard-installed-resolution-and-external-provider.md) — decisions 1 and 2: the census of declaring components is 9 on the real tree, and a pillar with a `providedBy` provider shows it instead of a gap.
 
 ## Context
 
