@@ -963,3 +963,204 @@ test('rename: --allow-drift usage errors are rejected before any write', async (
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+// ---- --targets (#594) ----------------------------------------------------
+
+const continuation = (spec) => '`' + COLON + spec + '`';
+
+// One citing file covering every case --targets reports:
+//   line 1 — an anchorless pointer to designer.md plus a continuation of it;
+//   line 3 — an anchored, conforming pointer to analyst.md (no finding);
+//   line 5 — an ambiguous pointer whose path matches both shared.md files.
+async function buildTargetsFixture(d) {
+  await writeRepoFile(d, 'plugin/agents/designer.md', numberedLines(120));
+  await writeRepoFile(d, 'plugin/agents/analyst.md', DRIFT_TARGET);
+  await writeRepoFile(d, 'plugin/skills/one/shared.md', linesOf('alpha', 'beta'));
+  await writeRepoFile(d, 'plugin/skills/two/shared.md', linesOf('gamma', 'delta'));
+  await writeRepoFile(
+    d,
+    'docs/notes.md',
+    linesOf(
+      `See ${cite('designer.md', '83')} and ${continuation('90')} for the rule.`,
+      '',
+      driftingCitation('3').trimEnd(),
+      '',
+      `See ${cite('shared.md', '2')} too.`,
+    ),
+  );
+}
+
+// The fixture with its findings accepted, plus three hand-written entries:
+// one for the conforming analyst.md pointer (no finding, so prunable), one
+// for a designer.md pointer that no longer exists (stale), and one bare
+// continuation that no longer exists (stale, and carries no path).
+async function targetsFixture() {
+  const dir = await withTempRepo(buildTargetsFixture);
+  assert.equal(run(dir, '--accept-new', '--write').status, 0);
+  const accepted = (await readBaseline(dir)).entries;
+  await writeBaselineFile(dir, [
+    ...accepted,
+    {
+      file: 'docs/notes.md',
+      pointer: ptr('analyst.md', '3'),
+      occurrence: 0,
+      kind: 'pointer-anchor-missing',
+      digest: null,
+    },
+    {
+      file: 'docs/notes.md',
+      pointer: ptr('designer.md', '99'),
+      occurrence: 0,
+      kind: 'pointer-anchor-missing',
+      digest: null,
+    },
+    {
+      file: 'docs/notes.md',
+      pointer: COLON + '77',
+      occurrence: 0,
+      kind: 'pointer-anchor-missing',
+      digest: null,
+    },
+  ]);
+  return dir;
+}
+
+test('targets: lists resolved and continuation pointers with range, anchor and baseline state', async () => {
+  const dir = await targetsFixture();
+  try {
+    const before = await readRaw(dir);
+    const result = run(dir, '--targets', 'plugin/agents/designer.md');
+    assert.equal(result.status, 0, result.output);
+
+    const out = result.stdout;
+    assert.ok(out.includes('### 2 live pointers cite plugin/agents/designer.md'), out);
+    assert.ok(out.includes(`${ptr('docs/notes.md', '1')}  ${ptr('designer.md', '83')}  #0`), out);
+    assert.ok(out.includes(`${ptr('docs/notes.md', '1')}  ${COLON}90  #0`), out);
+    assert.ok(
+      out.includes('cites 83 · unanchored · baselined [pointer-anchor-missing]'),
+      out,
+    );
+    assert.ok(
+      out.includes('cites 90 · unanchored · baselined [pointer-anchor-missing] · continuation'),
+      out,
+    );
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: an anchored pointer whose entry matches no finding is reported prunable', async () => {
+  const dir = await targetsFixture();
+  try {
+    const result = run(dir, '--targets', 'plugin/agents/analyst.md');
+    assert.equal(result.status, 0, result.output);
+    assert.ok(result.stdout.includes('### 1 live pointer cites plugin/agents/analyst.md'));
+    assert.ok(
+      result.stdout.includes('cites 3 · anchored · baselined, prunable (no current finding)'),
+      result.stdout,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: stale entries are listed when their path resolves to the file, and a pathless one is counted', async () => {
+  const dir = await targetsFixture();
+  try {
+    const result = run(dir, '--targets', 'plugin/agents/designer.md');
+    assert.equal(result.status, 0, result.output);
+    const out = result.stdout;
+    assert.ok(out.includes('### 1 stale baseline entry'), out);
+    assert.ok(out.includes(`- docs/notes.md  ${ptr('designer.md', '99')}  #0`), out);
+    assert.ok(out.includes('1 stale continuation entry carries no path'), out);
+    // The stale entry of another file is not listed under this one.
+    const analyst = run(dir, '--targets', 'plugin/agents/analyst.md').stdout;
+    assert.ok(!analyst.includes(ptr('designer.md', '99')), analyst);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: an ambiguous pointer is listed under each file it may cite, not as a citing pointer', async () => {
+  const dir = await targetsFixture();
+  try {
+    for (const file of ['plugin/skills/one/shared.md', 'plugin/skills/two/shared.md']) {
+      const result = run(dir, '--targets', file);
+      assert.equal(result.status, 0, result.output);
+      assert.ok(result.stdout.includes(`### 0 live pointers cite ${file}`), result.stdout);
+      assert.ok(result.stdout.includes(`### 1 ambiguous pointer may cite ${file}`), result.stdout);
+      assert.ok(result.stdout.includes(`${ptr('docs/notes.md', '5')}  ${ptr('shared.md', '2')}  #0`));
+      assert.ok(result.stdout.includes('baselined [pointer-ambiguous]'), result.stdout);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: backslash, leading ./ and absolute forms of <file> give the same listing', async () => {
+  const dir = await targetsFixture();
+  try {
+    const listing = (result) => result.stdout.split('\n').slice(1).filter((l) => !l.startsWith('repo:'));
+    const plain = run(dir, '--targets', 'plugin/agents/designer.md');
+    assert.equal(plain.status, 0, plain.output);
+    for (const form of [
+      'plugin\\agents\\designer.md',
+      './plugin/agents/designer.md',
+      join(dir, 'plugin', 'agents', 'designer.md'),
+    ]) {
+      const result = run(dir, '--targets', form);
+      assert.equal(result.status, 0, `${form}: ${result.output}`);
+      assert.deepEqual(listing(result), listing(plain), form);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: an unknown file is a usage error with a clear message, not an empty list', async () => {
+  const dir = await targetsFixture();
+  try {
+    const before = await readRaw(dir);
+    const result = run(dir, '--targets', 'plugin/agents/nope.md');
+    assert.equal(result.status, 2, result.output);
+    assert.match(result.stderr, /--targets 'plugin\/agents\/nope\.md' is not a file in/);
+    assert.ok(!result.stdout.includes('live pointer'), result.stdout);
+    assert.equal(await readRaw(dir), before);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: combined with any mode flag it is a usage error, and the baseline bytes never change', async () => {
+  const dir = await targetsFixture();
+  try {
+    const before = await readRaw(dir);
+    const mtime = await mtimeOf(dir);
+    const combos = [
+      ['--write'],
+      ['--accept-new'],
+      ['--accept-new', '--write'],
+      ['--rename', 'docs/notes.md=docs/moved.md'],
+      ['--rename', 'docs/notes.md=docs/moved.md', '--write'],
+    ];
+    for (const extra of combos) {
+      const result = run(dir, '--targets', 'plugin/agents/designer.md', ...extra);
+      assert.equal(result.status, 2, `${extra.join(' ')}: ${result.output}`);
+      assert.match(result.stderr, /--targets is read-only/);
+    }
+    // And every accepted --targets run, one per file in the fixture.
+    for (const file of [
+      'plugin/agents/designer.md',
+      'plugin/agents/analyst.md',
+      'plugin/skills/one/shared.md',
+      'docs/notes.md',
+    ]) {
+      assert.equal(run(dir, '--targets', file).status, 0);
+    }
+    assert.equal(await readRaw(dir), before);
+    assert.equal(await mtimeOf(dir), mtime);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

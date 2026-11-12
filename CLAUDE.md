@@ -93,6 +93,7 @@ node plugin/skills/audit-conventions/scripts/audit.mjs --fix --apply  # apply
 node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs                  # prune-only dry run: drops entries matching nothing, adds none
 node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs --write --accept-new  # also accept new debt; refuses, with no write, while any pointer is provably wrong
 node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs --rename <old>=<new>   # re-key a moved citing file's entries (dry run; add --write to apply)
+node plugin/skills/audit-conventions/scripts/pointer-baseline.mjs --targets <file>       # read-only: list every pointer citing <file>, before you edit it
 ```
 
 ## Self-declaring skill / agent metadata
