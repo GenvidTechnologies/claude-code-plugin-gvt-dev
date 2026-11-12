@@ -115,6 +115,32 @@ between two proposals) is a comment on one issue: `Related: #<id>`, followed
 by one sentence that says how the two relate. Never write `Blocked by` for it,
 because the reference check reads that line as a blocker.
 
+## Tracker
+
+Since gvt-dev 5.0.0 the wiki practice ships as its own plugin, `gvt-wiki`,
+with its own tracker: `GenvidTechnologies/claude-code-plugin-gvt-wiki`. An
+issue belongs to the plugin that ships the component it changes.
+
+- **gvt-wiki:** `maintain-wiki`, its templates (`wiki-schema`, `wiki-index`,
+  `wiki-log`, `raw-readme`), `wiki-lint`, `wiki-librarian` and `wiki-editor`.
+  Transfer such an issue with `gh issue transfer <n>
+  GenvidTechnologies/claude-code-plugin-gvt-wiki`, then comment on the moved
+  issue that its bare `#N` references still mean gvt-dev.
+- **gvt-dev:** the `wiki` block of `.gvt-agent.json` and its definition in
+  `plugin/CONVENTIONS.md` (ADR-0096 decision 1), `audit-conventions` (the
+  `<wikiDir>/` retired-token scan, the ADR-0053 declines, Environment adoption
+  detection), `create-adr`, `triage-issues`, `run-retro`, `tech-writer`, and
+  this repository's own `wiki/` pages.
+- **Cross-cutting:** when the fix has a half in each plugin, keep or move the
+  issue by its main half and file the other half as a new issue in the other
+  tracker, linked both ways. Never fix it in gvt-dev by reading a file that
+  ships only in gvt-wiki (ADR-0096 decision 5).
+
+A title match is not enough to decide. The first pass (#443, 2026-11-12) moved
+35 of the 42 open issues with a wiki or OKF title and kept 6. It split one
+(#684), and filed the other halves of three cross-cutting issues as new
+issues. Each issue carries a comment with its verdict.
+
 ## Mutation recipes
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,

@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-12
 
+* **Update**: Added a `## Tracker` section to `process/issue-triage.md`. It
+  says which tracker owns an issue now that the wiki practice ships as
+  `gvt-wiki`, and how to handle an issue with a half in each plugin. Recorded
+  on #443, whose ownership pass moved 35 open issues to the `gvt-wiki` tracker.
+  Not an ingest; no `raw/` source drove it.
+
 * **Update**: Added a `## Class` section to `process/issue-triage.md`. It
   names the two stores of an issue's Now/Next/Later class (the coordinator's
   `class:now`/`class:next` labels, which the coach overview reads, and the
