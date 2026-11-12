@@ -15,6 +15,17 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-12
+
+* **Update**: Added a `## Class` section to `process/issue-triage.md`. It
+  names the two stores of an issue's Now/Next/Later class (the coordinator's
+  `class:now`/`class:next` labels, which the coach overview reads, and the
+  `gvt-plugins` project's Class field) and says that a triage pass sets both.
+  Added the `class:*` labels to its Labels list and the "Set coordinator class",
+  "Set project Class" and "Read back the project Class" recipes. The triage of
+  #919 to #927 set only the project field. Recorded on #865. Not an ingest; no
+  `raw/` source drove it.
+
 ## 2026-11-11
 
 * **Creation**: Added `decisions/plugin-structure/0098-gvt-wiki-move-own-guard-installed-resolution-and-external-provider.md`,
