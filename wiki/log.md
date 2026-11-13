@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-13
 
+* **Update**: Added two recipes to the `## Mutation recipes` section of
+  `process/issue-triage.md`: "Set category", which reclassifies a defect as
+  non-defect work, and "Read back body", which compares an issue body with
+  the file written to it. Found by the retro of the #929 and #930 triage.
+  Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/audit-author-time-findings.md` now says that
   rewording a cited line fails the pointer-baseline digest check even when
   no line moves, and how to re-take an entry whose cited passage is meant to

@@ -83,18 +83,20 @@ GitHub task-list under a `Depends on` heading.
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
-`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, and `{closeReason}` are substituted
-by the skill.
+`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{category}`, and
+`{otherCategories}` are substituted by the skill.
 
 When a recipe's set would be empty, omit its --remove-label flag.
 
-{otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed.
+{otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed. {category} is a category label (`enhancement`, `documentation` or `chore`); {otherCategories} is every `type:*` label and every category label, written out in full, with the label being added removed.
 
 - Set type: `gh issue edit {id} --add-label "type:{type}" --remove-label "{otherTypes}"`
+- Set category (non-defect work, also to reclassify a defect): `gh issue edit {id} --add-label "{category}" --remove-label "{otherCategories}"` — removing every `type:*` label leaves no type on the issue, as the Types section requires for non-defect work
 - Set priority: `gh issue edit {id} --add-label "priority/{p}" --remove-label "{otherPriorities}"`
 - Add area: `gh issue edit {id} --add-label "area:{a}"`
 - Remove area: `gh issue edit {id} --remove-label "area:{a}"`
 - Edit body (language fix / fill missing info): `gh issue edit {id} --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
+- Read back body: `gh issue view {id} --json body --jq .body | tr -d '\r' | head -c -1 | diff - {tmpfile}` — prints nothing and exits 0 when the body on the issue equals `{tmpfile}`. `--jq` adds a final newline, which `head -c -1` removes; without it, `diff` reports a difference on a body that matches
 - Comment: `gh issue comment {id} --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
 - Flag missing info: `gh issue edit {id} --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --add-label duplicate` then `gh issue comment {id} --body "Duplicate of #{canonical}"`
