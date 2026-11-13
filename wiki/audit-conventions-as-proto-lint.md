@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: audit-conventions as Proto-Lint
-description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md, and where the boundary with gvt-wiki's maintain-wiki lint sits per ADR-0015.
+description: How audit-conventions' hygiene scanners already act as an informal advisory content-lint over docs/** and CLAUDE.md (plus wiki/ for retired tokens), and where the boundary with gvt-wiki's maintain-wiki lint sits per ADR-0015 and ADR-0041.
 tags: [llm-wiki, maintain-wiki, audit-conventions, lint, hygiene-scanners]
 status: stable
 generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
@@ -18,8 +18,8 @@ sources:
 # audit-conventions as Proto-Lint
 
 The `audit-conventions` skill's hygiene scanners already perform an informal,
-advisory content-lint over `docs/**` and `CLAUDE.md` — separate from, and
-narrower than, the `lint` verb of `maintain-wiki`, which the gvt-wiki plugin now ships.
+advisory content-lint over `docs/**` and `CLAUDE.md`, plus `wiki/` for retired
+tokens only — separate from, and narrower than, gvt-wiki's `maintain-wiki lint`.
 
 ## The existing scanners
 
@@ -28,10 +28,10 @@ scanners, each `(repoRoot, opts) => findings[]`:
 
 - **`scanRetiredTokens`** — flags lines containing a retired
   namespace/plugin-name token (e.g. `genvid:`, `genvid-c3`) across the shared
-  Markdown candidate set plus a fixed allow-list of git-tracked config files
-  (`.gvt-agent.json`, `package.json`, `.claude/settings.json`,
-  `.claude/settings.local.json`). Lines containing `http` are skipped —
-  provenance/issue URLs are correct-as-history, not drift.
+  Markdown candidate set, every page under `<wikiDir>/` (ADR-0041), and a
+  fixed allow-list of git-tracked config files (`.gvt-agent.json`, `package.json`,
+  `.claude/settings.json`, `.claude/settings.local.json`). Lines containing
+  `http` are skipped — provenance/issue URLs are correct-as-history, not drift.
 - **`scanBrokenLinks`** — walks the same candidate Markdown set, skips fenced
   code blocks and inline code spans (so a doc showing a link *as an example*
   doesn't false-positive), and resolves every relative link target with
@@ -41,17 +41,17 @@ scanners, each `(repoRoot, opts) => findings[]`:
   or the bare filename, since `docs/TOC.md` commonly links siblings by bare
   name).
 
-All three share one candidate-file walk (`listCandidateFiles`): `docs/**.md`
+All three start from one docs-tier walk (`listCandidateFiles`): `docs/**.md`
 plus the repo-root `CLAUDE.md`, minus a default exclude list
 (`CHANGELOG.md`, `docs/superpowers/`, `docs/decisions/` — content that is
-correct-as-history and would otherwise false-positive on retired tokens or
-looks-like-drift patterns).
+correct-as-history; ADR-0064 also excludes the folder a `paths` override
+moves `docs/decisions/` to, which is `wiki/decisions/` in this repo).
 
 ## How this is already "proto-lint"
 
 These scanners match the shape of the wiki pattern's `lint` verb almost
 exactly — dead links, orphaned pages, stale/retired references[^karpathy] —
-just applied to `docs/` instead of `wiki/`. They are wired into
+applied to `docs/`, not `wiki/` (retired tokens excepted). They are wired into
 `audit.mjs`'s validate mode as **advisory, exit-0 findings** (`info`/`warning`
 severity, never `error`): a consuming repo's audit never fails because of a
 broken doc link
@@ -67,7 +67,11 @@ have been one generic lint engine into three non-overlapping owners:
 
 - **`audit-conventions`'s hygiene scanners** own contract/hygiene of `docs/**`
   and `CLAUDE.md` — the plugin-contract surface every consuming repo has,
-  whether or not it has adopted the wiki practice.
+  whether or not it has adopted the wiki practice. One exception:
+  [ADR 0041](decisions/wiki-and-okf/0041-widen-retired-token-scan-to-wiki-amends-0015.md)
+  widened `scanRetiredTokens`, and only it, to `<wikiDir>/`, because no check
+  owned retired tokens on that editable tier. `scanBrokenLinks` and
+  `scanOrphanedDocs` still stay out of it.
 - **gvt-wiki's `maintain-wiki lint`** owns content health of the repo-root `wiki/` tier
   (and, per the schema, `raw/` immutability) — meaningful only for a repo
   that has actually adopted the wiki practice.

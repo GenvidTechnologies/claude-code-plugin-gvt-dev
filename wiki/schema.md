@@ -30,7 +30,7 @@ Three tiers, in order:
    notes, doc snapshots, anything captured verbatim at a point in time.
 2. **`wiki/`** — LLM-maintained pages, some ingested from `raw/` and the rest
    migrated in or written directly, plus `wiki/index.md` (the page listing)
-   and `wiki/log.md` (an append-only log of ingests and migrations).
+   and `wiki/log.md` (a newest-first log of ingests and migrations; prior entries are never edited).
 3. **This schema** (`wiki/schema.md`, inside the bundle) — the rules the
    `maintain-wiki` skill (the gvt-wiki plugin) follows to keep the first two in sync.
 
@@ -160,12 +160,12 @@ about one topic. Two situations, two different actions:
 
 - **New topic → new page.** If the ingested source describes a topic with no
   existing page, create one under `wiki/<topic-slug>.md`, add it to
-  `wiki/index.md`, and append an entry to `wiki/log.md`.
+  `wiki/index.md`, and prepend an entry to `wiki/log.md`.
 - **New facts about an existing topic → update the page in place.** Don't
   create a second page for the same topic, and don't just append raw
   paragraphs — integrate the new facts into the existing prose, updating the
   `description` if the topic's shape has changed, and refresh the frontmatter
-  `sources` list. Append an entry to `wiki/log.md` either way.
+  `sources` list. Prepend an entry to `wiki/log.md` either way.
 
 When it's ambiguous whether a source is a new topic or a refinement of an
 existing one, prefer updating the closer existing page — a wiki with one
@@ -215,7 +215,7 @@ that touches the page.
 `/gvt-wiki:maintain-wiki` operates through three verbs:
 
 - **`ingest`** — read new or changed files under `raw/`, write new `wiki/`
-  pages or update existing ones per the lifecycle rule above, and append one
+  pages or update existing ones per the lifecycle rule above, and prepend one
   entry per source to `wiki/log.md`.
 - **`query`** — answer a question **from the wiki**, with citations back to
   the pages (and, transitively, the `raw/` sources) that support the answer.
