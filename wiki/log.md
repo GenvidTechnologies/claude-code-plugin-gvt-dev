@@ -15,6 +15,19 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-13
+
+* **Update**: Performed the correction ADR-0041 recorded as owed (#613).
+  `llm-wiki-pattern-in-gvt-dev.md` and `audit-conventions-as-proto-lint.md`
+  no longer scope every hygiene scanner to `docs/**` and `CLAUDE.md`: they say
+  that `scanRetiredTokens` alone also walks `wiki/`, and the proto-lint page's
+  exclude list notes that the decisions exclusion follows a `paths` override
+  (ADR-0064). `schema.md` now says log entries are prepended, matching this
+  log's newest-first rule. Every line an ADR cites keeps its line number;
+  the one cited passage that had to change (`llm-wiki-pattern-in-gvt-dev.md`
+  lines 82-84, the passage ADR-0041 named) had its pointer-baseline digest
+  re-taken. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-12
 
 * **Update**: Added what `gh issue transfer` does to the `## Tracker` section

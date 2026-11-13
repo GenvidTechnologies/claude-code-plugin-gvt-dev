@@ -78,12 +78,14 @@ wiki pattern in mind:
   insight can land in.
 - **`audit-conventions` content-scanners ≈ a proto-lint tier.** The hygiene
   scanners (`scanRetiredTokens`, `scanBrokenLinks`, `scanOrphanedDocs`)
-  already check for exactly the kind of content-health issues the wiki
-  pattern's `lint` verb is meant to catch — dead links, orphaned pages, stale
-  tokens — just scoped to `docs/**` and `CLAUDE.md` rather than to `wiki/`.
+  already check for the kind of content-health issues the wiki pattern's
+  `lint` verb is meant to catch — dead links, orphaned pages, stale tokens —
+  over `docs/**` and `CLAUDE.md`; only the stale-token scan also reads `wiki/`.
   See [`audit-conventions` as proto-lint](/audit-conventions-as-proto-lint.md)
   for the detail and where the boundary between the two now sits.
-  That scoping is now enforced rather than merely assumed:
+  [ADR 0041](decisions/wiki-and-okf/0041-widen-retired-token-scan-to-wiki-amends-0015.md)
+  widened `scanRetiredTokens`, and only it, to `wiki/`. The link and orphan
+  scanners' scoping is now enforced rather than merely assumed:
   [ADR 0053](decisions/wiki-and-okf/0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)
   closes a route by which a relocated `docsRoot` could pull bundle pages into
   these two scanners' own walk, and gvt-wiki's `maintain-wiki lint` gained a mechanical
