@@ -23,6 +23,13 @@ the full maintenance schema.
   issues. Observed during #443's ownership pass and recorded by its retro.
   Not an ingest; no `raw/` source drove it.
 
+* **Update**: Added a paragraph to `maintainer/testing-the-audit.md`. It says
+  that a test file is part of the pointer scanner's citing corpus, so a
+  literal path-colon-number string in a test is a real pointer, and it gives
+  the quick check: the bare `pointer-baseline.mjs` scan count must equal the
+  baseline entry count. The `CLAUDE.md` Knowledge base trigger for that page
+  now names this case. Source: the #594 retro.
+  
 * **Update**: Added a `## Tracker` section to `process/issue-triage.md`. It
   says which tracker owns an issue now that the wiki practice ships as
   `gvt-wiki`, and how to handle an issue with a half in each plugin. Recorded
