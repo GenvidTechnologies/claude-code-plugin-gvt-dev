@@ -125,7 +125,7 @@ issue belongs to the plugin that ships the component it changes.
   `wiki-log`, `raw-readme`), `wiki-lint`, `wiki-librarian` and `wiki-editor`.
   Transfer such an issue with `gh issue transfer <n>
   GenvidTechnologies/claude-code-plugin-gvt-wiki`, then comment on the moved
-  issue that its bare `#N` references still mean gvt-dev.
+  issue that a bare `#N` left in its text still means gvt-dev.
 - **gvt-dev:** the `wiki` block of `.gvt-agent.json` and its definition in
   `plugin/CONVENTIONS.md` (ADR-0096 decision 1), `audit-conventions` (the
   `<wikiDir>/` retired-token scan, the ADR-0053 declines, Environment adoption
@@ -140,6 +140,23 @@ A title match is not enough to decide. The first pass (#443, 2026-11-12) moved
 35 of the 42 open issues with a wiki or OKF title and kept 6. It split one
 (#684), and filed the other halves of three cross-cutting issues as new
 issues. Each issue carries a comment with its verdict.
+
+What a transfer does, observed on the 35 transfers of that pass:
+
+- It keeps a label only when the target tracker has a label of the same name.
+  The others (there, `area:skills`, `area:docs`, `area:audit`) are dropped, so
+  add the target's own area label after the move.
+- It rewrites most bare `#N` references to a moved issue into the full
+  `owner/repo#N` form, in the moved issue and in the issues that stay. It
+  leaves some bare: one moved issue kept bare `#355`, `#361` and `#362` in a
+  comment. Which ones it leaves was not determined, so the move comment is
+  still needed.
+- A sub-issue link survives the move, across the two repositories.
+- `gh issue view <old number>` fails after the move. Use the URL that
+  `gh issue transfer` prints, and record the old and new numbers.
+- A title match misses issues. `#403` (the pin form of a `sources[]` entry)
+  changes the schema template and has no wiki word in its title. Search the
+  bodies for the component names too.
 
 ## Mutation recipes
 
