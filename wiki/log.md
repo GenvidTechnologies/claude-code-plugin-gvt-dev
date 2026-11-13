@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-12
 
+* **Update**: Added what `gh issue transfer` does to the `## Tracker` section
+  of `process/issue-triage.md`: which labels it keeps, how it rewrites bare
+  references, that sub-issue links survive, and that a title match misses
+  issues. Observed during #443's ownership pass and recorded by its retro.
+  Not an ingest; no `raw/` source drove it.
+
 * **Update**: Added a `## Tracker` section to `process/issue-triage.md`. It
   says which tracker owns an issue now that the wiki practice ships as
   `gvt-wiki`, and how to handle an issue with a half in each plugin. Recorded
