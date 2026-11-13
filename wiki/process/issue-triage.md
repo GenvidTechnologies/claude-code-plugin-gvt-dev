@@ -162,12 +162,12 @@ What a transfer does, observed on the 35 transfers of that pass:
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
-`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, and `{closeReason}` are substituted
-by the skill.
+`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{category}`, and
+`{otherCategories}` are substituted by the skill.
 
 When a recipe's set would be empty, omit its --remove-label flag.
 
-{otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed.
+{otherTypes} is the set of type labels, written out in full, with the label being added removed; {otherPriorities} is the set of priority labels, written out in full, with the label being added removed. {category} is a category label (`enhancement`, `documentation` or `chore`); {otherCategories} is every `type:*` label and every category label, written out in full, with the label being added removed.
 
 Every recipe names the repository with `--repo`. Without it, `gh` takes the
 repository from the git remote of the current directory, so a recipe run from
@@ -175,10 +175,12 @@ a scratch folder or from another checkout fails or writes to the wrong
 repository.
 
 - Set type: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "type:{type}" --remove-label "{otherTypes}"`
+- Set category (non-defect work, also to reclassify a defect): `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "{category}" --remove-label "{otherCategories}"` — removing every `type:*` label leaves no type on the issue, as the Types section requires for non-defect work. Added after the triage of #930 (2026-11-13), where `type:bug` became `enhancement` through an ad-hoc call because no recipe covered the move
 - Set priority: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "priority/{p}" --remove-label "{otherPriorities}"`
 - Add area: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label "area:{a}"`
 - Remove area: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --remove-label "area:{a}"`
 - Edit body (language fix / fill missing info): `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes the approved new body to `{tmpfile}` first
+- Read back body: `gh issue view {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --json body --jq .body | tr -d '\r' | head -c -1 | diff - {tmpfile}` — prints nothing and exits 0 when the body on the issue equals `{tmpfile}`. `--jq` adds a final newline, which `head -c -1` removes; without it, `diff` reports a difference on a body that matches. Measured 2026-11-13: on #929 the form without `head -c -1` reported one extra line on a matching body; on #930 this form printed nothing
 - Comment: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
 - Flag missing info: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label duplicate` then `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Duplicate of #{canonical}"`
