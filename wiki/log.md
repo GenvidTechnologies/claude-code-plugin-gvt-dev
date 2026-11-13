@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-13
 
+* **Update**: `maintainer/audit-author-time-findings.md` now says that
+  rewording a cited line fails the pointer-baseline digest check even when
+  no line moves, and how to re-take an entry whose cited passage is meant to
+  change. From the #613 retro. Not an ingest; no `raw/` source drove it.
 * **Update**: Performed the correction ADR-0041 recorded as owed (#613).
   `llm-wiki-pattern-in-gvt-dev.md` and `audit-conventions-as-proto-lint.md`
   no longer scope every hygiene scanner to `docs/**` and `CLAUDE.md`: they say
