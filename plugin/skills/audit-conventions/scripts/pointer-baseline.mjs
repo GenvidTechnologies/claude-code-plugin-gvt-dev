@@ -13,6 +13,7 @@
 //   node pointer-baseline.mjs [repoPath] [--write] [--accept-new]
 //   node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...]
 //       [--allow-drift <new-file>@<pointer>#<occurrence>=<current-digest> ...] [--write]
+//   node pointer-baseline.mjs [repoPath] --targets <file> [--targets ...]
 //
 //   (bare)        Print the diff this run WOULD apply. Writes nothing.
 //   --write       Apply it.
@@ -29,6 +30,27 @@
 //                 only within the SAME run that re-keys the entry; a token
 //                 whose digest is stale, or that names no drifting entry at
 //                 all, refuses as an unused allowance.
+//   --targets     READ-ONLY. Lists every live pointer whose resolved target is
+//                 <file>, with its citing file and line, pointer text and
+//                 occurrence, cited range, whether it is anchored, and its
+//                 baseline state. Repeatable. Combines with no other mode
+//                 flag, --write included, so it can never write.
+//
+// --TARGETS IS THE PRE-EDIT VIEW of one target: run it before editing <file>
+// to see which cited ranges an edit could shift. Beyond the resolved pointers
+// it reports three edge cases, each in its own section, so none is silently
+// dropped:
+//   - an AMBIGUOUS pointer (its path matches several files) is listed when
+//     <file> is one of its matches — it may cite <file>, and the scanner
+//     cannot say;
+//   - a CONTINUATION pointer (a bare line spec) inherits the target of the
+//     path-bearing pointer before it, and is listed and marked as such;
+//   - a STALE baseline entry — one whose key matches no live pointer — is
+//     listed when the path in its pointer text resolves to <file>. A stale
+//     continuation entry carries no path, so it is only counted.
+// An unresolved pointer and an orphan continuation name no file, so neither
+// can cite <file>; the summary line says so instead of listing them. A <file>
+// that is not in the repo is a usage error (exit 2), never an empty list.
 //
 // PRUNE-ONLY IS THE DEFAULT, with or without --write: entries matching nothing
 // in the current scan are removed, and nothing is added. That default exists
@@ -79,18 +101,21 @@
 // one in the same batch) and, when it is, prints a ready --allow-drift token
 // to re-run with.
 //
-// Exit codes: 0 success (including a dry run with pending changes); 1 the
-// --accept-new refusal, or a --rename refusal; 2 a usage error.
+// Exit codes: 0 success (including a dry run with pending changes, and any
+// --targets listing); 1 the --accept-new refusal, or a --rename refusal; 2 a
+// usage error, including a --targets <file> that is not in the repo.
 
 import { promises as fs } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import {
   BASELINE_FILE,
   baselineKey,
+  collectPointers,
   DIGEST_LENGTH,
   loadBaseline,
+  matchCandidates,
   renameExplainsDrift,
   scanPointerAnchors,
 } from './lib/pointer-anchors.mjs';
@@ -105,6 +130,7 @@ const USAGE = [
   'Usage: node pointer-baseline.mjs [repoPath] [--write] [--accept-new]',
   '       node pointer-baseline.mjs [repoPath] --rename <old>=<new> [--rename ...]',
   '           [--allow-drift <new-file>@<pointer>#<occurrence>=<current-digest> ...] [--write]',
+  '       node pointer-baseline.mjs [repoPath] --targets <file> [--targets ...]',
   '',
   '  (bare)        Print the diff this run would apply. Writes nothing.',
   '  --write       Apply it.',
@@ -115,6 +141,9 @@ const USAGE = [
   '  --allow-drift Re-keys ONE drifted entry, naming its current digest,',
   '                instead of refusing on that entry. Requires --rename.',
   '                Repeatable.',
+  '  --targets     Read-only. Lists every live pointer citing <file>, with',
+  '                its cited range, anchor and baseline state. Repeatable.',
+  '                Combines with no other mode flag, --write included.',
   '  --help        Print this text.',
   '',
   'Prune-only is the default, with or without --write: entries matching nothing',
@@ -149,16 +178,28 @@ const USAGE = [
   'never creates or overwrites one). A zero-entry pair is reported and',
   'skipped, not a refusal by itself. A drift refusal says whether the rename',
   'itself explains it and, when it does, prints a ready --allow-drift token.',
+  '',
+  '--targets lists, per <file>: the pointers that resolve to it (a continuation',
+  'marked as one), the ambiguous pointers whose matches include it, and the',
+  'stale baseline entries whose pointer text resolves to it. Unresolved pointers',
+  'and orphan continuations name no file, so they are never listed. A <file>',
+  'that is not in the repo is a usage error, not an empty list.',
 ].join('\n');
 
-// One row per flag. --targets (#594) and any later addition slot in here.
+// One row per flag.
 const OPTIONS = {
   write: { type: 'boolean' },
   'accept-new': { type: 'boolean' },
   rename: { type: 'string', multiple: true },
   'allow-drift': { type: 'string', multiple: true },
+  targets: { type: 'string', multiple: true },
   help: { type: 'boolean', short: 'h' },
 };
+
+// The flags --targets refuses to share a run with. --write is the one that
+// matters: refusing it is what makes "writes nothing under any flag
+// combination" a property of the parser rather than of a code path.
+const TARGETS_EXCLUSIVE = ['write', 'accept-new', 'rename', 'allow-drift'];
 
 function parseCliArgs(argv) {
   let values;
@@ -196,6 +237,20 @@ function parseCliArgs(argv) {
     };
   }
 
+  const targetTokens = values.targets ?? [];
+  if (targetTokens.length > 0) {
+    const clash = TARGETS_EXCLUSIVE.find((name) => {
+      const value = values[name];
+      return Array.isArray(value) ? value.length > 0 : value === true;
+    });
+    if (clash !== undefined) {
+      return { error: `--targets is read-only and cannot be combined with --${clash}` };
+    }
+    if (targetTokens.some((token) => token.trim() === '')) {
+      return { error: '--targets needs a non-empty <file>' };
+    }
+  }
+
   const renameTokens = values.rename ?? [];
   if (renameTokens.length > 0 && values['accept-new']) {
     return { error: '--rename cannot be combined with --accept-new' };
@@ -229,6 +284,9 @@ function parseCliArgs(argv) {
     acceptNew: values['accept-new'] ?? false,
     renames,
     allowances,
+    // Raw tokens: an absolute path can only be made repo-relative once the
+    // repoPath is known, so normalization happens in main().
+    targets: targetTokens.length > 0 ? targetTokens : null,
     help: values.help ?? false,
   };
 }
@@ -714,6 +772,196 @@ async function runRename({ findings, baseline, renames, allowances, write, basel
   console.log(`Wrote ${BASELINE_FILE}.`);
 }
 
+// Turns one raw --targets token into a repo-relative, forward-slash path. An
+// absolute path is made relative to the repo root first, so a path pasted
+// from an editor works as well as a typed one.
+function normalizeTarget(token, repoRoot) {
+  const value = isAbsolute(token) ? relative(repoRoot, token) : token;
+  return normalizeRepoPath(value);
+}
+
+// The path half of a stored pointer text — everything before its last colon,
+// which is how parseLineSpec's caller splits a pointer too. '' for a bare
+// continuation, which carries no path.
+const pointerPath = (pointerText) => {
+  const colon = pointerText.lastIndexOf(':');
+  return colon === -1 ? '' : pointerText.slice(0, colon);
+};
+
+const pointerKey = (pointer) =>
+  baselineKey({ file: pointer.file, pointer: pointer.raw, occurrence: pointer.occurrence });
+
+// Computes the --targets listing for one <file>. Pure — the caller owns the
+// scan and the baseline read, and nothing here can write.
+//
+// `pointers` and `candidates` come from collectPointers; `findings` is the
+// unsuppressed scan (scanPointerAnchors with useBaseline: false), used only to
+// tell a live, still-reported entry from one a prune would remove.
+//
+// Each row's `baseline` is one of:
+//   - null       — no entry has this pointer's key;
+//   - 'accepted' — an entry matches, and so does a current finding;
+//   - 'drifted'  — both carry a digest and they disagree;
+//   - 'prunable' — an entry matches the pointer, but no finding does any
+//                  more (the pointer was repaired), so a prune removes it.
+function planTargets({ pointers, findings, candidates, baseline }, file) {
+  const findingByKey = new Map();
+  for (const finding of findings) {
+    const key = baselineKey(finding);
+    if (!findingByKey.has(key)) findingByKey.set(key, finding);
+  }
+  const entryByKey = new Map(baseline.entries.map((entry) => [baselineKey(entry), entry]));
+  const liveKeys = new Set(pointers.map(pointerKey));
+
+  const row = (pointer) => {
+    const key = pointerKey(pointer);
+    const finding = findingByKey.get(key) ?? null;
+    const entry = entryByKey.get(key) ?? null;
+    let state = null;
+    if (entry != null) {
+      if (finding == null) state = 'prunable';
+      else if (entry.digest != null && finding.digest != null && entry.digest !== finding.digest) {
+        state = 'drifted';
+      } else state = 'accepted';
+    }
+    return {
+      file: pointer.file,
+      line: pointer.line,
+      pointer: pointer.raw,
+      occurrence: pointer.occurrence,
+      lineSpec: pointer.lineSpec,
+      anchored: pointer.anchor != null,
+      continuation: pointer.isContinuation === true,
+      finding: finding?.kind ?? null,
+      baseline: state,
+      entryKind: entry?.kind ?? null,
+    };
+  };
+
+  const cites = pointers
+    .filter((pointer) => pointer.resolution === 'resolved' && pointer.target === file)
+    .map(row);
+
+  // A continuation after an ambiguous pointer inherits its citedPath and its
+  // 'ambiguous' resolution, so this one filter covers both.
+  const ambiguous = pointers
+    .filter(
+      (pointer) =>
+        pointer.resolution === 'ambiguous' &&
+        pointer.citedPath != null &&
+        matchCandidates(candidates, pointer.citedPath).includes(file),
+    )
+    .map(row);
+
+  const stale = [];
+  let staleContinuations = 0;
+  for (const entry of baseline.entries) {
+    if (liveKeys.has(baselineKey(entry))) continue;
+    const path = pointerPath(entry.pointer);
+    if (path === '') {
+      staleContinuations += 1;
+      continue;
+    }
+    if (matchCandidates(candidates, path).includes(file)) stale.push(entry);
+  }
+
+  const unnamed = pointers.filter(
+    (pointer) => pointer.resolution === 'unresolved' || pointer.resolution === 'orphan',
+  ).length;
+
+  return { file, cites, ambiguous, stale: sortEntries(stale), staleContinuations, unnamed };
+}
+
+const BASELINE_LABELS = {
+  accepted: 'baselined',
+  drifted: 'baselined, DRIFTED (the stored digest no longer matches)',
+  prunable: 'baselined, prunable (no current finding)',
+};
+
+function describeTargetRow(row) {
+  const parts = [
+    `cites ${row.lineSpec}`,
+    row.anchored ? 'anchored' : 'unanchored',
+    row.baseline == null
+      ? 'not baselined'
+      : `${BASELINE_LABELS[row.baseline]}${row.entryKind ? ` [${row.entryKind}]` : ''}`,
+  ];
+  if (row.finding != null && row.baseline == null) parts.push(`finding: ${row.finding}`);
+  if (row.continuation) parts.push('continuation');
+  return [`  ${row.file}:${row.line}  ${row.pointer}  #${row.occurrence}`, `      ${parts.join(' · ')}`];
+}
+
+const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+
+function printTargets(plan) {
+  console.log(`### ${plural(plan.cites.length, 'live pointer cites', 'live pointers cite')} ${plan.file}`);
+  for (const row of plan.cites) for (const line of describeTargetRow(row)) console.log(line);
+  console.log('');
+
+  if (plan.ambiguous.length > 0) {
+    console.log(
+      `### ${plural(plan.ambiguous.length, 'ambiguous pointer', 'ambiguous pointers')} may cite ` +
+        `${plan.file} — their path matches it and other files too`,
+    );
+    for (const row of plan.ambiguous) for (const line of describeTargetRow(row)) console.log(line);
+    console.log('');
+  }
+
+  if (plan.stale.length > 0) {
+    console.log(
+      `### ${plural(plan.stale.length, 'stale baseline entry', 'stale baseline entries')} — ` +
+        `no live pointer has its key, and its pointer text resolves to ${plan.file}`,
+    );
+    printEntries('-', plan.stale, Infinity);
+    console.log('');
+  }
+
+  const anchored = plan.cites.filter((row) => row.anchored).length;
+  const baselined = plan.cites.filter((row) => row.baseline != null).length;
+  console.log(
+    `${plan.file}: ${plan.cites.length} citing (${anchored} anchored, ${baselined} baselined), ` +
+      `${plan.ambiguous.length} ambiguous, ${plan.stale.length} stale.`,
+  );
+  if (plan.staleContinuations > 0) {
+    console.log(
+      `  ${plural(plan.staleContinuations, 'stale continuation entry carries', 'stale continuation entries carry')} ` +
+        'no path, so it cannot be attributed to any file.',
+    );
+  }
+  if (plan.unnamed > 0) {
+    console.log(
+      `  ${plural(plan.unnamed, 'unresolved or orphan pointer names', 'unresolved or orphan pointers name')} ` +
+        'no file in the repo, so none is listed here.',
+    );
+  }
+  console.log('');
+}
+
+// Runs --targets: validates every <file> first, so an unknown one is a usage
+// error before any listing prints, then prints one listing per <file>. Never
+// writes — there is no write call on this path at all.
+async function runTargets({ findings, baseline, targets, repoRoot }) {
+  const { pointers, candidates } = await collectPointers(repoRoot);
+  const known = new Set(candidates);
+
+  const files = [...new Set(targets.map((token) => normalizeTarget(token, repoRoot)))];
+  const unknown = files.filter((file) => !known.has(file));
+  if (unknown.length > 0) {
+    for (const file of unknown) {
+      console.error(
+        `pointer-baseline: --targets '${file}' is not a file in ${repoRoot} — ` +
+          'give its path relative to the repo root (no pointer can cite a file that is not there)',
+      );
+    }
+    process.exit(2);
+  }
+
+  for (const file of files) {
+    printTargets(planTargets({ pointers, findings, candidates, baseline }, file));
+  }
+  console.log('Read-only — nothing written.');
+}
+
 async function main() {
   const args = parseCliArgs(process.argv.slice(2));
   if (args.error) {
@@ -751,12 +999,17 @@ async function main() {
   );
   console.log(
     `mode:     ${
-      args.renames ? `rename (${args.renames.length} pair${args.renames.length === 1 ? '' : 's'})`
+      args.targets ? 'targets, read-only'
+      : args.renames ? `rename (${args.renames.length} pair${args.renames.length === 1 ? '' : 's'})`
       : args.acceptNew ? 'prune + accept-new'
       : 'prune-only'
-    }, ${args.write ? 'write' : 'dry run'}`,
+    }${args.targets ? '' : `, ${args.write ? 'write' : 'dry run'}`}`,
   );
   console.log('');
+
+  if (args.targets) {
+    return runTargets({ findings, baseline, targets: args.targets, repoRoot });
+  }
 
   if (args.renames) {
     return runRename({
