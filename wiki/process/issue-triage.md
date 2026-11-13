@@ -61,7 +61,11 @@ coach overview until `gvt-fleet class` set their labels.
 
 Propose a class for each triaged issue. The proposal defaults to Later. Set it
 only with the coach's approval, through the recipes "Set coordinator class" and
-"Set project Class". A closed issue, such as a duplicate closed during triage,
+"Set project Class". For Later, the coordinator step writes no label, but the
+project step still adds the issue to the project and sets its Class to Later.
+Observed in the triage of #938 and #939 (2026-11-13): "Later adds no label" was
+read as "Later needs no write", and both issues were left out of the project
+until the retro of that triage added them. A closed issue, such as a duplicate closed during triage,
 needs no class label: the coordinator's `class` command refuses a closed issue.
 
 ## Labels

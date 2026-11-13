@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-13
 
+* **Update**: The `## Class` section of `process/issue-triage.md` now says
+  that a Later class still needs the "Set project Class" recipe, although the
+  coordinator step writes no label. Found by the retro of the #938 and #939
+  triage, where both issues were left out of the project. Not an ingest; no
+  `raw/` source drove it.
 * **Update**: Added two recipes to the `## Mutation recipes` section of
   `process/issue-triage.md`: "Set category", which reclassifies a defect as
   non-defect work, and "Read back body", which compares an issue body with
