@@ -208,6 +208,8 @@ The plugin has no top-level test runner script. `plugin/package.json` exists, bu
 node --test plugin/skills/audit-conventions/scripts/test/*.test.mjs
 ```
 
+A new worktree or clone has no `plugin/node_modules`. Run `npm ci --prefix plugin --ignore-scripts` before any `node --test` command that you run outside `commands.validate`. Without it, the test files that load the audit fail, and the failures look like regressions: in a new gvt-fleet worktree on 2026-11-14 (#619), the audit-conventions run reported 80 failures in 501 tests. A file that fails to load counts as one test. After the install, the same run reported 682 tests, and its only failures were in the change under test.
+
 The `create-adr-evals` tests that `commands.test` and `commands.validate` run need the gvt-wiki plugin installed, or `GVT_WIKI_ROOT` set to its plugin folder; see [`wiki/maintainer/dogfooding-the-plugin.md`](wiki/maintainer/dogfooding-the-plugin.md).
 
 For skill/agent **content**, `claude plugin validate` catches schema errors, manual review catches content drift, and `claude plugin details` confirms the plugin's component inventory after changes.
