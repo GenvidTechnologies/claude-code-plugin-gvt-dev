@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-14
 
+* **Update**: `process/issue-triage.md` now says, in its Class section, to
+  report each issue's current class beside the proposal, and to skip the
+  question and the write when they are the same. In the triage of #954 to #956,
+  all three approved class writes returned `noop`.
 * **Update**: `process/issue-triage.md` now says, in its Dependencies section,
   to offer the smallest body edit, checked with `extract` before and after,
   when a defect in the reference check makes an open issue read with the wrong

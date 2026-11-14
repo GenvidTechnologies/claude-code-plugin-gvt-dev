@@ -540,6 +540,21 @@ split). Present them together, then apply the approved changes using the **Mutat
   than adding a second one. `plan-task` matches the canonical heading and
   supersedes it with a mapping; a criterion left as a label is one it can only
   mark superseded or fork on;
+- when a body rewrite adds, removes or changes an issue reference, check the
+  draft with the reference grammar before you write it. Wrap the draft as a
+  read-one JSON object (`number`, `title`, `body`, `comments: []`) in a scratch
+  file, and run
+  `node ${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs extract --single <file> --repo <owner/repo>`.
+  Show the references it prints, with their relations, beside the preview. A
+  reference that blocks where the draft means only to relate, or a bare `#N`
+  that the grammar takes for an issue of the tracker's own repository, is a
+  defect in the draft: fix it before you ask. The body readback after the write
+  proves only that the text matches the draft. It cannot show what the
+  grammar reads in that text;
+- when a body rewrite in this walk already carries a dependency or related
+  link that Phase 1 approved as a comment, as a `Blocked by #N`,
+  `Depends on #N` or `Relates to #N` line, say so with the preview. Ask
+  whether to post the comment too; it repeats the body line;
 - when the analyst's **Verification findings** report an `[artifact]` finding
   other than `agreement` for this issue, present the finding with the target's
   actual text and offer a body rewrite that cites what the target says: `partly-shipped` →

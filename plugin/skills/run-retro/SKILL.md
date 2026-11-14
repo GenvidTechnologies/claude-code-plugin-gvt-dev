@@ -79,6 +79,8 @@ If a skill improvement applies to **all consuming repos** (not just this one), i
 - An expectation declaration should be tightened or relaxed
 - `CONVENTIONS.md` itself needs a refinement
 
+When you file such an issue against the plugin's repository, write every reference to an issue or pull request of this repository in full, as `owner/repo#N`. On the plugin's tracker, a bare `#N` names the plugin's own issue `#N`. Its triage reference check reads it that way, so a bare reference on a `Blocked by` line can block the issue on an unrelated open issue. A quoted body inside a code block can stay as it was.
+
 Note the change as a proposed plugin PR and follow the workflow in the plugin repo's CONTRIBUTING/README.
 If the repo maintains a wiki (a schema doc resolves: `paths['docs/wiki-schema.md']`, else `<wikiDir>/schema.md`, else `docs/wiki-schema.md`, the order `CONVENTIONS.md` defines), `/gvt-wiki:maintain-wiki ingest` (the gvt-wiki plugin) is the wiki tier's ingest — route durable, compounding insights there instead of (or alongside) a structured doc.
 
