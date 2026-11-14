@@ -33,8 +33,8 @@
       "file": "plugin/CHANGELOG.md",
       "pointer": "docs/decisions/0022-okf-bundle-root-is-the-wiki-tier.md:37",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "134b83f13ac0"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "plugin/skills/audit-conventions/scripts/lib/path-overrides.mjs",
@@ -145,8 +145,8 @@
       "file": "wiki/decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
       "pointer": ":98",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "1c70c60eb376"
+      "kind": "pointer-orphan-continuation",
+      "digest": null
     },
     {
       "file": "wiki/decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md",
@@ -411,8 +411,8 @@
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "plugin/skills/maintain-wiki/raw-readme.template.md:8-10",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "3cbd2d5b75cc"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -425,15 +425,15 @@
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "plugin/skills/maintain-wiki/wiki-schema.template.md:65-78",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "d8804b97def9"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "raw-readme.template.md:8",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "43e335bb5a44"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -502,43 +502,43 @@
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-log.template.md:3-6",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "a75109f28089"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-log.template.md:8-10",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "704e0934b2c8"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:111",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "e8cc70d61988"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:114-128",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "745eb26bde5b"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:23-31,40-42",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "5d9de6eeaa70"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:25-26",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "aad9c46d9e9f"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -551,15 +551,15 @@
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:77-78",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "94ea92462f8d"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
       "pointer": "wiki-schema.template.md:80-95",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "fe05154242fd"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md",
@@ -593,8 +593,8 @@
       "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",
       "pointer": "plugin/skills/maintain-wiki/wiki-schema.template.md:88",
       "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "330c1fde60fc"
+      "kind": "pointer-unresolved",
+      "digest": null
     },
     {
       "file": "wiki/decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md",

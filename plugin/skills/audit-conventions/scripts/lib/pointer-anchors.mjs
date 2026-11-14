@@ -1075,9 +1075,35 @@ export async function loadBaseline(repoRoot, opts = {}) {
   return { present: true, entries };
 }
 
+// The finding kinds whose pointer has no single target. A pointer reporting one
+// of them cannot be digested, so a match against an entry that WAS digested
+// means the cited file stopped resolving after the entry was taken.
+export const UNTARGETED_KINDS = ['pointer-unresolved', 'pointer-ambiguous', 'pointer-orphan-continuation'];
+
+// Compares one baseline entry with the finding that matched its key. Pure, and
+// shared by `applyBaseline` and the generator's --targets listing so the two
+// can never disagree about an entry. Returns:
+//
+//   - 'accepted'     — the entry suppresses the finding;
+//   - 'drifted'      — the entry has a digest and the cited lines no longer
+//                      digest to it: their content changed, or they are past
+//                      the end of the target that still resolves;
+//   - 'target-moved' — the entry has a digest and the pointer no longer
+//                      resolves to a single file (UNTARGETED_KINDS).
+//
+// An entry with NO digest was accepted while its pointer was already
+// untargeted, so it has nothing to compare and is always 'accepted'.
+export function baselineVerdict(entry, finding) {
+  if (entry.digest == null) return 'accepted';
+  if (finding.digest == null) {
+    return UNTARGETED_KINDS.includes(finding.kind) ? 'target-moved' : 'drifted';
+  }
+  return entry.digest === finding.digest ? 'accepted' : 'drifted';
+}
+
 // Applies the baseline to a scan's findings. Pure — the caller owns both reads.
 //
-// Four outcomes, and the last two are the ratchet:
+// Five outcomes, and the last three are the ratchet:
 //
 //   - baseline absent                    → every finding passes through;
 //   - matched, digest unchanged          → suppressed;
@@ -1085,6 +1111,10 @@ export async function loadBaseline(repoRoot, opts = {}) {
 //                                          the target moved under an accepted
 //                                          pointer and the acceptance no longer
 //                                          describes what is there;
+//   - matched, entry digested but the    → `pointer-baseline-target-moved`,
+//     pointer no longer resolves           because the cited file was moved,
+//                                          deleted or duplicated, and nothing
+//                                          can check the entry any more (#619);
 //   - entry matched by NOTHING           → `pointer-baseline-stale`, because
 //                                          the pointer was fixed or deleted and
 //                                          the entry must be pruned or it will
@@ -1093,11 +1123,15 @@ export async function loadBaseline(repoRoot, opts = {}) {
 //
 // THE NULL-TARGET CASE. An ambiguous, unresolved or orphan-continuation finding
 // has no single target, hence no cited range and no digest. Such findings are
-// still fully STORABLE — 32 of this repo's 138 findings today — and
-// they are suppressed on a key match like any other. They can never fire
-// `pointer-baseline-drifted`, because there is nothing to compare: a drift
-// verdict requires two digests, and a missing digest on EITHER side means the
-// comparison is not available rather than failed.
+// still fully STORABLE — 32 of this repo's 138 findings today — and an entry
+// taken from one (its digest null) suppresses on a key match like any other: it
+// has nothing to compare, so it can never fire a verdict. What CAN fire is an
+// entry taken while its pointer resolved (its digest set) that now matches an
+// untargeted finding. The key ignores the kind, so before #619 that entry went
+// on suppressing with no check at all, and later edits to the moved file
+// drifted silently. A resolved finding with no digest (its cited range is past
+// the end of the target) against a digested entry is a drift: the cited lines
+// are gone.
 export function applyBaseline(findings, baseline) {
   if (baseline == null || !baseline.present) return findings;
 
@@ -1114,17 +1148,44 @@ export function applyBaseline(findings, baseline) {
     }
     matched.add(key);
 
-    if (entry.digest == null || finding.digest == null) continue;
-    if (entry.digest === finding.digest) continue;
+    const verdict = baselineVerdict(entry, finding);
+    if (verdict === 'accepted') continue;
 
+    if (verdict === 'target-moved') {
+      kept.push({
+        kind: 'pointer-baseline-target-moved',
+        ok: false,
+        severity: 'error',
+        detail:
+          `${finding.file}:${finding.line} accepts '${finding.pointer}' in ${BASELINE_FILE}, but ` +
+          `the pointer no longer resolves to a single file (it now reports ${finding.kind}) — ` +
+          `the entry was taken against cited content (${entry.digest}) that can no longer be ` +
+          'checked, so the cited file was moved, deleted or duplicated. Repair the citation by ' +
+          'intent: find where the text it cited lives now and point there, or rewrite it as ' +
+          'plain prose if the text is gone. Then run ' +
+          `\`node ${BASELINE_GENERATOR} --write --accept-new\` to prune this entry (and to ` +
+          'accept the repaired pointer if it is still debt)',
+        file: finding.file,
+        line: finding.line,
+        pointer: finding.pointer,
+        occurrence: finding.occurrence,
+        digest: null,
+        baselineDigest: entry.digest,
+      });
+      continue;
+    }
+
+    const change =
+      finding.digest == null
+        ? `${finding.target ?? 'its target'} no longer has the cited lines (${entry.digest} → none)`
+        : `the content it cites has changed since the baseline was taken (${entry.digest} → ${finding.digest})`;
     kept.push({
       kind: 'pointer-baseline-drifted',
       ok: false,
       severity: 'error',
       detail:
         `${finding.file}:${finding.line} accepts '${finding.pointer}' in ${BASELINE_FILE}, but ` +
-        `the content it cites has changed since the baseline was taken (${entry.digest} → ` +
-        `${finding.digest}) — the acceptance no longer describes the cited lines, so re-read ` +
+        `${change} — the acceptance no longer describes the cited lines, so re-read ` +
         'the target and either repair the citation, or re-take the entry by deleting it from ' +
         `${BASELINE_FILE} and running \`node ${BASELINE_GENERATOR} --write --accept-new\``,
       file: finding.file,

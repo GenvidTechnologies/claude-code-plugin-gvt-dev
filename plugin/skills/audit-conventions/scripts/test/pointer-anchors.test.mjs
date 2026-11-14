@@ -1916,10 +1916,10 @@ test('ratchet: null-target findings round-trip through the baseline and never dr
   }
 });
 
-test('applyBaseline: a digest on one side only is not a drift verdict', () => {
-  // Reached when a baselined pointer becomes ambiguous (entry has a digest, the
-  // finding no longer can) or the reverse. Neither side has a comparison
-  // available, so the entry suppresses without claiming the target moved.
+test('applyBaseline: an entry accepted with no digest suppresses whatever digest the finding has', () => {
+  // An entry taken while its pointer was already unresolved, ambiguous or an
+  // orphan has nothing to compare against, so it suppresses on a key match as
+  // it always did — whether or not the pointer has since resolved.
   const finding = {
     kind: 'pointer-anchor-missing',
     ok: false,
@@ -1929,17 +1929,140 @@ test('applyBaseline: a digest on one side only is not a drift verdict', () => {
     line: 1,
     pointer: ptr('designer.md', '83'),
     occurrence: 0,
+    digest: 'abc123abc123',
+  };
+  const entry = { file: 'docs/notes.md', pointer: ptr('designer.md', '83'), occurrence: 0, kind: 'pointer-unresolved', digest: null };
+  assert.deepEqual(applyBaseline([finding], { present: true, entries: [entry] }), []);
+  assert.deepEqual(applyBaseline([{ ...finding, kind: 'pointer-unresolved', digest: null }], { present: true, entries: [entry] }), []);
+});
+
+// #619: an entry that recorded a digest, matched by a finding that has none,
+// used to be skipped — the key ignores the kind, so the accepted pointer went
+// on suppressing after its target vanished, and nothing checked it again.
+for (const kind of ['pointer-unresolved', 'pointer-ambiguous', 'pointer-orphan-continuation']) {
+  test(`applyBaseline: a digested entry whose pointer is now ${kind} fires pointer-baseline-target-moved`, () => {
+    const finding = {
+      kind,
+      ok: false,
+      severity: 'error',
+      detail: 'x',
+      file: 'docs/notes.md',
+      line: 4,
+      pointer: ptr('designer.md', '83'),
+      occurrence: 0,
+      digest: null,
+    };
+    const entry = {
+      file: 'docs/notes.md',
+      pointer: ptr('designer.md', '83'),
+      occurrence: 0,
+      kind: 'pointer-anchor-missing',
+      digest: 'abc123abc123',
+    };
+    const out = applyBaseline([finding], { present: true, entries: [entry] });
+    assert.equal(out.length, 1);
+    assert.equal(out[0].kind, 'pointer-baseline-target-moved');
+    assert.equal(out[0].severity, 'error');
+    assert.equal(out[0].ok, false);
+    assert.equal(out[0].file, 'docs/notes.md');
+    assert.equal(out[0].line, 4);
+    assert.equal(out[0].pointer, ptr('designer.md', '83'));
+    assert.equal(out[0].occurrence, 0);
+    assert.equal(out[0].baselineDigest, 'abc123abc123');
+    assert.equal(out[0].digest, null);
+    // The detail names the current kind, the stored digest, the remedy and the
+    // script that performs it.
+    assert.ok(out[0].detail.includes(kind));
+    assert.ok(out[0].detail.includes('abc123abc123'));
+    assert.match(out[0].detail, /Repair the citation by intent/);
+    assert.ok(out[0].detail.includes(BASELINE_GENERATOR));
+  });
+}
+
+test('applyBaseline: a digested entry whose resolved pointer now has no digest fires pointer-baseline-drifted', () => {
+  // The target still resolves, but the cited range is past its end: the lines
+  // the entry accepted are gone, which is a change of the cited content.
+  const finding = {
+    kind: 'pointer-anchor-missing',
+    ok: false,
+    severity: 'error',
+    detail: 'x',
+    file: 'docs/notes.md',
+    line: 1,
+    pointer: ptr('designer.md', '83'),
+    occurrence: 0,
+    target: 'plugin/agents/designer.md',
     digest: null,
   };
-  const entry = { file: 'docs/notes.md', pointer: ptr('designer.md', '83'), occurrence: 0, kind: null, digest: 'abc123abc123' };
-  assert.deepEqual(applyBaseline([finding], { present: true, entries: [entry] }), []);
-  assert.deepEqual(
-    applyBaseline([{ ...finding, digest: 'abc123abc123' }], {
-      present: true,
-      entries: [{ ...entry, digest: null }],
-    }),
-    [],
-  );
+  const entry = { file: 'docs/notes.md', pointer: ptr('designer.md', '83'), occurrence: 0, kind: 'pointer-anchor-missing', digest: 'abc123abc123' };
+  const out = applyBaseline([finding], { present: true, entries: [entry] });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].kind, 'pointer-baseline-drifted');
+  assert.equal(out[0].severity, 'error');
+  assert.equal(out[0].baselineDigest, 'abc123abc123');
+  assert.equal(out[0].digest, null);
+  assert.match(out[0].detail, /no longer has the cited lines/);
+  assert.ok(out[0].detail.includes('plugin/agents/designer.md'));
+  assert.ok(out[0].detail.includes(BASELINE_GENERATOR));
+});
+
+// ---- the ratchet: MUTATION — the cited file moves ⇒ target-moved -------------
+
+test('ratchet: moving the cited file under a baselined pointer fires pointer-baseline-target-moved', async () => {
+  const dir = await ratchetFixture();
+  try {
+    const before = await scanPointerAnchors(dir);
+    assert.deepEqual(before.map((f) => f.kind), ['pointer-anchor-missing']);
+    assert.notEqual(before[0].digest, null);
+    await writeBaseline(dir, before);
+    assert.deepEqual(await scanPointerAnchors(dir), []);
+
+    // MUTATION: the cited file moves to a path the pointer no longer matches —
+    // #587's move of a cited wiki page, reduced to one pointer.
+    await rm(join(dir, 'plugin/agents/designer.md'));
+    await writeRepoFile(dir, 'plugin/agents/architect.md', numberedLines(120));
+
+    // Control: the pointer really became unresolved, with no digest, so the
+    // finding below is about the move and not about some other change.
+    const unratcheted = await scanPointerAnchors(dir, { useBaseline: false });
+    assert.deepEqual(
+      unratcheted.map((f) => [f.kind, f.digest]),
+      [['pointer-unresolved', null]],
+    );
+
+    const after = await scanPointerAnchors(dir);
+    assert.deepEqual(after.map((f) => [f.kind, f.severity]), [['pointer-baseline-target-moved', 'error']]);
+    assert.equal(after[0].file, 'docs/notes.md');
+    assert.equal(after[0].pointer, ptr('designer.md', '83'));
+    assert.equal(after[0].baselineDigest, before[0].digest);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('ratchet: truncating the cited file below the cited line fires pointer-baseline-drifted', async () => {
+  const dir = await ratchetFixture();
+  try {
+    const before = await scanPointerAnchors(dir);
+    await writeBaseline(dir, before);
+    assert.deepEqual(await scanPointerAnchors(dir), []);
+
+    // MUTATION: the target keeps its path but loses the cited line 83.
+    await writeRepoFile(dir, 'plugin/agents/designer.md', numberedLines(40));
+
+    const unratcheted = await scanPointerAnchors(dir, { useBaseline: false });
+    assert.deepEqual(
+      unratcheted.map((f) => [f.kind, f.digest]),
+      [['pointer-anchor-missing', null]],
+    );
+
+    const after = await scanPointerAnchors(dir);
+    assert.deepEqual(after.map((f) => [f.kind, f.severity]), [['pointer-baseline-drifted', 'error']]);
+    assert.equal(after[0].baselineDigest, before[0].digest);
+    assert.equal(after[0].digest, null);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test('applyBaseline: an absent baseline passes every finding through untouched', () => {

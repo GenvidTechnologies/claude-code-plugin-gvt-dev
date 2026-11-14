@@ -15,6 +15,15 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-14
+
+* **Update**: `maintainer/audit-author-time-findings.md` now says that a
+  baselined pointer into a moved *cited* file goes red, not silent. The audit
+  reports `pointer-baseline-target-moved` for an entry that has a digest when
+  its pointer no longer resolves to one file (#619). The "Find them" step now
+  names `pointer-baseline.mjs --targets`, which shipped with #594. Not an ingest;
+  no `raw/` source drove it.
+
 ## 2026-11-13
 
 * **Update**: `process/issue-triage.md` now writes a related link as
