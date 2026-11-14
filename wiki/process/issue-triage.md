@@ -58,6 +58,16 @@ Propose a class for each triaged issue. The proposal defaults to Later. Set it
 only with the coach's approval, through the recipe "Set class". The command
 `gvt-fleet class` writes the Iteration value and reads it back itself.
 
+Report each issue's current class beside the proposal. When they are the same,
+say "no change" and do not ask or write. `gvt-fleet ready --class now` and
+`gvt-fleet ready --class next` list the issues of those classes, and any other
+open issue is Later. They read the coordinator's cache, so an issue filed after
+the last `gvt-fleet sync` is missing from both lists. Such an issue is Later
+only if nobody has put it in an iteration since, so when the cache may lag, say
+that the current class is read from the cache. Observed in the triage of #954 to
+#956 (2026-11-14): the coach approved Later for all three, and the three
+`gvt-fleet class` writes each returned `noop` with `previous: later`.
+
 Before proposing classes, run `gvt-fleet iteration list` at the root of the
 gvt-fleet workspace. Propose Now only when the project has a current
 iteration, and Next only when it has a next one. Otherwise, say in the proposal
