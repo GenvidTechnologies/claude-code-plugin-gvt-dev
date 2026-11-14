@@ -58,6 +58,13 @@ Propose a class for each triaged issue. The proposal defaults to Later. Set it
 only with the coach's approval, through the recipe "Set class". The command
 `gvt-fleet class` writes the Iteration value and reads it back itself.
 
+Before proposing classes, run `gvt-fleet iteration list` at the root of the
+gvt-fleet workspace. Propose Now only when the project has a current
+iteration, and Next only when it has a next one. Otherwise, say in the proposal
+that `gvt-fleet iteration plan` must add the iteration first. Observed in the
+triage of #941 to #945 (2026-11-13): the coach approved Next for #942, and only
+the write found that project 1 had no next iteration.
+
 - `now` and `next` add the issue to the project when it is not in it.
 - `later` clears the Iteration value. It does not add the issue to the project,
   and an issue outside the project is Later already.
@@ -121,9 +128,10 @@ Express a dependency with a comment on the blocked issue: `Blocked by #<id>`
 GitHub task-list under a `Depends on` heading.
 
 A link that does not block (a related issue, a shared root cause, a conflict
-between two proposals) is a comment on one issue: `Related: #<id>`, followed
+between two proposals) is a comment on one issue: `Relates to #<id>`, followed
 by one sentence that says how the two relate. Never write `Blocked by` for it,
-because the reference check reads that line as a blocker.
+because the reference check reads that line as a blocker. Do not write
+`Related: #<id>`: the reference check does not read that form (#941).
 
 ## Tracker
 
@@ -198,7 +206,7 @@ repository.
 - Close as completed or not planned (only with approval): `gh issue close {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --reason "{closeReason}"` — post the reason first through the Comment recipe; `{closeReason}` is `completed` or `not planned`
 - Create split issue: `gh issue create --repo GenvidTechnologies/claude-code-plugin-gvt-dev --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Blocked by #{other}"`
-- Link related (does not block): `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes `Related: #{other}` and one sentence on how the two relate to `{tmpfile}` first
+- Link related (does not block): `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes `Relates to #{other}` and one sentence on how the two relate to `{tmpfile}` first
 - Set class (only with the coach's approval): `node bin/gvt-fleet.mjs --json class GenvidTechnologies/claude-code-plugin-gvt-dev#{id} {class}`, run at the root of the gvt-fleet workspace. `{class}` is `now`, `next` or `later` in lowercase. The command puts the issue's project item in the current or the next iteration, or clears its Iteration value for `later`, and reads the value back itself. `status` must be `changed` or `noop`; `noop` means that the issue already had the class. A `refused` result names its reason, for example a closed issue or a project with no next iteration. Never use `gh project item-list` to read the class: on a large project it hits GitHub's secondary rate limit.
 - Stamp triaged: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {triagedLabel}`
 

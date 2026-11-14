@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-13
 
+* **Update**: `process/issue-triage.md` now writes a related link as
+  `Relates to #<id>` (the Dependencies section and the "Link related" recipe),
+  because the reference check does not read `Related:` (#941). Its Class
+  section now says to run `gvt-fleet iteration list` before proposing Now or
+  Next. Found by the retro of the #941 to #945 triage. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: The `## Class` section of `process/issue-triage.md` now says that
   the class is the issue's iteration in the project Iteration field, as the
   gvt-fleet coordinator derives it since its ADR 0015. The class labels and the
