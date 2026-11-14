@@ -486,7 +486,10 @@ under the session scratchpad, not the scratchpad root: a calling skill such as
 `plan-next-issue` saves files with the same names there, and two writers of one
 file can leave a reader an empty or partial copy. It
 returns one structured triage report. **Do not fetch issue bodies
-yourself** — keeping them off this thread is the point of the split. Mode
+yourself** for analysis — keeping them off this thread is the point of the
+split. The one exception is a write: §3 reads the current body of one issue
+to draft a body rewrite or annotation, and reads it again after the write
+(the contract's "Read back body" recipe, when the contract has one). Mode
 flags (`--non-interactive`, `--force`) govern only this thread's approval and
 write behavior; the analyst always runs read-only regardless.
 

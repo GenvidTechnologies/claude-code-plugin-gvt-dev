@@ -133,6 +133,16 @@ by one sentence that says how the two relate. Never write `Blocked by` for it,
 because the reference check reads that line as a blocker. Do not write
 `Related: #<id>`: the reference check does not read that form (#941).
 
+A defect in the reference check can make an open issue read as blocked when
+it is not, or as ready when it is blocked. When triage finds such a defect,
+look for open issues that it changes now, and offer the smallest body edit
+that gives the correct reading, with the coach's approval. Run `extract`
+(`plugin/skills/triage-issues/scripts/lib/refs-grammar.mjs`) on the old and
+the new body, and show both results in the proposal. Observed in the triage of
+#951 (2026-11-14): #286 read as blocked by #260, because #260 was in a later
+sentence of its `Blocked by` line. Moving that sentence to its own paragraph
+left #193 as the only blocker.
+
 ## Tracker
 
 Since gvt-dev 5.0.0 the wiki practice ships as its own plugin, `gvt-wiki`,

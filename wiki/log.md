@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-14
 
+* **Update**: `process/issue-triage.md` now says, in its Dependencies section,
+  to offer the smallest body edit, checked with `extract` before and after,
+  when a defect in the reference check makes an open issue read with the wrong
+  readiness (#286, found in the triage of #951). Found by the retro of the
+  #951 triage. Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/testing-the-audit.md` now says how to probe a
   cited-file move: the same tree for the old and the new code, and a target
   that cites nothing in the baseline. Found by the retro of #619. Not an ingest;
