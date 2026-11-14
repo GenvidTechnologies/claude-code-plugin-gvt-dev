@@ -664,7 +664,13 @@ test('rename: a stored digest with no current digest passes through verbatim', a
 
     const after = (await readBaseline(dir)).entries;
     assert.deepEqual(after, [{ ...before[0], file: 'docs/b.md' }]);
-    assert.deepEqual(await scanPointerAnchors(dir), []);
+    // --rename is a pure re-key and judges no target, but the audit does: the
+    // re-keyed entry kept a digest its now-ambiguous pointer can no longer be
+    // checked against, so it fires rather than suppressing silently (#619).
+    assert.deepEqual(
+      (await scanPointerAnchors(dir)).map((f) => [f.kind, f.file]),
+      [['pointer-baseline-target-moved', 'docs/b.md']],
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -1093,6 +1099,29 @@ test('targets: an ambiguous pointer is listed under each file it may cite, not a
       assert.ok(result.stdout.includes(`${ptr('docs/notes.md', '5')}  ${ptr('shared.md', '2')}  #0`));
       assert.ok(result.stdout.includes('baselined [pointer-ambiguous]'), result.stdout);
     }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('targets: a digested entry whose pointer became ambiguous shows TARGET MOVED, as the audit reports it (#619)', async () => {
+  const dir = await targetsFixture();
+  try {
+    // A second designer.md makes the accepted designer.md pointer ambiguous.
+    // Its entry was taken while it resolved, so it carries a digest.
+    await writeRepoFile(dir, 'plugin/skills/other/designer.md', numberedLines(120));
+    const result = run(dir, '--targets', 'plugin/agents/designer.md');
+    assert.equal(result.status, 0, result.output);
+    const out = result.stdout;
+    assert.ok(out.includes('ambiguous pointers may cite plugin/agents/designer.md'), out);
+    assert.ok(
+      out.includes('unanchored · baselined, TARGET MOVED (the entry has a digest, the pointer no longer resolves to one file) [pointer-anchor-missing]'),
+      out,
+    );
+    // The audit agrees with the listing.
+    assert.ok(
+      (await scanPointerAnchors(dir)).some((f) => f.kind === 'pointer-baseline-target-moved'),
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

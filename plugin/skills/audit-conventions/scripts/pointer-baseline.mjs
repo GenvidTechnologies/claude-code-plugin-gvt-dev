@@ -112,6 +112,7 @@ import { parseArgs } from 'node:util';
 import {
   BASELINE_FILE,
   baselineKey,
+  baselineVerdict,
   collectPointers,
   DIGEST_LENGTH,
   loadBaseline,
@@ -798,12 +799,17 @@ const pointerKey = (pointer) =>
 // unsuppressed scan (scanPointerAnchors with useBaseline: false), used only to
 // tell a live, still-reported entry from one a prune would remove.
 //
-// Each row's `baseline` is one of:
-//   - null       — no entry has this pointer's key;
-//   - 'accepted' — an entry matches, and so does a current finding;
-//   - 'drifted'  — both carry a digest and they disagree;
-//   - 'prunable' — an entry matches the pointer, but no finding does any
-//                  more (the pointer was repaired), so a prune removes it.
+// Each row's `baseline` is null when no entry has this pointer's key, else the
+// lib's `baselineVerdict` for the entry and its current finding — the same
+// verdict the audit acts on — or 'prunable':
+//   - 'accepted'     — the entry suppresses the current finding;
+//   - 'drifted'      — the entry has a digest and the cited lines no longer
+//                      digest to it;
+//   - 'target-moved' — the entry has a digest and the pointer no longer
+//                      resolves to a single file (only an ambiguous row can
+//                      show it here, since a cites row resolves);
+//   - 'prunable'     — an entry matches the pointer, but no finding does any
+//                      more (the pointer was repaired), so a prune removes it.
 function planTargets({ pointers, findings, candidates, baseline }, file) {
   const findingByKey = new Map();
   for (const finding of findings) {
@@ -818,12 +824,7 @@ function planTargets({ pointers, findings, candidates, baseline }, file) {
     const finding = findingByKey.get(key) ?? null;
     const entry = entryByKey.get(key) ?? null;
     let state = null;
-    if (entry != null) {
-      if (finding == null) state = 'prunable';
-      else if (entry.digest != null && finding.digest != null && entry.digest !== finding.digest) {
-        state = 'drifted';
-      } else state = 'accepted';
-    }
+    if (entry != null) state = finding == null ? 'prunable' : baselineVerdict(entry, finding);
     return {
       file: pointer.file,
       line: pointer.line,
@@ -875,6 +876,7 @@ function planTargets({ pointers, findings, candidates, baseline }, file) {
 const BASELINE_LABELS = {
   accepted: 'baselined',
   drifted: 'baselined, DRIFTED (the stored digest no longer matches)',
+  'target-moved': 'baselined, TARGET MOVED (the entry has a digest, the pointer no longer resolves to one file)',
   prunable: 'baselined, prunable (no current finding)',
 };
 
