@@ -17,6 +17,14 @@ the full maintenance schema.
 
 ## 2026-11-13
 
+* **Update**: The `## Class` section of `process/issue-triage.md` now says that
+  the class is the issue's iteration in the project Iteration field, as the
+  gvt-fleet coordinator derives it since its ADR 0015. The class labels and the
+  `Class` single-select field are marked as not read. The two recipes "Set
+  coordinator class" and "Set project Class" and the Class readback are
+  replaced by one "Set class" recipe. Found in the triage of #941 to #945, where
+  `gvt-fleet class … next` was refused for lack of a next iteration. Not an
+  ingest; no `raw/` source drove it.
 * **Update**: The `## Class` section of `process/issue-triage.md` now says
   that a Later class still needs the "Set project Class" recipe, although the
   coordinator step writes no label. Found by the retro of the #938 and #939

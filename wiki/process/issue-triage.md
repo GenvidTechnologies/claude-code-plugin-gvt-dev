@@ -42,31 +42,38 @@ Decision rule: pick by the worst **observable** impact, not the suspected cause.
 
 ## Class
 
-Each open issue has a class: Now, Next or Later. Two places store it, and a
-triage pass sets both:
+Each open issue has a class: Now, Next or Later. The class is not a label. It
+is the issue's iteration in the Iteration field of the `gvt-plugins` project
+(organization project 1): the current iteration is Now, the next iteration is
+Next, and any other iteration, or no iteration, is Later. The gvt-fleet
+coordinator derives the class this way (its ADR 0015), and the coach overview
+(`gvt-fleet ready`) shows it.
 
-- **The coordinator's class labels.** The gvt-fleet coordinator keeps the class
-  in the labels `class:now` and `class:next`. An issue with neither label is
-  Later. The coach overview (`gvt-fleet ready`) reads only these labels. Only
-  the coordinator's `class` command writes them.
-- **The Class field of the `gvt-plugins` project** (organization project 1). It
-  is a single-select field with the options Now, Next and Later. The coach
-  overview does not read it.
-
-The two stores are not linked. When only one is set, they can disagree, and the
-coach overview shows the label class. Observed in the triage of #919 to #927
-(2026-11-12): the brief asked for "the project Class", and only the project
-field was set. #921 (Now) and #923, #924 and #925 (Next) read as Later in the
-coach overview until `gvt-fleet class` set their labels.
+- The labels `class:now` and `class:next` are retired. The coordinator no
+  longer reads or writes them. Leave them alone.
+- The project also has a single-select field `Class` (options Now, Next, Later
+  and Done). The coordinator does not read it. Do not write it.
 
 Propose a class for each triaged issue. The proposal defaults to Later. Set it
-only with the coach's approval, through the recipes "Set coordinator class" and
-"Set project Class". For Later, the coordinator step writes no label, but the
-project step still adds the issue to the project and sets its Class to Later.
-Observed in the triage of #938 and #939 (2026-11-13): "Later adds no label" was
-read as "Later needs no write", and both issues were left out of the project
-until the retro of that triage added them. A closed issue, such as a duplicate closed during triage,
-needs no class label: the coordinator's `class` command refuses a closed issue.
+only with the coach's approval, through the recipe "Set class". The command
+`gvt-fleet class` writes the Iteration value and reads it back itself.
+
+- `now` and `next` add the issue to the project when it is not in it.
+- `later` clears the Iteration value. It does not add the issue to the project,
+  and an issue outside the project is Later already.
+- `next` is refused when the project has no next iteration, and `now` when it
+  has no current one. `gvt-fleet iteration list` shows the iterations, and
+  `gvt-fleet iteration plan` adds one. Adding an iteration is a project write,
+  so it needs the coach's approval too.
+- A closed issue, such as a duplicate closed during triage, needs no class: the
+  command refuses a closed issue.
+
+Observed in the triage of #941 to #945 (2026-11-13): this section still
+described the class labels and the `Class` field. The coach's approved class for
+#942 was Next, and `gvt-fleet class … next` was refused because project 1 had no
+next iteration. The coach then chose Later. The old recipe also wrote the
+`Class` field (to Later) on all five issues. That field is not read, so the
+write changed no class.
 
 ## Labels
 
@@ -76,9 +83,8 @@ needs no class label: the coordinator's `class` command refuses a closed issue.
 - `needs-info` — set when required fields are missing; cleared when supplied.
 - `duplicate` — set on non-canonical members of a duplicate cluster.
 - `triaged` — set **last**, by the skill, when triage is complete.
-- `class:now`, `class:next` — the coordinator's class (see Class). The type,
-  priority and area recipes leave them alone, and only the coordinator's
-  `class` command writes them.
+- `class:now`, `class:next` — retired (see Class). Nothing reads or writes
+  them. The type, priority and area recipes leave them alone.
 
 The triager sets `type:*`, `area:*`, and `priority/*`. Reporters may set `area:*`.
 
@@ -166,7 +172,7 @@ What a transfer does, observed on the 35 transfers of that pass:
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
-`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{category}`, and
+`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{class}`, `{category}`, and
 `{otherCategories}` are substituted by the skill.
 
 When a recipe's set would be empty, omit its --remove-label flag.
@@ -193,12 +199,7 @@ repository.
 - Create split issue: `gh issue create --repo GenvidTechnologies/claude-code-plugin-gvt-dev --title "{title}" --body-file {tmpfile} --label "type:{type},area:{a}"` — the skill writes the drafted split body to `{tmpfile}` first; for a **non-defect** split, replace `type:{type}` with the category label (`enhancement`/`documentation`/`chore`)
 - Link dependency: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Blocked by #{other}"`
 - Link related (does not block): `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes `Related: #{other}` and one sentence on how the two relate to `{tmpfile}` first
-- Set coordinator class: `node bin/gvt-fleet.mjs --json class GenvidTechnologies/claude-code-plugin-gvt-dev#{id} {class}`, run at the root of the gvt-fleet workspace. `{class}` is `now`, `next` or `later` in lowercase. The command adds the new label before it removes the old one, creates a missing label, reads the issue back and refreshes the coordinator's cache. `later` adds no label. A result with `status` `noop` means that the issue already had the class. It refuses a closed issue.
-- Set project Class, in three steps:
-  1. Add the issue to the project: `gh project item-add 1 --owner GenvidTechnologies --url https://github.com/GenvidTechnologies/claude-code-plugin-gvt-dev/issues/{id} --format json --jq .id`. The output is `{itemId}`. For an issue that is already in the project, read `{itemId}` from the `projectItems` of the issue instead; this recipe was not checked against an issue that is already in the project.
-  2. Look up the ids: `gh api graphql -f query='query{organization(login:"GenvidTechnologies"){projectV2(number:1){id field(name:"Class"){... on ProjectV2SingleSelectField{id options{id name}}}}}}'`. `{projectId}` is `projectV2.id`, `{fieldId}` is `field.id`, and `{optionId}` is the `id` of the option whose `name` is the class. Look the ids up on each run: rebuilding the options of the field gives new option ids.
-  3. Set the field: `gh project item-edit --project-id {projectId} --id {itemId} --field-id {fieldId} --single-select-option-id {optionId}`. The command prints nothing on success.
-- Read back the project Class: `gh api graphql -f query='query{repository(owner:"GenvidTechnologies",name:"claude-code-plugin-gvt-dev"){issue(number:{id}){projectItems(first:5){nodes{project{title} fieldValueByName(name:"Class"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}'`
+- Set class (only with the coach's approval): `node bin/gvt-fleet.mjs --json class GenvidTechnologies/claude-code-plugin-gvt-dev#{id} {class}`, run at the root of the gvt-fleet workspace. `{class}` is `now`, `next` or `later` in lowercase. The command puts the issue's project item in the current or the next iteration, or clears its Iteration value for `later`, and reads the value back itself. `status` must be `changed` or `noop`; `noop` means that the issue already had the class. A `refused` result names its reason, for example a closed issue or a project with no next iteration. Never use `gh project item-list` to read the class: on a large project it hits GitHub's secondary rate limit.
 - Stamp triaged: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {triagedLabel}`
 
 Read the labels back after this edit: confirm the issue now carries exactly the intended labels before it is stamped triaged (use the tracker's read-one query, or the native issue view).
