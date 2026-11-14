@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-14
 
+* **Update**: `maintainer/testing-the-audit.md` now says how to probe a
+  cited-file move: the same tree for the old and the new code, and a target
+  that cites nothing in the baseline. Found by the retro of #619. Not an ingest;
+  no `raw/` source drove it.
 * **Update**: `maintainer/audit-author-time-findings.md` now says that a
   baselined pointer into a moved *cited* file goes red, not silent. The audit
   reports `pointer-baseline-target-moved` for an entry that has a digest when
