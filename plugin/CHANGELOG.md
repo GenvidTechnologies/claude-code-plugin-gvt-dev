@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-11-16
+
 - **`triage-issues` §3 checks a body rewrite with the reference grammar before the write.** When a rewrite adds, removes or changes an issue reference, the orchestrator runs `issue-refs.mjs extract --single` on the draft and shows the references it prints beside the preview. The body readback proves only that the posted text matches the draft; it cannot show that the draft now reads as blocked, or that a bare `#N` names an issue of the wrong repository. §3 also says to point out when a rewrite already carries a link that Phase 1 approved as a comment, and to ask whether to post the comment too. Found in the triage of #954 to #956. Behavioral skill change → version bump at release.
 - **`run-retro` §3 says to write references to the consuming repository in full in an issue filed against the plugin.** On the plugin's tracker a bare `#N` names the plugin's own issue, and the triage reference check reads it that way. #956, filed from a consuming repository's triage, cited that repository's issues as bare `#512` and `#514`; gvt-dev's own #512 is open and unrelated. Behavioral skill change → version bump at release.
 - **`triage-issues` §1 states when the orchestrator reads an issue body.** The rule "Do not fetch issue bodies yourself" read as absolute, while a §3 body rewrite and its readback need the current body. The rule now covers analysis only: the orchestrator reads the body of one issue to draft an approved rewrite or annotation, and reads it again after the write. Found in the triage of #951, where the rewrites of #951 and #286 needed their bodies. Wording fix in a shipped skill; no behaviour change.
