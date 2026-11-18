@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-18
 
+* **Update**: `process/issue-triage.md` now says how to read the current class
+  of a given issue: the `class` field of its entry in `gvt-fleet ready --all
+  --json`. In the triage of #966 to #969, a key search over the output of
+  `ready --class … --json` matched only the `untriaged` list, and the class was
+  wrongly reported as unconfirmed. Found by the retro of that triage. Not an
+  ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` now has an "Edit title" recipe in its
   Mutation recipes, with a title readback. In the triage of #963 and #964, the
   approved retitle of #964 went through an ad-hoc call because no recipe

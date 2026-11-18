@@ -68,6 +68,16 @@ that the current class is read from the cache. Observed in the triage of #954 to
 #956 (2026-11-14): the coach approved Later for all three, and the three
 `gvt-fleet class` writes each returned `noop` with `previous: later`.
 
+To read the current class of a given issue, use `gvt-fleet ready --all --json`
+at the root of the gvt-fleet workspace. Each entry of its `issues` list has the
+issue's `key` and its `class` (`now`, `next` or `later`), and the list includes
+untriaged issues. Do not search the whole output of `ready --class … --json`
+for an issue key: the `untriaged` list in the same output names every untriaged
+issue, so a key matches there whatever its class. Observed in the triage of
+#966 to #969 (2026-11-18): the four keys matched only in the `untriaged` list,
+and the class was wrongly reported as unconfirmed. `ready --all --json` gave
+`later` for all four.
+
 Before proposing classes, run `gvt-fleet iteration list` at the root of the
 gvt-fleet workspace. Propose Now only when the project has a current
 iteration, and Next only when it has a next one. Otherwise, say in the proposal
