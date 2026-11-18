@@ -15,6 +15,14 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-18
+
+* **Update**: `process/issue-triage.md` now has an "Edit title" recipe in its
+  Mutation recipes, with a title readback. In the triage of #963 and #964, the
+  approved retitle of #964 went through an ad-hoc call because no recipe
+  covered it. Found by the retro of that triage. Not an ingest; no `raw/`
+  source drove it.
+
 ## 2026-11-14
 
 * **Update**: `process/issue-triage.md` now says, in its Class section, to
