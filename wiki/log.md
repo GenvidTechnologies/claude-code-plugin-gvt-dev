@@ -15,6 +15,16 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-19
+
+* **Update**: `maintainer/release-cycle-rules.md` now says that a CHANGELOG
+  entry which states another issue's state reads that state live, with
+  `gh issue view … --json state,stateReason`. The #930 entry said that its
+  `maintain-wiki` half was tracked in
+  GenvidTechnologies/claude-code-plugin-gvt-wiki#24, copied from the #930
+  body; that issue had closed as completed three days before. Found by the
+  retro of #930.
+
 ## 2026-11-18
 
 * **Update**: `process/issue-triage.md` (Dependencies) now says that the
