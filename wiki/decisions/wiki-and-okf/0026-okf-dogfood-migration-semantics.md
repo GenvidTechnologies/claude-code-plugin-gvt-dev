@@ -55,7 +55,8 @@ moved.
 **2. `usage_window` is omitted absent any `usage_count`, and the format question
 is handed to #221 rather than fixed here.** The key is defined — in both
 `wiki/schema.md:136-137` ("written once as a sibling") and
-`plugin/skills/maintain-wiki/wiki-schema.template.md:88` — as framing "every
+the schema template's **`usage_window`** bullet (`wiki-schema.template.md`, which
+moved to `gvt-wiki` in 5.0.0) — as framing "every
 `usage_count` in the page." Nothing in the format emits a `usage_count`, and
 `wiki-librarian` never reads `usage_window`. Emitting it would frame an empty
 set with invented dates, which is worse than silence. §11 forbids a conformant
