@@ -153,6 +153,20 @@ by one sentence that says how the two relate. Never write `Blocked by` for it,
 because the reference check reads that line as a blocker. Do not write
 `Related: #<id>`: the reference check does not read that form (#941).
 
+The reference check gives the relation of a `Relates to` or `Blocked by` line
+to every issue reference on that line, not only to the first. So write the
+sentence that says how the two relate with no other issue reference, and put
+any other reference on a line of its own. A reference on the next line of the
+same paragraph was not read in a probe of `extract` (gvt-dev 5.1.0). Run `extract`
+(`plugin/skills/triage-issues/scripts/issue-refs.mjs extract --single`) on the
+draft of a "Link related" comment as well as on a body draft: the reference
+check reads comments too, and nothing else checks a comment before it is
+posted. Observed in the triage of #971 (2026-11-18): a draft `Relates to #956`
+line went on to cite genvid-holdings/burbank#359 and `burbank-playfab#536`.
+`extract` read burbank#359 as related too, and `burbank-playfab#536` as
+unresolvable (`repo-ambiguous`). With those sentences moved off that line,
+only #956 was left.
+
 A defect in the reference check can make an open issue read as blocked when
 it is not, or as ready when it is blocked. When triage finds such a defect,
 look for open issues that it changes now, and offer the smallest body edit
