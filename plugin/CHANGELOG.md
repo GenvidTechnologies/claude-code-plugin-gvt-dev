@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`CONVENTIONS.md` says that the presence of the `wiki` block is an Environment adoption signal (#929).** `audit-conventions` gives the Environment pillar the verdict `adopted` only when six signals hold, and the sixth is the presence of the `wiki` key in `.gvt-agent.json`, with any value. The description of the block said only that its keys are optional, so a repository that kept a wiki at the default locations and omitted the block got `partial adoption`, and nothing explained why. The description now says that the keys are optional for skill behaviour only, and that `"wiki": {}` is enough to get the verdict `adopted`. Contract clarification; no behaviour change → no version bump.
+
 ## [5.1.0] - 2026-11-16
 
 - **`triage-issues` §3 checks a body rewrite with the reference grammar before the write.** When a rewrite adds, removes or changes an issue reference, the orchestrator runs `issue-refs.mjs extract --single` on the draft and shows the references it prints beside the preview. The body readback proves only that the posted text matches the draft; it cannot show that the draft now reads as blocked, or that a bare `#N` names an issue of the wrong repository. §3 also says to point out when a rewrite already carries a link that Phase 1 approved as a comment, and to ask whether to post the comment too. Found in the triage of #954 to #956. Behavioral skill change → version bump at release.
