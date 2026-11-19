@@ -17,6 +17,13 @@ the full maintenance schema.
 
 ## 2026-11-18
 
+* **Update**: `process/issue-triage.md` (Dependencies) now says that the
+  reference check gives a `Relates to` or `Blocked by` relation to every issue
+  reference on that line, so other references go on a line of their own. It
+  also says to run `extract` on a "Link related" comment draft.
+  In the triage of #971, a draft `Relates to #956` line also produced a
+  relates-to reference and a `repo-ambiguous` one. Found by the retro of that
+  triage. Not an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` now says how to read the current class
   of a given issue: the `class` field of its entry in `gvt-fleet ready --all
   --json`. In the triage of #966 to #969, a key search over the output of
