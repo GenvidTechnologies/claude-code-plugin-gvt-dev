@@ -7,7 +7,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- **`tech-writer` reads `generated.at` from the clock and never composes it (#930).** A new Key Principles rule applies to every wiki page whose OKF frontmatter the agent writes or updates, an ADR inside the wiki included: when the frontmatter has a `generated` block, the agent runs `date -u +%Y-%m-%dT%H:%M:%SZ` and copies its output into `generated.at`. Step 4 of "Decision records (ADRs)" points to the rule. Before, the body said nothing about the clock, and a `plan-task` dispatch that updated a wiki page wrote a midnight placeholder (`2026-10-20T00:00:00Z`) that the orchestrator had to replace. The `maintain-wiki` ingest path has its own writer in `gvt-wiki` and is tracked there. Behavioral agent change → version bump at release.
+- **`tech-writer` reads `generated.at` from the clock and never composes it (#930).** A new Key Principles rule applies to every wiki page whose OKF frontmatter the agent writes or updates, an ADR inside the wiki included: when the frontmatter has a `generated` block, the agent runs `date -u +%Y-%m-%dT%H:%M:%SZ` and copies its output into `generated.at`. Step 4 of "Decision records (ADRs)" points to the rule. Before, the body said nothing about the clock, and a `plan-task` dispatch that updated a wiki page wrote a midnight placeholder (`2026-10-20T00:00:00Z`) that the orchestrator had to replace. The `maintain-wiki` ingest path has its own writer in `gvt-wiki`; GenvidTechnologies/claude-code-plugin-gvt-wiki#24 fixed it there. Behavioral agent change → version bump at release.
 
 ## [5.1.0] - 2026-11-16
 
