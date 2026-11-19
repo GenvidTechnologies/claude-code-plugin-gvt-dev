@@ -264,7 +264,8 @@ Alternatives considered and rejected:
 
 A future editor extending `designer.md` item 8's group 2 or group 4 checks
 this record first for the two carve-outs it leaves standing: `designer.md`'s
-`git stash` worked example (currently `:98`) stays #332's to repair, and
+`git stash` worked example stays #332's to repair (that example was later
+removed from `designer.md` by #373, and #332 is closed), and
 `approval-and-audit.md:25` stays byte-exact for #239, with #325 entangled in
 the same region. Neither carve-out is this record's to close.
 

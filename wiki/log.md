@@ -15,6 +15,17 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-19
+
+* **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
+  and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` now cite
+  the wiki templates and `maintain-wiki`'s `SKILL.md` in prose, with no line
+  number. Those files moved to `gvt-wiki` in 5.0.0, so their line citations
+  could not resolve. `decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md`
+  now names the `git stash` example that #373 removed from `designer.md`, in
+  place of a line number. Each rewrite names the text that was cited when the
+  record was written (#955). Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-18
 
 * **Update**: `process/issue-triage.md` (Dependencies) now says that the
