@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `process/issue-triage.md` has a "Read road block" recipe, a
+  read-only query for the `Road block` options and an issue's current value,
+  and says to report "no change" without a write when the proposal matches.
+  From the triage of #1001. Not an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` now says, under Labels, that an issue
   can carry more than one category label, and that the Set category recipe
   removes the other categories, so it runs only to change the category. From
