@@ -231,6 +231,21 @@ test('detectWikiAdoption: a blank wikiDir means the default for every signal, no
   assert.deepEqual(signals, { configBlock: true, wikiDir: true, index: true, log: true, rawDir: true, schemaDoc: true });
 });
 
+test('wiki-default: practice-detect strips a trailing separator from wikiDir', async () => {
+  for (const wikiDir of ['kb/', 'kb\\']) {
+    const { signals, verdict } = await schemaSignal(async (d) => {
+      await wikiTiers(d, 'kb');
+      await fs.writeFile(join(d, 'kb', 'schema.md'), '# Schema\n');
+    }, { wiki: { wikiDir } });
+    assert.deepEqual(
+      signals,
+      { configBlock: true, wikiDir: true, index: true, log: true, rawDir: true, schemaDoc: true },
+      `signals for wikiDir ${JSON.stringify(wikiDir)}`,
+    );
+    assert.equal(verdict, VERDICT_ADOPTED, `verdict for wikiDir ${JSON.stringify(wikiDir)}`);
+  }
+});
+
 test('SCHEMA_EXPECTATION matches the wiki schema expectation CONVENTIONS.md defines', () => {
   // gvt-dev owns CONVENTIONS.md and gvt-wiki must agree with it, so the pin
   // reads the contract doc, not a skill that now ships from another plugin.
@@ -263,10 +278,10 @@ test('detectWikiAdoption: a directory at wiki/schema.md falls through to a real 
   assert.equal(signals.schemaDoc, true);
 });
 
-test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs, ./candidate-resolution.mjs and the audit-core presence probes (no maintain-wiki import)', () => {
+test('practice-detect.mjs imports only node:path, ./expect-prefer.mjs, ./candidate-resolution.mjs, ./path-overrides.mjs and the audit-core presence probes (no maintain-wiki import)', () => {
   const src = readFileSync(fileURLToPath(new URL('../lib/practice-detect.mjs', import.meta.url)), 'utf8');
   const specs = src.split('\n').filter((l) => l.startsWith('import ')).map((l) => l.slice(l.lastIndexOf(' from ') + 7, -2));
-  assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs', './candidate-resolution.mjs']);
+  assert.deepEqual(specs, ['node:path', '#audit-core', './expect-prefer.mjs', './candidate-resolution.mjs', './path-overrides.mjs']);
   const core = src.split('\n').filter((l) => l.startsWith('import ') && l.endsWith(" from '#audit-core';"));
   assert.equal(core.length, 1);
   const bindings = core[0].slice(core[0].indexOf('{') + 1, core[0].indexOf('}')).split(',').map((b) => b.trim()).sort();
