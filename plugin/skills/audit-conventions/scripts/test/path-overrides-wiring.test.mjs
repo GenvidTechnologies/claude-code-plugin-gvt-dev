@@ -37,7 +37,7 @@ function writeConfig(dir, paths) {
 
 // The load-bearing fixture: no docs/TOC.md, a real documentation/INDEX.md,
 // and a `paths` override pointing the declared `docs/TOC.md` expectation at
-// it. Every component now declares docs/TOC.md as `required: false`. Before
+// it. Every declaring component now declares docs/TOC.md `required: false`. Before
 // #375, condense-lessons declared it `required: true`, so before this wiring
 // landed this fixture reported a required-expectation error and exited 1 —
 // measured directly against the pre-change audit.mjs:

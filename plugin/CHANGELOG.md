@@ -7,7 +7,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- **`condense-lessons` declares `docs/TOC.md` as optional, so no component requires it (#375).** It was the only one of 11 declarations without `required: false`, so the aggregated audit failed every repository without `docs/TOC.md`, even one that never ran the skill. The skill already asks the user when the index lists no lessons-learned doc. `CONVENTIONS.md` now marks the file as not required; run `/gvt-dev:audit-conventions --fix` to resync your copy. A repository without `docs/TOC.md` now gets 11 optional Info lines instead of a required error. Behavioral skill change → version bump at release.
+- **`condense-lessons` declares `docs/TOC.md` as optional, so no component requires it (#375).** It was the only one of 11 declarations without `required: false`, so the aggregated audit failed every repository without `docs/TOC.md`, even one that never ran the skill. The skill already asks the user when the index lists no lessons-learned doc. `CONVENTIONS.md` now marks the file as not required; run `/gvt-dev:audit-conventions --fix` and then `--fix --apply` to resync your copy. A repository without `docs/TOC.md` now gets 11 optional Info lines instead of a required error. Behavioral skill change → version bump at release.
 
 ## [5.1.0] - 2026-11-16
 

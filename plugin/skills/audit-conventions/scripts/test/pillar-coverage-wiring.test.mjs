@@ -48,7 +48,7 @@ function spawnAudit(args, cwd) {
 // ---------------------------------------------------------------------------
 
 // Before #375, condense-lessons declared docs/TOC.md as a *required*
-// expectation. Every component now declares it optional. Still write it in
+// expectation. Every declaring component now declares it optional. Still write it in
 // every fixture below so the report carries no optional `docs/TOC.md — file
 // not found` lines and the assertions stay isolated to the Practice Coverage
 // finding(s) under test (mirrors principle-citations-wiring.test.mjs's own

@@ -10,7 +10,7 @@ If you're forking or adapting the plugin for your own org, this file is what you
 |------|---------|----------|
 | `CLAUDE.md` | Project context loaded by Claude Code on session start. Holds project-specific facts the plugin's skills reference (commit format, PR format, etc.). Imports this file with `@CONVENTIONS.md`. | Yes |
 | `CONVENTIONS.md` | This file. Lives at the consuming repo's root as a copy of the plugin's canonical version, written by `/gvt-dev:audit-conventions --fix` on first migration. The plain audit warns on each run if this copy has drifted from the canonical; `/gvt-dev:audit-conventions --fix` (dry-run preview, then `--apply`) re-syncs it after the plugin updates. | Yes |
-| `docs/TOC.md` | Index of the project's documentation. Used by planning skills to scope their work. | No — every component that reads it declares it `required: false`. A `paths['docs/TOC.md']` override can point it at another index, such as `<wikiDir>/index.md`. |
+| `docs/TOC.md` | Index of the project's documentation. Used by planning skills to scope their work. | No — every component that reads it declares it `required: false` or reads it only when it is present. A `paths['docs/TOC.md']` override can point it at another index, such as `<wikiDir>/index.md`. |
 | `.gvt-agent.json` | Capability registry — project name, build/test commands, repo settings, feature toggles. | Yes |
 
 Anything else (architecture docs, runbooks, design patterns) is your own; the plugin doesn't depend on it.
