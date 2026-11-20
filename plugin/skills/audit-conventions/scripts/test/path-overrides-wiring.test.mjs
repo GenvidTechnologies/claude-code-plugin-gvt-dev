@@ -1,5 +1,5 @@
-// Integration test: `.gvt-agent.json`'s optional `paths` block (documented at
-// CONVENTIONS.md:82) is wired into audit.mjs's two filesystem evaluators
+// Integration test: `.gvt-agent.json`'s optional `paths` block (documented in
+// CONVENTIONS.md, the "**`paths`** (optional object)" entry) is wired into audit.mjs's two filesystem evaluators
 // (evaluateFile, evaluateConfig) via lib/path-overrides.mjs's
 // resolveExpectationPath, and unmatched/unusable override entries surface as
 // a `path-override` warning finding via overrideFindings — rather than being
@@ -45,9 +45,9 @@ function writeConfig(dir, paths) {
 //   EXIT=1
 //   - **condense-lessons** expects `docs/TOC.md` — file not found. Reason: ...
 //
-// With no override, the report carries 11 `docs/TOC.md — file not found
-// (optional)` info lines. The override must remove all of them, so the
-// doesNotMatch assertion below stays load-bearing.
+// With no override, the report carries one `docs/TOC.md — file not found
+// (optional)` info line per declaring component. The override must remove all
+// of them, so the doesNotMatch assertion below stays load-bearing.
 test('audit: a paths override relocating docs/TOC.md satisfies every declaring component', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
     await mkdir(join(dir, 'documentation'), { recursive: true });
