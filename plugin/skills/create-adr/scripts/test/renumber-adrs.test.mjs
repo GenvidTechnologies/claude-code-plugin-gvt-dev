@@ -1162,3 +1162,41 @@ test('wiki-default: --next does not refuse when wikiDir is docs', () => {
     cleanup(root);
   }
 });
+
+test('wiki-default: --next with an override to another directory does not refuse while docs/decisions/ holds records', () => {
+  const root = makeRepo('renumber-wd-otheroverride-');
+  try {
+    writeFileAt(
+      root,
+      '.gvt-agent.json',
+      JSON.stringify({ paths: { 'docs/decisions/': 'kb/decisions/' } }, null, 2),
+    );
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+
+    const result = runNext(root);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'kb/decisions/');
+    assert.equal(parsed.resolvedFrom, 'paths');
+    assert.equal(parsed.next, 1, 'the override directory holds no records');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next --dir to another directory bypasses the 5.x refusal', () => {
+  const root = makeRepo('renumber-wd-otherdir-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ project: { name: 'x' } }, null, 2));
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+
+    const result = runNext(root, ['--dir', 'kb/decisions/']);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'kb/decisions/');
+    assert.equal(parsed.resolvedFrom, '--dir');
+    assert.equal(parsed.next, 1, 'the --dir directory holds no records');
+  } finally {
+    cleanup(root);
+  }
+});
