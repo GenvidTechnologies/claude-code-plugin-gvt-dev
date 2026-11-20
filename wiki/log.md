@@ -34,6 +34,33 @@ the full maintenance schema.
   `maintainer/audit-author-time-findings.md` and
   `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/` source
   drove it.
+* **Update**: `process/issue-triage.md` (Class) now says that triage proposes
+  a road block for each issue, the `Road block` field of the `gvt-plugins`
+  project, and sets it only with the coach's approval. A new "Set road block"
+  recipe runs the gvt-fleet workspace's `set.mjs`, which writes at once with no
+  dry run. The section also says that an issue outside the project gets an item
+  with no Iteration value, so its class stays Later. No `raw/` capture drove
+  this run: the source is the triage of #980 and #982, where no recipe covered
+  the road block.
+* **Update**: `maintainer/audit-author-time-findings.md` now says that an
+  insertion into any cited file drifts its pointers, not only an insertion
+  into an agent or skill body, and that `pointer-baseline.mjs --targets
+  <file>` lists them first. In #684, a paragraph added to `schema.md` drifted
+  four citations in ADR-0022 and ADR-0026. `CLAUDE.md`'s Knowledge base now
+  routes to the page before an insertion into a file under `plugin/`,
+  `wiki/` or `docs/`. Found by the retro of #684.
+* **Update**: `schema.md`'s "Page lifecycle: create vs. update" section now
+  carries the "Citations on an update" rules from the gvt-wiki schema
+  template (GenvidTechnologies/claude-code-plugin-gvt-wiki#41). A claim added
+  or changed because a source changed cites a new `sources[]` entry whose
+  source shows the change, and an existing footnote is reused only after its
+  source is read and shows the sentence. The update-in-place bullet points to
+  these rules. Part of #684.
+* **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
+  and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` cite
+  `schema.md` by quoted text with no line number, at four citations. The
+  "Citations on an update" paragraph moved the cited lines down, and the
+  audit reported the four line numbers as drifted. Part of #684.
 
 ## 2026-11-19
 
@@ -44,6 +71,26 @@ the full maintenance schema.
   `sources`. ADR 0020 still names their old paths, and stays as written.
   Updated `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/`
   source drove it.
+* **Update**: `maintainer/release-cycle-rules.md` now says that a CHANGELOG
+  entry which states another issue's state reads that state live, with
+  `gh issue view … --json state,stateReason`. The #930 entry said that its
+  `maintain-wiki` half was tracked in
+  GenvidTechnologies/claude-code-plugin-gvt-wiki#24, copied from the #930
+  body; that issue had closed as completed three days before. Found by the
+  retro of #930.
+* **Update**: `maintainer/audit-author-time-findings.md` now says how to find
+  the pointers into a cited file after it has moved: `--targets` refuses the
+  old path, the baseline holds the entries, and a continuation after an
+  unresolved pointer is found only by reading the citing file. Found by the
+  retro of #955. Not an ingest; no `raw/` source drove it.
+* **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
+  and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` now cite
+  the wiki templates and `maintain-wiki`'s `SKILL.md` in prose, with no line
+  number. Those files moved to `gvt-wiki` in 5.0.0, so their line citations
+  could not resolve. `decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md`
+  now names the `git stash` example that #373 removed from `designer.md`, in
+  place of a line number. Each rewrite names the text that was cited when the
+  record was written (#955). Not an ingest; no `raw/` source drove it.
 
 ## 2026-11-18
 
