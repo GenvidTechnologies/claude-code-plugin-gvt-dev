@@ -17,6 +17,13 @@ the full maintenance schema.
 
 ## 2026-11-19
 
+* **Update**: `maintainer/release-cycle-rules.md` now says that a CHANGELOG
+  entry which states another issue's state reads that state live, with
+  `gh issue view … --json state,stateReason`. The #930 entry said that its
+  `maintain-wiki` half was tracked in
+  GenvidTechnologies/claude-code-plugin-gvt-wiki#24, copied from the #930
+  body; that issue had closed as completed three days before. Found by the
+  retro of #930.
 * **Update**: `maintainer/audit-author-time-findings.md` now says how to find
   the pointers into a cited file after it has moved: `--targets` refuses the
   old path, the baseline holds the entries, and a continuation after an
