@@ -12,7 +12,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, writeDocsIndex } from './helpers/temp-repo.mjs';
 import { withFixture, writeSkill, spawnAudit as spawnFixtureAudit } from './helpers/fixture-plugin.mjs';
 import { WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
@@ -97,7 +97,7 @@ test('audit: a repo with no docs/TOC.md and no override fails no required expect
 
 test('audit: a paths override relocating a directory expectation (docs/decisions/) uses the resolved path for the directory check', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'custom-decisions'), { recursive: true });
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
   });
@@ -129,7 +129,7 @@ test('audit: a paths override relocating a directory expectation (docs/decisions
 test('audit: a paths override pointing docs/decisions/ at a MISSING directory is still reported', async () => {
   // Positive control for the relocation test's absence pattern.
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
   });
   try {
@@ -148,7 +148,7 @@ test('audit: a paths override pointing docs/decisions/ at a MISSING directory is
 
 test('audit: an unrecognized paths key surfaces a path-override warning finding', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { 'docs/nonexistent-key.md': 'somewhere-else.md' });
   });
   try {
@@ -167,7 +167,7 @@ test('audit: an unrecognized paths key surfaces a path-override warning finding'
 
 test('audit: an empty paths override value surfaces a path-override warning finding', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     // docs/decisions/ is declared (create-adr, plan-task, tech-writer) and
     // always optional, so an unusable override here can't also trip a
     // required-expectation failure — isolates this assertion to the
@@ -193,7 +193,7 @@ test('audit: an empty paths override value surfaces a path-override warning find
 // never gain a spurious ### Warnings section from this wiring.
 test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no path-override findings', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { plugin_root: 'plugin' });
   });
   try {
@@ -214,7 +214,7 @@ test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no
 // value (or its absence) must not change it (ADR-0077).
 test('audit: an override value without a trailing slash still satisfies a declared directory (docs/decisions/)', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'custom-decisions'), { recursive: true });
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions' });
   });
@@ -248,7 +248,7 @@ const CREATE_ADR_NO_OVERRIDE =
 
 async function auditWithPaths(paths) {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, paths);
   });
   try {
@@ -311,7 +311,7 @@ test('audit: an override equal to the declared path renders no arrow (#731)', as
 
 test('audit: with no paths override, expectation findings render byte-identically and carry no arrow (#731)', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeFile(
       join(dir, '.gvt-agent.json'),
       JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' } }, null, 2),

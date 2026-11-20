@@ -10,7 +10,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, writeDocsIndex } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/hygiene-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -226,7 +226,7 @@ test('audit: a docs/decisions/ paths override into the wiki excludes the relocat
     // Write a minimal docs/TOC.md so the report carries no optional
     // `docs/TOC.md — file not found` lines and the assertions below stay
     // isolated to the paths-override behavior under test.
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
     await writeFile(
       join(dir, 'wiki', 'decisions', '0001-x.md'),

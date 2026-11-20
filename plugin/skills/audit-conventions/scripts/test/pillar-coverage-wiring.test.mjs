@@ -27,7 +27,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo, makeDanglingLink } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, makeDanglingLink, writeDocsIndex } from './helpers/temp-repo.mjs';
 import { withFixture, writeSkill, spawnAudit as spawnFixtureAudit } from './helpers/fixture-plugin.mjs';
 import { WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
@@ -55,7 +55,7 @@ function spawnAudit(args, cwd) {
 // docs/TOC.md write, for the same reason).
 async function withTempPracticeCoverageRepo(setup) {
   return withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     if (setup) await setup(dir);
   });
 }

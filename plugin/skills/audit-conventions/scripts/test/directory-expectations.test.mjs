@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { makeDanglingLink } from './helpers/temp-repo.mjs';
+import { makeDanglingLink, writeDocsIndex } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/directory-expectations.test.mjs -> scripts
@@ -40,7 +40,7 @@ async function withTempRepo(setup) {
     );
     await writeFile(join(dir, 'CLAUDE.md'), '# Test repo\n');
     await mkdir(join(dir, 'docs'), { recursive: true });
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     if (setup) await setup(dir);
     return dir;
   } catch (err) {

@@ -23,6 +23,14 @@ export async function makeDanglingLink(path) {
   await symlink(join(dirname(path), '.gone-' + basename(path)), path, 'junction');
 }
 
+// Writes the docs index a fixture needs only so the optional `docs/TOC.md`
+// expectation reports nothing. A fixture that tests the index itself (its
+// content, its links, an override pointing at it) writes its own file instead.
+export async function writeDocsIndex(dir, content = '# TOC\n') {
+  await mkdir(join(dir, 'docs'), { recursive: true });
+  await writeFile(join(dir, 'docs', 'TOC.md'), content);
+}
+
 export async function withTempMigratedRepo(setup) {
   const dir = await mkdtemp(join(tmpdir(), 'audit-migrated-repo-test-'));
   try {
