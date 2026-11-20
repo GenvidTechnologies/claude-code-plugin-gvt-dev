@@ -144,9 +144,9 @@ From a requirements document (produced by the analyst), propose a concrete desig
 
 Read these at runtime if present:
 
-- `docs/TOC.md` — consult for the project's full documentation index
+- The documentation index (`docs/TOC.md`, or the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names) — consult it for the project's full list of docs
 - `CLAUDE.md` — project-specific facts, conventions, and cross-domain boundary definitions
-- `docs/design-patterns.md` — design patterns already established in the codebase
+- The project's design-patterns doc — design patterns already established in the codebase. Find it through the index. It is often at `docs/design-patterns.md`, or under the `wiki.wikiDir` of a repo with a wiki. Look at those locations only when there is no index, or when the index lists no design-patterns doc.
 
 ## Key Principles
 

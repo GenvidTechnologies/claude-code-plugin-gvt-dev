@@ -6,15 +6,9 @@ model: sonnet
 metadata:
   expects:
     files:
-      - path: docs/architecture.md
+      - path: docs/TOC.md
         required: false
-        reason: Read for module architecture and key design patterns
-      - path: docs/design-patterns.md
-        required: false
-        reason: Read for design patterns and conventions
-      - path: docs/coding-conventions.md
-        required: false
-        reason: Read for naming conventions and TypeScript guidelines
+        reason: Read to find the project's architecture, design-patterns and coding-conventions docs, wherever the project keeps them
       - path: CLAUDE.md
         reason: Read for the project's commit format
     tools:
@@ -30,13 +24,13 @@ Implement TypeScript or JavaScript changes. You handle plain TS/JS work — incl
 
 ## Domain Knowledge
 
-Read these at runtime if present:
+Find the project's docs through the documentation index (`docs/TOC.md`, or the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names). Read the index if it is present, and read the docs it lists for:
 
-- `docs/architecture.md` — module architecture and key design patterns
-- `docs/design-patterns.md` — design patterns and conventions
-- `docs/coding-conventions.md` — naming conventions and TypeScript guidelines
+- module architecture and key design patterns;
+- design patterns and conventions;
+- naming conventions and TypeScript guidelines.
 
-If `docs/TOC.md` is present, consult it to find other relevant project docs.
+Read any other doc the index lists that is relevant to the task. The project decides where these docs live. They are often at `docs/architecture.md`, `docs/design-patterns.md` and `docs/coding-conventions.md`, and a repo with a wiki can keep them under its `wiki.wikiDir`. Look at those locations only when there is no index, or when the index lists none of these docs. A doc that is not at its usual location is not missing until the index has been checked.
 
 ## Process
 
