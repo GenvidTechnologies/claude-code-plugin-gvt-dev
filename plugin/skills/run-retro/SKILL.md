@@ -36,7 +36,7 @@ The stakes exceed a wasted cycle: source may have been rewritten into wording *s
 
 ## 2. Documentation Improvements
 
-Start from the project's documentation index and the repo's `CLAUDE.md`. Resolve the index before you look for it: read `paths['docs/TOC.md']` in `.gvt-agent.json`, and use `docs/TOC.md` when no override is set (`CONVENTIONS.md`, "Runtime path resolution"). A repo that moved its docs into a wiki often sets the override to `wiki/index.md`. This section calls the result **the resolved index**. The **docs root** is the directory that holds the resolved index: `docs/` by default, `wiki/` for that override. It is the root that `audit-conventions` walks. When the resolved index is at the repo root (for example `INDEX.md`), the docs root is `docs/`, so the glob below does not walk the whole repository.
+Start from the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) and the repo's `CLAUDE.md`. Resolve the index before you look for it. This section calls the result **the resolved index**. The **docs root** is the directory that holds the resolved index, for example `wiki/` when the resolved index is `wiki/index.md`. It is the root that `audit-conventions` walks. When the resolved index is at the repo root (for example `INDEX.md`), the docs root is `docs/`, so the glob below does not walk the whole repository.
 
 **If the resolved index is absent** (a greenfield consumer that hasn't scaffolded the contract), don't dead-end — discover the doc surface directly instead: glob `<docs root>/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
 
