@@ -24,6 +24,19 @@ the full maintenance schema.
   GenvidTechnologies/claude-code-plugin-gvt-wiki#24, copied from the #930
   body; that issue had closed as completed three days before. Found by the
   retro of #930.
+* **Update**: `maintainer/audit-author-time-findings.md` now says how to find
+  the pointers into a cited file after it has moved: `--targets` refuses the
+  old path, the baseline holds the entries, and a continuation after an
+  unresolved pointer is found only by reading the citing file. Found by the
+  retro of #955. Not an ingest; no `raw/` source drove it.
+* **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
+  and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` now cite
+  the wiki templates and `maintain-wiki`'s `SKILL.md` in prose, with no line
+  number. Those files moved to `gvt-wiki` in 5.0.0, so their line citations
+  could not resolve. `decisions/criteria-authoring/0038-baseline-scope-trap-and-measured-claim-reexecution.md`
+  now names the `git stash` example that #373 removed from `designer.md`, in
+  place of a line number. Each rewrite names the text that was cited when the
+  record was written (#955). Not an ingest; no `raw/` source drove it.
 
 ## 2026-11-18
 
