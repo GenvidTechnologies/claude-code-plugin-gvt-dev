@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  names the index as the file that `plugin/CONVENTIONS.md` "Runtime path
+  resolution" resolves for `docs/TOC.md`, with no default, so the text stays
+  true when #938 changes the default for a repository with a wiki. For #363.
+  Not an ingest; no `raw/` source drove it.
 * **Creation**: Added `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
   for #363. It decides that a component finds an ordinary project doc through
   the documentation index, that only a contract file is declared under `docs/`

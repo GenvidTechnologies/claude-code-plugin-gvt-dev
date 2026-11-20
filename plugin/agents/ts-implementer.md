@@ -24,7 +24,7 @@ Implement TypeScript or JavaScript changes. You handle plain TS/JS work — incl
 
 ## Domain Knowledge
 
-Find the project's docs through the documentation index (`docs/TOC.md`, or the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names). Read the index if it is present, and read the docs it lists for:
+Find the project's docs through the documentation index (the file that `plugin/CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`). Read the index if it is present, and read the docs it lists for:
 
 - module architecture and key design patterns;
 - design patterns and conventions;
