@@ -100,7 +100,7 @@ From a design document (produced by the designer), produce a concrete implementa
 Read these at runtime if present:
 
 - `CLAUDE.md` — project-specific commit format, branching, and implementer-agent inventory
-- The documentation index (`docs/TOC.md`, or the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names) — discover relevant project docs
+- The documentation index (the file that `plugin/CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) — discover relevant project docs
 - The project's architecture doc — system architecture (for choosing task seams). Find it through the index. It is often at `docs/architecture.md`, or under the `wiki.wikiDir` of a repo with a wiki. Look at those locations only when there is no index, or when the index lists no architecture doc.
 
 ## Key Principles

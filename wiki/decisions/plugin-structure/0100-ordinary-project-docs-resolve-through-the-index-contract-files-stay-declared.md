@@ -44,10 +44,11 @@ project's lessons-learned doc", with a common path only as a fallback.
 **1. An ordinary project doc is found through the documentation index.** A component body
 names the doc by its role (for example "the project's architecture doc"), tells the agent
 to find it through the documentation index, and gives a common path only as the place to
-look when there is no index or the index lists no such doc. The index is `docs/TOC.md`, or
-the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names. The statement of the rule in
-`plugin/CONVENTIONS.md` belongs to #938, which also decides how the default index follows a
-declared wiki.
+look when there is no index or the index lists no such doc. The index is the file that
+`plugin/CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`. The components
+name no default for it, so a change of the default, such as the one #938 makes for a
+repository with a wiki, leaves their text true. The statement of the rule in
+`plugin/CONVENTIONS.md` belongs to #938.
 
 **2. Only a contract file is declared in `metadata.expects` under `docs/`.** A component
 that reads ordinary docs declares the index (`docs/TOC.md`, `required: false`) instead.
