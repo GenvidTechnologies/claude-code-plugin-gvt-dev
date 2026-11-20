@@ -9,6 +9,7 @@ and follows [semantic versioning](https://semver.org/).
 
 - **`condense-lessons` declares `docs/TOC.md` as optional, so no component requires it (#375).** It was the only one of 11 declarations without `required: false`, so the aggregated audit failed every repository without `docs/TOC.md`, even one that never ran the skill. The skill already asks the user when the index lists no lessons-learned doc. `CONVENTIONS.md` now marks the file as not required; run `/gvt-dev:audit-conventions --fix` and then `--fix --apply` to resync your copy. A repository without `docs/TOC.md` now gets 11 optional Info lines instead of a required error. Behavioral skill change → version bump at release.
 - **`triage-issues` §0 gives the reason for the non-recursive near-miss scan without naming the plugin repository (#939).** The plugin repository moved its dated superpowers records out of `docs/`. The rule is unchanged: a recursive scan would also match `docs/superpowers/plans/` and `docs/superpowers/specs/`, where the superpowers plugin writes dated spec and plan records by default. No consumer-facing behavior change → no version bump.
+- **A new decision record, `ADR-0099`, decides that this repository keeps no `docs/` tree (#939).** `.gvt-agent.json` sets `paths['docs/TOC.md']` to `wiki/index.md`, `docs/TOC.md` is removed, and the 2026-06 superpowers plan and spec move unchanged to `raw/superpowers/`. Together with the #375 fix, no component requires `docs/TOC.md`. ADR-0099 amends ADR-0067. No consumer-facing behavior change → no version bump.
 
 ## [5.1.0] - 2026-11-16
 
