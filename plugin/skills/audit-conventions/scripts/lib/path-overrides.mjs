@@ -36,6 +36,55 @@ export function resolveExpectationPath(paths, declaredPath) {
   return paths[declaredPath];
 }
 
+// The wiki-derived default: where a declared `docs/...` path lives when the
+// repo declares no override. `docs/TOC.md` derives `<wikiDir>/index.md`; any
+// other `docs/<rest>` derives `<wikiDir>/<rest>` (a directory keeps its
+// trailing slash). Every other path is unchanged. Resolution never touches the
+// file system.
+//
+// effectiveWikiDir({wiki: {wikiDir: 'kb/'}})        -> 'kb'
+// effectiveWikiDir({})                              -> 'wiki'
+// wikiDerivedDefault('docs/TOC.md', 'wiki')         -> 'wiki/index.md'
+// wikiDerivedDefault('docs/decisions/', 'wiki')     -> 'wiki/decisions/'
+// wikiDerivedDefault('CLAUDE.md', 'wiki')           -> 'CLAUDE.md'
+// resolveDeclaredPath({}, 'docs/TOC.md')
+//   -> { path: 'wiki/index.md', from: 'wiki-default' }
+
+export const DEFAULT_WIKI_DIR = 'wiki';
+
+export function effectiveWikiDir(config) {
+  const raw = config?.wiki?.wikiDir;
+  if (typeof raw !== 'string') return DEFAULT_WIKI_DIR;
+  const dir = raw.trim().replace(/[\\/]$/, '');
+  return dir === '' ? DEFAULT_WIKI_DIR : dir;
+}
+
+export function wikiDerivedDefault(declaredPath, wikiDir) {
+  if (typeof declaredPath !== 'string') return declaredPath;
+  if (declaredPath === 'docs/TOC.md') return `${wikiDir}/index.md`;
+  if (declaredPath.startsWith('docs/') && declaredPath.length > 'docs/'.length) {
+    return `${wikiDir}/${declaredPath.slice('docs/'.length)}`;
+  }
+  return declaredPath;
+}
+
+export function resolveDeclaredPath(config, declaredPath, { prefer } = {}) {
+  const paths = config?.paths;
+  const hasOverride =
+    paths !== null &&
+    typeof paths === 'object' &&
+    !RESERVED_PATH_KEYS.includes(declaredPath) &&
+    declaredPath in paths;
+  if (hasOverride) return { path: resolveExpectationPath(paths, declaredPath), from: 'paths' };
+
+  // A `prefer` entry runs its own ordered lookup elsewhere and never takes the
+  // wiki default.
+  if (prefer !== undefined) return { path: declaredPath, from: 'declared' };
+
+  const derived = wikiDerivedDefault(declaredPath, effectiveWikiDir(config));
+  return { path: derived, from: derived !== declaredPath ? 'wiki-default' : 'declared' };
+}
+
 export function resolveDocsRoot(paths) {
   const override = resolveExpectationPath(paths, 'docs/TOC.md');
   if (override === 'docs/TOC.md') {
