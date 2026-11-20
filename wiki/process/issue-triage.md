@@ -102,6 +102,21 @@ next iteration. The coach then chose Later. The old recipe also wrote the
 `Class` field (to Later) on all five issues. That field is not read, so the
 write changed no class.
 
+The road block is not a label either. It is the `Road block` field of the
+`gvt-plugins` project: one option per larger goal of the project, plus
+`Standalone` for a bug or small improvement that serves no larger goal. Each
+option's description gives the goal and its "done when". Propose a road block
+for each triaged issue, beside the class, and set it only with the coach's
+approval, through the recipe "Set road block". When no road block fits and the
+issue is not standalone, say so in the triage report: the project may need a
+new goal.
+
+An issue outside the project has no project item. The recipe adds the item
+with no Iteration value, so the class stays Later and no class write follows.
+Observed in the triage of #980 and #982 (2026-11-20): neither issue was in the
+project, and after the road block was set each item read back with an empty
+Iteration.
+
 ## Labels
 
 - `type:*` — exactly one (mutually exclusive): `type:bug`, `type:crash`, `type:regression`.
@@ -224,7 +239,7 @@ What a transfer does, observed on the 35 transfers of that pass:
 
 The exact commands the triage skill runs to apply **approved** changes. `{id}`,
 `{type}`, `{otherTypes}`, `{p}`, `{otherPriorities}`, `{a}`, `{canonical}`, `{other}`, `{title}`,
-`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{class}`, `{category}`, and
+`{tmpfile}`, `{triagedLabel}`, `{needsInfoLabel}`, `{closeReason}`, `{class}`, `{roadBlock}`, `{category}`, and
 `{otherCategories}` are substituted by the skill.
 
 When a recipe's set would be empty, omit its --remove-label flag.
@@ -253,6 +268,7 @@ repository.
 - Link dependency: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Blocked by #{other}"`
 - Link related (does not block): `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes `Relates to #{other}` and one sentence on how the two relate to `{tmpfile}` first
 - Set class (only with the coach's approval): `node bin/gvt-fleet.mjs --json class GenvidTechnologies/claude-code-plugin-gvt-dev#{id} {class}`, run at the root of the gvt-fleet workspace. `{class}` is `now`, `next` or `later` in lowercase. The command puts the issue's project item in the current or the next iteration, or clears its Iteration value for `later`, and reads the value back itself. `status` must be `changed` or `noop`; `noop` means that the issue already had the class. A `refused` result names its reason, for example a closed issue or a project with no next iteration. Never use `gh project item-list` to read the class: on a large project it hits GitHub's secondary rate limit.
+- Set road block (only with the coach's approval): `node .claude/skills/groom-road-blocks/scripts/set.mjs --dir <scratch folder> --project GenvidTechnologies/1 "GenvidTechnologies/claude-code-plugin-gvt-dev#{id}={roadBlock}"`, run at the root of the gvt-fleet workspace. `{roadBlock}` is the full option name, for example `G9 audit-conventions is accurate and drives adoption`. The script has no dry run: it writes at once. It creates the `--dir` folder for its query files, adds the issue to the project when it is missing, reads the value back, and prints `OK` for each issue. Added after the triage of #980 and #982 (2026-11-20), where no recipe covered the road block
 - Stamp triaged: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {triagedLabel}`
 
 Read the labels back after this edit: confirm the issue now carries exactly the intended labels before it is stamped triaged (use the tracker's read-one query, or the native issue view).
