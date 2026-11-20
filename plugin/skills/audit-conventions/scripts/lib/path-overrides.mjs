@@ -1,5 +1,5 @@
-// Resolves `.gvt-agent.json`'s optional `paths` object (CONVENTIONS.md:82-83)
-// against declared expectation paths.
+// Resolves `.gvt-agent.json`'s optional `paths` object (CONVENTIONS.md, the
+// "**`paths`** (optional object)" entry) against declared expectation paths.
 //
 // `paths` has two distinct uses, told apart by key name:
 //   - Convention-file overrides: key is a declared expectation path (e.g.
