@@ -13,6 +13,9 @@ metadata:
       - path: docs/decisions/
         required: false
         reason: Home for decision records authored in Phase 4 when Phase 2 produced a non-trivial architecture/compromise decision; scaffolded on demand by tech-writer
+      - path: docs/acceptance/
+        required: false
+        reason: Home of the issue-less run's acceptance-criteria checklist; resolved through paths['docs/acceptance/'], and never created when the default location's containing directory is absent
     config:
       - key: repo.default_branch
         in: .gvt-agent.json
