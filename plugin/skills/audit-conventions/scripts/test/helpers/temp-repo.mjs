@@ -2,8 +2,9 @@
 // STATE_MIGRATED temp repo (state is detected solely by the presence of
 // .gvt-agent.json) with a minimal CLAUDE.md and an empty docs/ directory —
 // present purely to dodge unrelated required-file errors (some components
-// require CLAUDE.md; condense-lessons requires docs/TOC.md) that would
-// otherwise pollute the assertions in callers built on this fixture.
+// require CLAUDE.md) that would otherwise pollute the assertions in callers
+// built on this fixture. Before #375, condense-lessons also declared
+// docs/TOC.md as required; now every component declares it optional.
 //
 // Callers pass a setup(dir) callback to add their own fixture files (e.g.
 // docs/TOC.md, docs/example.md) or to override files this helper already
