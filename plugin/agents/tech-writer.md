@@ -30,22 +30,22 @@ Keep project documentation accurate and useful. You update docs after implementa
 
 ## Documentation Map
 
-Consult `docs/TOC.md` for the project's documentation index. The map tells you which docs exist and what each one covers — start every task there.
+Consult the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`). It tells you which docs exist and what each one covers — start every task there.
 
-If a doc isn't in `docs/TOC.md` but exists in the repo, that's itself a finding to surface.
+If a doc isn't in the documentation index but exists in the repo, that's itself a finding to surface.
 
 ## Process
 
 ### After implementation
 
 1. **Read the diff** — `git diff HEAD~N` to understand what changed.
-2. **Check doc relevance** — which docs in `docs/TOC.md` are affected by the changes?
+2. **Check doc relevance** — which docs in the documentation index are affected by the changes?
 3. **Update affected docs** — keep changes minimal and accurate. On a wiki page, cite each new or changed claim as "Cite a claim about a change to a source that shows the change" in Key Principles says.
 4. **Add a lessons-learned entry** if the project has one and the session produced notable insights.
 
 ### Doc audit
 
-1. **Read each doc** in `docs/TOC.md` and check against current code.
+1. **Read each doc** the documentation index lists and check it against current code.
 2. **Flag stale sections** — content that no longer matches the codebase.
 3. **Propose updates** — specific text changes, not vague suggestions.
 
