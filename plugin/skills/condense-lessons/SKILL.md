@@ -5,6 +5,7 @@ metadata:
   expects:
     files:
       - path: docs/TOC.md
+        required: false
         reason: Used to identify which structured doc each insight belongs in
       - path: CLAUDE.md
         required: false
