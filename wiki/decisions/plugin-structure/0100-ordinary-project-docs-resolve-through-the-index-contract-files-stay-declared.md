@@ -44,8 +44,8 @@ project's lessons-learned doc", with a common path only as a fallback.
 **1. An ordinary project doc is found through the documentation index.** A component body
 names the doc by its role (for example "the project's architecture doc"), tells the agent
 to find it through the documentation index, and gives a common path only as the place to
-look when there is no index or the index lists no such doc. The index is the file that
-`plugin/CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`. The components
+look when there is no index or the index lists no such doc. The index is the file that the
+repository's `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`. The components
 name no default for it, so a change of the default, such as the one #938 makes for a
 repository with a wiki, leaves their text true. The statement of the rule in
 `plugin/CONVENTIONS.md` belongs to #938.
