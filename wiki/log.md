@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Creation**: Added `decisions/acceptance-criteria/0102-issue-less-acceptance-fallback-resolves-a-declared-location.md`
+  for #455. It decides that the issue-less acceptance fallback resolves a
+  declared location, writes nothing and waits when there is none, and never
+  commits a file that git ignores. It amends ADR-0017 in part. Listed it in
+  that theme's `index.md` and marked the ADR-0017 entry there as amended. Not
+  an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` has a "Read road block" recipe, a
   read-only query for the `Road block` options and an issue's current value,
   and says to report "no change" without a write when the proposal matches.
