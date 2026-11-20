@@ -12,6 +12,8 @@ any page listed in **no** index — here, or in a subdirectory's own
 `description`, so the index and the page can't drift. See
 `wiki/schema.md` for the page format and maintenance rules.
 
+This index is also the documentation index of this repository: `.gvt-agent.json` resolves `paths['docs/TOC.md']` to this file. Documents outside the bundle are not linked from here. `CLAUDE.md` is the maintainer guide and routes to them: `plugin/CONVENTIONS.md`, `README.md` and the shipped references under `plugin/docs/`.
+
 ## Schema
 
 - [Wiki Maintenance Schema](schema.md) — The maintenance rules for this wiki — page format and types, create-vs-update lifecycle, raw/ immutability, staleness policy, verb contract and wiki-links.
