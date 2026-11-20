@@ -91,8 +91,8 @@ block in `.gvt-agent.json` (access mechanics).
    top level of `docs/` — both explicitly non-recursive.** (With no override,
    the resolved path's parent *is* `docs/`, and this is one scan.) A recursive
    scan would also match subdirectories such as `docs/superpowers/plans/` and
-   `docs/superpowers/specs/`, where the superpowers plugin writes dated design
-   records. Such a record can carry an old skill name as accurate history, so
+   `docs/superpowers/specs/`, where the superpowers plugin writes dated spec
+   and plan records by default. Such a record can carry an old skill name as accurate history, so
    it must never be touched or flagged as a live near-miss. Scanning `docs/` in
    addition to the resolved parent catches a stale pre-migration copy of
    `docs/issue-triage.md` left behind there after the contract moves
