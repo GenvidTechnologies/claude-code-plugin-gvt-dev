@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-19
 
+* **Update**: Removed `docs/TOC.md` for #939. The `paths['docs/TOC.md']`
+  override in `.gvt-agent.json` resolves the docs index to `index.md`, which
+  now names the documents outside the bundle. Updated
+  `maintainer/audit-author-time-findings.md` and
+  `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/` source
+  drove it.
 * **Migration**: Moved the 2026-06 `triage-bugs` plan and spec from
   `docs/superpowers/` to `raw/superpowers/plans/` and `raw/superpowers/specs/`
   for #939, with their text unchanged. They are dated design records kept as
