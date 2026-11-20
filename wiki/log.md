@@ -18,6 +18,10 @@ the full maintenance schema.
 ## 2026-11-20
 
 * **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  names the repository's own `CONVENTIONS.md` as the source of the index
+  resolution, not `plugin/CONVENTIONS.md`, which is the shipped template. For
+  #363. Not an ingest; no `raw/` source drove it.
+* **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
   names the index as the file that `plugin/CONVENTIONS.md` "Runtime path
   resolution" resolves for `docs/TOC.md`, with no default, so the text stays
   true when #938 changes the default for a repository with a wiki. For #363.
