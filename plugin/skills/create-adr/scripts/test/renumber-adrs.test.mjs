@@ -883,7 +883,7 @@ test('#582 --next CLI: missing ADR directory exits 0 with next=1 (CLI subprocess
     const result = spawnSync(process.execPath, [SCRIPT_PATH, '--next'], { cwd: root, encoding: 'utf8' });
     assert.equal(result.status, 0, `--next on a repo with no docs/decisions/ must exit 0, stderr:\n${result.stderr}`);
     const parsed = JSON.parse(result.stdout);
-    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.dir, 'wiki/decisions/', 'with no override the directory is the wiki-derived default');
     assert.equal(parsed.resolvedFrom, 'default');
     assert.equal(parsed.exists, false);
     assert.equal(parsed.layout, 'missing');
@@ -960,7 +960,7 @@ test('#582 resolveDecisionsDir: no config falls back to the default', () => {
   const root = makeRepo('renumber-next-default-');
   try {
     const resolved = resolveDecisionsDir(root);
-    assert.equal(resolved.dir, 'docs/decisions/');
+    assert.equal(resolved.dir, 'wiki/decisions/', 'the default is the wiki-derived directory');
     assert.equal(resolved.resolvedFrom, 'default');
     assert.equal(resolved.warning, undefined);
   } finally {
@@ -974,7 +974,7 @@ test('#582 resolveDecisionsDir: malformed JSON and an empty override value both 
   try {
     writeFileAt(malformedRoot, '.gvt-agent.json', '{ not valid json');
     const malformed = resolveDecisionsDir(malformedRoot);
-    assert.equal(malformed.dir, 'docs/decisions/');
+    assert.equal(malformed.dir, 'wiki/decisions/');
     assert.equal(malformed.resolvedFrom, 'default');
     assert.ok(malformed.warning, 'malformed .gvt-agent.json reports a warning');
 
@@ -984,7 +984,7 @@ test('#582 resolveDecisionsDir: malformed JSON and an empty override value both 
       JSON.stringify({ paths: { 'docs/decisions/': '   ' } }, null, 2),
     );
     const emptyVal = resolveDecisionsDir(emptyValRoot);
-    assert.equal(emptyVal.dir, 'docs/decisions/');
+    assert.equal(emptyVal.dir, 'wiki/decisions/');
     assert.equal(emptyVal.resolvedFrom, 'default');
     assert.ok(emptyVal.warning, 'a whitespace-only override value reports a warning');
   } finally {
@@ -1026,6 +1026,138 @@ test('#582 --next CLI: combined with --insert-at exits 1 and makes no fs change 
 
     const after = readdirSync(join(root, 'docs', 'decisions')).sort();
     assert.deepEqual(after, before, 'the ADR directory is untouched');
+  } finally {
+    cleanup(root);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Wiki-derived default for the decisions directory, and the refusal that
+// protects a 5.x repo whose records still sit in docs/decisions/.
+// ---------------------------------------------------------------------------
+
+function runNext(root, extraArgs = []) {
+  return spawnSync(process.execPath, [SCRIPT_PATH, '--next', ...extraArgs], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+}
+
+test('wiki-default: resolveDecisionsDir with no override resolves <wikiDir>/decisions/', () => {
+  const root = makeRepo('renumber-wd-default-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ project: { name: 'x' } }, null, 2));
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'wiki/decisions/');
+    assert.equal(resolved.resolvedFrom, 'default');
+    assert.equal(resolved.warning, undefined);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: resolveDecisionsDir honours a custom wiki.wikiDir', () => {
+  const root = makeRepo('renumber-wd-custom-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ wiki: { wikiDir: 'kb/' } }, null, 2));
+    const resolved = resolveDecisionsDir(root);
+    assert.equal(resolved.dir, 'kb/decisions/');
+    assert.equal(resolved.resolvedFrom, 'default');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next refuses while docs/decisions/ holds records and no override is set', () => {
+  const root = makeRepo('renumber-wd-refuse-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ project: { name: 'x' } }, null, 2));
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+    writeFileAt(root, 'docs/decisions/0002-other.md', '# 0002. Other\n');
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+
+    const result = runNext(root);
+    assert.equal(result.status, 1, `stderr:\n${result.stderr}`);
+    assert.equal(result.stdout.trim(), '', 'no JSON summary is printed');
+    assert.match(result.stderr, /holds 2 ADR records/, 'stderr names the record count (index.md is not a record)');
+    assert.ok(
+      result.stderr.includes("paths['docs/decisions/']"),
+      `stderr quotes the override key, got:\n${result.stderr}`,
+    );
+    assert.ok(result.stderr.includes('wiki/decisions/'), 'stderr names the derived directory');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next with a self-pinned override reads docs/decisions/', () => {
+  const root = makeRepo('renumber-wd-pinned-');
+  try {
+    writeFileAt(
+      root,
+      '.gvt-agent.json',
+      JSON.stringify({ project: { name: 'x' }, paths: { 'docs/decisions/': 'docs/decisions/' } }, null, 2),
+    );
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+
+    const result = runNext(root);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.resolvedFrom, 'paths');
+    assert.equal(parsed.next, 2);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next --dir bypasses the 5.x refusal', () => {
+  const root = makeRepo('renumber-wd-dirflag-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ project: { name: 'x' } }, null, 2));
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+
+    const result = runNext(root, ['--dir', 'docs/decisions/']);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.resolvedFrom, '--dir');
+    assert.equal(parsed.next, 2);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next does not refuse when docs/decisions/ holds no records', () => {
+  const root = makeRepo('renumber-wd-norecords-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ project: { name: 'x' } }, null, 2));
+    writeFileAt(root, 'docs/decisions/index.md', '# Decisions\n');
+    mkdirSync(join(root, 'docs', 'decisions', 'alpha'), { recursive: true });
+
+    const result = runNext(root);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'wiki/decisions/');
+    assert.equal(parsed.resolvedFrom, 'default');
+    assert.equal(parsed.next, 1);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('wiki-default: --next does not refuse when wikiDir is docs', () => {
+  const root = makeRepo('renumber-wd-docswiki-');
+  try {
+    writeFileAt(root, '.gvt-agent.json', JSON.stringify({ wiki: { wikiDir: 'docs' } }, null, 2));
+    writeFileAt(root, 'docs/decisions/0001-legacy.md', '# 0001. Legacy\n');
+
+    const result = runNext(root);
+    assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.dir, 'docs/decisions/');
+    assert.equal(parsed.resolvedFrom, 'default');
+    assert.equal(parsed.next, 2);
   } finally {
     cleanup(root);
   }
