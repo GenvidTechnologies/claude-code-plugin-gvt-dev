@@ -42,17 +42,19 @@ claude-code-plugin-gvt-dev/
 │   │   ├── lib/git-state-guard.mjs   # Pure, unit-tested classifier (dependency injected, testable with a stub parser)
 │   │   └── test/                     # node:test suite for the classifier
 │   ├── docs/
-│   │   └── development-principles.md # Shared reference imported by skills/agents
+│   │   ├── development-principles.md # Shared reference imported by skills/agents
+│   │   ├── writing-style.md          # gvt-dev writing style; skills and agents that write text copy its short form
+│   │   └── decision-record.template.md # MADR-lite ADR template; tech-writer scaffolds it into a consuming repo
 │   └── skeleton/                     # Pristine placeholder files greenfield --fix writes (source of truth for the scaffold)
 ├── .gvt-agent.json                # This repo's own contract config (dogfood — makes genvid skills work here)
 ├── .pointer-baseline.json         # Accepted-debt ratchet for the pointer-anchor scan (regenerate with pointer-baseline.mjs, never hand-edit)
-├── docs/
-│   └── TOC.md                        # This repo's documentation index (dogfood)
+├── raw/                              # Immutable captures (never edited): wiki sources, and dated design records under superpowers/
 ├── wiki/
+│   ├── index.md                      # This repo's documentation index (paths['docs/TOC.md'] resolves here)
 │   ├── process/issue-triage.md       # Dogfood consuming-repo triage conventions (resolved via paths)
 │   └── maintainer/plugin-authoring.md  # Maintainer authoring notes (internal, not shipped)
 ├── examples/                         # Worked, filled-in example consuming-repo files (Bunny game) for reference
-├── test/                             # Repo-level tests (shared-block drift test)
+├── test/                             # Repo-level tests (shared-block drift test, no-docs-tree guard)
 ├── audit-conventions-evals/          # Skill eval harness (developer tooling)
 ├── create-adr-evals/                 # Skill eval harness for create-adr (developer tooling)
 └── validator-evals/                  # Eval harness for the validator agent's chain reporting (developer tooling)
@@ -60,11 +62,11 @@ claude-code-plugin-gvt-dev/
 
 **Important layout details:**
 
-- **The plugin lives under `plugin/`** — `plugin/.claude-plugin/plugin.json` plus `plugin/skills/`, `plugin/agents/`, `plugin/hooks/`, `plugin/docs/`. The repo root carries only this repo's dogfood contract (`.gvt-agent.json`, `docs/TOC.md`, `wiki/process/issue-triage.md`), maintainer notes (`wiki/maintainer/plugin-authoring.md`), `examples/`, and the `*-evals/` harnesses.
+- **The plugin lives under `plugin/`** — `plugin/.claude-plugin/plugin.json` plus `plugin/skills/`, `plugin/agents/`, `plugin/hooks/`, `plugin/docs/`. The repo root carries only this repo's dogfood contract (`.gvt-agent.json`, `wiki/index.md` as its documentation index, `wiki/process/issue-triage.md`), maintainer notes (`wiki/maintainer/plugin-authoring.md`), `examples/`, and the `*-evals/` harnesses.
 - **Skills are directories** (`plugin/skills/<name>/SKILL.md`). The directory can include supporting files (sub-docs, scripts).
 - **Agents are flat files** (`plugin/agents/<name>.md`). Subdirectories are NOT discovered by the plugin loader.
 - **`plugin/skeleton/` is the scaffold's source of truth.** The greenfield `audit-conventions --fix` copies `plugin/skeleton/{.gvt-agent.json,CLAUDE.md,docs/TOC.md}` verbatim into a new repo (and `plugin/CONVENTIONS.md`). Edit the placeholder there, never a JS string literal. `plugin/skeleton/` holds *empty placeholders*; `examples/` holds a *filled-in* worked example — different purposes (see `plugin/skeleton/README.md`).
-- **This repo dogfoods its own contract.** It carries a real `.gvt-agent.json` and `docs/TOC.md` at the repo root so the genvid skills (`plan-task`, `run-retro`, `validator`, …) work when developing the plugin itself. The audit therefore classifies this repo as `migrated`, not `greenfield`.
+- **This repo dogfoods its own contract.** It carries a real `.gvt-agent.json` at the repo root, whose `paths` override points the `docs/TOC.md` contract file at `wiki/index.md`, so the genvid skills (`plan-task`, `run-retro`, `validator`, …) work when developing the plugin itself. The audit therefore classifies this repo as `migrated`, not `greenfield`. This repo has no `docs/` tree. Write its documentation in `wiki/`. A tool can write a dated design record into `docs/` by default (the superpowers `brainstorming` and `writing-plans` skills do). Keep such a record out of `docs/`: leave it untracked while it changes, and commit the final text under `raw/superpowers/`. `test/no-docs-tree.test.mjs` fails `commands.validate` when a file under `docs/` is tracked.
 
 ## Commands
 
@@ -137,7 +139,7 @@ See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 4. Verify with `claude plugin validate plugin`.
 5. **Run the audit** — `node plugin/skills/audit-conventions/scripts/audit.mjs` (exit 0) — to confirm any new `required: false` expectations stayed optional and didn't widen the aggregated contract (see [`wiki/maintainer/testing-the-audit.md`](wiki/maintainer/testing-the-audit.md)). Read [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md) before trusting the exit code.
 6. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` entry. A new invocable skill is consumer-visible surface, so it needs a version bump and a changelog note.
-7. **`docs/TOC.md`** — add a one-line Components entry for discoverability (especially orchestrators or skills carrying notable config — the `triage-issues` line is the precedent).
+7. **`README.md`** — add a one-line row to the Skills table. The audit reports a missing row as a `readme-inventory` warning.
 8. Smoke-test by updating the local install (`claude plugin update gvt-dev@gvt-plugins`) and checking `claude plugin details gvt-dev`.
 9. If the skill writes technical text, add a `## Writing style` section. Copy the paragraph from the "The short form" section of `plugin/docs/writing-style.md` without change. Then add the file to the `writing-style` entry's file list in `test/shared-blocks.test.mjs`.
 
@@ -165,7 +167,7 @@ A rename touches more than the file — work the whole cross-reference surface:
 2. **Frontmatter `name:`** in the moved `SKILL.md` / agent `.md`, plus the body title and self-references.
 3. **Dispatch references** — every `gvt-dev:<old-name>` (skills dispatching an agent) and `/gvt-dev:<old-name>` invocation mention.
 4. **`metadata.expects` paths** — a renamed scaffolded doc (e.g. `docs/<x>.md`) is declared in *both* the skill and its agent.
-5. **Cross-doc references** — `plugin/CONVENTIONS.md`, `CLAUDE.md`, `docs/TOC.md`.
+5. **Cross-doc references** — `plugin/CONVENTIONS.md`, `CLAUDE.md`, `README.md`, and the `wiki/` pages.
 6. **Tracker label / metadata descriptions** — an issue-tracker label whose *description* names the skill (e.g. the `triaged` label's `set by /gvt-dev:triage-issues`) is a cross-reference the repo-file scanners never see; update it with the tracker CLI (`gh label edit <name> --description …`). This surface is **invisible to `audit-conventions`' retired-token scan** (it walks `docs/**.md` + `CLAUDE.md` only), so it drifts silently across a rename or rebrand — exactly how the `triaged` label's description outlived both the #92 rebrand and the `triage-bugs`→`triage-issues` rename before this retro caught it.
 7. **`plugin/CHANGELOG.md`** — add an `[Unreleased]` migration note; **leave shipped version entries intact** (they record what actually shipped).
 8. **Leave the dated design records under `raw/superpowers/` unchanged** — `raw/` is immutable (see `wiki/schema.md`).
@@ -179,7 +181,7 @@ Reference docs that multiple skills/agents import live at `plugin/docs/`. Refere
 
 Sub-docs specific to one skill live alongside that skill (e.g., `plugin/skills/plan-task/multi-session.md`).
 
-When adding a **new** doc: add it to `docs/TOC.md` and an `[Unreleased]` `plugin/CHANGELOG.md` entry. Whether it needs a **version bump** depends on the doc's audience — and the move splits the two kinds across two directories:
+When adding a **new** doc: list it in the index its readers use (a wiki page in its directory's `index.md`, a shipped `plugin/docs/` file in the Repo layout tree), and add an `[Unreleased]` `plugin/CHANGELOG.md` entry. Whether it needs a **version bump** depends on the doc's audience — and the move splits the two kinds across two directories:
 
 - **Runtime-imported reference content** (pulled in by a skill/agent via `${CLAUDE_PLUGIN_ROOT}/docs/…`, e.g. `development-principles.md`) lives at `plugin/docs/`, ships to consumers, and is part of the plugin's behavioral surface → **bump**.
 - **Maintainer/authoring notes** read only by humans working *on* the plugin (e.g. `wiki/maintainer/plugin-authoring.md`) live in the wiki bundle under `wiki/maintainer/`, listed in `wiki/maintainer/index.md`, and are internal → CHANGELOG entry for traceability, **no bump**.
