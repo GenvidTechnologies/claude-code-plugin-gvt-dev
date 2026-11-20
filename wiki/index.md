@@ -12,7 +12,7 @@ any page listed in **no** index — here, or in a subdirectory's own
 `description`, so the index and the page can't drift. See
 `wiki/schema.md` for the page format and maintenance rules.
 
-This index is also the documentation index of this repository: `.gvt-agent.json` resolves `paths['docs/TOC.md']` to this file. Documents outside the bundle are not linked from here. `CLAUDE.md` is the maintainer guide and routes to them: `plugin/CONVENTIONS.md`, `README.md` and the shipped references under `plugin/docs/`.
+This index is also the documentation index of this repository: `.gvt-agent.json` resolves `paths['docs/TOC.md']` to this file. The documents outside the bundle are `plugin/CONVENTIONS.md`, `README.md` and the shipped references under `plugin/docs/`. This index does not link them. `CLAUDE.md`, the maintainer guide, links `plugin/CONVENTIONS.md` and the `plugin/docs/` references.
 
 ## Schema
 
@@ -22,8 +22,9 @@ This index is also the documentation index of this repository: `.gvt-agent.json`
 
 - [The LLM-Wiki Pattern in gvt-dev](llm-wiki-pattern-in-gvt-dev.md) — How
   Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that
-  predate gvt-wiki's maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and
-  audit-conventions' hygiene scanners.
+  predate gvt-wiki's maintain-wiki — the docs/TOC.md index of the consumer
+  contract, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene
+  scanners.
 - [`audit-conventions` as Proto-Lint](audit-conventions-as-proto-lint.md) —
   How audit-conventions' hygiene scanners already act as an informal advisory
   content-lint over docs/** and CLAUDE.md, and where the boundary with

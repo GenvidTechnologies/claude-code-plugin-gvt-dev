@@ -45,11 +45,14 @@ this repository's records as its proof case, so moving them makes the section st
 takes the wiki bundle as the docs root and declines its link and orphan checks there
 ([ADR-0053](0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)). The wiki
 lint covers those two checks for the bundle. `wiki/index.md` states that it is also the
-documentation index of the repository and routes to the documents outside the bundle.
+documentation index of the repository and names the documents outside the bundle
+(`plugin/CONVENTIONS.md`, `README.md` and the references under `plugin/docs/`). `CLAUDE.md`
+links `plugin/CONVENTIONS.md` and the `plugin/docs/` references.
 
 **2. No component requires `docs/TOC.md`.** `condense-lessons` declares it
 `required: false` (#375), and `plugin/CONVENTIONS.md` marks the file as not required.
-`plugin.json` goes to 5.2.0 for this change. The two changes cover different cases:
+The #375 change is a behavioural skill change, and the 5.2.0 release cycle carries it.
+Recording this decision changes no version. The two changes cover different cases:
 
 - The override gives this repository a resolved index.
 - The `required: false` declaration stops any repository without the file from failing
@@ -60,7 +63,7 @@ Each leaves open the case that the other closes.
 **3. The 2026-06 superpowers plan and spec move unchanged.** They move from
 `docs/superpowers/plans/` and `docs/superpowers/specs/` to `raw/superpowers/plans/` and
 `raw/superpowers/specs/`, with no text change and no capture header. `raw/` is immutable
-by the wiki schema, and no hygiene scanner or pointer root walks it. A later edit of
+by the wiki schema, and no hygiene scanner or pointer root walks it. A committed edit of
 either file is a modification of a `raw/` file, which the wiki lint reports.
 
 **4. This repository keeps no `docs/` tree.** A `CLAUDE.md` rule says so and says where a
@@ -101,9 +104,11 @@ What is given up or not known:
 
 - This repository no longer exercises the `docs/superpowers/` default exclusion on real
   data. Temporary fixtures in the audit tests still do.
-- It is not known whether the agents that name `docs/TOC.md` literally follow the
-  `paths` override. Those agents are the analyst, designer, planner, tech-writer,
-  code-reviewer, ts-implementer, `condense-lessons`, `run-retro` and `cleanup-initiative`.
+- It is not known whether the components that name `docs/TOC.md` literally follow the
+  `paths` override. The skills are `audit-conventions`, `cleanup-initiative`,
+  `condense-lessons`, `create-adr`, `plan-task`, `run-retro` and `triage-issues`. The
+  agents are the analyst, code-reviewer, designer, planner, tech-writer and
+  ts-implementer; the ts-implementer reads the file only when it is present.
   No authoritative source says so, and no check was run. If they do not, they see the
   index as absent. After the `required: false` fix that is a clean, optional state.
   `CLAUDE.md` and `wiki/index.md` name the index directly, so the work does not depend on
