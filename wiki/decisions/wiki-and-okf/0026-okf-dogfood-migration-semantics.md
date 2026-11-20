@@ -72,7 +72,7 @@ warns about, where three copies of one contract silently disagree. Filed as
 **#221**.
 
 **Contrast with `stale_after`, which is also omitted and is *not* a defect.**
-`wiki/schema.md:207-208` ("when the underlying convention changes") explicitly sanctions the omission — "`stale_after`
+`wiki/schema.md` ("when the underlying convention changes") explicitly sanctions the omission — "`stale_after`
 is typically omitted … Set one only when a page describes something actively in
 flux." Both pages describe settled structure, so no date is owed. That asymmetry
 is the whole point of separating the two: one omission is the schema's own

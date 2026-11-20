@@ -165,11 +165,29 @@ about one topic. Two situations, two different actions:
   create a second page for the same topic, and don't just append raw
   paragraphs — integrate the new facts into the existing prose, updating the
   `description` if the topic's shape has changed, and refresh the frontmatter
-  `sources` list. Prepend an entry to `wiki/log.md` either way.
+  `sources` list as the citation rules below say. Prepend an entry to
+  `wiki/log.md` either way.
 
 When it's ambiguous whether a source is a new topic or a refinement of an
 existing one, prefer updating the closer existing page — a wiki with one
 strong page beats a wiki with two thin overlapping ones.
+
+**Citations on an update.** When the code or another source changed, a page
+that describes it gets new claims, and each one needs a source that shows the
+change. Refreshing `sources` follows three rules:
+
+- A claim added or changed because the source changed cites a `sources[]`
+  entry whose source shows that change: a capture taken after the change, or
+  a commit that contains the change. When the capture's upstream is a `git:`
+  pin, the pin names such a commit too.
+- That claim gets a **new** `sources[]` entry. Do not point an existing entry
+  at the new capture or the new commit. The existing entry still supports the
+  claims it was first read for, and those claims can describe what the change
+  removed. Moved to the new source, the entry would cite them to a source that
+  no longer shows them.
+- Before you reuse an existing footnote on a new or changed sentence, read
+  the entry's source and confirm that it shows what the sentence says. If it
+  does not, cite a source that does, or leave the claim out.
 
 A `decision-record` page is the exception: an accepted record is not
 rewritten in place when its decision changes. A new record supersedes or

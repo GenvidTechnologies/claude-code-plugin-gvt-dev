@@ -15,6 +15,28 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-20
+
+* **Update**: `maintainer/audit-author-time-findings.md` now says that an
+  insertion into any cited file drifts its pointers, not only an insertion
+  into an agent or skill body, and that `pointer-baseline.mjs --targets
+  <file>` lists them first. In #684, a paragraph added to `schema.md` drifted
+  four citations in ADR-0022 and ADR-0026. `CLAUDE.md`'s Knowledge base now
+  routes to the page before an insertion into a file under `plugin/`,
+  `wiki/` or `docs/`. Found by the retro of #684.
+* **Update**: `schema.md`'s "Page lifecycle: create vs. update" section now
+  carries the "Citations on an update" rules from the gvt-wiki schema
+  template (GenvidTechnologies/claude-code-plugin-gvt-wiki#41). A claim added
+  or changed because a source changed cites a new `sources[]` entry whose
+  source shows the change, and an existing footnote is reused only after its
+  source is read and shows the sentence. The update-in-place bullet points to
+  these rules. Part of #684.
+* **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
+  and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` cite
+  `schema.md` by quoted text with no line number, at four citations. The
+  "Citations on an update" paragraph moved the cited lines down, and the
+  audit reported the four line numbers as drifted. Part of #684.
+
 ## 2026-11-19
 
 * **Update**: `maintainer/release-cycle-rules.md` now says that a CHANGELOG
