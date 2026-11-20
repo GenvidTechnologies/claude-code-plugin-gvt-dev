@@ -82,7 +82,7 @@ test('audit: a repo with no docs/TOC.md and no override fails no required expect
 
     assert.match(
       result.stdout,
-      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` — file not found \(optional\)/,
+      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` \(→ `wiki\/index\.md` via wiki default\) — file not found \(optional\)/,
       `condense-lessons must report docs/TOC.md as optional:\n${result.stdout}`,
     );
     assert.equal(
@@ -90,6 +90,23 @@ test('audit: a repo with no docs/TOC.md and no override fails no required expect
       0,
       `audit must exit 0 when docs/TOC.md is missing and no component requires it:\n${result.stdout}`,
     );
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the audit shows a derived location as via wiki default', async () => {
+  const tmpDir = await withTempMigratedRepo();
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` \(→ `wiki\/index\.md` via wiki default\) — file not found \(optional\)/,
+      `an unmet docs/ expectation must name its derived location:\n${result.stdout}`,
+    );
+    assert.doesNotMatch(result.stdout, /via paths/, 'no override applies, so nothing renders via paths');
+    assert.equal(result.status, 0, result.stdout);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -245,6 +262,10 @@ test('audit: an override value with a trailing slash still satisfies a declared 
 
 const CREATE_ADR_NO_OVERRIDE =
   '- **create-adr** expects `docs/decisions/` — directory not found (optional). Reason: Home for ADR files; scaffolded on first use if absent';
+// A declared path outside docs/ has no wiki-derived default, so it renders as
+// it always did.
+const CIRCLECI_CONFIG_NO_OVERRIDE =
+  '- **migrate-cordova-ci** expects `.circleci/config.yml` — file not found (optional). Reason: The CircleCI config being replaced and removed — present only in not-yet-migrated repos';
 
 async function auditWithPaths(paths) {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
@@ -320,7 +341,7 @@ test('audit: with no paths override, expectation findings render byte-identicall
   try {
     const out = spawnAudit([], tmpDir).stdout;
     const lines = out.split('\n');
-    assert.ok(lines.includes(CREATE_ADR_NO_OVERRIDE));
+    assert.ok(lines.includes(CIRCLECI_CONFIG_NO_OVERRIDE), lines.filter((l) => l.includes('migrate-cordova-ci')).join('\n'));
     assert.equal(out.split('via paths').length - 1, 0);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });

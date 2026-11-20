@@ -61,7 +61,9 @@ async function withTempPracticeCoverageRepo(setup) {
 }
 
 test('audit: Practice Coverage renders "not adopted" for Environment when no wiki artifacts exist, and never gates the exit code (T10, T11)', async () => {
-  const tmpDir = await withTempPracticeCoverageRepo();
+  // No docs index here: the audit looks the index up at its wiki-derived
+  // location, and writing one there would make a wiki artifact exist.
+  const tmpDir = await withTempMigratedRepo();
   try {
     const result = spawnAudit([], tmpDir);
 

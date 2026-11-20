@@ -51,7 +51,7 @@ async function withTempRepo(setup) {
 
 test('audit: an existing docs/decisions/ directory SATISFIES the directory expectation', async () => {
   const tmpDir = await withTempRepo(async (dir) => {
-    await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
+    await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
   });
   try {
     const result = spawnAudit([], tmpDir);
@@ -125,11 +125,11 @@ test('audit: a plain (no trailing slash) file expectation is still checked as a 
 
 test('audit: a FILE standing at docs/decisions is reported as the wrong kind', async () => {
   const tmpDir = await withTempRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'decisions'), 'not a directory\n');
+    await writeFile(join(dir, 'wiki', 'decisions'), 'not a directory\n');
   });
   try {
     const result = spawnAudit([], tmpDir);
-    assert.match(result.stdout, /expects `docs\/decisions\/` — expected a directory, found a file \(optional\)/);
+    assert.match(result.stdout, /expects `docs\/decisions\/` \(→ `wiki\/decisions\/` via wiki default\) — expected a directory, found a file \(optional\)/);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -137,12 +137,12 @@ test('audit: a FILE standing at docs/decisions is reported as the wrong kind', a
 
 test('audit: a dangling link at docs/decisions is reported as unreadable, not as missing', async () => {
   const tmpDir = await withTempRepo(async (dir) => {
-    await makeDanglingLink(join(dir, 'docs', 'decisions'));
+    await makeDanglingLink(join(dir, 'wiki', 'decisions'));
   });
   try {
     const result = spawnAudit([], tmpDir);
     assert.ok(
-      result.stdout.includes('expects `docs/decisions/` — directory could not be checked (dangling link, ENOENT) (optional)'),
+      result.stdout.includes('expects `docs/decisions/` (→ `wiki/decisions/` via wiki default) — directory could not be checked (dangling link, ENOENT) (optional)'),
       result.stdout,
     );
   } finally {

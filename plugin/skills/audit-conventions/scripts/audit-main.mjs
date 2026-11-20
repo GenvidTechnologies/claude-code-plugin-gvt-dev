@@ -107,10 +107,11 @@ async function main() {
   // the stop/pass-over rule, live in lib/candidate-resolution.mjs (ADR-0070,
   // ADR-0077). evaluateFile (audit-core) probes the one path chosen here.
   const resolveFile = async (entry) => {
-    const { candidates, overridden } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
+    const { candidates, overridden, derived } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
     const r = await resolveCandidate(REPO_ROOT, entry.path, candidates);
     const viaPaths = overridden && candidates[0] !== entry.path ? candidates[0] : undefined;
-    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped, viaPaths };
+    const viaDefault = derived ? candidates[0] : undefined;
+    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped, viaPaths, viaDefault };
   };
   const resolveConfig = (entry) => {
     const declaredIn = entry.in ?? configFilename;
@@ -135,7 +136,9 @@ async function main() {
           ? { ...finding, candidates: where.candidates, described: where.described, describedKind: where.found.kind, skipped: where.skipped }
           : where.viaPaths !== undefined
             ? { ...finding, viaPaths: where.viaPaths }
-            : finding,
+            : where.viaDefault !== undefined
+              ? { ...finding, viaDefault: where.viaDefault }
+              : finding,
       );
     }
     for (const entry of expects.config ?? []) {
@@ -481,7 +484,7 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  const shown = f.candidates ? formatCandidateTarget(f) : `${formatOverrideTarget(f.target, f.viaPaths)} — ${f.detail}`;
+  const shown = f.candidates ? formatCandidateTarget(f) : `${formatOverrideTarget(f.target, f.viaPaths, f.viaDefault)} — ${f.detail}`;
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\` — ${f.detail}` : shown}.${reason}`;
 }
 

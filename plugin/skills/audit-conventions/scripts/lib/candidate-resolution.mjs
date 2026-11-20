@@ -56,6 +56,11 @@ export function formatCandidateTarget(f) {
 // Renders the target of a finding whose expectation a `paths` override may have
 // relocated: the declared path, then (when an override moved it) the path it resolved to.
 // `viaPaths` is undefined when no override applies; an empty string renders as
-// empty backticks, verbatim.
-export const formatOverrideTarget = (target, viaPaths) =>
-  viaPaths === undefined ? `\`${target}\`` : `\`${target}\` (→ \`${viaPaths}\` via paths)`;
+// empty backticks, verbatim. `viaDefault` is the wiki-derived location the
+// audit looked at when no override applies; it renders the same way with
+// "via wiki default".
+export const formatOverrideTarget = (target, viaPaths, viaDefault) => {
+  if (viaPaths !== undefined) return `\`${target}\` (→ \`${viaPaths}\` via paths)`;
+  if (viaDefault !== undefined) return `\`${target}\` (→ \`${viaDefault}\` via wiki default)`;
+  return `\`${target}\``;
+};
