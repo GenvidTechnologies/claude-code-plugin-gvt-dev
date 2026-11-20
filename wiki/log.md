@@ -17,6 +17,13 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `maintainer/audit-author-time-findings.md` now says that an
+  insertion into any cited file drifts its pointers, not only an insertion
+  into an agent or skill body, and that `pointer-baseline.mjs --targets
+  <file>` lists them first. In #684, a paragraph added to `schema.md` drifted
+  four citations in ADR-0022 and ADR-0026. `CLAUDE.md`'s Knowledge base now
+  routes to the page before an insertion into a file under `plugin/`,
+  `wiki/` or `docs/`. Found by the retro of #684.
 * **Update**: `schema.md`'s "Page lifecycle: create vs. update" section now
   carries the "Citations on an update" rules from the gvt-wiki schema
   template (GenvidTechnologies/claude-code-plugin-gvt-wiki#41). A claim added
