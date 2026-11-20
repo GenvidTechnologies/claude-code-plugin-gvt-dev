@@ -17,7 +17,13 @@ the full maintenance schema.
 
 ## 2026-11-19
 
-* **Migration**: Moved the 2026-06 `triage-bugs` plan and spec from `docs/superpowers/` to `raw/superpowers/plans/` and `raw/superpowers/specs/` for #939, with their text unchanged. They are dated design records kept as immutable captures, not sources queued for ingest; no page cites them. Updated `maintainer/testing-the-audit.md` to match. Not an ingest.
+* **Migration**: Moved the 2026-06 `triage-bugs` plan and spec from
+  `docs/superpowers/` to `raw/superpowers/plans/` and `raw/superpowers/specs/`
+  for #939, with their text unchanged. They are dated design records kept as
+  immutable captures, not sources queued for ingest; no page lists them in its
+  `sources`. ADR 0020 still names their old paths, and stays as written.
+  Updated `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/`
+  source drove it.
 
 ## 2026-11-18
 
