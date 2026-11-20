@@ -17,6 +17,23 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Creation**: Added `decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md`
+  for #939 and #375. It decides that the docs index resolves to `index.md`,
+  that no component requires `docs/TOC.md`, that the 2026-06 superpowers plan
+  and spec stay under `raw/superpowers/`, and that this repo keeps no `docs/`
+  tree. It amends ADR-0067 in part. Listed it in that theme's `index.md`. Not
+  an ingest; no `raw/` source drove it.
+* **Update**: `index.md` now says that it is also the documentation index of
+  this repo and names the documents outside the bundle without linking them.
+  `llm-wiki-pattern-in-gvt-dev.md` now says that this repo's `docs/TOC.md` was
+  removed by #939, and keeps the consumer-contract description of the file.
+  Not an ingest; no `raw/` source drove it.
+* **Update**: Removed `docs/TOC.md` for #939. The `paths['docs/TOC.md']`
+  override in `.gvt-agent.json` resolves the docs index to `index.md`, which
+  now names the documents outside the bundle. Updated
+  `maintainer/audit-author-time-findings.md` and
+  `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/` source
+  drove it.
 * **Update**: `process/issue-triage.md` (Class) now says that triage proposes
   a road block for each issue, the `Road block` field of the `gvt-plugins`
   project, and sets it only with the coach's approval. A new "Set road block"
@@ -47,6 +64,13 @@ the full maintenance schema.
 
 ## 2026-11-19
 
+* **Migration**: Moved the 2026-06 `triage-bugs` plan and spec from
+  `docs/superpowers/` to `raw/superpowers/plans/` and `raw/superpowers/specs/`
+  for #939, with their text unchanged. They are dated design records kept as
+  immutable captures, not sources queued for ingest; no page lists them in its
+  `sources`. ADR 0020 still names their old paths, and stays as written.
+  Updated `maintainer/testing-the-audit.md` to match. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `maintainer/release-cycle-rules.md` now says that a CHANGELOG
   entry which states another issue's state reads that state live, with
   `gh issue view … --json state,stateReason`. The #930 entry said that its

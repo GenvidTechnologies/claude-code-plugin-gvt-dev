@@ -37,17 +37,18 @@ function writeConfig(dir, paths) {
 
 // The load-bearing fixture: no docs/TOC.md, a real documentation/INDEX.md,
 // and a `paths` override pointing the declared `docs/TOC.md` expectation at
-// it. condense-lessons is the ONLY component that declares docs/TOC.md as
-// `required: true` (every other declaration is `required: false`), so before
-// this wiring landed this fixture reported a required-expectation error and
-// exited 1 — measured directly against the pre-change audit.mjs:
+// it. Every declaring component now declares docs/TOC.md `required: false`. Before
+// #375, condense-lessons declared it `required: true`, so before this wiring
+// landed this fixture reported a required-expectation error and exited 1 —
+// measured directly against the pre-change audit.mjs:
 //
 //   EXIT=1
 //   - **condense-lessons** expects `docs/TOC.md` — file not found. Reason: ...
 //
-// (plus 11 further `docs/TOC.md — file not found (optional)` info lines for
-// the other components that declare it optionally).
-test('audit: a paths override relocating docs/TOC.md satisfies the required condense-lessons expectation', async () => {
+// With no override, the report carries 11 `docs/TOC.md — file not found
+// (optional)` info lines. The override must remove all of them, so the
+// doesNotMatch assertion below stays load-bearing.
+test('audit: a paths override relocating docs/TOC.md satisfies every declaring component', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
     await mkdir(join(dir, 'documentation'), { recursive: true });
     await writeFile(join(dir, 'documentation', 'INDEX.md'), '# Index\n');
@@ -64,7 +65,30 @@ test('audit: a paths override relocating docs/TOC.md satisfies the required cond
     assert.equal(
       result.status,
       0,
-      `audit must exit 0 once the override satisfies condense-lessons' required docs/TOC.md:\n${result.stdout}`,
+      `audit must exit 0 once the override satisfies every component that declares docs/TOC.md:\n${result.stdout}`,
+    );
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// #375. No component requires docs/TOC.md, so a repo with neither the file nor
+// an override fails no required expectation: condense-lessons reports it as an
+// optional info line and the audit exits 0.
+test('audit: a repo with no docs/TOC.md and no override fails no required expectation (#375)', async () => {
+  const tmpDir = await withTempMigratedRepo();
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` — file not found \(optional\)/,
+      `condense-lessons must report docs/TOC.md as optional:\n${result.stdout}`,
+    );
+    assert.equal(
+      result.status,
+      0,
+      `audit must exit 0 when docs/TOC.md is missing and no component requires it:\n${result.stdout}`,
     );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });

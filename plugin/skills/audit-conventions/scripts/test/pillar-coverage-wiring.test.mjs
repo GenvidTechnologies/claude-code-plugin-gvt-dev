@@ -47,11 +47,12 @@ function spawnAudit(args, cwd) {
 // only way to reach it.
 // ---------------------------------------------------------------------------
 
-// condense-lessons requires docs/TOC.md as a *required* expectation — write
-// it in every fixture below so the exit-code assertions are isolated to the
-// Practice Coverage finding(s) under test rather than tripping on an
-// unrelated required-file error (mirrors principle-citations-wiring.test.mjs's
-// own docs/TOC.md write, for the same reason).
+// Before #375, condense-lessons declared docs/TOC.md as a *required*
+// expectation. Every declaring component now declares it optional. Still write it in
+// every fixture below so the report carries no optional `docs/TOC.md — file
+// not found` lines and the assertions stay isolated to the Practice Coverage
+// finding(s) under test (mirrors principle-citations-wiring.test.mjs's own
+// docs/TOC.md write, for the same reason).
 async function withTempPracticeCoverageRepo(setup) {
   return withTempMigratedRepo(async (dir) => {
     await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');

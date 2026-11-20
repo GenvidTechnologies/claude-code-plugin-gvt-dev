@@ -44,7 +44,8 @@ function spawnAudit(args, cwd) {
 
 // Builds a minimal STATE_MIGRATED temp repo (via withTempMigratedRepo)
 // carrying:
-//   - docs/TOC.md: condense-lessons requires it (see withTempMigratedRepo).
+//   - docs/TOC.md: written so the report has no optional "file not found"
+//     lines (before #375, condense-lessons required it; see withTempMigratedRepo).
 //   - docs/decisions/0001-fixture.md: an ADR citing CLAUDE.md by line with NO
 //     content anchor after the pointer.
 //

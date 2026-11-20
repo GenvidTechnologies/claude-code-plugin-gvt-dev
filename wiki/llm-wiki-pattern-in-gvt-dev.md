@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: The LLM-Wiki Pattern in gvt-dev
-description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate gvt-wiki's maintain-wiki — docs/TOC.md, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
+description: How Karpathy's LLM-maintained-wiki pattern maps onto gvt-dev surfaces that predate gvt-wiki's maintain-wiki — the docs/TOC.md index of the consumer contract, ADRs, run-retro/condense-lessons, and audit-conventions' hygiene scanners.
 tags: [llm-wiki, maintain-wiki, knowledge-management, plugin-architecture]
 status: stable
 generated: { by: process:maintain-wiki, at: 2026-07-21T19:27:45Z }
@@ -50,12 +50,12 @@ Before `maintain-wiki` (#143) existed as its own skill, the plugin already
 had pieces that play a similar role, though none of them were built with the
 wiki pattern in mind:
 
-- **`docs/TOC.md` ≈ the wiki's `index.md`.** Both are a single, curated
-  entry point that lists what documentation exists and where to find it, so
-  a reader (human or agent) doesn't have to rediscover the doc set from
-  scratch. The difference: `docs/TOC.md` indexes curated, relatively stable
-  reference docs; `wiki/index.md` indexes pages that churn as new sources are
-  ingested.
+- **`docs/TOC.md` ≈ the wiki's `index.md`.** In the consumer contract, a
+  consuming repo's `docs/TOC.md` is a single, curated entry point to its
+  documentation, as `index.md` is for the wiki. The difference: `docs/TOC.md`
+  indexes relatively stable reference docs; `wiki/index.md` indexes pages that
+  churn as new sources are ingested. This repository's own `docs/TOC.md` was
+  removed by #939; `wiki/index.md` is now its documentation index.
 - **ADRs (now `wiki/decisions/`) ≈ canonical curated pages — with a key lifecycle
   difference.** Both an ADR and a wiki page are a durable write-up of
   accumulated understanding on a topic. But an ADR is **immutable** once
@@ -98,8 +98,8 @@ None of these surfaces were built as an LLM-wiki implementation — they
 predate #143 and solve their own, narrower problems. The value of the
 mapping is that it shows the pattern wasn't adopted wholesale from nothing:
 gvt-wiki's `maintain-wiki` slots a genuinely new `raw/` → `wiki/` tier in next to
-surfaces the plugin already had, rather than duplicating what `docs/TOC.md`,
-ADRs, or the existing hygiene scanners already do well.
+surfaces the plugin already had, rather than duplicating what the
+`docs/TOC.md` index of the consumer contract, ADRs, or the existing hygiene scanners already do well.
 
 ## Related
 
