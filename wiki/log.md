@@ -15,6 +15,10 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-19
+
+* **Migration**: Moved the 2026-06 `triage-bugs` plan and spec from `docs/superpowers/` to `raw/superpowers/plans/` and `raw/superpowers/specs/` for #939, with their text unchanged. They are dated design records kept as immutable captures, not sources queued for ingest; no page cites them. Updated `maintainer/testing-the-audit.md` to match. Not an ingest.
+
 ## 2026-11-18
 
 * **Update**: `process/issue-triage.md` (Dependencies) now says that the
