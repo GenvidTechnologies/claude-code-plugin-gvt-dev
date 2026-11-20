@@ -185,12 +185,12 @@ test('audit: a missing docs/TOC.md renders an orphan-check-skipped report line, 
       `expected at least one component-branch "expects" line in the same report:\n${result.stdout}`,
     );
 
-    // Note: this fixture's absent docs/TOC.md ALSO trips an unrelated
-    // required-expectation failure (condense-lessons requires docs/TOC.md
-    // outright), so the exit code here is 1 for a reason that has nothing to
-    // do with the orphan-check-skipped finding (which is info-severity and
-    // never gates the exit code — see the two exit-0 tests above). This test
-    // is scoped to the rendering question only.
+    // Note: before #375, this fixture's absent docs/TOC.md tripped a
+    // required-expectation failure (condense-lessons declared docs/TOC.md
+    // required), so the exit code here was 1. With #375 the fixture exits 0.
+    // The orphan-check-skipped finding is info-severity and never gates the
+    // exit code (see the two exit-0 tests above). This test is still scoped to
+    // the rendering question only.
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -223,9 +223,9 @@ test('audit: a docs/decisions/ paths override into the wiki excludes the relocat
         2,
       ),
     );
-    // docs/TOC.md is required outright by condense-lessons — write a minimal
-    // one so the assertions below are isolated to the paths-override behavior
-    // under test rather than tripping on an unrelated required-file error.
+    // Write a minimal docs/TOC.md so the report carries no optional
+    // `docs/TOC.md — file not found` lines and the assertions below stay
+    // isolated to the paths-override behavior under test.
     await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
     await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
     await writeFile(

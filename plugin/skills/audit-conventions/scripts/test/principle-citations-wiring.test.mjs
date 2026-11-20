@@ -28,7 +28,8 @@ function spawnAudit(args, cwd) {
 
 // Builds a minimal STATE_MIGRATED temp repo (via withTempMigratedRepo)
 // carrying:
-//   - docs/TOC.md: condense-lessons requires it (see withTempMigratedRepo).
+//   - docs/TOC.md: written so the report has no optional "file not found"
+//     lines (before #375, condense-lessons required it; see withTempMigratedRepo).
 //   - plugin/docs/development-principles.md: a small valid 1-3 principle list.
 //   - plugin/skills/foo/SKILL.md: a citation to principle #99, which does NOT
 //     exist in that list.
