@@ -1,6 +1,6 @@
 ---
 name: create-adr
-description: Adds or chronologically inserts an Architecture Decision Record into the repo's resolved decisions location (paths['docs/decisions/'] in .gvt-agent.json, default docs/decisions/). On append, dispatches gvt-dev:tech-writer to scaffold and fill the next-numbered record from the shared MADR-lite template, back-link the issue, and self-index it. On chronological or retroactive insertion, runs a clean-tree gate and the renumber-adrs script to shift later records up, dispatches tech-writer at the explicit inserted number, and sweeps cross-references. Use when recording a non-trivial architecture or trade-off decision on demand, outside a full plan-task run, or when back-filling or inserting a decision into the historical sequence.
+description: Adds or chronologically inserts an Architecture Decision Record into the repo's resolved decisions location (paths['docs/decisions/'] in .gvt-agent.json, default <wikiDir>/decisions/). On append, dispatches gvt-dev:tech-writer to scaffold and fill the next-numbered record from the shared MADR-lite template, back-link the issue, and self-index it. On chronological or retroactive insertion, runs a clean-tree gate and the renumber-adrs script to shift later records up, dispatches tech-writer at the explicit inserted number, and sweeps cross-references. Use when recording a non-trivial architecture or trade-off decision on demand, outside a full plan-task run, or when back-filling or inserting a decision into the historical sequence.
 metadata:
   expects:
     files:
@@ -53,17 +53,26 @@ Gather from the user before proceeding:
    ```bash
    node ${CLAUDE_PLUGIN_ROOT}/skills/create-adr/scripts/renumber-adrs.mjs --next
    ```
-   This resolves `paths['docs/decisions/']` from `.gvt-agent.json` (falling
-   back to `docs/decisions/` when unset) the way CONVENTIONS.md's Runtime path
+   This resolves `paths['docs/decisions/']` from `.gvt-agent.json`, else
+   `<wikiDir>/decisions/`, the way CONVENTIONS.md's Runtime path
    resolution describes — the same override `/gvt-dev:audit-conventions`
-   itself uses. **Nothing in this skill reads an ADR location from
-   `CLAUDE.md`.** It prints one JSON object: `dir`, `resolvedFrom`, `wiki`,
+   itself uses. **Nothing in this skill reads an ADR location from `CLAUDE.md`.**
+   It prints one JSON object: `dir`, `resolvedFrom` (`paths` for an override,
+   `default` for `<wikiDir>/decisions/`, `--dir` when passed), `wiki`,
    `wikiDir`, `layout` (`flat`/`themed`/`mixed`/`empty`/`missing`), `themes`
    (each with `name`, `count`, and whether an `index.md` exists), `highest`,
    `next`, `nextPadded`, `rootIndex`, `rootReadme`, and `records` — every
    discovered ADR, recursively across theme subdirectories, as `{ num, path }`.
    If it reports a `warning` (e.g. an unusable `paths` override), surface it to
    the user before continuing.
+
+   **A non-zero exit of `--next` is reported to the user and stops the run.**
+   Print its stderr. One refusal is by design: with no `paths` override, the
+   derived directory is not `docs/decisions/`, and `docs/decisions/` still
+   holds ADR records (the 5.x location). The message names both fixes: set
+   `paths['docs/decisions/']` to `docs/decisions/` in `.gvt-agent.json` to keep
+   the 5.x location, or move the records to the derived directory. The user
+   chooses the fix. Do not pass `--dir` to get past it.
 
    **Every later mention of "the ADR directory" in this skill means this
    resolved `dir`.**
@@ -92,11 +101,11 @@ Gather from the user before proceeding:
 
    | Case | File | Register in | Frontmatter | First-use scaffold |
    |---|---|---|---|---|
-   | Outside the wiki (flat or themed) | `<dir>[/<theme>]/NNNN-slug.md` | `docs/TOC.md` Decision Records row (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + TOC row (§4) |
+   | Outside the wiki (flat or themed) | `<dir>[/<theme>]/NNNN-slug.md` | Decision Records row in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + index row (§4) |
    | Inside the wiki, theme chosen | `<dir>/<theme>/NNNN-slug.md` | `<dir>/<theme>/index.md` (created from `decisions-index.template.md` if absent; theme row added to `<dir>/index.md` and a link to it from `<wikiDir>/index.md`) | Yes | — |
-   | Inside the wiki, flat or empty themed root | `<dir>/NNNN-slug.md` | `<dir>/index.md`; if that's absent, whichever index already lists sibling ADRs; if neither exists, create `<dir>/index.md` | Yes | `<dir>/index.md` (no frontmatter) + link from `<wikiDir>/index.md` (skip if absent) + one idempotent TOC Decision Records pointer row (skip if `docs/TOC.md` absent). **No README.** (§4) |
+   | Inside the wiki, flat or empty themed root | `<dir>/NNNN-slug.md` | `<dir>/index.md`; if that's absent, whichever index already lists sibling ADRs; if neither exists, create `<dir>/index.md` | Yes | `<dir>/index.md` (no frontmatter) + link from `<wikiDir>/index.md` (skip if absent) + one idempotent Decision Records pointer row in the `paths['docs/TOC.md']` index, added only when that index is not `<wikiDir>/index.md` (skip if it is absent). **No README.** (§4) |
 
-   Inside the wiki: no per-record TOC row beyond the single pointer row above;
+   Inside the wiki: no per-record index row beyond the single pointer row above;
    no `<wikiDir>/log.md` entry (the log is ingest-scoped — git already records
    authorship); honor any stricter local indexing rule stated in the repo's
    `CLAUDE.md` or wiki schema over the defaults above.
@@ -133,7 +142,8 @@ go to §3.
    - Citation form: tech-writer's "Anchor a citation to its content, not to a line number" rule governs how the record cites repo files. A record outlives edits to the files it cites, so the rule matters most here.
    - Instruction: **stage the file but do not commit** — this skill owns the commit
 3. tech-writer names the file `NNNN-kebab-title.md`, fills the template, and
-   registers it per §1's regime table — self-indexing a `docs/TOC.md` row
+   registers it per §1's regime table — self-indexing a Decision Records row
+   in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)
    outside the wiki, or indexing into the theme/root wiki index inside it. It
    is the sole write owner; this skill does not duplicate those steps.
 4. Proceed to §6 (commit).
@@ -178,7 +188,7 @@ into an existing sequence (§3).
    not let tech-writer compute next-highest — pass the number explicitly, as in
    §3e.
 7. **Register the whole batch once, centrally** — per §1's regime table (the
-   `docs/TOC.md` Decision Records index outside the wiki; the resolved wiki
+   Decision Records section of the `paths['docs/TOC.md']` index outside the wiki; the resolved wiki
    index inside it) — not as N parallel per-record writes, which would race the
    same file. This skill (not tech-writer) owns this single registration pass
    for the batch.
@@ -231,7 +241,7 @@ ambiguous-reference list, also grouped by file (see §3f); and a closing
 occurrences, and ambiguous lines. The reference rewrite is a **single pass over
 every moved filename token**, in whatever path form it appears — a
 sibling-relative link, a cross-theme relative link, a root-absolute link, a
-`docs/TOC.md` row, a backticked bare or path-qualified `file.md` pointer, and
+`paths['docs/TOC.md']` index row, a backticked bare or path-qualified `file.md` pointer, and
 occurrences inside `.json`/`.mjs` files.
 
 Then **wait for user confirmation** before applying.
@@ -328,20 +338,22 @@ only the resolved `dir`:
 **Outside the wiki:** if `<dir>/README.md` is absent, scaffold it from
 `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/README.breadcrumb.template.md`,
 filling its `<toc-link>` placeholder with the relative path from `<dir>` to
-`docs/TOC.md` (which renders `../TOC.md` for the default `docs/decisions/`).
-Then **self-index it in `docs/TOC.md`** under the **Decision Records** heading
+the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`).
+Then **self-index it in that index** under the **Decision Records** heading
 (create the heading if absent). An unindexed scaffolded doc is invisible to
 planning and triage skills that discover docs via the index — the same gap
 `triage-issues` §0 addresses for `docs/issue-triage.md` (plugin issue #90).
 Idempotent: skip if `<dir>/README.md` already exists; skip gracefully if
-`docs/TOC.md` is absent.
+the index is absent.
 
 **Inside the wiki:** no README. If `<dir>/index.md` is absent, create it from
 `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md` (no
 frontmatter) and link it from `<wikiDir>/index.md` (skip if absent). Add one
-idempotent Decision Records pointer row to `docs/TOC.md` naming the wiki index
-— a single row pointing at the index, never a per-record row — skipping if
-`docs/TOC.md` is absent. Idempotent: skip if `<dir>/index.md` already exists.
+idempotent Decision Records pointer row to the `paths['docs/TOC.md']` index
+naming the wiki index — a single row pointing at the index, never a per-record
+row — only when that index is not `<wikiDir>/index.md` (which already links
+`<dir>/index.md`), and skip if it is absent. Idempotent: skip if
+`<dir>/index.md` already exists.
 
 ## 5. Windows / git safety
 
