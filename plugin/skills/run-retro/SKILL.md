@@ -36,7 +36,9 @@ The stakes exceed a wasted cycle: source may have been rewritten into wording *s
 
 ## 2. Documentation Improvements
 
-Start from the project's documentation index (`docs/TOC.md`) and the repo's `CLAUDE.md`. **If `docs/TOC.md` is absent** (a greenfield consumer that hasn't scaffolded the contract), don't dead-end — discover the doc surface directly instead: glob `docs/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
+Start from the project's documentation index and the repo's `CLAUDE.md`. Resolve the index before you look for it: read `paths['docs/TOC.md']` in `.gvt-agent.json`, and use `docs/TOC.md` when no override is set (`CONVENTIONS.md`, "Runtime path resolution"). A repo that moved its docs into a wiki often sets the override to `wiki/index.md`. This section calls the result **the resolved index**. The **docs root** is the directory that holds the resolved index: `docs/` by default, `wiki/` for that override. It is the root that `audit-conventions` walks. When the resolved index is at the repo root (for example `INDEX.md`), the docs root is `docs/`, so the glob below does not walk the whole repository.
+
+**If the resolved index is absent** (a greenfield consumer that hasn't scaffolded the contract), don't dead-end — discover the doc surface directly instead: glob `<docs root>/**/*.md`, and read `CLAUDE.md` and `CONVENTIONS.md` at the repo root. The index is a shortcut to the docs, not a precondition for the retro.
 
 For each doc that's adjacent to what this session worked on, decide:
 
@@ -44,14 +46,16 @@ For each doc that's adjacent to what this session worked on, decide:
 - Does it need an addition (something missing)?
 - Does it need a clarification (something ambiguous)?
 
-Common files to check (vary by project — consult `docs/TOC.md`, or the glob above when there's no index):
+Common files to check (vary by project — consult the resolved index, or the glob above when there's no index):
 
 - `CLAUDE.md` — project-specific facts the plugin's skills reference
-- `docs/architecture.md` — system architecture and component boundaries
-- `docs/design-patterns.md` — design patterns and conventions
-- `docs/coding-conventions.md` — naming, style, language-specific patterns
-- `docs/runbook.md` — operations procedures
-- `docs/lessons-learned.md` — accumulated insights (if the project uses one)
+- the architecture doc — system architecture and component boundaries
+- the design-patterns doc — design patterns and conventions
+- the coding-conventions doc — naming, style, language-specific patterns
+- the runbook — operations procedures
+- the lessons-learned doc — accumulated insights, if the project keeps one
+
+`CLAUDE.md` is at a fixed path. The other five are the project's own docs, so their location is the project's choice: find each one through the resolved index, not at a fixed path. They are commonly at `docs/architecture.md`, `docs/design-patterns.md`, `docs/coding-conventions.md`, `docs/runbook.md` and `docs/lessons-learned.md`. A repo that keeps its docs in a wiki can have them under `<wikiDir>/` (`wiki.wikiDir` in `.gvt-agent.json`, default `wiki`), under other names. Look at those common locations only when there is no index, or when the index lists no such doc. Find the lessons-learned doc the way `condense-lessons` §1 does: look in the resolved index first; when the index lists none, check the common paths, then ask the user. A file missing at `docs/lessons-learned.md` does not show that the project keeps no lessons-learned doc. One repo keeps it at `wiki/session-history.md`, listed in its index.
 
 **Running the retro inside the plugin repo itself?** Then the plugin *is* the repo, not an upstream dependency — the "documentation" a retro updates is the contract and the components themselves: `plugin/CONVENTIONS.md`, `CLAUDE.md` and the `wiki/maintainer/` pages its `## Knowledge base` list routes to, `plugin/docs/development-principles.md`, and the `plugin/skills/*/SKILL.md` / `plugin/agents/*.md` bodies. A lesson that refines a rule already on a `wiki/maintainer/` page is edited on that page, not added back to `CLAUDE.md`. Treat the "Genvid plugin" subsection in §3 as the *primary* target rather than a separate upstream PR, and skip the consuming-repo-only files (`docs/architecture.md`, etc.) that don't apply.
 
