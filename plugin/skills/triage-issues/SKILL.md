@@ -89,11 +89,11 @@ block in `.gvt-agent.json` (access mechanics).
 
    **Scan the top level of the resolved contract's parent directory, and the
    top level of `docs/` — both explicitly non-recursive.** (With no override,
-   the resolved path's parent *is* `docs/`, and this is one scan.) The gvt-dev
-   plugin repository is the proof case for the non-recursive constraint: a
-   recursive scan there would also match its `docs/superpowers/plans/` and
-   `docs/superpowers/specs/`, frozen and accurate historical design records
-   from before the rename — files that must never be touched or flagged as a live near-miss. Scanning `docs/` in
+   the resolved path's parent *is* `docs/`, and this is one scan.) A recursive
+   scan would also match subdirectories such as `docs/superpowers/plans/` and
+   `docs/superpowers/specs/`, where the superpowers plugin writes dated spec
+   and plan records by default. Such a record can carry an old skill name as accurate history, so
+   it must never be touched or flagged as a live near-miss. Scanning `docs/` in
    addition to the resolved parent catches a stale pre-migration copy of
    `docs/issue-triage.md` left behind there after the contract moves
    elsewhere (e.g. into a wiki bundle). When the wiki default of §0b holds (no
