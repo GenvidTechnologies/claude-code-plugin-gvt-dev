@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-19
 
+* **Update**: `maintainer/audit-author-time-findings.md` now says how to find
+  the pointers into a cited file after it has moved: `--targets` refuses the
+  old path, the baseline holds the entries, and a continuation after an
+  unresolved pointer is found only by reading the citing file. Found by the
+  retro of #955. Not an ingest; no `raw/` source drove it.
 * **Update**: `decisions/wiki-and-okf/0022-okf-bundle-root-is-the-wiki-tier.md`
   and `decisions/wiki-and-okf/0026-okf-dogfood-migration-semantics.md` now cite
   the wiki templates and `maintain-wiki`'s `SKILL.md` in prose, with no line
