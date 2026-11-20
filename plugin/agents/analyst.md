@@ -42,9 +42,9 @@ Explore the problem space thoroughly before any solution is proposed. Your job i
 
 Read these at runtime if present:
 
-- `docs/TOC.md` — consult for the project's full documentation index, and read any docs relevant to the problem
+- The documentation index (`docs/TOC.md`, or the file that `paths['docs/TOC.md']` in `.gvt-agent.json` names) — consult it for the project's full list of docs, and read any docs relevant to the problem
 - `CLAUDE.md` — project-specific facts and conventions
-- `docs/architecture.md` — system architecture and component boundaries
+- The project's architecture doc — system architecture and component boundaries. Find it through the index. It is often at `docs/architecture.md`, or under the `wiki.wikiDir` of a repo with a wiki. Look at those locations only when there is no index, or when the index lists no architecture doc.
 
 ## Key Principles
 

@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Creation**: Added `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  for #363. It decides that a component finds an ordinary project doc through
+  the documentation index, that only a contract file is declared under `docs/`
+  in `metadata.expects`, and that `test/expects-docs-contract.test.mjs` keeps
+  the declared `docs/` paths to an allowlist. Listed in
+  `decisions/plugin-structure/index.md`. Not an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` has a "Read road block" recipe, a
   read-only query for the `Road block` options and an issue's current value,
   and says to report "no change" without a write when the proposal matches.
