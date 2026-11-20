@@ -17,6 +17,14 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `process/issue-triage.md` (Class) now says that triage proposes
+  a road block for each issue, the `Road block` field of the `gvt-plugins`
+  project, and sets it only with the coach's approval. A new "Set road block"
+  recipe runs the gvt-fleet workspace's `set.mjs`, which writes at once with no
+  dry run. The section also says that an issue outside the project gets an item
+  with no Iteration value, so its class stays Later. No `raw/` capture drove
+  this run: the source is the triage of #980 and #982, where no recipe covered
+  the road block.
 * **Update**: `maintainer/audit-author-time-findings.md` now says that an
   insertion into any cited file drifts its pointers, not only an insertion
   into an agent or skill body, and that `pointer-baseline.mjs --targets
