@@ -70,11 +70,11 @@ Read `initiatives/<name>/initiative.md` and all session files in the directory. 
 
 ### 2. Verify knowledge transfer
 
-For each non-obvious technical insight discovered during the initiative, check whether it's already documented. Consult `docs/TOC.md` for the project's documentation map and use an Explore agent for thoroughness.
+For each non-obvious technical insight discovered during the initiative, check whether it's already documented. Consult the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) to find the project's docs, and use an Explore agent for thoroughness.
 
 Report each insight as FOUND (with location) or MISSING.
 
-**Source-level documentation counts as canonical.** Test-file JSDoc headers, helper-file JSDoc, and inline-on-the-type comments are legitimate homes for non-obvious patterns — don't flag a concept as MISSING just because no `docs/<file>.md` describes it. Before declaring something MISSING, cross-check with `Grep` over the project's source directories for the relevant identifier or pattern name. If a test file has a multi-line JSDoc explaining a classification scheme, or a helper has full JSDoc explaining its API and lineage, that's sufficient knowledge transfer and no tech-writer dispatch is needed in Step 3.
+**Source-level documentation counts as canonical.** Test-file JSDoc headers, helper-file JSDoc, and inline-on-the-type comments are legitimate homes for non-obvious patterns — don't flag a concept as MISSING just because no project doc describes it. Before declaring something MISSING, cross-check with `Grep` over the project's source directories for the relevant identifier or pattern name. If a test file has a multi-line JSDoc explaining a classification scheme, or a helper has full JSDoc explaining its API and lineage, that's sufficient knowledge transfer and no tech-writer dispatch is needed in Step 3.
 
 **Grep source for inbound references to the initiative directory.** Initiative design docs are commonly cited from `@see` and "See …" JSDoc on type definitions written during the initiative. Those references go dead the moment Step 6 deletes the directory. Run:
 
@@ -85,7 +85,7 @@ grep -rn "initiatives/<name>" . --include='*.ts' --include='*.js' --include='*.m
 
 Adjust the include globs for the project's languages (consult `.gvt-agent.json` `project.languages`). For each hit, either:
 
-- Redirect the reference to surviving documentation (the relevant test-file JSDoc, a `docs/` page, an entry in the project's lessons-learned doc).
+- Redirect the reference to surviving documentation (the relevant test-file JSDoc, a page the documentation index lists, an entry in the project's lessons-learned doc).
 - Strip the dead-link line as part of the same close-out commit.
 - If the reference points at a **live data/code artifact** (not prose) that the project still consumes at build/validate/runtime — a checked-in snapshot, fixture, or generated file — redirect-or-strip is wrong. **Relocate the artifact to a permanent home** outside `initiatives/` (e.g. a `data/`, `fixtures/`, or `snapshots/` dir), update every reference, and — if a tool writes the artifact — repoint its default output. Only then proceed to deletion, or the delete removes a live dependency. Use `git mv` (not delete + recreate) to preserve the artifact's history; note that `git mv` can leave an empty source subdir that needs its own cleanup before the folder delete.
 
