@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `process/issue-triage.md` now says, under Labels, that an issue
+  can carry more than one category label, and that the Set category recipe
+  removes the other categories, so it runs only to change the category. From
+  the triage of #992, #996 and #997. Not an ingest; no `raw/` source drove it.
 * **Creation**: Added `decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md`
   for #939 and #375. It decides that the docs index resolves to `index.md`,
   that no component requires `docs/TOC.md`, that the 2026-06 superpowers plan

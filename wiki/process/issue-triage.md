@@ -120,6 +120,10 @@ Iteration.
 ## Labels
 
 - `type:*` — exactly one (mutually exclusive): `type:bug`, `type:crash`, `type:regression`.
+- Category — `enhancement`, `documentation`, `chore`, for non-defect work (see Types). An issue can
+  carry more than one, for example `documentation` and `chore`. The Set category recipe removes every
+  other category, so run it only to change the category, not to add one. Observed in the triage of
+  #997 (2026-11-20): the issue carried both, as #939 did, and the coach kept both.
 - `area:*` — one or more subsystem tags: `area:skills`, `area:agents`, `area:hooks`, `area:audit`, `area:docs`, `area:marketplace`.
 - `priority/*` — exactly one: `priority/P0` … `priority/P3`.
 - `needs-info` — set when required fields are missing; cleared when supplied.
