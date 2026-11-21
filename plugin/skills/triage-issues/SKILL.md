@@ -1,15 +1,15 @@
 ---
 name: triage-issues
-description: Triages a project's issue backlog interactively — deduplicates, enriches, links dependencies, splits overstuffed issues, and stamps a 'triaged' label. Works for bugs, tickets, or any tracker item. Tracker-agnostic; project specifics come from docs/issue-triage.md and the bugTracker block in .gvt-agent.json. Use when triaging or grooming an issue backlog, or cleaning up duplicates and priorities.
+description: Triages a project's issue backlog interactively — deduplicates, enriches, links dependencies, splits overstuffed issues, and stamps a 'triaged' label. Works for bugs, tickets, or any tracker item. Tracker-agnostic; project specifics come from the project's triage conventions doc, found through the runtime path resolution in CONVENTIONS.md, and the bugTracker block in .gvt-agent.json. Use when triaging or grooming an issue backlog, or cleaning up duplicates and priorities.
 metadata:
   expects:
     files:
       - path: docs/issue-triage.md
         required: false
-        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
+        reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes, found at paths['docs/issue-triage.md'] when set, else at <wikiDir>/issue-triage.md; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
       - path: docs/TOC.md
         required: false
-        reason: "Docs-regime registration: §0c adds a one-line Process entry for a contract outside the wiki; resolved through paths['docs/TOC.md']"
+        reason: "Index registration: §0c adds a one-line Process entry for a contract outside the wiki, to the resolved index (paths['docs/TOC.md'], else <wikiDir>/index.md)"
     config:
       - key: wiki.wikiDir
         in: .gvt-agent.json
@@ -62,8 +62,8 @@ metadata:
 Interactively triage a project's issue backlog (bugs, tickets, or any tracker
 item): deduplicate, split, enrich, link dependencies, and stamp a `triaged`
 label. The workflow is **tracker-agnostic** — every project specific comes from
-`docs/issue-triage.md` (conventions + mutation recipes) and the `bugTracker`
-block in `.gvt-agent.json` (access mechanics).
+the conventions contract (conventions + mutation recipes; §0 step 1 resolves
+its location) and the `bugTracker` block in `.gvt-agent.json` (access mechanics).
 
 ## How the work splits
 
@@ -76,10 +76,11 @@ block in `.gvt-agent.json` (access mechanics).
 ## 0. Preconditions & scope
 
 1. **Resolve the conventions contract.** Resolve the contract path first:
-   `paths['docs/issue-triage.md']` from `.gvt-agent.json` when set, else
-   `docs/issue-triage.md` — the runtime path resolution `CONVENTIONS.md`
-   describes (the same override `/gvt-dev:audit-conventions` itself uses).
-   Every later mention of the contract in this skill means this resolved
+   `paths['docs/issue-triage.md']` from `.gvt-agent.json` when set, else the
+   wiki-derived default `<wikiDir>/issue-triage.md` (`<wikiDir>` is
+   `wiki.wikiDir` when set, else `wiki`) — the runtime path resolution
+   `CONVENTIONS.md` describes (the same rule `/gvt-dev:audit-conventions` itself
+   uses). Resolution never checks that the file exists. Every later mention of the contract in this skill means this resolved
    path. Locate it, and independently check for a **near-miss** — a
    hand-authored triage doc that exists under a different name. This guards
    against a real failure mode (issue #178): a repo can carry a doc written
@@ -89,19 +90,18 @@ block in `.gvt-agent.json` (access mechanics).
 
    **Scan the top level of the resolved contract's parent directory, and the
    top level of `docs/` — both explicitly non-recursive.** (With no override,
-   the resolved path's parent *is* `docs/`, and this is one scan.) A recursive
+   the resolved path's parent is `<wikiDir>/`, and `docs/` is a second scan.) A recursive
    scan would also match subdirectories such as `docs/superpowers/plans/` and
    `docs/superpowers/specs/`, where the superpowers plugin writes dated spec
    and plan records by default. Such a record can carry an old skill name as accurate history, so
    it must never be touched or flagged as a live near-miss. Scanning `docs/` in
    addition to the resolved parent catches a stale pre-migration copy of
    `docs/issue-triage.md` left behind there after the contract moves
-   elsewhere (e.g. into a wiki bundle). When the wiki default of §0b holds (no
-   `paths['docs/issue-triage.md']` override, and the resolved
-   `paths['docs/TOC.md']` inside `wiki.wikiDir`), the scan also covers the top
+   elsewhere (e.g. into a wiki bundle). The scan also covers the top
    level of `<wikiDir>/`, and of `<wikiDir>/process/` when it exists — still
    non-recursive — so a contract at the wiki root is seen whichever
-   subdirectory the scaffold would pick.
+   subdirectory the scaffold would pick. The file at the 5.x location (the
+   outcome below) is the contract, so it is not a near-miss candidate.
 
    Either positive signal nominates a candidate. A veto outranks both signals.
    A rename is the likeliest origin of a near-miss, and that is the entire
@@ -123,14 +123,19 @@ block in `.gvt-agent.json` (access mechanics).
      contract (an entry, or its `resource`, equal to the resolved path or ending in `/` followed by the resolved path)
      declares itself derived and is never a candidate. The suffix match is
      deliberate, and sits on a path-segment boundary (`…/mydocs/issue-triage.md` is not `docs/issue-triage.md`): a `resource` value can be a URL such as
-     `https://…/blob/main/wiki/process/issue-triage.md`. When the wiki default
-     holds (§0b), also compare against the wiki default path or paths
-     (`<wikiDir>/process/issue-triage.md`, `<wikiDir>/issue-triage.md`): with no
-     override the resolved path is `docs/issue-triage.md`, so a wiki derived page
-     citing the wiki default would otherwise escape the veto.
+     `https://…/blob/main/wiki/process/issue-triage.md`. Also compare against
+     both wiki scaffold paths (`<wikiDir>/process/issue-triage.md`,
+     `<wikiDir>/issue-triage.md`): the resolved path is at most one of them, so
+     a wiki derived page citing the other would otherwise escape the veto.
 
-   Combine detection with canonical-file presence into four outcomes,
+   Combine detection with canonical-file presence into five outcomes,
    resolved **before any routing to §0b**:
+   - **5.x location** (no `paths['docs/issue-triage.md']` override, nothing at
+     the wiki-derived default, and `docs/issue-triage.md` present) → route to
+     §0b's "Contract at the 5.x location" branch, before any near-miss
+     routing. Once that branch pins or moves the file, resolve again and take
+     the matching outcome below; a near-miss candidate that remains is then a
+     dead duplicate of a present contract.
    - **Canonical, no near-miss** (the resolved path present) → proceed to
      step 2.
    - **Near-miss, no canonical** → route to §0b's "Near-miss found" branch.
@@ -180,10 +185,10 @@ block in `.gvt-agent.json` (access mechanics).
 ### 0a. Light-touch groom (no-contract path)
 
 A sanctioned path for small or bug-free backlogs that skips the full contract. It
-needs **neither `docs/issue-triage.md` nor the `bugTracker` block** (skip §0 step 2)
+needs **neither the conventions contract nor the `bugTracker` block** (skip §0 step 2)
 and operates **directly via the tracker's native CLI** (e.g. `gh`), using only the
 tracker's **existing label vocabulary** — no analyst dispatch, no
-`docs/issue-triage.md` or `bugTracker` writes, and no `triagedLabel` stamp. It
+contract or `bugTracker` writes, and no `triagedLabel` stamp. It
 **bypasses §1–§5 entirely**:
 
 - **Scan** the open issues in scope with the tracker's native list command.
@@ -200,9 +205,29 @@ taxonomy, stop and offer to scaffold the contract at its scaffold target
 
 ### 0b. Establish the contract
 
+**Contract at the 5.x location.** Step 1 found no
+`paths['docs/issue-triage.md']` override, nothing at the wiki-derived default
+(`<wikiDir>/issue-triage.md`), and a file at `docs/issue-triage.md`, where 5.x
+versions of this plugin looked for the contract. That file is the contract, not
+a near-miss, so none of the near-miss options below applies. Offer two options
+via `AskUserQuestion`:
+- **Pin it** — the **default**. Insert
+  `paths['docs/issue-triage.md'] = "docs/issue-triage.md"` into
+  `.gvt-agent.json` as a key insertion that preserves every other key. The file
+  stays where it is. Then resolve again: the outcome is "Canonical".
+- **Move it to the wiki-derived default.** Do the near-miss rename below, with
+  the scaffold target ("No contract at all" below), its occupied-destination
+  rule and its write order. Then fall through to step 3.
+
+In `--non-interactive` and under `--force` alike, **pin and report**: insert the
+override, leave the file where it is, and carry into the §5 closing summary that
+the contract sits at the 5.x location, with the move an interactive run would
+offer. Nothing moves into the wiki unattended. Inserting a config key is not a
+move (§0 step 5).
+
 **Near-miss found.** Step 1 detected a file (under the resolved contract's
-parent directory, or under `docs/`, or — when the wiki default holds — at the
-top level of `<wikiDir>/` or `<wikiDir>/process/`) that looks like the triage contract under
+parent directory, under `docs/`, or at the top level of `<wikiDir>/` or
+`<wikiDir>/process/`) that looks like the triage contract under
 a different name, with no canonical file at the resolved path present.
 Report, for every candidate:
 - its path,
@@ -218,12 +243,12 @@ Offer three options via `AskUserQuestion`:
 - **Rename it to the contract path** — the **default**. `git mv` the file
   when it is tracked, a plain filesystem move otherwise; this preserves every
   hand-authored word. Then fall through to step 3 as if the contract had
-  always lived at the resolved path. When the wiki default holds (the
-  trigger under "No contract at all" below), the rename target is the wiki
-  default the scaffold uses: `<wikiDir>/process/issue-triage.md` when
-  `<wikiDir>/process/` exists, else `<wikiDir>/issue-triage.md`, so a
-  wiki-resident candidate is never moved out of the bundle. Show that
-  destination in the offer.
+  always lived at the resolved path. With a `paths['docs/issue-triage.md']`
+  override, the rename target is the override path. With none, the rename
+  target is the scaffold target ("No contract at all" below):
+  `<wikiDir>/process/issue-triage.md` when `<wikiDir>/process/` exists, else
+  `<wikiDir>/issue-triage.md`, so a wiki-resident candidate is never moved out
+  of the bundle. Show that destination in the offer.
   - **Occupied destination.** No file is ever moved or copied onto an existing
     file unattended, whether it is this rename's move or the scaffold's copy
     below. A destination counts as occupied when anything other than the
@@ -234,10 +259,12 @@ Offer three options via `AskUserQuestion`:
     different destination. Under `--force` and `--non-interactive` it defers:
     write nothing, and report the occupied path in §5 as outstanding (with the
     candidate's path too, for a rename).
-  - **Write order.** The rename moves the file first and then, when the wiki
-    default holds, writes the `paths` override. A stop in between leaves the file at the wiki default
-    with no override; the next run's wiki-default scan finds it at its own
-    target, where only the override is written, so it heals. (The scaffold
+  - **Write order.** The rename moves the file first and then, when the target
+    is `<wikiDir>/process/issue-triage.md`, writes the `paths` override (the
+    wiki-derived default needs none). A stop in between leaves the file at
+    `<wikiDir>/process/issue-triage.md` with no override; the next run's scan
+    finds it at its own target, where only the override is written, so it
+    heals. (The scaffold
     branch below writes the override first instead, and heals because the
     scaffold re-offers on Absent.)
   - If the candidate already sits at that target path, there is nothing to
@@ -281,26 +308,25 @@ stay deferred. A glob-only candidate (matched by filename alone) is carried into
 candidates when two or more are marker-bearing (never auto-pick).
 
 **No contract at all.** If the resolved path is absent, offer to scaffold it
-there — do not guess conventions. **Wiki default (trigger):** when there is no
-`paths['docs/issue-triage.md']` override AND the resolved `paths['docs/TOC.md']`
-(T) lies inside `wiki.wikiDir` (W, default `wiki`), the default target is
-`<wikiDir>/process/issue-triage.md` when `<wikiDir>/process/` exists, else
-`<wikiDir>/issue-triage.md`. Otherwise keep the resolved-path default. This
-check covers the scaffold only: no contract exists at either location when the
-default is chosen. (A rename checks its resolved destination, and an occupied
+there — do not guess conventions. **Scaffold target.** With a
+`paths['docs/issue-triage.md']` override, the target is the override path.
+With none, the target is `<wikiDir>/process/issue-triage.md` when
+`<wikiDir>/process/` exists, else `<wikiDir>/issue-triage.md`. This choice
+covers the scaffold only: no contract exists at either location when the
+target is chosen. (A rename checks its resolved destination, and an occupied
 one is a conflict; see above.) The scaffold target is checked against the
 occupied-destination rule (above) before anything is written, so a deferred or
-declined scaffold leaves `.gvt-agent.json` untouched. On
-acceptance the skill writes the override before the file: it inserts
-`paths['docs/issue-triage.md']` into `.gvt-agent.json` as a key insertion that
-preserves every other key, then copies the template. If a run stops between
-the two writes, the next run resolves the override, finds it Absent and
-re-offers the scaffold, so it heals itself; the reverse order would leave an
-unread file. When the trigger holds, step 1's near-miss scan also covers the
-top level of the would-be target's parent and the wiki root, so a
-`wiki/bug-triage.md` is not missed and double-scaffolded. This does not conflict with ADR-0062's rejected
-implicit wiki convention: only the default is inferred, and resolution stays
-the declared override. Two bundled templates exist; pick the one
+declined scaffold leaves `.gvt-agent.json` untouched. For the
+`<wikiDir>/process/issue-triage.md` target, the skill writes the override
+before the file on acceptance: it inserts `paths['docs/issue-triage.md']`
+into `.gvt-agent.json` as a key insertion that preserves every other key, then
+copies the template. If a run stops between the two writes, the next run
+resolves the override, finds it Absent and re-offers the scaffold, so it heals
+itself; the reverse order would leave an unread file. The
+`<wikiDir>/issue-triage.md` target is the wiki-derived default and needs no
+override, so the skill only copies the template. Step 1's near-miss scan also covers the
+top level of `<wikiDir>/` and `<wikiDir>/process/`, so a
+`wiki/bug-triage.md` is not missed and double-scaffolded. Two bundled templates exist; pick the one
 that matches the repo's label scheme:
 - `${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/issue-triage.template.md` — the
   **structured** variant (`type:*` / `priority/*` / `area:*` taxonomy).
@@ -397,8 +423,10 @@ skill and analyst locate guidance by: `## Types`, `## Priorities`,
 adopted, and already-canonical paths alike — not just a fresh scaffold. The
 origin repo's contract was also unindexed, which is why nothing else surfaced
 it: an unindexed contract doc is invisible to the planning/triage skills that
-discover docs through the index. Resolve T = `paths['docs/TOC.md']` (default
-`docs/TOC.md`) and W = `wiki.wikiDir` (default `wiki`); which index the
+discover docs through the index. Resolve T, which is
+the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)
+(`paths['docs/TOC.md']` when set, else `<wikiDir>/index.md`), and W = `wiki.wikiDir`
+(default `wiki`); which index the
 contract belongs in depends on whether the resolved contract lies inside W.
 
 - **Contract outside W, T inside W.** Do not write: an out-of-bundle link in a
@@ -412,7 +440,8 @@ contract belongs in depends on whether the resolved contract lies inside W.
   **automatically**. Make it idempotent (skip if the entry already exists) and
   skip gracefully if T is absent.
 - **Wiki regime** (contract inside W, wherever T lies). The contract is
-  registered in the wiki, and `docs/TOC.md` is never written.
+  registered in a wiki index (below), and a T that lies outside W is never
+  written.
   - **After a wiki-default rename (§0b), first,** if any wiki index that linked
     the candidate's old path (the root index and any subdirectory index alike)
     still links it, update each such link to the new path; when
@@ -733,7 +762,7 @@ record of why), including a near-miss whose source or destination is inside the
 wiki with the destination an interactive run would offer, an occupied
 destination with both paths, and each stale wiki-index link updated or reported
 (§0c); §0c's label-key warning or inconclusive result; any missing
-required headings; which index received the entry (`docs/TOC.md` under the
+required headings; which index received the entry (the resolved index, §0c's T, under the
 docs regime, or the wiki index written under the wiki regime), or why none did
 (already indexed, index absent, generated index with its regenerate command,
 or an unreachable subtree); and any dead duplicate carried forward from the both-present outcome or a "keep
