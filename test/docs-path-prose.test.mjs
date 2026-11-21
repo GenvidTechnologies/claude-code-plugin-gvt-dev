@@ -396,3 +396,57 @@ test('docs-path-prose: U10 a fenced line naming a declared path is its own block
   assert.equal(r.marked.length, 1);
   assert.equal(r.marked[0].line, OFF + 1);
 });
+
+// ---- real-tree tests ----
+
+const LITERALS = JSON.parse(readFileSync(join(ROOT, 'test', 'docs-path-literals.json'), 'utf8'));
+const real = scan({
+  files: loadCorpus(ROOT),
+  literals: LITERALS,
+  externalKeys: EXTERNAL.map((e) => e.key),
+});
+const where = (x) => `${x.file}:${x.line ?? '?'} ${x.token}`;
+const uncoveredMsg = (list) =>
+  list
+    .map((u) => `${where(u)}\n  add to test/docs-path-literals.json, or resolve it with the PHRASE:\n  ${JSON.stringify(u.skeleton)}`)
+    .join('\n');
+
+test('docs-path-prose: D1 every declared-path block carries a marker or a recorded literal', () => {
+  const bad = real.uncovered.filter((u) => u.tier === 1);
+  assert.equal(bad.length, 0, `\n${uncoveredMsg(bad)}`);
+});
+
+test('docs-path-prose: D2 every other consumer docs/ token carries a recorded literal', () => {
+  const bad = real.uncovered.filter((u) => u.tier === 2);
+  assert.equal(bad.length, 0, `\n${uncoveredMsg(bad)}`);
+});
+
+test('docs-path-prose: D3 every literal anchor matches one block that still names its token', () => {
+  const stale = real.staleLiterals.map((s) => `stale: ${where(s)} anchor=${JSON.stringify(s.anchor)} (${s.why})`);
+  const amb = real.ambiguousLiterals.map(
+    (s) => `ambiguous: ${s.file} ${s.token} anchor=${JSON.stringify(s.anchor)} matches lines ${s.lines.join(', ')}`,
+  );
+  assert.equal(stale.length + amb.length, 0, `\n${[...stale, ...amb].join('\n')}`);
+});
+
+test('docs-path-prose: D4 every literal has a known kind and a note', () => {
+  const bad = real.badKinds.map(
+    (b) => `${b.file} ${b.token} anchor=${JSON.stringify(b.anchor)} kind=${JSON.stringify(b.kind)}: kind must be one of ${KINDS.join(', ')} and the note must not be empty`,
+  );
+  assert.equal(bad.length, 0, `\n${bad.join('\n')}`);
+  for (const l of LITERALS.filter((x) => x.kind === 'resolved-earlier')) {
+    assert.ok(l.note.includes('"'), `${l.file} ${l.token}: a resolved-earlier note quotes the sentence that resolves the path`);
+  }
+});
+
+test('docs-path-prose: D5 no variant of the resolving phrase', () => {
+  const bad = real.phraseVariants.map((p) => `${where(p)}: use exactly ${PHRASE}<path>\``);
+  assert.equal(bad.length, 0, `\n${bad.join('\n')}`);
+});
+
+test('docs-path-prose: D6 every marker key is a declared path or an external key', () => {
+  const bad = real.unknownKeys.map(
+    (k) => `${where(k)}: not declared by any component and not in EXTERNAL (declared: ${real.declared.join(', ')})`,
+  );
+  assert.equal(bad.length, 0, `\n${bad.join('\n')}`);
+});

@@ -1,0 +1,261 @@
+[
+  {
+    "file": "plugin/agents/analyst.md",
+    "anchor": "It is often at `docs/architecture.md`",
+    "token": "docs/architecture.md",
+    "kind": "common-location-hint",
+    "note": "The sentence sends the reader to the index first and names the usual path only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/agents/designer.md",
+    "anchor": "docs/ plugin/` finds no pre-minted",
+    "token": "docs/",
+    "kind": "example",
+    "note": "Part of a sample grep command that shows a pattern which could never match; it does not tell the reader to read docs/."
+  },
+  {
+    "file": "plugin/agents/designer.md",
+    "anchor": "It is often at `docs/design-patterns.md`",
+    "token": "docs/design-patterns.md",
+    "kind": "common-location-hint",
+    "note": "The sentence sends the reader to the index first and names the usual path only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/agents/planner.md",
+    "anchor": "It is often at `docs/architecture.md`",
+    "token": "docs/architecture.md",
+    "kind": "common-location-hint",
+    "note": "The sentence sends the reader to the index first and names the usual path only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/agents/ts-implementer.md",
+    "anchor": "The project decides where these docs live",
+    "token": "docs/architecture.md",
+    "kind": "common-location-hint",
+    "note": "The sentence says the project decides where the docs live and names the usual paths only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/agents/ts-implementer.md",
+    "anchor": "The project decides where these docs live",
+    "token": "docs/design-patterns.md",
+    "kind": "common-location-hint",
+    "note": "The sentence says the project decides where the docs live and names the usual paths only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/agents/ts-implementer.md",
+    "anchor": "The project decides where these docs live",
+    "token": "docs/coding-conventions.md",
+    "kind": "common-location-hint",
+    "note": "The sentence says the project decides where the docs live and names the usual paths only as a fallback for a repo with no index."
+  },
+  {
+    "file": "plugin/skills/audit-conventions/SKILL.md",
+    "anchor": "stale text references (in `CLAUDE.md`, `docs/`)",
+    "token": "docs/",
+    "kind": "describes-the-audit",
+    "note": "Prose about what the legacy migration's follow-up report covers; the migration does scan the literal docs/ folder, so the wording is accurate."
+  },
+  {
+    "file": "plugin/skills/audit-conventions/SKILL.md",
+    "anchor": "expects `docs/code-review-context.md` — file not found",
+    "token": "docs/code-review-context.md",
+    "kind": "example",
+    "note": "A sample line of audit output, shown so the reader knows the format."
+  },
+  {
+    "file": "plugin/skills/audit-conventions/SKILL.md",
+    "anchor": "repo-root `docs/`, `plugin/` and `wiki/` trees",
+    "token": "docs/",
+    "kind": "describes-the-audit",
+    "note": "Names the trees that the pointer-anchor scan walks; it describes the audit's corpus, not a place the reader should read."
+  },
+  {
+    "file": "plugin/skills/audit-conventions/SKILL.md",
+    "anchor": "repo-root `docs/decisions/` tree",
+    "token": "docs/decisions/",
+    "kind": "describes-the-audit",
+    "note": "Explains why the pointer-anchor scan is limited to the plugin's own source; it describes the audit's corpus, not a place the reader should read."
+  },
+  {
+    "file": "plugin/skills/condense-lessons/SKILL.md",
+    "anchor": "(often at `docs/lessons-learned.md`)",
+    "token": "docs/lessons-learned.md",
+    "kind": "common-location-hint",
+    "note": "Says where a lessons-learned doc is often kept, in a note on what the skill assumes; the lookup itself goes through the documentation index."
+  },
+  {
+    "file": "plugin/skills/condense-lessons/SKILL.md",
+    "anchor": "check common paths such as `docs/lessons-learned.md`",
+    "token": "docs/lessons-learned.md",
+    "kind": "common-location-hint",
+    "note": "The sentence consults the documentation index first and names the usual path only as a fallback when the index lists none."
+  },
+  {
+    "file": "plugin/skills/create-adr/SKILL.md",
+    "anchor": "`docs/superpowers/`, the wiki raw tree",
+    "token": "docs/superpowers/",
+    "kind": "plugin-defined-location",
+    "note": "The superpowers plugin writes its dated records there by default; the sentence lists it as frozen history that a rewrite leaves untouched."
+  },
+  {
+    "file": "plugin/skills/create-adr/SKILL.md",
+    "anchor": "addresses for `docs/issue-triage.md` (plugin issue #90)",
+    "token": "docs/issue-triage.md",
+    "kind": "historical",
+    "note": "Refers to an earlier plugin issue (#90), where a scaffolded doc under docs/ went unindexed; it is a reference to that history, not a read instruction."
+  },
+  {
+    "file": "plugin/skills/create-pr/SKILL.md",
+    "anchor": "outside `docs/` that looks like an in-progress draft",
+    "token": "docs/",
+    "kind": "heuristic",
+    "note": "Part of a rule for spotting scratch files: a markdown file outside docs/ is treated as a likely draft. It does not tell the reader to read docs/."
+  },
+  {
+    "file": "plugin/skills/create-pr/SKILL.md",
+    "anchor": "(anything in `docs/`, project tracking files",
+    "token": "docs/",
+    "kind": "heuristic",
+    "note": "Part of a rule for spotting permanent files that cleanup must leave alone; it does not tell the reader to read docs/."
+  },
+  {
+    "file": "plugin/skills/plan-task/SKILL.md",
+    "anchor": "Its `README.md`, `CONTRIBUTING.md`, and `docs/decisions/`",
+    "token": "docs/decisions/",
+    "kind": "other-repo",
+    "note": "Names where another repository (a submodule, vendored dependency or sibling repo) keeps its contribution rules; it is not the consumer's own decision folder."
+  },
+  {
+    "file": "plugin/skills/plan-task/SKILL.md",
+    "anchor": "the declared path `docs/acceptance/`, resolved as",
+    "token": "docs/acceptance/",
+    "kind": "resolved-earlier",
+    "note": "The same sentence resolves the path: \"resolved as the \"Runtime path resolution\" section of `${CLAUDE_PLUGIN_ROOT}/CONVENTIONS.md` says\"."
+  },
+  {
+    "file": "plugin/skills/plan-task/SKILL.md",
+    "anchor": "its `docs/TOC.md` edit as unstaged",
+    "token": "docs/TOC.md",
+    "kind": "historical",
+    "note": "Quotes what an agent reported in an observed incident on 2026-08-07; it records what happened, not what to read."
+  },
+  {
+    "file": "plugin/skills/reconcile-mcp-pin/SKILL.md",
+    "anchor": "the procedure generalizes its `docs/tool-surface-reconciliation.md`",
+    "token": "docs/tool-surface-reconciliation.md",
+    "kind": "other-repo",
+    "note": "Names a runbook in the gvt-construct3 plugin repository, from which this procedure was generalized."
+  },
+  {
+    "file": "plugin/skills/reconcile-mcp-pin/SKILL.md",
+    "anchor": "`skills/`, `agents/`, and `docs/` all live under it",
+    "token": "docs/",
+    "kind": "plugin-tree",
+    "note": "The docs/ folder here is the plugin's own folder under plugin_root, not the consumer's documentation."
+  },
+  {
+    "file": "plugin/skills/reconcile-mcp-pin/SKILL.md",
+    "anchor": "in its own `docs/tool-surface-reconciliation.md`",
+    "token": "docs/tool-surface-reconciliation.md",
+    "kind": "other-repo",
+    "note": "Names a runbook section in the gvt-construct3 plugin repository, cited as the origin of the scope-rename procedure."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "the docs root is `docs/`, so the glob below",
+    "token": "docs/",
+    "kind": "plugin-defined-location",
+    "note": "The skill defines its own fallback: when the resolved index sits at the repo root, the docs root is docs/, so that the glob does not walk the whole repository."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "They are commonly at `docs/architecture.md`",
+    "token": "docs/architecture.md",
+    "kind": "common-location-hint",
+    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "They are commonly at `docs/architecture.md`",
+    "token": "docs/design-patterns.md",
+    "kind": "common-location-hint",
+    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "They are commonly at `docs/architecture.md`",
+    "token": "docs/coding-conventions.md",
+    "kind": "common-location-hint",
+    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "They are commonly at `docs/architecture.md`",
+    "token": "docs/runbook.md",
+    "kind": "common-location-hint",
+    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "They are commonly at `docs/architecture.md`",
+    "token": "docs/lessons-learned.md",
+    "kind": "common-location-hint",
+    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+  },
+  {
+    "file": "plugin/skills/run-retro/SKILL.md",
+    "anchor": "consuming-repo-only files (`docs/architecture.md`, etc.)",
+    "token": "docs/architecture.md",
+    "kind": "common-location-hint",
+    "note": "Names a usual consuming-repo doc as an example of files to skip when the retro runs inside the plugin repo; it is not a read instruction."
+  },
+  {
+    "file": "plugin/skills/split-branch/SKILL.md",
+    "anchor": "skills, agents, `docs/` |",
+    "token": "docs/",
+    "kind": "example",
+    "note": "A table cell that lists the kinds of file a change can touch, to classify a commit; it does not tell the reader to read docs/."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "top level of `docs/` — both explicitly non-recursive",
+    "token": "docs/",
+    "kind": "heuristic",
+    "note": "The near-miss scan deliberately also looks at the literal docs/ folder, non-recursively, to find a stale copy of the contract left from before a migration."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "such as `docs/superpowers/plans/`",
+    "token": "docs/superpowers/plans/",
+    "kind": "plugin-defined-location",
+    "note": "The superpowers plugin writes dated plan records there by default; the sentence explains why the scan must not recurse into it."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "`docs/superpowers/specs/`, where the superpowers plugin",
+    "token": "docs/superpowers/specs/",
+    "kind": "plugin-defined-location",
+    "note": "The superpowers plugin writes dated spec records there by default; the sentence explains why the scan must not recurse into it."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "stale pre-migration copy of `docs/issue-triage.md`",
+    "token": "docs/issue-triage.md",
+    "kind": "historical",
+    "note": "Names the legacy location of the contract, where a copy can remain after the contract moves; the scan looks there on purpose."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "is not `docs/issue-triage.md`)",
+    "token": "docs/issue-triage.md",
+    "kind": "example",
+    "note": "A path-boundary example that shows a look-alike path (mydocs/issue-triage.md) which must not match; it is not a read instruction."
+  },
+  {
+    "file": "plugin/skills/triage-issues/SKILL.md",
+    "anchor": "parent directory, under `docs/`, or at the top level",
+    "token": "docs/",
+    "kind": "heuristic",
+    "note": "Lists where the near-miss scan looked, so the report can say where a candidate was found; docs/ is one of the scanned folders."
+  }
+]
