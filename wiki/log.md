@@ -31,6 +31,11 @@ the full maintenance schema.
   kind, and that a repo test enforces both. Registered in
   `decisions/plugin-structure/index.md`. From #388. Not an ingest; no `raw/`
   source drove it.
+* **Update**: `process/issue-triage.md` gains a paragraph in Dependencies: a
+  body sentence about an unmerged branch records what was read at which
+  commit, not a forecast of the merge, and the issue's state is read just
+  before such a write. From the retro of the triage of #1007, #1012, #1023 and
+  #1025. Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/testing-the-audit.md` gains a paragraph on scanning
   test titles for a value a change moves before a rename row is pledged, and
   `maintainer/audit-author-time-findings.md` now says a test file is a cited
