@@ -102,7 +102,7 @@ If the doc isn't present, default to:
 
 ### Acceptance Criteria Verification
 
-The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, `docs/acceptance/<slug>.md`.
+The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, read the acceptance file the dispatch names. When the dispatch names none, read `<dir>/<slug>.md`, where `<dir>` is `paths['docs/acceptance/']` resolved as the "Runtime path resolution" section of `${CLAUDE_PLUGIN_ROOT}/CONVENTIONS.md` says and `<slug>` is the current branch name with each `/` replaced by `-`; when the named or resolved file does not exist, report the source as none found and the criteria incomplete.
 
 The denominator is every row present in that **fetched section** — never your own enumeration of what the criteria "should" be, and never a count of literal `- [ ]` checklist syntax (this file's own body carries 20 unrelated checklist rows above; that's a different thing being counted). If the section cannot be fully fetched or fully read, report the checklist as incomplete and grade nothing — do not grade the readable portion and silently drop the rest.
 

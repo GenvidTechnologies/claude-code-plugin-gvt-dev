@@ -11,7 +11,7 @@ status: stable
 - **Date:** 2026-11-21
 - **Issue:** #938
 - **Amends:** [ADR-0062](0062-runtime-path-resolution-for-declared-expectations.md) (its Decision, its Consequences promise of "no behaviour change", and its rejected implicit wiki convention), [ADR-0068](0068-prose-conventions-doc-default-is-relocatable.md) (decision 1), [ADR-0084](../skill-shapes/0084-near-miss-nominate-plus-veto-registration-follows-location.md) (decision 4, the §0b trigger) and [ADR-0095](0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md) (decision 9, first sentence only)
-- **Related:** ADR-0100 (#363), ADR-0102 (#455), #1012, GenvidTechnologies/claude-code-plugin-gvt-wiki#60
+- **Related:** [ADR-0100](0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md) (#363), [ADR-0102](../acceptance-criteria/0102-issue-less-acceptance-fallback-resolves-a-declared-location.md) (#455), #1012, GenvidTechnologies/claude-code-plugin-gvt-wiki#60
 
 ## Context
 
@@ -19,7 +19,7 @@ A skill, an agent or a script resolves a declared expectation path through the `
 
 [ADR-0095](0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md) decision 9 and its Compromise reject wiki-first auto-detection. [ADR-0062](0062-runtime-path-resolution-for-declared-expectations.md) rejected an implicit wiki convention with three objections: it is invisible to the audit, it is ambiguous when both locations exist, and it does not generalize past the wiki case.
 
-The user decided on 2026-11-20, at the planning checkpoints of #938, that the wiki is the default home of every project document. This record states that decision, how it answers the three objections, and what it costs. The audit, the writers and the prose that describe the rule ship with #938. The prose of other components that still names `docs/` literally is owned by #363, #455, #388 and #357, which follow #938.
+The user decided on 2026-11-20, at the planning checkpoints of #938, that the wiki is the default home of every project document. This record states that decision, how it answers the three objections, and what it costs. The audit, the writers and the prose that describe the rule ship with #938. #363, #357 and #455 changed the prose of other components before #938 merged. #388 changes the remaining prose that names `docs/` literally, after #938.
 
 ## Decision
 
@@ -56,16 +56,16 @@ The user decided on 2026-11-20, at the planning checkpoints of #938, that the wi
 **Costs accepted.**
 
 - ADR-0062 and ADR-0068 promised "a repo that sets no override sees no behaviour change". That promise is broken for every repository that relies on a `docs/` default without an override.
-- Census, 2026-11-20: the shipped `legacyLocations` check ran read-only over the local base clones. The clones can lag their remotes. It found 16 clones, 14 with a `.gvt-agent.json`, and 8 of those with a `wiki` block. It flagged 6 repositories and found 8 clean, with 11 key instances: `docs/TOC.md` 5, `docs/issue-triage.md` 4, `docs/decisions/` 2. No repository had content at both locations. None of the other 6 declared `docs/` paths was flagged. The 8 repositories with a `wiki` block override all three named keys.
+- Census, 2026-11-20: the shipped `legacyLocations` check ran read-only over the local base clones. The clones can lag their remotes. It found 16 clones, 14 with a `.gvt-agent.json`, and 8 of those with a `wiki` block. It flagged 6 repositories and found 8 clean, with 11 key instances: `docs/TOC.md` 5, `docs/issue-triage.md` 4, `docs/decisions/` 2. No repository had content at both locations. None of the other declared `docs/` paths was flagged. The census was re-run on 2026-11-21 over the 7 paths declared after #363 and #455 merged, with the same result. The 8 repositories with a `wiki` block override all three named keys.
 - So 6 of the 14 local repositories with a `.gvt-agent.json` get `legacy-location` warnings on upgrade (11 keys). Two of them have a `docs/decisions/` directory with no override, where `renumber-adrs --next` refuses if the directory holds ADR records. The census counted the directory, not its records, so how many actually refuse is not measured.
 - A greenfield repository now has `wiki/index.md` and no `wiki` block, so practice-detect can read it as partial wiki adoption.
-- Prose in other components that names `docs/...` literally (owned by #388, #363 and #357) disagrees with the audit until those land. #388 merges after #938, and 6.0.0 is released only after #388. This is the lag between the audit and the prose.
+- Prose in other components that names `docs/...` literally disagrees with the audit until #388 lands. #388 merges after #938, and 6.0.0 is released only after #388. This is the lag between the audit and the prose.
 - A stale-config `--fix` run's retired-token follow-up walks `<wikiDir>/`. In a repository still on the 5.x layout it does not read `docs/` until `docs/TOC.md` is pinned. The `legacy-location` warning points at the pin.
 - The `maintain-wiki` skill of `gvt-wiki` declares `docs/TOC.md`. That is filed as GenvidTechnologies/claude-code-plugin-gvt-wiki#60.
 
 ## Consequences
 
-- `gvt-dev` declares 9 `docs/` expectation paths: `docs/TOC.md`, `docs/decisions/`, `docs/issue-triage.md`, `docs/code-review-context.md`, `docs/code-review-patterns.md`, `docs/code-review-docs.md`, `docs/architecture.md`, `docs/design-patterns.md` and `docs/coding-conventions.md`. Each default moves: `docs/TOC.md` to `<wikiDir>/index.md`, and each other path to `<wikiDir>/…` with the same tail.
+- `gvt-dev` declares 7 `docs/` expectation paths, the contract files of ADR-0100: `docs/TOC.md`, `docs/decisions/`, `docs/issue-triage.md`, `docs/code-review-context.md`, `docs/code-review-patterns.md`, `docs/code-review-docs.md` and `docs/acceptance/`. Each default moves: `docs/TOC.md` to `<wikiDir>/index.md`, and each other path to `<wikiDir>/…` with the same tail.
 - The docs root of the hygiene scanners moves from `docs/` to `<wikiDir>/`, and the decisions exclusion follows the resolved decisions location.
 - A greenfield or stale-config `--fix` scaffolds the index at `wiki/index.md` and writes no `wiki` block. A migrated `--fix` pins a 5.x location.
 - The scope of `tech-writer` is the wiki by default.

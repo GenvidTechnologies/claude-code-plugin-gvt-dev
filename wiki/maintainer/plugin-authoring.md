@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: 'Authoring Genvid Plugins'
-description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, example naming, and a small model''s output template.'
+description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, example naming, a small model''s output template, and verbatim output a reader or script must find.'
 tags: [maintainer, plugin-authoring]
 status: stable
 ---
@@ -109,6 +109,29 @@ individually:
 Measure the change with a harness rather than trusting the prose. Read
 correctly, every one of the non-complying reports was factually right; only the
 shape was wrong, which no review of the rule text would have predicted.
+
+## Say "verbatim" when the output must be found
+
+The rule above covers a small model's report shape. The same failure hits a
+skill's own output on the session model. "Print the line `X`" is read as
+"report that X happened". The model bolds the line, merges it into a sentence,
+or summarizes a checklist instead of printing its rows. A reader skims past it,
+and a script that greps for it finds nothing.
+
+Measured with headless `plan-task` runs on #455, on 2026-11-20:
+
+- **"Report `Acceptance criteria: committed at <path>.`" and "print the drafted
+  checklist":** the first runs summarized the checklist rows (F1, at 582f826)
+  and described the commit in prose (F3, at 50f9b76).
+- **Plus "verbatim":** the second round printed the phrases, but with bold
+  markup or inside a longer sentence.
+- **"Print the line verbatim, as plain text on its own line: no bold, no other
+  formatting, no other sentence on the line, with only the placeholders filled
+  in":** all three runs at 87b91c3 printed each line alone and unformatted.
+
+Name each property the output needs: verbatim, plain, on its own line, and
+which parts are placeholders. When the output is a block (a checklist), say
+"the heading and every row as written, not a summary of the rows".
 
 ## A bundled contract template's marker line names its own skill
 
