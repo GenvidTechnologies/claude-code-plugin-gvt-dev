@@ -112,6 +112,51 @@ test('wiki-default: the audit shows a derived location as via wiki default', asy
   }
 });
 
+test('wiki-default: the audit warns on a 5.x location that holds content', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const warnings = result.stdout.split('### Warnings')[1]?.split('\n### ')[0] ?? '';
+
+    assert.match(
+      warnings,
+      /- `docs\/decisions\/` holds content at the 5\.x location, but the wiki-derived location `wiki\/decisions\/` is what the audit reads\. Set paths\['docs\/decisions\/'\] to "docs\/decisions\/" in \.gvt-agent\.json to keep the 5\.x location, or move the content to `wiki\/decisions\/`\./,
+      `the 5.x location must be reported under Warnings:\n${result.stdout}`,
+    );
+    // One warning per path: docs/decisions/ is declared by several components.
+    assert.equal(warnings.split('holds content at the 5.x location').length - 1, 1, warnings);
+    // docs/TOC.md is not on disk, so it has no legacy-location warning.
+    assert.doesNotMatch(warnings, /`docs\/TOC\.md` holds content/);
+    assert.equal(result.status, 0, 'a legacy-location warning does not fail the audit');
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the audit names both locations and uses the wiki default when both hold content', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
+    await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const warnings = result.stdout.split('### Warnings')[1]?.split('\n### ')[0] ?? '';
+
+    assert.match(
+      warnings,
+      /- `docs\/decisions\/` and `wiki\/decisions\/` both hold content: the wiki-derived location `wiki\/decisions\/` is used; `docs\/decisions\/` is no longer read\. Set paths\['docs\/decisions\/'\] to "docs\/decisions\/" in \.gvt-agent\.json to keep the 5\.x location, or move the content to `wiki\/decisions\/`\./,
+      `both locations must be named:\n${result.stdout}`,
+    );
+    // The wiki-derived directory is the one that satisfies the expectation.
+    assert.doesNotMatch(result.stdout, /expects `docs\/decisions\/`/);
+    assert.equal(result.status, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('audit: a paths override relocating a directory expectation (docs/decisions/) uses the resolved path for the directory check', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
     await writeDocsIndex(dir);

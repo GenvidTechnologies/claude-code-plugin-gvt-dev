@@ -35,6 +35,7 @@ import {
 import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
+import { legacyLocations, legacyLocationFindings } from './lib/legacy-locations.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, hygieneCorpora } from './lib/hygiene.mjs';
 import {
   resolveExpectationPath,
@@ -129,12 +130,14 @@ async function main() {
   // including a consumer run. The loop below skips it (`expects` is null).
   const findings = [...loadFailureDiagnostics(components)];
   const declaredPaths = new Set();
+  const fileEntries = [];
   for (const component of components) {
     const expects = component.expects;
     if (!expects) continue;
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
+      fileEntries.push(entry);
       const where = await resolveFile(entry);
       const finding = await evaluateFile(component, entry, () => where);
       findings.push(
@@ -160,6 +163,10 @@ async function main() {
   // (typo, retired path) or an unusable override value — otherwise a mistyped
   // key is silently inert, which is the defect this wiring exists to fix.
   findings.push(...overrideFindings(pathOverrides, declaredPaths));
+
+  // A document left at the 5.x `docs/` location the wiki default replaced
+  // would otherwise go unread without a word (lib/legacy-locations.mjs).
+  findings.push(...legacyLocationFindings(await legacyLocations(REPO_ROOT, repoConfig, fileEntries)));
 
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
@@ -475,7 +482,7 @@ function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
   // orphaned-doc/orphan-check-skipped/link-check-skipped, readme-inventory,
-  // principle-citation, and path-override) aren't tied to a
+  // principle-citation, path-override, and legacy-location) aren't tied to a
   // component/expectation — they carry a self-contained detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
@@ -490,6 +497,7 @@ function formatFinding(f) {
     'principle-citation',
     'pillar-unknown',
     'path-override',
+    'legacy-location',
     'component-unreadable',
     'component-malformed',
   ];
