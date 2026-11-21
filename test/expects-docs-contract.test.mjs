@@ -25,6 +25,7 @@ const CONTRACT_DOCS = new Set([
   'docs/code-review-docs.md',
   'docs/code-review-patterns.md',
   'docs/issue-triage.md',
+  'docs/acceptance/',
 ]);
 
 // Returns every `path:` value under the frontmatter that starts with docs/.

@@ -59,7 +59,8 @@ eleven components that read the index.
 `test/expects-docs-contract.test.mjs` reads the frontmatter of every skill and agent, and
 fails when a declared `docs/` path is not one of the contract files: `docs/TOC.md`,
 `docs/decisions/`, `docs/code-review-context.md`, `docs/code-review-docs.md`,
-`docs/code-review-patterns.md` and `docs/issue-triage.md`. To declare a new `docs/` path,
+`docs/code-review-patterns.md`, `docs/issue-triage.md` and `docs/acceptance/` (added by
+[ADR-0102](../acceptance-criteria/0102-issue-less-acceptance-fallback-resolves-a-declared-location.md)). To declare a new `docs/` path,
 first decide that the plugin owns its location, then add it to the allowlist and to this
 list. The test reads frontmatter only. Body prose is not checked, because a body can name a
 common path as a fallback.
