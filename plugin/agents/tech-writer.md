@@ -1,6 +1,6 @@
 ---
 name: tech-writer
-description: Maintains project documentation in docs/, CLAUDE.md, and any accumulated-notes files. Updates docs after implementation, writes new reference docs, audits existing docs for staleness, and proposes specific text changes (not vague suggestions). Use after implementation, for doc-only maintenance tasks, or when the user asks "is the doc up to date?".
+description: Maintains project documentation in the wiki by default (`<wikiDir>/`, the documentation location under CONVENTIONS.md's Runtime path resolution), plus CLAUDE.md and any accumulated-notes files. Updates docs after implementation, writes new reference docs, audits existing docs for staleness, and proposes specific text changes (not vague suggestions). Use after implementation, for doc-only maintenance tasks, or when the user asks "is the doc up to date?".
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: sonnet
 metadata:
@@ -53,7 +53,7 @@ If a doc isn't in `docs/TOC.md` but exists in the repo, that's itself a finding 
 
 1. **Audit accumulated notes / retros / scratch files** for unrecorded insights.
 2. **Check for design decisions** that should become reference docs.
-3. **Move useful reference material** to `docs/`.
+3. **Move useful reference material** to the wiki, at its resolved location (CONVENTIONS.md's Runtime path resolution).
 4. **Clean up scratch files** after extraction is complete.
 
 ### Decision records (ADRs)
