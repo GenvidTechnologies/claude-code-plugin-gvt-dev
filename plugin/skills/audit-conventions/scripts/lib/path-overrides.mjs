@@ -1,5 +1,5 @@
-// Resolves `.gvt-agent.json`'s optional `paths` object (CONVENTIONS.md:82-83)
-// against declared expectation paths.
+// Resolves `.gvt-agent.json`'s optional `paths` object (CONVENTIONS.md, the
+// "**`paths`** (optional object)" entry) against declared expectation paths.
 //
 // `paths` has two distinct uses, told apart by key name:
 //   - Convention-file overrides: key is a declared expectation path (e.g.
@@ -20,6 +20,7 @@
 // resolveDocsRoot derives the docs-tier root (used by directory-walking
 // scanners) from a `docs/TOC.md` override, rather than accepting a second,
 // separately-declared root key (ADR-0022 decision 1: one directory, one name).
+// With no override the root is the wiki dir and the index is `index.md`.
 //
 // overrideFindings reports `paths` entries that don't correspond to anything
 // the audit reads: a key that is neither reserved nor a currently-declared
@@ -36,11 +37,64 @@ export function resolveExpectationPath(paths, declaredPath) {
   return paths[declaredPath];
 }
 
-export function resolveDocsRoot(paths) {
-  const override = resolveExpectationPath(paths, 'docs/TOC.md');
-  if (override === 'docs/TOC.md') {
-    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: false };
+// The wiki-derived default: where a declared `docs/...` path lives when the
+// repo declares no override. `docs/TOC.md` derives `<wikiDir>/index.md`; any
+// other `docs/<rest>` derives `<wikiDir>/<rest>` (a directory keeps its
+// trailing slash). Every other path is unchanged. Resolution never touches the
+// file system.
+//
+// effectiveWikiDir({wiki: {wikiDir: 'kb/'}})        -> 'kb'
+// effectiveWikiDir({})                              -> 'wiki'
+// wikiDerivedDefault('docs/TOC.md', 'wiki')         -> 'wiki/index.md'
+// wikiDerivedDefault('docs/decisions/', 'wiki')     -> 'wiki/decisions/'
+// wikiDerivedDefault('CLAUDE.md', 'wiki')           -> 'CLAUDE.md'
+// resolveDeclaredPath({}, 'docs/TOC.md')
+//   -> { path: 'wiki/index.md', from: 'wiki-default' }
+
+export const DEFAULT_WIKI_DIR = 'wiki';
+
+export function effectiveWikiDir(config) {
+  const raw = config?.wiki?.wikiDir;
+  if (typeof raw !== 'string') return DEFAULT_WIKI_DIR;
+  const dir = raw.trim().replace(/[\\/]$/, '');
+  return dir === '' ? DEFAULT_WIKI_DIR : dir;
+}
+
+export function wikiDerivedDefault(declaredPath, wikiDir) {
+  if (typeof declaredPath !== 'string') return declaredPath;
+  if (declaredPath === 'docs/TOC.md') return `${wikiDir}/index.md`;
+  if (declaredPath.startsWith('docs/') && declaredPath.length > 'docs/'.length) {
+    return `${wikiDir}/${declaredPath.slice('docs/'.length)}`;
   }
+  return declaredPath;
+}
+
+export function resolveDeclaredPath(config, declaredPath, { prefer } = {}) {
+  const paths = config?.paths;
+  const hasOverride =
+    paths !== null &&
+    typeof paths === 'object' &&
+    !RESERVED_PATH_KEYS.includes(declaredPath) &&
+    declaredPath in paths;
+  if (hasOverride) return { path: resolveExpectationPath(paths, declaredPath), from: 'paths' };
+
+  // A `prefer` entry runs its own ordered lookup elsewhere and never takes the
+  // wiki default.
+  if (prefer !== undefined) return { path: declaredPath, from: 'declared' };
+
+  const derived = wikiDerivedDefault(declaredPath, effectiveWikiDir(config));
+  return { path: derived, from: derived !== declaredPath ? 'wiki-default' : 'declared' };
+}
+
+export function resolveDocsRoot(paths, wikiDir = DEFAULT_WIKI_DIR) {
+  // No override: the docs tier is the wiki bundle, indexed by its index.md
+  // (the wiki-derived default of docs/TOC.md). Callers pass effectiveWikiDir(config).
+  // An override that names the declared path itself is still an override: it
+  // keeps the 5.x `docs/` root.
+  if (resolveDeclaredPath({ paths, wiki: { wikiDir } }, 'docs/TOC.md').from !== 'paths') {
+    return { root: wikiDir, indexFile: 'index.md', unrepresentable: false };
+  }
+  const override = resolveExpectationPath(paths, 'docs/TOC.md');
 
   const slashAt = override.lastIndexOf('/');
   const root = slashAt === -1 ? '' : override.slice(0, slashAt);
@@ -48,10 +102,10 @@ export function resolveDocsRoot(paths) {
   if (root === '' || root === '.') {
     // A repo-root override (e.g. "docs/TOC.md": "INDEX.md") would make a
     // directory walk recurse the entire repo — keep the safe default and let
-    // the caller report the problem instead. The root fell back to "docs", so
-    // the filename falls back with it — pairing it with the override's own
-    // basename would describe a file ("docs/INDEX.md") that doesn't exist.
-    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: true };
+    // the caller report the problem instead. The root fell back to the wiki
+    // dir, so the filename falls back with it — pairing it with the override's
+    // own basename would describe a file ("wiki/INDEX.md") that doesn't exist.
+    return { root: wikiDir, indexFile: 'index.md', unrepresentable: true };
   }
   return { root, indexFile, unrepresentable: false };
 }

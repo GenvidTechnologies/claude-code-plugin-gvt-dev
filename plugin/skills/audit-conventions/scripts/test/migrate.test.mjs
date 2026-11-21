@@ -256,8 +256,8 @@ test('planGreenfield: scaffold content matches the skeleton shape (no git remote
     assert.equal(claudeMd.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/CLAUDE.md'), 'utf8'));
     assert.match(claudeMd.content, /@CONVENTIONS\.md/, 'skeleton CLAUDE.md must keep the @CONVENTIONS.md import');
 
-    const toc = writeFor('TOC.md');
-    assert.equal(toc.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/docs/TOC.md'), 'utf8'));
+    const toc = writeFor('index.md');
+    assert.equal(toc.content, await fs.readFile(join(PLUGIN_ROOT, 'skeleton/wiki/index.md'), 'utf8'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -506,7 +506,7 @@ test('planStaleConfig: pure stale-name (no C3 markers) -> git mv, no .gvt-agent.
     // The other three convention files are still offered.
     assert.ok(writes.some((a) => a.path.endsWith('CONVENTIONS.md')));
     assert.ok(writes.some((a) => a.path.endsWith('CLAUDE.md')));
-    assert.ok(writes.some((a) => a.path.replace(/\\/g, '/').endsWith('docs/TOC.md')));
+    assert.ok(writes.some((a) => a.path.replace(/\\/g, '/').endsWith('wiki/index.md')));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -794,7 +794,7 @@ test('planLegacy: strips only the submodule line from a .claudeignore with other
 // #7 — port agent sidecars + post-apply dangling-ref report
 // ---------------------------------------------------------------------------
 
-test('planLegacy: ports a legacy code-reviewer sidecar to docs/', async () => {
+test('planLegacy: ports a legacy code-reviewer sidecar to its wiki-derived location', async () => {
   const dir = await withTempRepo(async (d) => {
     await writeRepoFile(d, '.claude/agents/code-reviewer/project-context.md', 'review context\n');
   });
@@ -803,11 +803,11 @@ test('planLegacy: ports a legacy code-reviewer sidecar to docs/', async () => {
     const move = plan.actions.find((a) => a.type === 'move-file');
     assert.ok(move, 'expected a move-file action for the sidecar');
     assert.ok(move.from.includes('project-context.md'));
-    assert.ok(move.to.replace(/\\/g, '/').endsWith('docs/code-review-context.md'));
+    assert.ok(move.to.replace(/\\/g, '/').endsWith('wiki/code-review-context.md'));
 
     // applyPlan actually moves the file
     await applyPlan(plan, dir);
-    const moved = await fs.readFile(join(dir, 'docs/code-review-context.md'), 'utf8');
+    const moved = await fs.readFile(join(dir, 'wiki/code-review-context.md'), 'utf8');
     assert.equal(moved, 'review context\n');
     await assert.rejects(fs.access(join(dir, '.claude/agents/code-reviewer/project-context.md')));
   } finally {
@@ -893,6 +893,22 @@ test('scanDanglingReferences: unknown orphan falls back to the generic port-or-d
     const hit = warnings.find((w) => w.file.replace(/\\/g, '/').endsWith('project-mystery.md'));
     assert.ok(hit, 'unknown sidecar still flagged');
     assert.match(hit.hint, /port the still-relevant parts into docs\//);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: greenfield scaffolds wiki/index.md and writes no wiki block', async () => {
+  const dir = await withTempRepo(async () => {});
+  try {
+    const plan = await planGreenfield(dir, PLUGIN_ROOT);
+    const writes = plan.actions.filter((a) => a.type === 'write-file');
+    const paths = writes.map((a) => a.path.replace(/\\/g, '/'));
+    assert.ok(paths.some((p) => p.endsWith('/wiki/index.md')), `expected wiki/index.md, got ${paths.join(', ')}`);
+    assert.ok(!paths.some((p) => p.endsWith('docs/TOC.md')), 'must not scaffold docs/TOC.md');
+
+    const cfg = JSON.parse(writes.find((a) => a.path.endsWith('.gvt-agent.json')).content);
+    assert.equal('wiki' in cfg, false, 'greenfield writes no wiki block');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

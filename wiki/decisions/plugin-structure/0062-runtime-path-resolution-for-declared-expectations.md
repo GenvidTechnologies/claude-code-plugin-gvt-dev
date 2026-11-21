@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-09-28
 - **Issue:** #580 (part of #579; the issue-triage slice of #388)
+- **Amended by:** [ADR-0101](0101-document-locations-default-to-the-wiki.md) — a path with no override now derives a wiki default, so the "no behaviour change" promise and the rejected implicit wiki convention are superseded; the rest stands.
 
 ## Context
 

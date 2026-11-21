@@ -70,7 +70,7 @@ The plugin reads project context from four files in the consuming repo, in a con
 |------|---------|
 | `CLAUDE.md` | Project context, imports `@CONVENTIONS.md` |
 | `CONVENTIONS.md` | Copy of the plugin's canonical contract, synced by `/gvt-dev:audit-conventions --fix` |
-| `docs/TOC.md` | Documentation index |
+| `docs/TOC.md` | Documentation index. This declared path resolves to `<wikiDir>/index.md` by default |
 | `.gvt-agent.json` | Capability registry — project name, commands, repo overrides, feature flags |
 
 Every skill and agent self-declares its expectations under `metadata.expects` in its YAML frontmatter — paths, config keys, and tools it needs. The `audit-conventions` skill walks these declarations and reports any unmet expectations against the consuming repo.

@@ -16,7 +16,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, writeDocsIndex } from './helpers/temp-repo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // scripts/test/principle-citations-wiring.test.mjs -> scripts -> audit-conventions -> skills -> plugin
@@ -42,7 +42,7 @@ function spawnAudit(args, cwd) {
 // finding when auditing a repo that is not the plugin source.
 async function withTempPrincipleCitationRepo() {
   return withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'plugin', 'docs'), { recursive: true });
     await writeFile(
       join(dir, 'plugin', 'docs', 'development-principles.md'),

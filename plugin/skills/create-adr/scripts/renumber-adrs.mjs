@@ -9,7 +9,15 @@
 // Exports for testing:
 //   planRenumber({ dir, insertAt })  -> plan object (pure, no fs writes)
 //   applyRenumber({ dir, insertAt }) -> performs moves + edits + prints report
-//   resolveDecisionsDir(repoRoot)    -> { dir, resolvedFrom, warning? } for --next
+//   resolveDecisionsDir(repoRoot)    -> { dir, resolvedFrom, warning? } for --next.
+//                                      Resolves `docs/decisions/` through the
+//                                      runtime path rule: a `paths` override wins
+//                                      (`resolvedFrom` 'paths'); otherwise the
+//                                      wiki-derived default `<wikiDir>/decisions/`
+//                                      ('default'). `--next` refuses (exit 1) when
+//                                      that default differs from `docs/decisions/`
+//                                      and `docs/decisions/` still holds records;
+//                                      `--dir` bypasses the refusal ('--dir').
 //   describeAdrDir({ repoRoot, dir })-> JSON summary object printed by --next
 
 import {
@@ -25,7 +33,11 @@ import { fileURLToPath } from 'node:url';
 import { join, relative, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { resolveExpectationPath } from '../../audit-conventions/scripts/lib/path-overrides.mjs';
+import {
+  effectiveWikiDir,
+  resolveDeclaredPath,
+  wikiDerivedDefault,
+} from '../../audit-conventions/scripts/lib/path-overrides.mjs';
 
 // ---------------------------------------------------------------------------
 // ADR file discovery
@@ -675,66 +687,90 @@ function normalizeDirSlash(value) {
 }
 
 /**
- * Resolve the ADR directory for `--next`, honoring `.gvt-agent.json`'s
- * `paths['docs/decisions/']` override (CONVENTIONS.md precedence: `paths` is
- * consulted; the `docs/decisions/` default applies only when it isn't set).
- * Missing or malformed config, or an unusable override value, falls back to
- * the default and reports why via `warning`.
+ * Resolve the ADR directory for `--next` through the runtime path rule
+ * (CONVENTIONS.md, "Runtime path resolution"): a `paths['docs/decisions/']`
+ * override wins (`resolvedFrom` 'paths'); with no override the directory is the
+ * wiki-derived default `<wikiDir>/decisions/` (`resolvedFrom` 'default').
+ * Missing config uses the default silently. Malformed config, or an unusable
+ * override value, also uses the default and reports why via `warning`.
  * @param {string} repoRoot
  * @returns {{ dir: string, resolvedFrom: 'paths'|'default', warning?: string }}
  */
 export function resolveDecisionsDir(repoRoot) {
+  let cfg = {};
+  let warning;
   let raw;
   try {
     raw = readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8');
   } catch {
-    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
+    raw = undefined; // Missing config — the wiki-derived default applies.
+  }
+  if (raw !== undefined) {
+    try {
+      cfg = JSON.parse(raw);
+    } catch {
+      warning = '.gvt-agent.json is not valid JSON — using the default ADR directory';
+    }
   }
 
-  let cfg;
-  try {
-    cfg = JSON.parse(raw);
-  } catch {
-    return {
-      dir: DECISIONS_DIR_KEY,
-      resolvedFrom: 'default',
-      warning: '.gvt-agent.json is not valid JSON — using the default ADR directory',
-    };
+  const resolved = resolveDeclaredPath(cfg, DECISIONS_DIR_KEY);
+  const wikiDefault = normalizeDirSlash(wikiDerivedDefault(DECISIONS_DIR_KEY, effectiveWikiDir(cfg)));
+
+  if (resolved.from === 'paths') {
+    if (typeof resolved.path !== 'string' || resolved.path.trim() === '') {
+      return {
+        dir: wikiDefault,
+        resolvedFrom: 'default',
+        warning: `paths['${DECISIONS_DIR_KEY}'] override value is empty or unusable — using the default ADR directory`,
+      };
+    }
+    return { dir: normalizeDirSlash(resolved.path), resolvedFrom: 'paths' };
   }
 
-  const resolved = resolveExpectationPath(cfg.paths, DECISIONS_DIR_KEY);
-
-  if (resolved === DECISIONS_DIR_KEY) {
-    return { dir: DECISIONS_DIR_KEY, resolvedFrom: 'default' };
-  }
-
-  if (typeof resolved !== 'string' || resolved.trim() === '') {
-    return {
-      dir: DECISIONS_DIR_KEY,
-      resolvedFrom: 'default',
-      warning: `paths['${DECISIONS_DIR_KEY}'] override value is empty or unusable — using the default ADR directory`,
-    };
-  }
-
-  return { dir: normalizeDirSlash(resolved), resolvedFrom: 'paths' };
+  return { dir: wikiDefault, resolvedFrom: 'default', ...(warning ? { warning } : {}) };
 }
 
 /**
- * Read `.gvt-agent.json`'s `wiki.wikiDir` (default `wiki`), used only to
+ * Build the message for the 5.x refusal, or return null when `--next` may go
+ * on. The refusal protects a repo whose decision records still sit in
+ * `docs/decisions/` while the wiki-derived default points elsewhere: `--next`
+ * would otherwise report `next: 1` from an empty directory. It applies only to
+ * `resolvedFrom` 'default', only when the derived directory is not
+ * `docs/decisions/` itself, and only when `docs/decisions/` holds one or more
+ * records (counted by discoverAdrs()).
+ * @param {string} repoRoot
+ * @param {{ dir: string, resolvedFrom: string }} dirInfo
+ * @returns {string|null}
+ */
+function legacyDecisionsRefusal(repoRoot, dirInfo) {
+  if (dirInfo.resolvedFrom !== 'default') return null;
+  if (normalizeDirSlash(dirInfo.dir) === DECISIONS_DIR_KEY) return null;
+
+  const count = discoverAdrs(resolve(repoRoot, DECISIONS_DIR_KEY)).adrs.length;
+  if (count === 0) return null;
+
+  return [
+    `Error: ${DECISIONS_DIR_KEY} holds ${count} ADR record${count === 1 ? '' : 's'} and no paths override is set, so --next reads the wiki-derived default ${dirInfo.dir} instead.`,
+    `To keep the 5.x location, set paths['${DECISIONS_DIR_KEY}'] to "${DECISIONS_DIR_KEY}" in .gvt-agent.json.`,
+    `Or move the records to ${dirInfo.dir}.`,
+    '--dir <adr-dir> bypasses this check.',
+  ].join('\n');
+}
+
+/**
+ * Read the wiki directory (`wiki.wikiDir`, default `wiki`), used only to
  * decide whether `dir` lives inside the wiki bundle.
  * @param {string} repoRoot
  * @returns {string}
  */
 function readWikiDir(repoRoot) {
+  let cfg = {};
   try {
-    const cfg = JSON.parse(readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8'));
-    if (typeof cfg.wiki?.wikiDir === 'string' && cfg.wiki.wikiDir.trim() !== '') {
-      return cfg.wiki.wikiDir.replace(/\\/g, '/').replace(/\/+$/, '');
-    }
+    cfg = JSON.parse(readFileSync(join(repoRoot, '.gvt-agent.json'), 'utf8'));
   } catch {
-    // Missing or malformed config — fall through to the default below.
+    // Missing or malformed config — effectiveWikiDir() returns the default.
   }
-  return 'wiki';
+  return effectiveWikiDir(cfg).replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
 /**
@@ -1063,6 +1099,12 @@ if (isMain) {
     const dirInfo = dirArg
       ? { dir: normalizeDirSlash(dirArg), resolvedFrom: '--dir' }
       : resolveDecisionsDir(repoRoot);
+
+    const refusal = legacyDecisionsRefusal(repoRoot, dirInfo);
+    if (refusal) {
+      console.error(refusal);
+      process.exit(1);
+    }
 
     let summary;
     try {

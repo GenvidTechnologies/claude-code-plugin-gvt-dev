@@ -17,6 +17,22 @@ the full maintenance schema.
 
 ## 2026-11-21
 
+* **Update**: `maintainer/testing-the-audit.md` gains a paragraph on scanning
+  test titles for a value a change moves before a rename row is pledged, and
+  `maintainer/audit-author-time-findings.md` now says a test file is a cited
+  file, so a new test goes at the end of its file. From the #938 retro. Not
+  an ingest; no `raw/` source drove it.
+* **Update**: `decisions/plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md`,
+  `decisions/plugin-structure/0068-prose-conventions-doc-default-is-relocatable.md`,
+  `decisions/plugin-structure/0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md`
+  and `decisions/skill-shapes/0084-near-miss-nominate-plus-veto-registration-follows-location.md`
+  each gain an "Amended by" marker that links ADR-0101. The decision text of
+  each record is unchanged. From #938. Not an ingest; no `raw/` source drove it.
+* **Creation**: `decisions/plugin-structure/0101-document-locations-default-to-the-wiki.md`,
+  the record that a declared `docs/` path with no `paths` override derives its
+  default location from the wiki directory. Registered in
+  `decisions/plugin-structure/index.md`. From #938. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `maintainer/dogfooding-the-plugin.md` adds two traps of a headless
   probe: a throwaway repo under a `.claude` folder gets every write refused, and
   the JSON `result` field holds only the session's final message. From the
@@ -27,6 +43,11 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `maintainer/audit-author-time-findings.md` now names
+  `<wikiDir>/decisions/` as the default location of a repo's ADR trail, where
+  it named `docs/decisions/`. From #938, which derives the default location of
+  every `docs/<rest>` path from the wiki directory. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
   lists `docs/acceptance/` as a contract file, as ADR-0102 declares it, and
   `test/expects-docs-contract.test.mjs` adds it to its allowlist. For #455.

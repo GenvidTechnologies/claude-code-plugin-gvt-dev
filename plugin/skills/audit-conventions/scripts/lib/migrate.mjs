@@ -22,14 +22,19 @@ import { fileExists } from '#audit-core';
 import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
 import { inferHostFromRemote } from './host-drift.mjs';
 import { listFiles, listMarkdown } from './fs-walk.mjs';
-import { resolveExpectationPath } from './path-overrides.mjs';
+import { resolveDeclaredPath } from './path-overrides.mjs';
+import { legacyLocations } from './legacy-locations.mjs';
 
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
 const LEGACY_CONFIG_FILENAME = 'claude-config.json';
 const STALE_CONFIG_FILENAME = '.genvid-agent.json';
 const CLAUDE_MD = 'CLAUDE.md';
+// The declared path of the documentation index. Where it is written comes from
+// resolveDeclaredPath: an override in `paths` wins, else the wiki-derived default
+// (`<wikiDir>/index.md`). The skeleton holds the placeholder at that default.
 const TOC = 'docs/TOC.md';
+const SKELETON_TOC = 'wiki/index.md';
 const CONVENTIONS_IMPORT_LINE = '@CONVENTIONS.md';
 const LEGACY_SUBMODULE_NAME = 'burbank-claude-config';
 const SETTINGS_JSON = '.claude/settings.json';
@@ -158,8 +163,11 @@ export async function planGreenfield(repoRoot, pluginRoot) {
   await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
 
-  await pushScaffold(actions, repoRoot, TOC, await readSkeleton(pluginRoot, TOC),
-    `Scaffold ${TOC} with placeholder doc map`);
+  // The skeleton config carries no `wiki` block (gvt-dev cannot scaffold a wiki
+  // bundle, ADR-0097), so the index lands at the default wiki dir.
+  const tocTarget = resolveDeclaredPath(filledConfig, TOC).path;
+  await pushScaffold(actions, repoRoot, tocTarget, await readSkeleton(pluginRoot, SKELETON_TOC),
+    `Scaffold ${tocTarget} with placeholder doc map`);
 
   return { state: 'greenfield', actions };
 }
@@ -338,13 +346,13 @@ export async function planStaleConfig(repoRoot, pluginRoot) {
   await pushScaffold(actions, repoRoot, CLAUDE_MD, await readSkeleton(pluginRoot, CLAUDE_MD),
     `Scaffold ${CLAUDE_MD} with @CONVENTIONS.md import and stub sections`);
 
-  // Resolve the TOC scaffold target through the repo's own `paths` override
-  // (read from cfg, the same .genvid-agent.json this planner already loaded
-  // above per ADR-0012) before the skip-if-exists check, so --fix agrees with
-  // validate mode about where docs/TOC.md actually lives (issue found via
-  // call-site audit, no tracked issue number).
-  const tocTarget = resolveExpectationPath(cfg.paths, TOC);
-  await pushScaffold(actions, repoRoot, tocTarget, await readSkeleton(pluginRoot, TOC),
+  // Resolve the TOC scaffold target through the repo's own config (cfg, the same
+  // .genvid-agent.json this planner already loaded above per ADR-0012) before
+  // the skip-if-exists check, so --fix agrees with validate mode about where
+  // docs/TOC.md actually lives: a `paths` override wins, else the wiki-derived
+  // default (issue found via call-site audit, no tracked issue number).
+  const tocTarget = resolveDeclaredPath(cfg, TOC).path;
+  await pushScaffold(actions, repoRoot, tocTarget, await readSkeleton(pluginRoot, SKELETON_TOC),
     `Scaffold ${tocTarget} with placeholder doc map`);
 
   return { state: 'stale-config', actions };
@@ -418,8 +426,49 @@ export async function planConventionsResync(repoRoot, pluginRoot) {
   }];
 }
 
-export async function planMigratedResync(repoRoot, pluginRoot) {
-  return { state: 'migrated', actions: await planConventionsResync(repoRoot, pluginRoot) };
+// `opts.config` is the parsed `.gvt-agent.json` and `opts.entries` the declared
+// `files` expectation entries; together they let the plan pin documents left at
+// a 5.x `docs/` location (planLegacyLocationPins). Without them nothing is pinned.
+export async function planMigratedResync(repoRoot, pluginRoot, opts = {}) {
+  const actions = await planConventionsResync(repoRoot, pluginRoot);
+  actions.push(...await planLegacyLocationPins(repoRoot, opts.config, opts.entries));
+  return { state: 'migrated', actions };
+}
+
+// A document at its declared 5.x `docs/` location, with nothing at the
+// wiki-derived location, would go unread. Pin it: paths[declared] = declared
+// keeps the 5.x location. A pair where both locations hold content is ambiguous,
+// so it gets a note and the user decides. A key already overridden never reaches
+// here (legacyLocations skips it). One action rewrites `.gvt-agent.json` as
+// 2-space JSON, which reformats the file.
+async function planLegacyLocationPins(repoRoot, config, entries) {
+  if (!config || typeof config !== 'object' || !entries) return [];
+  const locations = await legacyLocations(repoRoot, config, entries);
+  const actions = [];
+  const pins = [];
+  for (const { declared, derived, derivedExists } of locations) {
+    if (derivedExists) {
+      actions.push({
+        type: 'note',
+        summary: `NOT PINNED ${declared} — both ${declared} and ${derived} hold content; `
+          + `the audit reads ${derived}. Move the content, or set paths['${declared}'] to "${declared}" by hand`,
+      });
+    } else {
+      pins.push(declared);
+    }
+  }
+  if (pins.length === 0) return actions;
+
+  const paths = { ...(config.paths && typeof config.paths === 'object' ? config.paths : {}) };
+  for (const declared of pins) paths[declared] = declared;
+  actions.unshift({
+    type: 'write-file',
+    path: join(repoRoot, NEW_CONFIG_FILENAME),
+    content: JSON.stringify({ ...config, paths }, null, 2) + '\n',
+    summary: `Pin the 5.x location of ${pins.join(', ')} in ${NEW_CONFIG_FILENAME} paths `
+      + `(rewrites ${NEW_CONFIG_FILENAME} as 2-space JSON)`,
+  });
+  return actions;
 }
 
 // -----------------------------------------------------------------------------
@@ -428,6 +477,9 @@ export async function planMigratedResync(repoRoot, pluginRoot) {
 
 export async function planLegacy(repoRoot, pluginRoot, snapshot) {
   const actions = [];
+  // The config the translation writes (no `paths`, no `wiki` block), or {} when
+  // there is no legacy config to translate. Sidecar targets resolve against it.
+  let translatedConfig = {};
 
   // 1. Translate config.
   const legacyConfigPath = join(repoRoot, LEGACY_CONFIG_FILENAME);
@@ -436,6 +488,7 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
     const pm = legacy.variables?.PACKAGE_MANAGER?.trim() || 'npm';
     const scripts = await readPackageScripts(repoRoot, pm);
     const newConfig = translateLegacyConfig(legacy, { scripts });
+    translatedConfig = newConfig;
     actions.push({
       type: 'write-file',
       path: join(repoRoot, NEW_CONFIG_FILENAME),
@@ -516,7 +569,7 @@ export async function planLegacy(repoRoot, pluginRoot, snapshot) {
   // 5. Port legacy per-agent context sidecars to their new docs/ homes
   //    (issue #7) before the empty-dir sweep, so the now-orphaned agent dirs
   //    can be removed once their sidecars have moved out.
-  for (const action of await planSidecarPorting(repoRoot)) {
+  for (const action of await planSidecarPorting(repoRoot, translatedConfig)) {
     actions.push(action);
     if (action.type === 'move-file') dirsTouched.add(dirname(action.from));
   }
@@ -786,11 +839,14 @@ async function planClaudeignoreCleanup(repoRoot) {
 // Sidecar porting (issue #7)
 // -----------------------------------------------------------------------------
 
-async function planSidecarPorting(repoRoot) {
+// Each SIDECAR_MAP `to` is a declared docs/ path; it is placed where the
+// translated config resolves it (a `paths` override, else the wiki default).
+async function planSidecarPorting(repoRoot, config) {
   const actions = [];
-  for (const { from, to } of SIDECAR_MAP) {
+  for (const { from, to: declared } of SIDECAR_MAP) {
     const fromPath = join(repoRoot, from);
     if (!(await fileExists(fromPath))) continue;
+    const to = resolveDeclaredPath(config, declared).path;
     const toPath = join(repoRoot, to);
     if (await fileExists(toPath)) {
       actions.push({

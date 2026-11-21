@@ -93,8 +93,13 @@ export function anchoredDirEntry(value) {
 // names a walked root or one of its ancestors (opts.docsRoot/opts.wikiDir) —
 // excluding an entire walked root because its ADR subdir moved there would
 // silently blind every other scanner to that root's rank-and-file content.
+//
+// opts.decisionsDir, when given, is the already-resolved decisions location
+// (an override, else the wiki-derived default `<wikiDir>/decisions/`; audit-main
+// passes resolveDeclaredPath's result) and is used in place of the `paths`
+// lookup. Without it the lookup above applies, as before.
 function decisionsExclude(opts) {
-  const resolved = resolveExpectationPath(opts.paths, DECISIONS_DIR);
+  const resolved = opts.decisionsDir ?? resolveExpectationPath(opts.paths, DECISIONS_DIR);
   if (resolved === DECISIONS_DIR) return [];
   const entry = anchoredDirEntry(resolved);
   if (!entry || entry === DECISIONS_DIR) return [];
@@ -166,6 +171,12 @@ export function effectiveExcludes(opts = {}) {
 // above effectiveExcludes): the resolved directory is excluded ALONGSIDE the
 // literal 'docs/decisions/' default, not instead of it, and a value that's
 // unusable or names a walked root (or an ancestor of one) adds nothing.
+//
+// The `?? 'docs'` defaults here and in the other scanners in this file (and
+// the `?? 'TOC.md'` index default) are unit-test defaults, not policy. Every
+// production caller passes the resolved root and index (audit-main.mjs, via
+// resolveDocsRoot), so the policy default — the wiki dir — lives in
+// resolveDocsRoot alone.
 async function listCandidateFiles(repoRoot, opts = {}) {
   const docsRoot = opts.docsRoot ?? 'docs';
   const excludePaths = effectiveExcludes(opts);

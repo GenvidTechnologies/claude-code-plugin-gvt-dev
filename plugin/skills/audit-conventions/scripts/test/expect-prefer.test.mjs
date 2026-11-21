@@ -23,7 +23,32 @@ test('expectationCandidates: a paths override wins outright, with no fallthrough
 });
 
 test('expectationCandidates: an entry without prefer is the declared path alone (byte-identical to before)', () => {
-  assert.deepEqual(expectationCandidates({ path: 'docs/TOC.md' }, {}).candidates, ['docs/TOC.md']);
+  assert.deepEqual(expectationCandidates({ path: 'CLAUDE.md' }, {}), { overridden: false, candidates: ['CLAUDE.md'] });
+});
+
+test('wiki-default: expectationCandidates returns the derived default for an entry without prefer', () => {
+  assert.deepEqual(
+    expectationCandidates({ path: 'docs/TOC.md' }, {}),
+    { overridden: false, derived: true, candidates: ['wiki/index.md'] },
+  );
+  assert.deepEqual(
+    expectationCandidates({ path: 'docs/decisions/' }, { wikiDir: 'kb/' }),
+    { overridden: false, derived: true, candidates: ['kb/decisions/'] },
+  );
+  // An override still wins, and is not marked derived.
+  assert.deepEqual(
+    expectationCandidates({ path: 'docs/TOC.md' }, { paths: { 'docs/TOC.md': 'notes/index.md' } }),
+    { overridden: true, candidates: ['notes/index.md'] },
+  );
+});
+
+test('wiki-default: an entry with prefer keeps its own order', () => {
+  // A docs/ path with a prefer takes the prefer, then the declared path, never the derived default.
+  assert.deepEqual(
+    expectationCandidates({ path: 'docs/wiki-schema.md', prefer: '<wikiDir>/other.md' }, {}),
+    { overridden: false, candidates: ['wiki/other.md', 'docs/wiki-schema.md'] },
+  );
+  assert.equal(expectationCandidates(SCHEMA, { wikiDir: 'kb' }).derived, undefined);
 });
 
 test('expectationCandidates: a reserved paths key is never an override', () => {
