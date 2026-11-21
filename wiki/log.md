@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-21
 
+* **Update**: `maintainer/plugin-authoring.md` now says that the docs-path test
+  does not check a spelled-out default beside `paths['<path>']`, instead of
+  telling authors to spell out none. From the #388 retro; the open question is
+  #1036. Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/plugin-authoring.md` gains the section "A `docs/` path
   in a skill or agent body": what `test/docs-path-prose.test.mjs` requires, and
   how to fix a failure or record a deliberate literal. From #388. Not an ingest;
