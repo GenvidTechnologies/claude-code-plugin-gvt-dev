@@ -1,7 +1,7 @@
 ---
 type: practice-note
 title: 'Authoring Genvid Plugins'
-description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, example naming, a small model''s output template, and verbatim output a reader or script must find.'
+description: 'Cross-plugin authoring gotchas — shipping MCP servers via plugin.json, npx package-name resolution, version pinning, step renumbering, example naming, a small model''s output template, verbatim output a reader or script must find, and docs/ paths in a skill or agent body.'
 tags: [maintainer, plugin-authoring]
 status: stable
 ---
@@ -144,6 +144,41 @@ The reason is concrete: the wiki schema template of the gvt-wiki plugin's
 (naming `/gvt-wiki:maintain-wiki`),
 and a prefix-only reading would route a live wiki schema into the
 rename/replace offer (#246).
+
+## A `docs/` path in a skill or agent body
+
+A body never sends the reader to a fixed `docs/` location. A repository can move
+any declared path with `paths` in `.gvt-agent.json`, and the defaults themselves
+moved to the wiki in 6.0.0 (ADR-0101), so a literal path reads a file that may
+not be there. `test/docs-path-prose.test.mjs` enforces this on every body under
+`plugin/agents/`, `plugin/skills/` and `plugin/docs/` (ADR-0103):
+
+- **D1:** a block that names a declared path (one that some component lists
+  under `metadata.expects`) must carry its resolution in the same block: either
+  `paths['<path>']`, or the shared phrase
+  "the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `<path>`".
+  For the documentation index, write "the documentation index (the file that
+  `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)" at the
+  first mention and "the documentation index" after it. Spell out no default.
+- **D2:** a block that names any other `docs/` path must be recorded as
+  deliberate.
+- **D5:** a block that uses the resolution wording must use the shared phrase
+  exactly.
+
+An ordinary project doc, such as an architecture or lessons-learned doc, is
+named by its role and found through the documentation index (ADR-0100). Its
+usual `docs/` path may appear only as a fallback hint.
+
+**When the test fails,** first ask whether the line tells the model to read or
+write that location. If it does, reword it to resolve the path. Never record a
+hard-coded read as deliberate. If the line is a deliberate literal, such as an
+example, another repository's path, a fallback hint or a description of what
+the audit scans, paste the skeleton the failure message prints into
+`test/docs-path-literals.json`, then fill in the `kind` and a one-sentence
+`note`. The `anchor` is a short substring found in exactly one block of that
+file. The closed list of kinds and their meanings is in ADR-0103. D3 fails an
+entry whose anchor matches no block or more than one, or whose block now carries
+the resolution, so delete an entry when its line goes.
 
 ## Example
 

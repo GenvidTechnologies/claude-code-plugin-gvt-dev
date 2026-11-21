@@ -54,7 +54,7 @@ claude-code-plugin-gvt-dev/
 │   ├── process/issue-triage.md       # Dogfood consuming-repo triage conventions (resolved via paths)
 │   └── maintainer/plugin-authoring.md  # Maintainer authoring notes (internal, not shipped)
 ├── examples/                         # Worked, filled-in example consuming-repo files (Bunny game) for reference
-├── test/                             # Repo-level tests (shared-block drift test, no-docs-tree guard, docs/ expectation allowlist)
+├── test/                             # Repo-level tests (shared-block drift test, no-docs-tree guard, docs/ expectation allowlist, docs/ path prose drift test)
 ├── audit-conventions-evals/          # Skill eval harness (developer tooling)
 ├── create-adr-evals/                 # Skill eval harness for create-adr (developer tooling)
 └── validator-evals/                  # Eval harness for the validator agent's chain reporting (developer tooling)
@@ -129,6 +129,7 @@ metadata:
 - `required: true` is the default; only `required: false` is written. Mark a prerequisite `required: false` when it's **skill-conditional** (only one skill needs it) rather than part of the universal contract — the audit aggregates required expectations across all skills, so a skill-specific required file would make unrelated repos fail. The `package.json` expectation in `publish-npm-package` is the canonical example.
 - The `reason` field is mandatory and load-bearing — it's what `audit-conventions` prints to explain why a missing item matters.
 - Declare a `docs/` path only for a contract file, one whose location the plugin defines (`docs/TOC.md`, `docs/decisions/`, …). An ordinary project doc, such as an architecture or coding-conventions doc, is found through the documentation index, so declare `docs/TOC.md` instead and name the doc by its role in the body (ADR-0100). `test/expects-docs-contract.test.mjs` fails on any other declared `docs/` path; adding a contract file means adding it to that test's allowlist.
+- A body names a declared `docs/` path only beside its resolution, and spells out no default (ADR-0103). `test/docs-path-prose.test.mjs` fails on a body that names a declared path without `paths['<path>']` or the shared phrase, or names any other `docs/` path that `test/docs-path-literals.json` does not record as deliberate. How to fix a failure: [`wiki/maintainer/plugin-authoring.md`](wiki/maintainer/plugin-authoring.md).
 
 See [`CONVENTIONS.md`](plugin/CONVENTIONS.md) for the full contract.
 
