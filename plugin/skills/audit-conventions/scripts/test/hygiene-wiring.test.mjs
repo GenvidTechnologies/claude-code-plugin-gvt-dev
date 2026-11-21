@@ -253,6 +253,31 @@ test('wiki-default: the link and orphan checks decline the default docs root onl
   }
 });
 
+// The unit tests of decisionsExclude pass opts.decisionsDir themselves; this
+// one pins that the audit wires the resolved location into hygieneOpts. No
+// `paths` override and no `wiki` block: the docs root is <wikiDir>/, which the
+// docs walk reaches whether or not the block is present, and the decisions
+// location is the derived default wiki/decisions/.
+test('wiki-default: the audit keeps ADRs at the derived decisions location out of the retired-token scan', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await writeDocsIndex(dir);
+    await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'decisions', '0001-example.md'), 'Contains a genvid-dev: token reference here.\n');
+    await writeFile(join(dir, 'wiki', 'other.md'), 'Contains a genvid-dev: token reference here.\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const out = result.stdout;
+
+    // Positive control: the scan reaches wiki/, so the ADR's absence below is the exclusion.
+    assert.match(out, /wiki\/other\.md:1 contains retired token 'genvid-dev:'/, out);
+    assert.doesNotMatch(out, /wiki\/decisions\/0001-example\.md/, 'an ADR at the derived decisions location is excluded');
+    assert.equal(result.status, 0, out);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 // #454 AC21. A `docs/TOC.md` paths override collapsing docsRoot onto wikiDir
 // is a real, wireable repo shape (ADR-0053) — not just a lib/hygiene.mjs unit
 // scenario. This confirms scanBrokenLinks' link-check-skipped finding
