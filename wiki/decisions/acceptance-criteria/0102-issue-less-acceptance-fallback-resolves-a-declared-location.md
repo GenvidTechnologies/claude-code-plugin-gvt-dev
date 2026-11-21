@@ -21,7 +21,9 @@ validator and code-reviewer agents read the same constant. The constant fails in
 - **It re-creates a retired tree.** A repository that keeps its documentation in a wiki
   bundle has no `docs/` directory. The fallback created one.
 - **It commits a file the repository ignores on purpose.** A repository can keep its
-  acceptance files in a location that git ignores. The fallback committed there anyway.
+  acceptance files in a location that git ignores. The skill text told the model to commit
+  the fallback file in the prep commit anyway, while step 5 said never to force-add an
+  ignored file. No run that committed such a file was observed.
 
 The first failure was measured. Run r1 used plugin commit `1409da6`, unchanged, in a fresh
 clone of this repository, which has no `docs/` tree. It left
@@ -87,9 +89,9 @@ of the same design are rejected under Compromise.
    canonical heading. Inside the wiki bundle (`wiki.wikiDir`, default `wiki`), the file opens
    with minimal OKF frontmatter (`type: acceptance-criteria`, `title`, `description`) and an
    H1, and the frontmatter is generated, not preserved. The page type `acceptance-criteria`
-   is not in this repository's wiki schema type list. OKF lets a consumer use a type that its
-   schema does not list. A consumer whose schema rejects unlisted types must extend the list
-   or set an override that places the file outside the bundle. When the file exists and git
+   is not in this repository's wiki schema type list. This repository's schema
+   (`wiki/schema.md`, the `type` bullet) says to extend that list rather than force-fit a
+   page, and notes that OKF §11 forbids a consumer to reject an unknown `type` value. When the file exists and git
    holds no copy of it, the skill asks before replacing it, and writes nothing yet when nobody
    is present.
 6. **Index, only for a file git does not ignore.** An ignored file gets no entry in any
@@ -97,7 +99,7 @@ of the same design are rejected under Compromise.
    Otherwise `plan-task` follows the placement regimes of `triage-issues`' "Registration
    follows the contract's location". A file inside the bundle is registered in the index of
    its own directory when one exists, else in `<wikiDir>/index.md`, quoting the frontmatter
-   `description`. When the wiki's index file is absent, the skill writes no entry and reports
+   `description`. When the `<wikiDir>/index.md` is absent, the skill writes no entry and reports
    it. When `wiki.indexCommand` is set, the skill prints the command line to run, with the
    entry filled in, and does not run it or edit the index. When `<wikiDir>/schema.md` exists,
    the skill follows its rules for a new page, such as a log entry. A file outside the bundle,
@@ -194,7 +196,8 @@ What is given up:
       `local only at wiki/acceptance/readme-first-sentence.md; git ignores it.`
     - F3, a repository with `docs/`:
       `committed at docs/acceptance/docs-readme-first-sentence.md.`
-  - Ten headless runs in all, 17.59 USD.
+  - Ten headless runs in all, 17.59 USD (the sum of the exact per-run costs; the two rounded
+    round totals, 11.44 and 6.14, add to 17.58).
 - No probe covers the wiki-committed regime (an override into the bundle that git does not
   ignore), or the behaviour after ADR-0101's wiki-derived default lands. Static checks and a
   manual read cover them.
