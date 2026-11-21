@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-21
 
+* **Update**: `maintainer/testing-the-audit.md` gains a paragraph on scanning
+  test titles for a value a change moves before a rename row is pledged, and
+  `maintainer/audit-author-time-findings.md` now says a test file is a cited
+  file, so a new test goes at the end of its file. From the #938 retro. Not
+  an ingest; no `raw/` source drove it.
 * **Update**: `decisions/plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md`,
   `decisions/plugin-structure/0068-prose-conventions-doc-default-is-relocatable.md`,
   `decisions/plugin-structure/0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md`
