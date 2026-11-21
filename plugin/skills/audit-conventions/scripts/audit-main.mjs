@@ -549,7 +549,8 @@ async function runFix(state) {
   } else if (state === STATE_STALE_CONFIG) {
     plan = await planStaleConfig(REPO_ROOT, PLUGIN_ROOT);
   } else if (state === STATE_MIGRATED) {
-    plan = await planMigratedResync(REPO_ROOT, PLUGIN_ROOT);
+    const entries = (await walkComponents(PLUGIN_ROOT)).flatMap((c) => c.expects?.files ?? []);
+    plan = await planMigratedResync(REPO_ROOT, PLUGIN_ROOT, { config: fixRepoConfig, entries });
   } else {
     // STATE_LEGACY
     const snapshotPath = join(SCRIPT_DIR, 'legacy-manifest-snapshot.json');

@@ -23,6 +23,7 @@ import { gitRemoteUrl, gitDefaultBranch } from './git-info.mjs';
 import { inferHostFromRemote } from './host-drift.mjs';
 import { listFiles, listMarkdown } from './fs-walk.mjs';
 import { resolveDeclaredPath } from './path-overrides.mjs';
+import { legacyLocations } from './legacy-locations.mjs';
 
 const CONVENTIONS_FILENAME = 'CONVENTIONS.md';
 const NEW_CONFIG_FILENAME = '.gvt-agent.json';
@@ -425,8 +426,49 @@ export async function planConventionsResync(repoRoot, pluginRoot) {
   }];
 }
 
-export async function planMigratedResync(repoRoot, pluginRoot) {
-  return { state: 'migrated', actions: await planConventionsResync(repoRoot, pluginRoot) };
+// `opts.config` is the parsed `.gvt-agent.json` and `opts.entries` the declared
+// `files` expectation entries; together they let the plan pin documents left at
+// a 5.x `docs/` location (planLegacyLocationPins). Without them nothing is pinned.
+export async function planMigratedResync(repoRoot, pluginRoot, opts = {}) {
+  const actions = await planConventionsResync(repoRoot, pluginRoot);
+  actions.push(...await planLegacyLocationPins(repoRoot, opts.config, opts.entries));
+  return { state: 'migrated', actions };
+}
+
+// A document at its declared 5.x `docs/` location, with nothing at the
+// wiki-derived location, would go unread. Pin it: paths[declared] = declared
+// keeps the 5.x location. A pair where both locations hold content is ambiguous,
+// so it gets a note and the user decides. A key already overridden never reaches
+// here (legacyLocations skips it). One action rewrites `.gvt-agent.json` as
+// 2-space JSON, which reformats the file.
+async function planLegacyLocationPins(repoRoot, config, entries) {
+  if (!config || typeof config !== 'object' || !entries) return [];
+  const locations = await legacyLocations(repoRoot, config, entries);
+  const actions = [];
+  const pins = [];
+  for (const { declared, derived, derivedExists } of locations) {
+    if (derivedExists) {
+      actions.push({
+        type: 'note',
+        summary: `NOT PINNED ${declared} — both ${declared} and ${derived} hold content; `
+          + `the audit reads ${derived}. Move the content, or set paths['${declared}'] to "${declared}" by hand`,
+      });
+    } else {
+      pins.push(declared);
+    }
+  }
+  if (pins.length === 0) return actions;
+
+  const paths = { ...(config.paths && typeof config.paths === 'object' ? config.paths : {}) };
+  for (const declared of pins) paths[declared] = declared;
+  actions.unshift({
+    type: 'write-file',
+    path: join(repoRoot, NEW_CONFIG_FILENAME),
+    content: JSON.stringify({ ...config, paths }, null, 2) + '\n',
+    summary: `Pin the 5.x location of ${pins.join(', ')} in ${NEW_CONFIG_FILENAME} paths `
+      + `(rewrites ${NEW_CONFIG_FILENAME} as 2-space JSON)`,
+  });
+  return actions;
 }
 
 // -----------------------------------------------------------------------------

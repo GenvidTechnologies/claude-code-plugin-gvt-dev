@@ -177,3 +177,55 @@ test('audit --fix --apply on migrated + drifted + dirty git tree: refuses with t
     assert.ok(existsSync(join(tmpDir, 'CONVENTIONS.md')), 'file should still exist, untouched by apply');
   });
 });
+
+// ---------------------------------------------------------------------------
+// --fix pins a document left at its 5.x docs/ location (wiki default)
+// ---------------------------------------------------------------------------
+
+test('wiki-default: migrated --fix pins a 5.x location whose derived location is absent', async () => {
+  await withTempMigratedRepo(async (tmpDir) => {
+    await fs.mkdir(join(tmpDir, 'docs'), { recursive: true });
+    await writeFile(join(tmpDir, 'docs', 'architecture.md'), '# Architecture\n');
+
+    // Through the CLI: the dry-run plan carries the pin and says it rewrites the config.
+    const dryRun = spawnAudit(['--fix'], tmpDir);
+    assert.equal(dryRun.status, 0, `--fix failed:\n${dryRun.stderr}`);
+    assert.match(dryRun.stdout, /Pin the 5\.x location of .*docs\/architecture\.md.*2-space JSON/s);
+
+    // The planned write: the existing config plus the one pin.
+    const { planMigratedResync } = await import('../lib/migrate.mjs');
+    const config = { project: { name: 'foo' } };
+    const plan = await planMigratedResync(tmpDir, PLUGIN_ROOT, { config, entries: [{ path: 'docs/architecture.md' }] });
+    const write = plan.actions.find((a) => a.type === 'write-file' && a.path.endsWith('.gvt-agent.json'));
+    assert.ok(write, 'expected a write of .gvt-agent.json');
+    assert.deepEqual(JSON.parse(write.content), {
+      project: { name: 'foo' },
+      paths: { 'docs/architecture.md': 'docs/architecture.md' },
+    });
+    assert.equal(write.content, JSON.stringify(JSON.parse(write.content), null, 2) + '\n');
+  });
+});
+
+test('wiki-default: migrated --fix pins nothing when both locations hold content', async () => {
+  await withTempMigratedRepo(async (tmpDir) => {
+    await fs.mkdir(join(tmpDir, 'docs'), { recursive: true });
+    await fs.mkdir(join(tmpDir, 'wiki'), { recursive: true });
+    await writeFile(join(tmpDir, 'docs', 'architecture.md'), '# Architecture\n');
+    await writeFile(join(tmpDir, 'wiki', 'architecture.md'), '# Architecture\n');
+
+    const { planMigratedResync } = await import('../lib/migrate.mjs');
+    const plan = await planMigratedResync(tmpDir, PLUGIN_ROOT, {
+      config: { project: { name: 'foo' } },
+      entries: [{ path: 'docs/architecture.md' }],
+    });
+    assert.equal(
+      plan.actions.some((a) => a.type === 'write-file' && a.path.endsWith('.gvt-agent.json')),
+      false,
+      'an ambiguous pair must not be pinned',
+    );
+    assert.ok(
+      plan.actions.some((a) => a.type === 'note' && /NOT PINNED docs\/architecture\.md/.test(a.summary)),
+      'the ambiguous pair is reported as a note',
+    );
+  });
+});
