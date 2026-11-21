@@ -435,7 +435,7 @@ contract belongs in depends on whether the resolved contract lies inside W.
   contract into the bundle via the `paths['docs/issue-triage.md']` override.
 - **Docs regime** (contract outside W, T outside W). Add a one-line entry for the resolved
   path to T under a **Process** heading (create the heading if absent) —
-  mirroring how `plan-task` indexes a scaffolded `docs/decisions/` record.
+  mirroring how `plan-task` indexes a scaffolded decision record.
   Interactively, **offer** it; in `--non-interactive`, add it
   **automatically**. Make it idempotent (skip if the entry already exists) and
   skip gracefully if T is absent.
