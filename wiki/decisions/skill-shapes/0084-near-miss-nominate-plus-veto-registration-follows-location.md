@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-10-26
 - **Issue:** #246 (with #509, #507, #601, #606, #665; combined plan)
+- **Amended by:** [ADR-0101](../plugin-structure/0101-document-locations-default-to-the-wiki.md) — decision 4: the §0b "wiki default" trigger is removed, because the contract now defaults to the wiki; the rest stands.
 
 Companion to [0083](0083-label-recipes-remove-only-other-labels-readback-gates-stamp.md), which covers the label-recipe half of the same plan. This record **amends** [0020](0020-near-miss-contract-resolution.md) and [0068](../plugin-structure/0068-prose-conventions-doc-default-is-relocatable.md); neither is edited.
 
