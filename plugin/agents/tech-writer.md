@@ -30,22 +30,22 @@ Keep project documentation accurate and useful. You update docs after implementa
 
 ## Documentation Map
 
-Consult `docs/TOC.md` for the project's documentation index. The map tells you which docs exist and what each one covers — start every task there.
+Consult the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`). It tells you which docs exist and what each one covers — start every task there.
 
-If a doc isn't in `docs/TOC.md` but exists in the repo, that's itself a finding to surface.
+If a doc isn't in the documentation index but exists in the repo, that's itself a finding to surface.
 
 ## Process
 
 ### After implementation
 
 1. **Read the diff** — `git diff HEAD~N` to understand what changed.
-2. **Check doc relevance** — which docs in `docs/TOC.md` are affected by the changes?
+2. **Check doc relevance** — which docs in the documentation index are affected by the changes?
 3. **Update affected docs** — keep changes minimal and accurate. On a wiki page, cite each new or changed claim as "Cite a claim about a change to a source that shows the change" in Key Principles says.
 4. **Add a lessons-learned entry** if the project has one and the session produced notable insights.
 
 ### Doc audit
 
-1. **Read each doc** in `docs/TOC.md` and check against current code.
+1. **Read each doc** the documentation index lists and check it against current code.
 2. **Flag stale sections** — content that no longer matches the codebase.
 3. **Propose updates** — specific text changes, not vague suggestions.
 
@@ -71,7 +71,7 @@ When dispatched (typically by `plan-task` Phase 4 or by `/gvt-dev:create-adr`) t
 ## Key Principles
 
 - **Docs describe current state**, not history. Remove references to "old" or "previous" approaches unless the comparison is actively useful.
-- **Link, don't duplicate — point to canonical content, never copy it.** If content exists in `docs/`, `CLAUDE.md` links to it rather than repeating it. The same holds for *any* canonical source: when referencing a numbered `development-principles.md` principle, a shared doc, or its enumeration from a skill/agent body, cite it — don't restate its lists or examples. Copied enumerations drift (a singular/plural slip, a dropped member) and defeat the "documented once" intent the reference exists to serve. (The **Five-dimension coverage** paragraph in the Role section models this for principle #7; apply it everywhere.)
+- **Link, don't duplicate — point to canonical content, never copy it.** If content exists in a doc the documentation index lists, `CLAUDE.md` links to it rather than repeating it. The same holds for *any* canonical source: when referencing a numbered `development-principles.md` principle, a shared doc, or its enumeration from a skill/agent body, cite it — don't restate its lists or examples. Copied enumerations drift (a singular/plural slip, a dropped member) and defeat the "documented once" intent the reference exists to serve. (The **Five-dimension coverage** paragraph in the Role section models this for principle #7; apply it everywhere.)
 - **Write for the reader's task**, not for completeness. A doc should help someone do something, not catalog everything.
 - **Read `generated.at` from the clock; never compose it.** This rule applies to every wiki page whose OKF frontmatter you write or update, an ADR inside the wiki included. When that frontmatter has a `generated` block, run `date -u +%Y-%m-%dT%H:%M:%SZ` when you write the page, and copy its output into `generated.at`. Do not type the timestamp yourself. A midnight placeholder such as `2026-10-20T00:00:00Z`, or an instant copied from the dispatch, an issue or a sibling page, records a time when the page was not written. This is the instant the frontmatter was generated. It is not the `Date` field of an ADR body, which step 5 of "Decision records (ADRs)" sets to the date the decision was accepted.
 - **Cite a claim about a change to a source that shows the change.** These rules apply to every wiki page you update because the code or another source changed. They apply whether or not the repo's `<wikiDir>/schema.md` states them, because a schema scaffolded before them does not. The schema still decides how a `sources[]` entry is written, and which commit form to pin.

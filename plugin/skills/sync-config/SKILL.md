@@ -35,7 +35,7 @@ If an update is applied, the command prints `Updated from X to Y. Restart to app
 
 Run `/gvt-dev:audit-conventions` to surface any new expectations the updated plugin requires. The audit reports:
 
-- New required files the plugin's skills now expect (e.g., a new `docs/X.md` convention was added)
+- New required files the plugin's skills now expect (e.g., a new convention doc was added)
 - Changed `.gvt-agent.json` schema (e.g., a new required key)
 - `CONVENTIONS.md` drift if the plugin's canonical version changed — the plain audit WARNS (non-fatal); `--fix` previews the resync in a dry-run for you to review before `--apply` applies it (same two-turn discipline as any other `--fix` path)
 - Any installed skills or agents whose declared expectations are unmet
@@ -45,7 +45,7 @@ Run `/gvt-dev:audit-conventions` to surface any new expectations the updated plu
 If the audit reports unmet expectations:
 
 - For schema additions, edit `.gvt-agent.json` to add the new keys with appropriate values.
-- For file additions, create the missing files (`docs/<X>.md`, etc.) with project-appropriate content.
+- For file additions, create each missing file at the location the audit reports for it, with project-appropriate content.
 - For `CONVENTIONS.md` drift, run `/gvt-dev:audit-conventions --fix` to preview the resync (it shows a `+N/−M` diff hint), then `--apply` once you've reviewed it. Review the diff before committing.
 
 ### 5. Commit

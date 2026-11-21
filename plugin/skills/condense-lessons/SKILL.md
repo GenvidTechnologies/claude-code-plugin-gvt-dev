@@ -6,7 +6,7 @@ metadata:
     files:
       - path: docs/TOC.md
         required: false
-        reason: Used to identify which structured doc each insight belongs in
+        reason: Used to find the lessons-learned doc and the structured doc each insight belongs in
       - path: CLAUDE.md
         required: false
         reason: Read for the project's commit format
@@ -27,7 +27,7 @@ The steps below read as a single sequential pass. That's fine for a handful of s
 
 ## 1. Locate the lessons-learned doc
 
-Consult `docs/TOC.md` to find the project's lessons-learned doc. If `docs/TOC.md` doesn't list one, ask the user (or check obvious paths like `docs/lessons-learned.md`).
+Consult the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) to find the project's lessons-learned doc. If there is no documentation index, or it lists none, check common paths such as `docs/lessons-learned.md`, then ask the user.
 
 If no lessons-learned doc exists, stop.
 
@@ -37,7 +37,7 @@ Read the doc and find sessions that are **not yet condensed** — they have full
 
 ## 3. Cross-reference each insight
 
-For each insight in a verbose session, consult `docs/TOC.md` to identify the structured doc where the insight would naturally live (architecture, design patterns, coding conventions, runbook, etc.). Check whether the insight is already captured there.
+For each insight in a verbose session, consult the documentation index to identify the structured doc where the insight would naturally live (architecture, design patterns, coding conventions, runbook, etc.). Check whether the insight is already captured there.
 
 Skip session-specific details that only apply to one task (e.g., "the bug was on line 42") — only extract **reusable patterns**.
 
@@ -45,7 +45,7 @@ Skip session-specific details that only apply to one task (e.g., "the bug was on
 
 For each insight **not yet captured** in a structured doc:
 
-1. Determine the best target doc from `docs/TOC.md`.
+1. Determine the best target doc from the documentation index.
 2. Find the right section within that doc (or create one if needed).
 3. Write the insight in the style and format of the surrounding content — match existing conventions.
 4. Note which doc and section received the insight.
@@ -64,7 +64,7 @@ Once all reusable insights from a session are captured in a durable home, replac
 **Key insights extracted to:** [doc1](path) (topics), [doc2](path) (topics)
 ```
 
-**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the gvt-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just `docs/`.
+**A durable home is not only a structured doc.** Reusable insights are also durably homed in a **skill**, an **auto-memory**, or an **upstream issue** — the `Key insights extracted to:` line may reference any of those (e.g. `the gvt-dev:plan-task skill (added the ADR threshold)`, `auto-memory squash-merge-only`, `#123`), not just a doc the documentation index lists.
 When the repo maintains a wiki, `/gvt-wiki:maintain-wiki ingest` (the gvt-wiki plugin) is the wiki tier's ingest — a compounding page in `wiki/` is a durable home for an extracted insight.
 
 If some insights aren't yet captured in any durable home — either **too session-specific** to generalize, or **reusable but with no home yet** — keep them under the condensed entry rather than dropping them:
