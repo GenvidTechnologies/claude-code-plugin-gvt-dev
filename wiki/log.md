@@ -15,6 +15,16 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-21
+
+* **Update**: `maintainer/dogfooding-the-plugin.md` adds two traps of a headless
+  probe: a throwaway repo under a `.claude` folder gets every write refused, and
+  the JSON `result` field holds only the session's final message. From the
+  retro of #455. Not an ingest; no `raw/` source drove it.
+* **Update**: `maintainer/plugin-authoring.md` adds "Say 'verbatim' when the
+  output must be found", with the three probe rounds of #455 that measured it.
+  From the retro of #455. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-20
 
 * **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
