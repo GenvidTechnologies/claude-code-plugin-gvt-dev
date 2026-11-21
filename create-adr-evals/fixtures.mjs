@@ -304,11 +304,11 @@ as the ADR home when \`.gvt-agent.json\`'s \`paths\` override points elsewhere.
 }
 
 // ---------------------------------------------------------------------------
-// Shared default-location tree (B)
+// Shared self-pinned 5.x location tree (B)
 // ---------------------------------------------------------------------------
 
 function buildDefaultTree(root) {
-  write(root, 'CLAUDE.md', `# Fixture Project (default ADR location)
+  write(root, 'CLAUDE.md', `# Fixture Project (docs/decisions/ ADR location)
 
 ## Commit Format
 
@@ -323,18 +323,22 @@ Use \`<scope>: <description>\` for every commit (e.g. \`docs: add ADR 0001 — <
   write(root, '.gvt-agent.json', `${JSON.stringify({
     project: {
       name: 'fixture-default-adrs',
-      description: 'create-adr-evals fixture (default docs/decisions/ location)',
+      description: 'create-adr-evals fixture (docs/decisions/ pinned in paths)',
       languages: ['javascript'],
     },
     commands: { test: '', lint: '', build: '', validate: '' },
     repo: {},
     features: {},
-    paths: {},
+    // Self-pin of the 5.x location. With no override the default decisions
+    // directory is the wiki-derived `wiki/decisions/`, so this pin is what keeps
+    // the ADR home at `docs/decisions/`.
+    paths: { 'docs/decisions/': 'docs/decisions/' },
   }, null, 2)}\n`);
 
-  // Decoy wiki bundle: unrelated to this project's ADR conventions (no
-  // `paths` override points here). Proves the agent doesn't mistake a
-  // wiki/ directory it happens to see for its ADR home.
+  // Decoy wiki bundle: unrelated to this project's ADR conventions (the
+  // `paths` override points at `docs/decisions/`, not here). Negative control:
+  // a self-pinned 5.x location beats the wiki default, so the agent must not
+  // mistake a wiki/ directory it happens to see for its ADR home.
   write(root, 'wiki/index.md', `# Wiki Index (decoy)
 
 This directory is unrelated to this project's ADR conventions — it exists

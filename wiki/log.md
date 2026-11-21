@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-20
 
+* **Update**: `maintainer/audit-author-time-findings.md` now names
+  `<wikiDir>/decisions/` as the default location of a repo's ADR trail, where
+  it named `docs/decisions/`. From #938, which derives the default location of
+  every `docs/<rest>` path from the wiki directory. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `process/issue-triage.md` has a "Read road block" recipe, a
   read-only query for the `Road block` options and an issue's current value,
   and says to report "no change" without a write when the proposal matches.
