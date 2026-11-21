@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`run-retro` records a finding's verified version as the commit and the `plugin.json` version, with no release state.** A word such as "unreleased" or a branch name goes stale when the release ships. Three issues filed on 2026-11-21 (#1034, #1035, #1036) each needed a triage correction for it. Behavioral skill/agent change → version bump at release.
+
 ## [6.0.0] - 2026-11-21
 
 - **`code-reviewer`, `tech-writer`, `cleanup-initiative` and `condense-lessons` find the documentation index through the file that `CONVENTIONS.md` "Runtime path resolution" resolves (#388).** Before, they read the literal `docs/TOC.md` path, and `code-reviewer` read the literal `docs/code-review-context.md`, `docs/code-review-patterns.md` and `docs/code-review-docs.md` paths. A repository that relocates one of these files through `paths` in `.gvt-agent.json` now gets the relocated file. `condense-lessons` finds the lessons-learned doc through the documentation index, then through common paths such as `docs/lessons-learned.md`, and then asks the user. `sync-config` creates a missing file at the location the audit reports for it. `issue-triage-analyst`, `planner`, `triage-issues`, `tech-writer` and `audit-conventions` drop a spelled-out or literal `docs/` location from the body lines the drift test found. A new repo test, `test/docs-path-prose.test.mjs`, fails when a skill or agent body names a `docs/` path without its resolution and the path is not recorded as deliberate (ADR-0103); it does not ship. Behavioral skill/agent change → version bump at release.

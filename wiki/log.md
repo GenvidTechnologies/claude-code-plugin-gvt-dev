@@ -17,6 +17,10 @@ the full maintenance schema.
 
 ## 2026-11-21
 
+* **Update**: `process/issue-triage.md`: the "Set road block" recipe now says
+  that the script runs from a worktree when it is given by its full path, with
+  no `cd` to the workspace root. From the retro of the triage of #1034 to
+  #1036. Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/plugin-authoring.md` now says that the docs-path test
   does not check a spelled-out default beside `paths['<path>']`, instead of
   telling authors to spell out none. From the #388 retro; the open question is
