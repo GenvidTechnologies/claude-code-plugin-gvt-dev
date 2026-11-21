@@ -38,10 +38,12 @@ async function withTempStaleConfigRepo(setup) {
     // STATE_STALE_CONFIG is detected by the presence of .genvid-agent.json
     // (and the ABSENCE of .gvt-agent.json). No C3 markers (features.c3 /
     // paths.c3project) so planStaleConfig takes the auto-rename path, not the
-    // port-and-keep note.
+    // port-and-keep note. The docs/TOC.md self-pin keeps the 5.x docs/ root:
+    // with no override the docs root is the wiki dir, and these fixtures put
+    // their retired-token hits under docs/.
     await writeFile(
       join(dir, '.genvid-agent.json'),
-      JSON.stringify({ project: { name: 'foo' } }, null, 2),
+      JSON.stringify({ project: { name: 'foo' }, paths: { 'docs/TOC.md': 'docs/TOC.md' } }, null, 2),
     );
     await setup(dir);
   } finally {
@@ -171,7 +173,7 @@ test('audit --fix (dry-run) on stale-config with a docs/decisions/ paths overrid
     await writeFile(
       join(tmpDir, '.genvid-agent.json'),
       JSON.stringify(
-        { project: { name: 'foo' }, paths: { 'docs/decisions/': 'docs/adr/' } },
+        { project: { name: 'foo' }, paths: { 'docs/TOC.md': 'docs/TOC.md', 'docs/decisions/': 'docs/adr/' } },
         null,
         2,
       ),
@@ -248,6 +250,28 @@ test('audit (plain, no --fix): stale-config repo with no root CONVENTIONS.md sta
 // --fix's TOC scaffold target agree with validate mode's resolved path,
 // rather than always proposing to write the literal docs/TOC.md.
 // ---------------------------------------------------------------------------
+
+test('wiki-default: stale-config scaffolds the index at the derived default', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'audit-stale-config-wiki-default-test-'));
+  try {
+    await writeFile(join(dir, '.genvid-agent.json'), JSON.stringify({ project: { name: 'foo' } }, null, 2));
+
+    const dryRun = spawnAudit(['--fix'], dir);
+    assert.equal(dryRun.status, 0, `--fix failed:\n${dryRun.stderr}`);
+    assert.match(
+      dryRun.stdout,
+      /Scaffold wiki\/index\.md with placeholder doc map/,
+      'with no paths override the index scaffold target is the wiki-derived default',
+    );
+    assert.equal(
+      (dryRun.stdout.match(/docs\/TOC\.md/g) || []).length,
+      0,
+      `the plan must not name docs/TOC.md:\n${dryRun.stdout}`,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test('audit --fix (dry-run) on stale-config with a docs/TOC.md paths override and an existing wiki/index.md: '
   + 'scaffolds nothing at docs/TOC.md and reports the resolved path SKIPPED', async () => {

@@ -15,8 +15,64 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-21
+
+* **Update**: `maintainer/testing-the-audit.md` gains a paragraph on scanning
+  test titles for a value a change moves before a rename row is pledged, and
+  `maintainer/audit-author-time-findings.md` now says a test file is a cited
+  file, so a new test goes at the end of its file. From the #938 retro. Not
+  an ingest; no `raw/` source drove it.
+* **Update**: `decisions/plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md`,
+  `decisions/plugin-structure/0068-prose-conventions-doc-default-is-relocatable.md`,
+  `decisions/plugin-structure/0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md`
+  and `decisions/skill-shapes/0084-near-miss-nominate-plus-veto-registration-follows-location.md`
+  each gain an "Amended by" marker that links ADR-0101. The decision text of
+  each record is unchanged. From #938. Not an ingest; no `raw/` source drove it.
+* **Creation**: `decisions/plugin-structure/0101-document-locations-default-to-the-wiki.md`,
+  the record that a declared `docs/` path with no `paths` override derives its
+  default location from the wiki directory. Registered in
+  `decisions/plugin-structure/index.md`. From #938. Not an ingest; no `raw/`
+  source drove it.
+* **Update**: `maintainer/dogfooding-the-plugin.md` adds two traps of a headless
+  probe: a throwaway repo under a `.claude` folder gets every write refused, and
+  the JSON `result` field holds only the session's final message. From the
+  retro of #455. Not an ingest; no `raw/` source drove it.
+* **Update**: `maintainer/plugin-authoring.md` adds "Say 'verbatim' when the
+  output must be found", with the three probe rounds of #455 that measured it.
+  From the retro of #455. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-20
 
+* **Update**: `maintainer/audit-author-time-findings.md` now names
+  `<wikiDir>/decisions/` as the default location of a repo's ADR trail, where
+  it named `docs/decisions/`. From #938, which derives the default location of
+  every `docs/<rest>` path from the wiki directory. Not an ingest; no `raw/`
+  source drove it.
+* **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  lists `docs/acceptance/` as a contract file, as ADR-0102 declares it, and
+  `test/expects-docs-contract.test.mjs` adds it to its allowlist. For #455.
+  Not an ingest; no `raw/` source drove it.
+* **Creation**: Added `decisions/acceptance-criteria/0102-issue-less-acceptance-fallback-resolves-a-declared-location.md`
+  for #455. It decides that the issue-less acceptance fallback resolves a
+  declared location, writes nothing and waits when there is none, and never
+  commits a file that git ignores. It amends ADR-0017 in part. Listed it in
+  that theme's `index.md` and marked the ADR-0017 entry there as amended. Not
+  an ingest; no `raw/` source drove it.
+* **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  names the repository's own `CONVENTIONS.md` as the source of the index
+  resolution, not `plugin/CONVENTIONS.md`, which is the shipped template. For
+  #363. Not an ingest; no `raw/` source drove it.
+* **Update**: `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  names the index as the file that `plugin/CONVENTIONS.md` "Runtime path
+  resolution" resolves for `docs/TOC.md`, with no default, so the text stays
+  true when #938 changes the default for a repository with a wiki. For #363.
+  Not an ingest; no `raw/` source drove it.
+* **Creation**: Added `decisions/plugin-structure/0100-ordinary-project-docs-resolve-through-the-index-contract-files-stay-declared.md`
+  for #363. It decides that a component finds an ordinary project doc through
+  the documentation index, that only a contract file is declared under `docs/`
+  in `metadata.expects`, and that `test/expects-docs-contract.test.mjs` keeps
+  the declared `docs/` paths to an allowlist. Listed in
+  `decisions/plugin-structure/index.md`. Not an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` has a "Read road block" recipe, a
   read-only query for the `Road block` options and an issue's current value,
   and says to report "no change" without a write when the proposal matches.

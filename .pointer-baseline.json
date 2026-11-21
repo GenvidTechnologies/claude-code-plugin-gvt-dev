@@ -37,20 +37,6 @@
       "digest": null
     },
     {
-      "file": "plugin/skills/audit-conventions/scripts/lib/path-overrides.mjs",
-      "pointer": "CONVENTIONS.md:82-83",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "995d95f8fe27"
-    },
-    {
-      "file": "plugin/skills/audit-conventions/scripts/test/path-overrides-wiring.test.mjs",
-      "pointer": "CONVENTIONS.md:82",
-      "occurrence": 0,
-      "kind": "pointer-anchor-missing",
-      "digest": "6563316b9749"
-    },
-    {
       "file": "wiki/decisions/audit-conventions/0013-migrated-state-conventions-resync-scoping.md",
       "pointer": "plugin/CONVENTIONS.md:12",
       "occurrence": 0,

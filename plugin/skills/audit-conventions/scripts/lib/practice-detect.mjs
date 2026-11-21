@@ -10,16 +10,17 @@
 // presence probes (fileExists, dirExists) from audit-core; and
 // ./candidate-resolution.mjs, the shared candidate rule (ADR-0070, ADR-0077),
 // whose only audit-core import is probePath, which runs stat then lstat and
-// never lists a directory or reads a file. No frontmatter or walking
-// machinery is imported.
+// never lists a directory or reads a file; and ./path-overrides.mjs, a pure
+// module with no file-system access, for effectiveWikiDir. No frontmatter or
+// walking machinery is imported.
 
 import { join } from 'node:path';
 
 import { fileExists, dirExists } from '#audit-core';
 import { expectationCandidates } from './expect-prefer.mjs';
 import { resolveCandidate } from './candidate-resolution.mjs';
+import { effectiveWikiDir } from './path-overrides.mjs';
 
-const DEFAULT_WIKI_DIR = 'wiki';
 const DEFAULT_RAW_DIR = 'raw';
 // The schema expectation as gvt-wiki's maintain-wiki skill declares it
 // (ADR-0070). practice-detect.test.mjs pins this object against the span in
@@ -31,10 +32,9 @@ export const VERDICT_PARTIAL = 'partial';
 export const VERDICT_ADOPTED = 'adopted';
 
 export async function detectWikiAdoption(repoRoot, config) {
-  // A blank wikiDir means the default, as it does for the schema candidates
-  // (expect-prefer), so every signal below probes the same directory.
-  const configured = config?.wiki?.wikiDir;
-  const wikiDir = typeof configured === 'string' && configured.trim() !== '' ? configured : DEFAULT_WIKI_DIR;
+  // A blank wikiDir means the default and a trailing separator is dropped
+  // (effectiveWikiDir), so every signal below probes the same directory.
+  const wikiDir = effectiveWikiDir(config);
   const rawDir = config?.wiki?.rawDir ?? DEFAULT_RAW_DIR;
 
   const [wikiDirPresent, indexPresent, logPresent, rawDirPresent, schemaDocPresent] =

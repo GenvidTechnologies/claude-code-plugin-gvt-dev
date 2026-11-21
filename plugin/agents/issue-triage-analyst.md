@@ -48,7 +48,7 @@ The dispatch prompt gives you:
 
 - **Scope** — the resolved action set: a query, a label, or an explicit list of issue IDs.
 - **`bugTracker` block** — from `.gvt-agent.json`: `kind`, `actionQuery`, `comparisonQuery`, `readOne`, `commentsQuery`, `structureQuery`, `refStateQuery`, `triagedLabel`, `needsInfoLabel`. The last three query keys are optional: when one is absent, skip the check it feeds and say so in the report's Notes.
-- **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`), defaulting to `docs/issue-triage.md` when none is given.
+- **Conventions path** — supplied by the dispatch (the orchestrating skill resolves it via `.gvt-agent.json` `paths['docs/issue-triage.md']`, else `<wikiDir>/issue-triage.md`). When none is given, resolve it the same way.
 
 - **Read sha** — the commit of `origin/<default-branch>` that step 6 reads each target at. The dispatch also names the default branch. If the dispatch names no sha, read at `origin/<default-branch>`, record `git rev-parse origin/<default-branch>` as the sha, and say so in the report's Notes. If it names no branch either, resolve the branch from `repo.default_branch` in `.gvt-agent.json`, else from `git symbolic-ref --short refs/remotes/origin/HEAD` with the `origin/` prefix stripped.
 
@@ -58,7 +58,7 @@ If the conventions doc is missing, say so in the report and fall back to generic
 
 ## Process
 
-1. **Read conventions.** Read the conventions doc at the conventions path you were dispatched with (defaulting to `docs/issue-triage.md`), sections *above* "Mutation recipes" — Types, Priorities, Labels, Required fields, Splitting, Duplicates, Dependencies. These are the rules you reason with. Ignore "Mutation recipes" — that is the main thread's concern.
+1. **Read conventions.** Read the conventions doc at the conventions path you were dispatched with (when none was given, `paths['docs/issue-triage.md']`, else `<wikiDir>/issue-triage.md`), sections *above* "Mutation recipes" — Types, Priorities, Labels, Required fields, Splitting, Duplicates, Dependencies. These are the rules you reason with. Ignore "Mutation recipes" — that is the main thread's concern.
 2. **Fetch the action set.** Run the resolved scope command (default `actionQuery`, minus `triagedLabel` if the query does not already encode it). This is the set you propose changes for. Save the full `actionQuery` output (the whole open list, before any `triagedLabel` filter) to scratch and never print it; when the scope is an override that did not run `actionQuery`, run it once for this save. Step 8's `--open` reads that saved file, not the action set.
 3. **Fetch the comparison set.** Run `comparisonQuery` for the wider read-only corpus (already-triaged + recently-closed). You compare against it but never propose changes to its issues.
    - **Comments, bulk.** Run `commentsQuery` once. Save its output to scratch and never print it.

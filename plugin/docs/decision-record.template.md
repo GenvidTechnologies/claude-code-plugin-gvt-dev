@@ -1,8 +1,8 @@
 <!--
   Decision record (ADR) template — MADR-lite.
   tech-writer scaffolds a copy of this into the repo's resolved decisions
-  location — paths['docs/decisions/'] in .gvt-agent.json, or docs/decisions/
-  by default (see CONVENTIONS.md's Runtime path resolution) — when dispatched
+  location — paths['docs/decisions/'] in .gvt-agent.json, else
+  <wikiDir>/decisions/ (see CONVENTIONS.md's Runtime path resolution) — when dispatched
   from plan-task Phase 4 (ADR authoring) or from the create-adr skill
   (on-demand ADR creation). See development-principles.md principle #7.
   Naming: NNNN-kebab-title.md  (NNNN = 4-digit zero-padded sequence, next

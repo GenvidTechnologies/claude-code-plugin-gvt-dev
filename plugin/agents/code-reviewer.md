@@ -102,7 +102,7 @@ If the doc isn't present, default to:
 
 ### Acceptance Criteria Verification
 
-The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, `docs/acceptance/<slug>.md`.
+The pre-committed `## Acceptance Criteria` checklist (see ADR-0017) is the fixed target both `gvt-dev:validator` and this review independently check against — not a rerun of the validator's pass, but a second, distinct-model critic checking the same target. Fetch the same criteria the validator reads: for a tracker-based run, the issue body via `bugTracker.readOne`; for an issue-less run, read the acceptance file the dispatch names. When the dispatch names none, read `<dir>/<slug>.md`, where `<dir>` is `paths['docs/acceptance/']` resolved as the "Runtime path resolution" section of `${CLAUDE_PLUGIN_ROOT}/CONVENTIONS.md` says and `<slug>` is the current branch name with each `/` replaced by `-`; when the named or resolved file does not exist, report the source as none found and the criteria incomplete.
 
 The denominator is every row present in that **fetched section** — never your own enumeration of what the criteria "should" be, and never a count of literal `- [ ]` checklist syntax (this file's own body carries 20 unrelated checklist rows above; that's a different thing being counted). If the section cannot be fully fetched or fully read, report the checklist as incomplete and grade nothing — do not grade the readable portion and silently drop the rest.
 
@@ -153,7 +153,7 @@ For the concepts this diff introduces or changes, verify it doesn't leave a docu
 
 - Walk each dimension and check whether a touched doc covers it, or the change is trivial enough that the dimension genuinely doesn't apply.
 - **Default severity: Warning, not Critical.** Apply the False-Positive Guardrails below before flagging — do **not** flag trivial changes (typo fixes, mechanical refactors) for "missing design/architecture docs." Only flag a dimension when the diff actually changed something that dimension should now describe.
-- **Architecture/compromise** rationale belongs in a committed decision record in the repo's resolved decisions location (`paths['docs/decisions/']` in `.gvt-agent.json`, default `docs/decisions/`), not code comments or the transient `plan.md`. If this diff makes a non-trivial architectural or trade-off decision and no decision record accompanies it, flag it (Warning).
+- **Architecture/compromise** rationale belongs in a committed decision record in the repo's resolved decisions location (`paths['docs/decisions/']` in `.gvt-agent.json`, default `<wikiDir>/decisions/`), not code comments or the transient `plan.md`. If this diff makes a non-trivial architectural or trade-off decision and no decision record accompanies it, flag it (Warning).
 - When a doc is updated, it should **link the originating issue** rather than paste the full bug/purpose narrative.
 
 ### Deletion Completeness
