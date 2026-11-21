@@ -20,6 +20,7 @@
 // resolveDocsRoot derives the docs-tier root (used by directory-walking
 // scanners) from a `docs/TOC.md` override, rather than accepting a second,
 // separately-declared root key (ADR-0022 decision 1: one directory, one name).
+// With no override the root is the wiki dir and the index is `index.md`.
 //
 // overrideFindings reports `paths` entries that don't correspond to anything
 // the audit reads: a key that is neither reserved nor a currently-declared
@@ -85,11 +86,15 @@ export function resolveDeclaredPath(config, declaredPath, { prefer } = {}) {
   return { path: derived, from: derived !== declaredPath ? 'wiki-default' : 'declared' };
 }
 
-export function resolveDocsRoot(paths) {
-  const override = resolveExpectationPath(paths, 'docs/TOC.md');
-  if (override === 'docs/TOC.md') {
-    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: false };
+export function resolveDocsRoot(paths, wikiDir = DEFAULT_WIKI_DIR) {
+  // No override: the docs tier is the wiki bundle, indexed by its index.md
+  // (the wiki-derived default of docs/TOC.md). Callers pass effectiveWikiDir(config).
+  // An override that names the declared path itself is still an override: it
+  // keeps the 5.x `docs/` root.
+  if (resolveDeclaredPath({ paths, wiki: { wikiDir } }, 'docs/TOC.md').from !== 'paths') {
+    return { root: wikiDir, indexFile: 'index.md', unrepresentable: false };
   }
+  const override = resolveExpectationPath(paths, 'docs/TOC.md');
 
   const slashAt = override.lastIndexOf('/');
   const root = slashAt === -1 ? '' : override.slice(0, slashAt);
@@ -97,10 +102,10 @@ export function resolveDocsRoot(paths) {
   if (root === '' || root === '.') {
     // A repo-root override (e.g. "docs/TOC.md": "INDEX.md") would make a
     // directory walk recurse the entire repo — keep the safe default and let
-    // the caller report the problem instead. The root fell back to "docs", so
-    // the filename falls back with it — pairing it with the override's own
-    // basename would describe a file ("docs/INDEX.md") that doesn't exist.
-    return { root: 'docs', indexFile: 'TOC.md', unrepresentable: true };
+    // the caller report the problem instead. The root fell back to the wiki
+    // dir, so the filename falls back with it — pairing it with the override's
+    // own basename would describe a file ("wiki/INDEX.md") that doesn't exist.
+    return { root: wikiDir, indexFile: 'index.md', unrepresentable: true };
   }
   return { root, indexFile, unrepresentable: false };
 }

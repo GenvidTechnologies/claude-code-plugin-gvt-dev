@@ -12,7 +12,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, writeDocsIndex } from './helpers/temp-repo.mjs';
 import { withFixture, writeSkill, spawnAudit as spawnFixtureAudit } from './helpers/fixture-plugin.mjs';
 import { WIKI_SCHEMA_SKILL_NAME, WIKI_SCHEMA_SKILL_FRONTMATTER } from './helpers/wiki-schema-skill.mjs';
 
@@ -82,7 +82,7 @@ test('audit: a repo with no docs/TOC.md and no override fails no required expect
 
     assert.match(
       result.stdout,
-      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` — file not found \(optional\)/,
+      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` \(→ `wiki\/index\.md` via wiki default\) — file not found \(optional\)/,
       `condense-lessons must report docs/TOC.md as optional:\n${result.stdout}`,
     );
     assert.equal(
@@ -95,9 +95,71 @@ test('audit: a repo with no docs/TOC.md and no override fails no required expect
   }
 });
 
+test('wiki-default: the audit shows a derived location as via wiki default', async () => {
+  const tmpDir = await withTempMigratedRepo();
+  try {
+    const result = spawnAudit([], tmpDir);
+
+    assert.match(
+      result.stdout,
+      /\*\*condense-lessons\*\* expects `docs\/TOC\.md` \(→ `wiki\/index\.md` via wiki default\) — file not found \(optional\)/,
+      `an unmet docs/ expectation must name its derived location:\n${result.stdout}`,
+    );
+    assert.doesNotMatch(result.stdout, /via paths/, 'no override applies, so nothing renders via paths');
+    assert.equal(result.status, 0, result.stdout);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the audit warns on a 5.x location that holds content', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const warnings = result.stdout.split('### Warnings')[1]?.split('\n### ')[0] ?? '';
+
+    assert.match(
+      warnings,
+      /- `docs\/decisions\/` holds content at the 5\.x location, but the wiki-derived location `wiki\/decisions\/` is what the audit reads\. Set paths\['docs\/decisions\/'\] to "docs\/decisions\/" in \.gvt-agent\.json to keep the 5\.x location, or move the content to `wiki\/decisions\/`\./,
+      `the 5.x location must be reported under Warnings:\n${result.stdout}`,
+    );
+    // One warning per path: docs/decisions/ is declared by several components.
+    assert.equal(warnings.split('holds content at the 5.x location').length - 1, 1, warnings);
+    // docs/TOC.md is not on disk, so it has no legacy-location warning.
+    assert.doesNotMatch(warnings, /`docs\/TOC\.md` holds content/);
+    assert.equal(result.status, 0, 'a legacy-location warning does not fail the audit');
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the audit names both locations and uses the wiki default when both hold content', async () => {
+  const tmpDir = await withTempMigratedRepo(async (dir) => {
+    await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
+    await mkdir(join(dir, 'wiki', 'decisions'), { recursive: true });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const warnings = result.stdout.split('### Warnings')[1]?.split('\n### ')[0] ?? '';
+
+    assert.match(
+      warnings,
+      /- `docs\/decisions\/` and `wiki\/decisions\/` both hold content: the wiki-derived location `wiki\/decisions\/` is used; `docs\/decisions\/` is no longer read\. Set paths\['docs\/decisions\/'\] to "docs\/decisions\/" in \.gvt-agent\.json to keep the 5\.x location, or move the content to `wiki\/decisions\/`\./,
+      `both locations must be named:\n${result.stdout}`,
+    );
+    // The wiki-derived directory is the one that satisfies the expectation.
+    assert.doesNotMatch(result.stdout, /expects `docs\/decisions\/`/);
+    assert.equal(result.status, 0);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('audit: a paths override relocating a directory expectation (docs/decisions/) uses the resolved path for the directory check', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'custom-decisions'), { recursive: true });
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
   });
@@ -129,7 +191,7 @@ test('audit: a paths override relocating a directory expectation (docs/decisions
 test('audit: a paths override pointing docs/decisions/ at a MISSING directory is still reported', async () => {
   // Positive control for the relocation test's absence pattern.
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions/' });
   });
   try {
@@ -148,7 +210,7 @@ test('audit: a paths override pointing docs/decisions/ at a MISSING directory is
 
 test('audit: an unrecognized paths key surfaces a path-override warning finding', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { 'docs/nonexistent-key.md': 'somewhere-else.md' });
   });
   try {
@@ -167,7 +229,7 @@ test('audit: an unrecognized paths key surfaces a path-override warning finding'
 
 test('audit: an empty paths override value surfaces a path-override warning finding', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     // docs/decisions/ is declared (create-adr, plan-task, tech-writer) and
     // always optional, so an unusable override here can't also trip a
     // required-expectation failure — isolates this assertion to the
@@ -193,7 +255,7 @@ test('audit: an empty paths override value surfaces a path-override warning find
 // never gain a spurious ### Warnings section from this wiring.
 test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no path-override findings', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, { plugin_root: 'plugin' });
   });
   try {
@@ -214,7 +276,7 @@ test('audit: a plugin_root-only paths block (this repo\'s own shape) produces no
 // value (or its absence) must not change it (ADR-0077).
 test('audit: an override value without a trailing slash still satisfies a declared directory (docs/decisions/)', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'custom-decisions'), { recursive: true });
     await writeConfig(dir, { 'docs/decisions/': 'custom-decisions' });
   });
@@ -245,10 +307,14 @@ test('audit: an override value with a trailing slash still satisfies a declared 
 
 const CREATE_ADR_NO_OVERRIDE =
   '- **create-adr** expects `docs/decisions/` — directory not found (optional). Reason: Home for ADR files; scaffolded on first use if absent';
+// A declared path outside docs/ has no wiki-derived default, so it renders as
+// it always did.
+const CIRCLECI_CONFIG_NO_OVERRIDE =
+  '- **migrate-cordova-ci** expects `.circleci/config.yml` — file not found (optional). Reason: The CircleCI config being replaced and removed — present only in not-yet-migrated repos';
 
 async function auditWithPaths(paths) {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeConfig(dir, paths);
   });
   try {
@@ -311,7 +377,7 @@ test('audit: an override equal to the declared path renders no arrow (#731)', as
 
 test('audit: with no paths override, expectation findings render byte-identically and carry no arrow (#731)', async () => {
   const tmpDir = await withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await writeFile(
       join(dir, '.gvt-agent.json'),
       JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' } }, null, 2),
@@ -320,7 +386,7 @@ test('audit: with no paths override, expectation findings render byte-identicall
   try {
     const out = spawnAudit([], tmpDir).stdout;
     const lines = out.split('\n');
-    assert.ok(lines.includes(CREATE_ADR_NO_OVERRIDE));
+    assert.ok(lines.includes(CIRCLECI_CONFIG_NO_OVERRIDE), lines.filter((l) => l.includes('migrate-cordova-ci')).join('\n'));
     assert.equal(out.split('via paths').length - 1, 0);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });

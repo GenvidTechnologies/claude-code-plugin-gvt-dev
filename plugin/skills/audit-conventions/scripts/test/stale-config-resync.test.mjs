@@ -38,10 +38,12 @@ async function withTempStaleConfigRepo(setup) {
     // STATE_STALE_CONFIG is detected by the presence of .genvid-agent.json
     // (and the ABSENCE of .gvt-agent.json). No C3 markers (features.c3 /
     // paths.c3project) so planStaleConfig takes the auto-rename path, not the
-    // port-and-keep note.
+    // port-and-keep note. The docs/TOC.md self-pin keeps the 5.x docs/ root:
+    // with no override the docs root is the wiki dir, and these fixtures put
+    // their retired-token hits under docs/.
     await writeFile(
       join(dir, '.genvid-agent.json'),
-      JSON.stringify({ project: { name: 'foo' } }, null, 2),
+      JSON.stringify({ project: { name: 'foo' }, paths: { 'docs/TOC.md': 'docs/TOC.md' } }, null, 2),
     );
     await setup(dir);
   } finally {
@@ -171,7 +173,7 @@ test('audit --fix (dry-run) on stale-config with a docs/decisions/ paths overrid
     await writeFile(
       join(tmpDir, '.genvid-agent.json'),
       JSON.stringify(
-        { project: { name: 'foo' }, paths: { 'docs/decisions/': 'docs/adr/' } },
+        { project: { name: 'foo' }, paths: { 'docs/TOC.md': 'docs/TOC.md', 'docs/decisions/': 'docs/adr/' } },
         null,
         2,
       ),

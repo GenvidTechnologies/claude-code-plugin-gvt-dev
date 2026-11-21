@@ -513,17 +513,20 @@ test('scanOrphanedDocs: opts.docsRoot — a doc indexed via a bare docsRoot-rela
 
 test('opts.docsRoot: an unrepresentable override falls back to root "docs" (resolveDocsRoot\'s guard), and the scanners still walk it normally', async () => {
   const dir = await withTempRepo(async (d) => {
-    await writeRepoFile(d, 'docs/TOC.md', '# TOC\n\nNothing here.\n');
+    await writeRepoFile(d, 'docs/index.md', '# TOC\n\nNothing here.\n');
     await writeRepoFile(d, 'docs/foo.md', 'content\n');
   });
   try {
-    const { root, unrepresentable } = resolveDocsRoot({ 'docs/TOC.md': 'INDEX.md' });
+    // The fallback root is the wiki dir the caller passes; 'docs' stands in
+    // for it here so the fixture below stays under docs/.
+    const { root, indexFile, unrepresentable } = resolveDocsRoot({ 'docs/TOC.md': 'INDEX.md' }, 'docs');
     assert.equal(root, 'docs');
+    assert.equal(indexFile, 'index.md');
     assert.equal(unrepresentable, true);
 
-    const findings = await scanOrphanedDocs(dir, { docsRoot: root });
+    const findings = await scanOrphanedDocs(dir, { docsRoot: root, docsIndex: indexFile });
     assert.equal(findings.length, 1);
-    assert.match(findings[0].detail, /docs\/foo\.md is not referenced in docs\/TOC\.md/);
+    assert.match(findings[0].detail, /docs\/foo\.md is not referenced in docs\/index\.md/);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -928,6 +931,26 @@ test('#583 H1: a docs/decisions/ override into wiki/decisions/ excludes that wik
       paths: { 'docs/decisions/': 'wiki/decisions/' },
     });
     assert.deepEqual(findings.map((f) => f.file), ['wiki/other.md']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the decisions exclusion follows the derived default', async () => {
+  const dir = await withTempRepo(async (d) => {
+    await writeRepoFile(d, 'wiki/decisions/0001-x.md', 'Uses genvid-dev: here.\n');
+    await writeRepoFile(d, 'wiki/other.md', 'Uses genvid-dev: here too.\n');
+  });
+  try {
+    // No `paths` override: the resolved decisions location is the derived
+    // default, and the docs root is the wiki dir it sits in.
+    const opts = { docsRoot: 'wiki', decisionsDir: 'wiki/decisions/' };
+    assert.ok(hygieneLib.effectiveExcludes(opts).includes('wiki/decisions/'));
+    const findings = await scanRetiredTokens(dir, opts);
+    assert.deepEqual(findings.map((f) => f.file), ['wiki/other.md']);
+    // Without decisionsDir nothing names the derived location.
+    const bare = await scanRetiredTokens(dir, { docsRoot: 'wiki' });
+    assert.deepEqual(bare.map((f) => f.file).sort(), ['wiki/decisions/0001-x.md', 'wiki/other.md']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

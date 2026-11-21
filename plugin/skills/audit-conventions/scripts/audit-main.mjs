@@ -35,8 +35,15 @@ import {
 import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3Markers, applyPlan, scanDanglingReferences } from './lib/migrate.mjs';
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
+import { legacyLocations, legacyLocationFindings } from './lib/legacy-locations.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, hygieneCorpora } from './lib/hygiene.mjs';
-import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
+import {
+  resolveExpectationPath,
+  overrideFindings,
+  resolveDocsRoot,
+  resolveDeclaredPath,
+  effectiveWikiDir,
+} from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
 import { resolveCandidate, formatCandidateTarget, formatOverrideTarget } from './lib/candidate-resolution.mjs';
 import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
@@ -101,16 +108,17 @@ async function main() {
   // Coverage read further down.
   const repoConfig = await loadRepoConfig(configFilename);
   const pathOverrides = repoConfig?.paths;
-  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
+  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides, effectiveWikiDir(repoConfig));
 
   // Candidate order lives in lib/expect-prefer.mjs. Which candidate answers, and
   // the stop/pass-over rule, live in lib/candidate-resolution.mjs (ADR-0070,
   // ADR-0077). evaluateFile (audit-core) probes the one path chosen here.
   const resolveFile = async (entry) => {
-    const { candidates, overridden } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
+    const { candidates, overridden, derived } = expectationCandidates(entry, { paths: pathOverrides, wikiDir: repoConfig?.wiki?.wikiDir });
     const r = await resolveCandidate(REPO_ROOT, entry.path, candidates);
     const viaPaths = overridden && candidates[0] !== entry.path ? candidates[0] : undefined;
-    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped, viaPaths };
+    const viaDefault = derived ? candidates[0] : undefined;
+    return { path: r.path, probe: r.probe, target: entry.path, candidates, described: r.candidate, found: r.found, skipped: r.skipped, viaPaths, viaDefault };
   };
   const resolveConfig = (entry) => {
     const declaredIn = entry.in ?? configFilename;
@@ -122,12 +130,14 @@ async function main() {
   // including a consumer run. The loop below skips it (`expects` is null).
   const findings = [...loadFailureDiagnostics(components)];
   const declaredPaths = new Set();
+  const fileEntries = [];
   for (const component of components) {
     const expects = component.expects;
     if (!expects) continue;
 
     for (const entry of expects.files ?? []) {
       declaredPaths.add(entry.path);
+      fileEntries.push(entry);
       const where = await resolveFile(entry);
       const finding = await evaluateFile(component, entry, () => where);
       findings.push(
@@ -135,7 +145,9 @@ async function main() {
           ? { ...finding, candidates: where.candidates, described: where.described, describedKind: where.found.kind, skipped: where.skipped }
           : where.viaPaths !== undefined
             ? { ...finding, viaPaths: where.viaPaths }
-            : finding,
+            : where.viaDefault !== undefined
+              ? { ...finding, viaDefault: where.viaDefault }
+              : finding,
       );
     }
     for (const entry of expects.config ?? []) {
@@ -151,6 +163,10 @@ async function main() {
   // (typo, retired path) or an unusable override value — otherwise a mistyped
   // key is silently inert, which is the defect this wiring exists to fix.
   findings.push(...overrideFindings(pathOverrides, declaredPaths));
+
+  // A document left at the 5.x `docs/` location the wiki default replaced
+  // would otherwise go unread without a word (lib/legacy-locations.mjs).
+  findings.push(...legacyLocationFindings(await legacyLocations(REPO_ROOT, repoConfig, fileEntries)));
 
   const hostDrift = await evaluateHostDrift(configFilename);
   if (hostDrift) findings.push(hostDrift);
@@ -205,13 +221,22 @@ async function main() {
   // it to DECLINE bundle-resident candidates it already sees via docsRoot
   // (ADR-0053) — see each scanner's own call site in lib/hygiene.mjs. rawDir
   // folds into effectiveExcludes for whichever scanners it's nested inside.
+  //
+  // The docs root now defaults to <wikiDir>/ (resolveDocsRoot above), so the
+  // link and orphan declines (ADR-0053) must not follow the default alone: a
+  // repo with no `wiki` block has not adopted the wiki, and its <wikiDir>/ is
+  // checked as plain documentation. wikiDir is therefore set only when the
+  // block is present (`"wiki": {}` is enough), and rawDir already comes from
+  // that block alone.
+  const hasWikiBlock = repoConfig?.wiki !== undefined;
   const hygieneOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
     paths: pathOverrides,
     docsRoot,
     docsIndex,
-    wikiDir: repoConfig?.wiki?.wikiDir,
+    decisionsDir: resolveDeclaredPath(repoConfig, 'docs/decisions/').path,
+    wikiDir: hasWikiBlock ? effectiveWikiDir(repoConfig) : undefined,
     rawDir: repoConfig?.wiki?.rawDir,
   };
   findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
@@ -457,7 +482,7 @@ function formatFinding(f) {
   // Repo-health / author-lint findings (host-drift, conventions-drift,
   // desc-length, the hygiene scanners' retired-token/broken-link/
   // orphaned-doc/orphan-check-skipped/link-check-skipped, readme-inventory,
-  // principle-citation, and path-override) aren't tied to a
+  // principle-citation, path-override, and legacy-location) aren't tied to a
   // component/expectation — they carry a self-contained detail string.
   const SELF_CONTAINED_KINDS = [
     'host-drift',
@@ -472,6 +497,7 @@ function formatFinding(f) {
     'principle-citation',
     'pillar-unknown',
     'path-override',
+    'legacy-location',
     'component-unreadable',
     'component-malformed',
   ];
@@ -481,7 +507,7 @@ function formatFinding(f) {
   // render through the component branch below with `f.component` undefined.
   if (SELF_CONTAINED_KINDS.includes(f.kind) || f.kind.startsWith('pointer-')) return `- ${f.detail}`;
   const reason = f.reason ? ` Reason: ${f.reason}` : '';
-  const shown = f.candidates ? formatCandidateTarget(f) : `${formatOverrideTarget(f.target, f.viaPaths)} — ${f.detail}`;
+  const shown = f.candidates ? formatCandidateTarget(f) : `${formatOverrideTarget(f.target, f.viaPaths, f.viaDefault)} — ${f.detail}`;
   return `- **${f.component}** expects ${f.kind === 'tool' ? `tool \`${f.target}\` — ${f.detail}` : shown}.${reason}`;
 }
 
@@ -490,9 +516,8 @@ function formatFinding(f) {
 // Scans for the stale-report retired-token needles (see STALE_REPORT_TOKENS
 // above) and reduces the hits to CLAUDE.md / <docsRoot>/ files only, in the
 // same { file, hint } shape formatDanglingReport expects. Report-only — no
-// rewriting. docsRoot defaults to 'docs' (a repo with no `paths` override
-// behaves byte-identically); callers resolve it via resolveDocsRoot before
-// calling, same as main()'s hygieneOpts.
+// rewriting. Callers resolve docsRoot via resolveDocsRoot before calling, same
+// as main()'s hygieneOpts; the 'docs' parameter default is only a fallback.
 async function staleFollowup(docsRoot = 'docs', paths = undefined) {
   const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot, paths });
   return hits
@@ -507,7 +532,7 @@ async function runFix(state) {
   // the same as it would be in a plain audit run.
   const fixConfigFilename = state === STATE_STALE_CONFIG ? '.genvid-agent.json' : '.gvt-agent.json';
   const fixRepoConfig = await loadRepoConfig(fixConfigFilename);
-  const { root: fixDocsRoot } = resolveDocsRoot(fixRepoConfig?.paths);
+  const { root: fixDocsRoot } = resolveDocsRoot(fixRepoConfig?.paths, effectiveWikiDir(fixRepoConfig));
 
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');

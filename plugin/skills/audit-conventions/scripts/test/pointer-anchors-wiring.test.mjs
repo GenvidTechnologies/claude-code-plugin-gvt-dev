@@ -23,7 +23,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { withTempMigratedRepo } from './helpers/temp-repo.mjs';
+import { withTempMigratedRepo, writeDocsIndex } from './helpers/temp-repo.mjs';
 import { scanPointerAnchors } from '../lib/pointer-anchors.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -58,7 +58,7 @@ function spawnAudit(args, cwd) {
 // actively suppresses a real, would-be finding.
 async function withTempPointerAnchorRepo() {
   return withTempMigratedRepo(async (dir) => {
-    await writeFile(join(dir, 'docs', 'TOC.md'), '# TOC\n');
+    await writeDocsIndex(dir);
     await mkdir(join(dir, 'docs', 'decisions'), { recursive: true });
     await writeFile(
       join(dir, 'docs', 'decisions', '0001-fixture.md'),

@@ -33,7 +33,8 @@
 //
 // --docs-root: relocates the walk root the three scanners below actually use
 // (lib/hygiene.mjs's listCandidateFiles, via opts.docsRoot — landed in F2/
-// #384) away from the 'docs' default, so this flag DOES change the scan
+// #384) away from the repo's resolved default (<wikiDir>/, or the root a
+// `docs/TOC.md` override names), so this flag DOES change the scan
 // results above. The PREVIEW line under "Candidate-set sizes" additionally
 // uses the exported, general-purpose wikiCandidateFiles(repoRoot, dir, opts)
 // helper (it accepts any directory, not just a wiki checkout) to show the
@@ -41,9 +42,9 @@
 // reimplementing the walk.
 //
 // --index-file: passed through as opts.docsIndex to the scanOrphanedDocs call
-// only (scanOrphanedDocs resolves opts.docsIndex ?? 'TOC.md' — landed
-// alongside the OKF-bundle decline contract, ADR-0053). Use it to reproduce a
-// repo whose docs index lives somewhere other than <docsRoot>/TOC.md.
+// only (landed alongside the OKF-bundle decline contract, ADR-0053). Use it to
+// reproduce a repo whose docs index lives somewhere other than the default,
+// <docsRoot>/index.md.
 
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -58,6 +59,7 @@ import {
   effectiveExcludes,
   DEFAULT_RETIRED_TOKENS,
 } from './lib/hygiene.mjs';
+import { resolveDocsRoot, resolveDeclaredPath, effectiveWikiDir } from './lib/path-overrides.mjs';
 
 function parseArgs(argv) {
   const args = { repoPath: undefined, docsRoot: undefined, wikiDir: undefined, indexFile: undefined };
@@ -117,22 +119,30 @@ async function main() {
   // paths goes into opts too (F1/#583) — a `docs/decisions/` override in the
   // repo's own `paths` block is what feeds effectiveExcludes' decisionsExclude
   // guard (lib/hygiene.mjs), the same as audit-main.mjs's hygieneOpts.
+  //
+  // The default docs root and index come from the repo's own config through
+  // resolveDocsRoot, the resolver audit-main.mjs uses, so a probe run with no
+  // flags walks the root the audit walks. --docs-root and --index-file still
+  // override them.
+  const resolved = resolveDocsRoot(cfg?.paths, effectiveWikiDir(cfg));
   const baseOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
     paths: cfg?.paths,
+    decisionsDir: resolveDeclaredPath(cfg, 'docs/decisions/').path,
+    docsIndex: resolved.indexFile,
     wikiDir,
   };
-  const scanOpts = docsRoot ? { ...baseOpts, docsRoot } : baseOpts;
+  const effectiveDocsRoot = docsRoot ?? resolved.root;
+  const scanOpts = { ...baseOpts, docsRoot: effectiveDocsRoot };
   const orphanOpts = indexFile ? { ...scanOpts, docsIndex: indexFile } : scanOpts;
-  const effectiveDocsRoot = docsRoot ?? 'docs';
 
   console.log('## hygiene-probe');
   console.log('');
   console.log(`repo:      ${repoRoot}`);
-  console.log(`docs-root: ${docsRoot ?? 'docs (default)'}`);
+  console.log(`docs-root: ${docsRoot ?? `${resolved.root} (default)`}`);
   console.log(`wiki-dir:  ${wikiDir ?? '(none)'}`);
-  console.log(`index-file: ${indexFile ?? 'TOC.md (default, only used by scanOrphanedDocs)'}`);
+  console.log(`index-file: ${indexFile ?? `${resolved.indexFile} (default, only used by scanOrphanedDocs)`}`);
   console.log(`retiredTokens: ${JSON.stringify(scanOpts.retiredTokens ?? DEFAULT_RETIRED_TOKENS)}`);
   // effectiveExcludes(scanOpts) — not a hand-assembled DEFAULT_EXCLUDE_PATHS +
   // opts.excludePaths union — so this printed line reflects the SAME set the
@@ -150,10 +160,9 @@ async function main() {
   // directory it's given. It omits the one thing listCandidateFiles adds on
   // top (the repo-root CLAUDE.md), which is reported separately below.
   //
-  // effectiveDocsRoot mirrors opts.docsRoot ?? 'docs' — the exact root the
-  // scanner calls below actually walk (opts.docsRoot is honored by
-  // listCandidateFiles as of F2/#384), so this line reports the real
-  // candidate set, not a preview of one.
+  // effectiveDocsRoot is the exact root the scanner calls below actually walk
+  // (opts.docsRoot is honored by listCandidateFiles as of F2/#384), so this
+  // line reports the real candidate set, not a preview of one.
   const docsCandidates = await wikiCandidateFiles(repoRoot, effectiveDocsRoot, scanOpts);
   const claudeMdIncluded = await fileExists(join(repoRoot, 'CLAUDE.md'));
   console.log('### Candidate-set sizes');
