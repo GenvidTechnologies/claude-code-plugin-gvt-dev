@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-21
 
+* **Creation**: `decisions/plugin-structure/0103-docs-path-literals-in-component-bodies-are-guarded-by-a-repo-test.md`,
+  the record that a skill or agent body names a declared `docs/` path only beside
+  its resolution, that every other consumer `docs/` literal is recorded with a
+  kind, and that a repo test enforces both. Registered in
+  `decisions/plugin-structure/index.md`. From #388. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `maintainer/testing-the-audit.md` gains a paragraph on scanning
   test titles for a value a change moves before a rename row is pledged, and
   `maintainer/audit-author-time-findings.md` now says a test file is a cited
