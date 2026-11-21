@@ -159,7 +159,10 @@ not be there. `test/docs-path-prose.test.mjs` enforces this on every body under
   "the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `<path>`".
   For the documentation index, write "the documentation index (the file that
   `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)" at the
-  first mention and "the documentation index" after it. Spell out no default.
+  first mention and "the documentation index" after it. The shared phrase
+  names no default location, so it stays true when a default moves. The test
+  does not check whether a line that also gives `paths['<path>']` spells out a
+  default beside it.
 - **D2:** a block that names any other `docs/` path must be recorded as
   deliberate.
 - **D5:** a block that uses the resolution wording must use the shared phrase
