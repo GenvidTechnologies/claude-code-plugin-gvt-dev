@@ -203,6 +203,18 @@ the new body, and show both results in the proposal. Observed in the triage of
 sentence of its `Blocked by` line. Moving that sentence to its own paragraph
 left #193 as the only blocker.
 
+A body sentence about work on a branch that is not merged yet records what was
+read and where: "the #938 branch (141dec2) adds the lesson to
+`testing-the-audit.md`". It does not forecast the merge, as in "it is not on
+`main` until #938 merges". Read the state of the issue and of its pull request
+just before such a write, and just before a "cleared" annotation on an issue
+that is in progress. The analyst's report is older than the write, and a merge
+in between makes the forecast false or the annotation moot. Observed in the
+triage of #1023 (2026-11-21, GitHub edit times): the body forecast the merge at
+13:48Z, #938 merged at 13:50Z, and the body needed a second write. The
+"cleared" annotation on #938's own blocker line was written at 14:00Z, after
+#938 had closed at 13:50Z.
+
 ## Tracker
 
 Since gvt-dev 5.0.0 the wiki practice ships as its own plugin, `gvt-wiki`,
