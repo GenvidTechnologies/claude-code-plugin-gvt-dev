@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-10-05
 - **Issue:** #585 (F2 of the docs→wiki chain #579)
+- **Amended by:** [ADR-0101](0101-document-locations-default-to-the-wiki.md) — decision 1: with no override the default location is now the wiki, not `docs/`; the rest stands.
 
 ## Context
 

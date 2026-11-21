@@ -15,6 +15,20 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-21
+
+* **Update**: `decisions/plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md`,
+  `decisions/plugin-structure/0068-prose-conventions-doc-default-is-relocatable.md`,
+  `decisions/plugin-structure/0095-wiki-practice-ships-as-gvt-wiki-depending-on-gvt-dev.md`
+  and `decisions/skill-shapes/0084-near-miss-nominate-plus-veto-registration-follows-location.md`
+  each gain an "Amended by" marker that links ADR-0101. The decision text of
+  each record is unchanged. From #938. Not an ingest; no `raw/` source drove it.
+* **Creation**: `decisions/plugin-structure/0101-document-locations-default-to-the-wiki.md`,
+  the record that a declared `docs/` path with no `paths` override derives its
+  default location from the wiki directory. Registered in
+  `decisions/plugin-structure/index.md`. From #938. Not an ingest; no `raw/`
+  source drove it.
+
 ## 2026-11-20
 
 * **Update**: `maintainer/audit-author-time-findings.md` now names
