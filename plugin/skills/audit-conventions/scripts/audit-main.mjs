@@ -36,7 +36,13 @@ import { planGreenfield, planLegacy, planStaleConfig, planMigratedResync, hasC3M
 import { detectHostDrift } from './lib/host-drift.mjs';
 import { savePreviewedPlan, loadPreviewedPlan, clearPreviewedPlan, diffPlans, formatReconciliation } from './lib/reconcile.mjs';
 import { scanRetiredTokens, scanBrokenLinks, scanOrphanedDocs, hygieneCorpora } from './lib/hygiene.mjs';
-import { resolveExpectationPath, overrideFindings, resolveDocsRoot } from './lib/path-overrides.mjs';
+import {
+  resolveExpectationPath,
+  overrideFindings,
+  resolveDocsRoot,
+  resolveDeclaredPath,
+  effectiveWikiDir,
+} from './lib/path-overrides.mjs';
 import { expectationCandidates } from './lib/expect-prefer.mjs';
 import { resolveCandidate, formatCandidateTarget, formatOverrideTarget } from './lib/candidate-resolution.mjs';
 import { checkReadmeInventory, inventoryNames } from './lib/readme-inventory.mjs';
@@ -101,7 +107,7 @@ async function main() {
   // Coverage read further down.
   const repoConfig = await loadRepoConfig(configFilename);
   const pathOverrides = repoConfig?.paths;
-  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides);
+  const { root: docsRoot, indexFile: docsIndex, unrepresentable: docsRootUnrepresentable } = resolveDocsRoot(pathOverrides, effectiveWikiDir(repoConfig));
 
   // Candidate order lives in lib/expect-prefer.mjs. Which candidate answers, and
   // the stop/pass-over rule, live in lib/candidate-resolution.mjs (ADR-0070,
@@ -208,13 +214,22 @@ async function main() {
   // it to DECLINE bundle-resident candidates it already sees via docsRoot
   // (ADR-0053) — see each scanner's own call site in lib/hygiene.mjs. rawDir
   // folds into effectiveExcludes for whichever scanners it's nested inside.
+  //
+  // The docs root now defaults to <wikiDir>/ (resolveDocsRoot above), so the
+  // link and orphan declines (ADR-0053) must not follow the default alone: a
+  // repo with no `wiki` block has not adopted the wiki, and its <wikiDir>/ is
+  // checked as plain documentation. wikiDir is therefore set only when the
+  // block is present (`"wiki": {}` is enough), and rawDir already comes from
+  // that block alone.
+  const hasWikiBlock = repoConfig?.wiki !== undefined;
   const hygieneOpts = {
     retiredTokens: hygiene?.retiredTokens,
     excludePaths: hygiene?.excludePaths,
     paths: pathOverrides,
     docsRoot,
     docsIndex,
-    wikiDir: repoConfig?.wiki?.wikiDir,
+    decisionsDir: resolveDeclaredPath(repoConfig, 'docs/decisions/').path,
+    wikiDir: hasWikiBlock ? effectiveWikiDir(repoConfig) : undefined,
     rawDir: repoConfig?.wiki?.rawDir,
   };
   findings.push(...(await scanRetiredTokens(REPO_ROOT, hygieneOpts)));
@@ -493,9 +508,8 @@ function formatFinding(f) {
 // Scans for the stale-report retired-token needles (see STALE_REPORT_TOKENS
 // above) and reduces the hits to CLAUDE.md / <docsRoot>/ files only, in the
 // same { file, hint } shape formatDanglingReport expects. Report-only — no
-// rewriting. docsRoot defaults to 'docs' (a repo with no `paths` override
-// behaves byte-identically); callers resolve it via resolveDocsRoot before
-// calling, same as main()'s hygieneOpts.
+// rewriting. Callers resolve docsRoot via resolveDocsRoot before calling, same
+// as main()'s hygieneOpts; the 'docs' parameter default is only a fallback.
 async function staleFollowup(docsRoot = 'docs', paths = undefined) {
   const hits = await scanRetiredTokens(REPO_ROOT, { retiredTokens: STALE_REPORT_TOKENS, docsRoot, paths });
   return hits
@@ -510,7 +524,7 @@ async function runFix(state) {
   // the same as it would be in a plain audit run.
   const fixConfigFilename = state === STATE_STALE_CONFIG ? '.genvid-agent.json' : '.gvt-agent.json';
   const fixRepoConfig = await loadRepoConfig(fixConfigFilename);
-  const { root: fixDocsRoot } = resolveDocsRoot(fixRepoConfig?.paths);
+  const { root: fixDocsRoot } = resolveDocsRoot(fixRepoConfig?.paths, effectiveWikiDir(fixRepoConfig));
 
   if (APPLY_MODE && !(await workingTreeClean())) {
     console.error('## --fix --apply\n');

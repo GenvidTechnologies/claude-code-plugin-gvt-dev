@@ -21,15 +21,18 @@ function spawnAudit(args, cwd) {
 }
 
 // Builds a minimal STATE_MIGRATED temp repo (via withTempMigratedRepo) with
-// docs fixtures that trip all three hygiene scanners:
-//   - docs/example.md: a retired 'genvid-dev:' token, plus a dangling
+// docs fixtures that trip all three hygiene scanners. With no `paths` override
+// and no `wiki` block the docs root is <wikiDir>/ (default `wiki`), checked as
+// plain documentation:
+//   - wiki/example.md: a retired 'genvid-dev:' token, plus a dangling
 //     relative link (./nope.md doesn't exist).
-//   - docs/orphan.md: present on disk, but not referenced from docs/TOC.md.
-//   - docs/TOC.md: indexes docs/example.md but not docs/orphan.md.
+//   - wiki/orphan.md: present on disk, but not referenced from wiki/index.md.
+//   - wiki/index.md: indexes wiki/example.md but not wiki/orphan.md.
 async function withTempHygieneRepo(setup) {
   return withTempMigratedRepo(async (dir) => {
+    await writeDocsIndex(dir, ['# TOC', '', '- [Example](./example.md)', ''].join('\n'));
     await writeFile(
-      join(dir, 'docs', 'example.md'),
+      join(dir, 'wiki', 'example.md'),
       [
         '# Example',
         '',
@@ -39,11 +42,7 @@ async function withTempHygieneRepo(setup) {
         '',
       ].join('\n'),
     );
-    await writeFile(join(dir, 'docs', 'orphan.md'), '# Orphan\n\nNot indexed anywhere.\n');
-    await writeFile(
-      join(dir, 'docs', 'TOC.md'),
-      ['# TOC', '', '- [Example](./example.md)', ''].join('\n'),
-    );
+    await writeFile(join(dir, 'wiki', 'orphan.md'), '# Orphan\n\nNot indexed anywhere.\n');
     if (setup) await setup(dir);
   });
 }
@@ -65,7 +64,7 @@ test('audit: hygiene scanners surface retired-token, broken-link, orphaned-doc f
     );
     assert.match(
       result.stdout,
-      /docs\/orphan\.md is not referenced in docs\/TOC\.md/,
+      /wiki\/orphan\.md is not referenced in wiki\/index\.md/,
       'report should surface the orphaned-doc finding',
     );
 
@@ -108,7 +107,7 @@ test('audit: hygiene config override (retiredTokens: []) suppresses the retired-
     );
     assert.match(
       result.stdout,
-      /docs\/orphan\.md is not referenced in docs\/TOC\.md/,
+      /wiki\/orphan\.md is not referenced in wiki\/index\.md/,
       'orphaned-doc finding should be unaffected by the retiredTokens override',
     );
     assert.equal(result.status, 0, 'audit should still exit 0');
@@ -193,6 +192,64 @@ test('audit: a missing docs/TOC.md renders an orphan-check-skipped report line, 
     // the rendering question only.
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: a repo with no override and no wiki block scans <wikiDir>/ against <wikiDir>/index.md', async () => {
+  const tmpDir = await withTempHygieneRepo(async (dir) => {
+    // A 5.x docs/ tree is no longer the docs root, so it is not scanned.
+    await writeFile(join(dir, 'docs', 'legacy.md'), 'Contains a genvid-dev: token reference here.\n');
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    const out = result.stdout;
+
+    assert.match(out, /wiki\/example\.md:3 contains retired token 'genvid-dev:'/, out);
+    assert.match(out, /wiki\/example\.md:5 broken link -> \.\/nope\.md/, out);
+    assert.match(out, /wiki\/orphan\.md is not referenced in wiki\/index\.md/, out);
+    assert.doesNotMatch(out, /docs\/legacy\.md/, 'the 5.x docs/ tree is not the default docs root');
+    // With no wiki block nothing is declined: the wiki dir is plain documentation.
+    assert.doesNotMatch(out, /link-check|not link-checked|orphan check skipped/, out);
+
+    const scanned = out.split('\n').filter((l) => l.startsWith('- scanned '));
+    assert.ok(scanned.includes('- scanned 4 file(s) for links under wiki/, CLAUDE.md'), scanned.join('\n'));
+    assert.ok(
+      scanned.includes('- scanned 2 file(s) for index coverage under wiki/ (index wiki/index.md)'),
+      scanned.join('\n'),
+    );
+    assert.equal(result.status, 0, out);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('wiki-default: the link and orphan checks decline the default docs root only when the wiki block is present', async () => {
+  const withBlock = async (block) =>
+    withTempHygieneRepo(async (dir) => {
+      await writeFile(
+        join(dir, '.gvt-agent.json'),
+        JSON.stringify({ project: { name: 'foo' }, commands: { validate: 'echo ok' }, ...block }, null, 2),
+      );
+    });
+
+  const noBlock = await withBlock({});
+  const emptyBlock = await withBlock({ wiki: {} });
+  try {
+    const plain = spawnAudit([], noBlock).stdout;
+    assert.match(plain, /wiki\/example\.md:5 broken link -> \.\/nope\.md/, plain);
+    assert.match(plain, /wiki\/orphan\.md is not referenced in wiki\/index\.md/, plain);
+    assert.doesNotMatch(plain, /not link-checked|orphan check skipped/, plain);
+
+    // `"wiki": {}` is enough: the default docs root is then the wiki bundle,
+    // which the link and orphan checks leave to maintain-wiki lint (ADR-0053).
+    const declined = spawnAudit([], emptyBlock).stdout;
+    assert.match(declined, /- 3 file\(s\) under wiki\/ were not link-checked/, declined);
+    assert.match(declined, /- orphan check skipped — the docs root 'wiki\/' is inside the wiki bundle 'wiki\/'/, declined);
+    assert.doesNotMatch(declined, /broken link/, declined);
+    assert.doesNotMatch(declined, /is not referenced in/, declined);
+  } finally {
+    await rm(noBlock, { recursive: true, force: true });
+    await rm(emptyBlock, { recursive: true, force: true });
   }
 });
 
@@ -329,6 +386,8 @@ test('audit: the Summary names each hygiene scanner\'s corpus, including wiki/ a
         {
           project: { name: 'genvid:foo' },
           commands: { validate: 'echo ok' },
+          // The self-pin keeps the 5.x docs/ root beside the wiki bundle.
+          paths: { 'docs/TOC.md': 'docs/TOC.md' },
           wiki: { wikiDir: 'wiki' },
         },
         null,

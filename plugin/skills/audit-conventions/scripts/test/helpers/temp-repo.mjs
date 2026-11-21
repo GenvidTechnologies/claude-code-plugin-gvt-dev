@@ -26,12 +26,10 @@ export async function makeDanglingLink(path) {
 // Writes the docs index a fixture needs only so the optional `docs/TOC.md`
 // expectation reports nothing. A fixture that tests the index itself (its
 // content, its links, an override pointing at it) writes its own file instead.
-// The audit looks the expectation up at its wiki-derived location
-// (`<wikiDir>/index.md`), so the index is written there as well as at
-// `docs/TOC.md`, which the docs-tier scanners still read.
+// The audit looks the expectation up at its wiki-derived location, and the
+// docs-tier scanners read the same file as their index, so the index is
+// written at `<wikiDir>/index.md` only.
 export async function writeDocsIndex(dir, content = '# TOC\n', wikiDir = 'wiki') {
-  await mkdir(join(dir, 'docs'), { recursive: true });
-  await writeFile(join(dir, 'docs', 'TOC.md'), content);
   await mkdir(join(dir, wikiDir), { recursive: true });
   await writeFile(join(dir, wikiDir, 'index.md'), content);
 }
