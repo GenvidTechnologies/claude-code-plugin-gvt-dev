@@ -9,7 +9,7 @@
 // script is never invoked from `commands.test`/`commands.validate`.
 //
 // Usage:
-//   node create-adr-evals/run.mjs --variant A,A-infer,C,B --runs 3 [--keep]
+//   node create-adr-evals/run.mjs --variant A,A-infer,C,C-voice,A-count,C-count,B --runs 3 [--keep]
 //
 // Exit code 0 iff every requested variant's pass rule holds.
 

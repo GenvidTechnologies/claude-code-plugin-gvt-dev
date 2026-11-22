@@ -6,13 +6,15 @@
 // spawn `claude -p` with cwd set to the fixture root and grade.mjs can diff
 // the working tree against the pre-run snapshot this module also builds.
 //
-// Four variants, three of which share one tree (a themed, wiki-hosted ADR
-// bundle reached via `.gvt-agent.json` `paths['docs/decisions/']`):
+// Seven variants. All but B share one tree (a themed, wiki-hosted ADR bundle
+// reached via `.gvt-agent.json` `paths['docs/decisions/']`):
 //   A        — /gvt-dev:create-adr, explicit theme `beta`
 //   A-infer  — /gvt-dev:create-adr, no theme given; the topic fits `beta`
 //   C        — dispatch gvt-dev:tech-writer directly, explicit theme `alpha`
 //   C-voice  — like C, but the brief plants brief-voice tells and a required
 //              verbatim string (grade.mjs's voice check)
+//   A-count  — like A, but the index lines state ADR counts (grade.mjs's D8)
+//   C-count  — like C, but the index lines state ADR counts (grade.mjs's D8)
 //   B        — negative control: no `paths` override, docs/decisions/
 //              absent, a decoy wiki/ bundle the agent must leave untouched
 //
@@ -26,7 +28,10 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
-export const VARIANTS = ['A', 'A-infer', 'C', 'C-voice', 'B'];
+export const VARIANTS = ['A', 'A-infer', 'C', 'C-voice', 'A-count', 'C-count', 'B'];
+
+// The theme a variant's prompt names. A-infer names none, and B has no themes.
+const EXPECTED_THEME = { A: 'beta', 'A-count': 'beta', C: 'alpha', 'C-voice': 'alpha', 'C-count': 'alpha' };
 
 // C-voice plants four brief-voice tells in the decision content, plus one
 // string the brief marks as required verbatim wording. grade.mjs's voice check
@@ -114,7 +119,34 @@ export function snapshotTexts(root, prefix) {
 // Shared themed-wiki tree (A / A-infer / C)
 // ---------------------------------------------------------------------------
 
-function buildWikiTree(root) {
+// The prose that each index line carries after its link. With `counts` set
+// (the A-count / C-count variants), each line also states how many ADRs it
+// covers, the way a consumer's bundle-root index can (#473: "the project's 44
+// ADRs" stayed at 44 after a 45th record). FIXTURE_COUNTS is the state the
+// fixture is seeded with: 3 records, 2 in alpha and 1 in beta.
+export const FIXTURE_COUNTS = { total: 3, themes: { alpha: 2, beta: 1 } };
+
+function adrs(n) {
+  return `${n} ${n === 1 ? 'ADR' : 'ADRs'}`;
+}
+
+function indexProse(counts) {
+  if (!counts) {
+    return {
+      decisions: 'architecture and trade-off decisions, grouped by theme',
+      alpha: "decisions about the alpha subsystem's public API surface",
+      beta: "decisions about the beta subsystem's storage layer",
+    };
+  }
+  return {
+    decisions: `the project's ${adrs(counts.total)}, grouped by theme`,
+    alpha: `${adrs(counts.themes.alpha)} about the alpha subsystem's public API surface`,
+    beta: `${adrs(counts.themes.beta)} about the beta subsystem's storage layer`,
+  };
+}
+
+function buildWikiTree(root, { counts = null } = {}) {
+  const prose = indexProse(counts);
   write(root, 'CLAUDE.md', `# Fixture Project (wiki-hosted ADRs)
 
 ## Commit Format
@@ -159,9 +191,9 @@ okf_version: "0.2"
 
 ## Decision Records
 
-* [Decision Records](decisions/index.md) - architecture and trade-off decisions, grouped by theme
-* [Alpha decisions](decisions/alpha/index.md) - decisions about the alpha subsystem's public API surface
-* [Beta decisions](decisions/beta/index.md) - decisions about the beta subsystem's storage layer
+* [Decision Records](decisions/index.md) - ${prose.decisions}
+* [Alpha decisions](decisions/alpha/index.md) - ${prose.alpha}
+* [Beta decisions](decisions/beta/index.md) - ${prose.beta}
 `);
 
   write(root, 'wiki/decisions/index.md', `# Decision Records
@@ -170,8 +202,8 @@ Architecture decisions for this project, grouped by theme.
 
 ## Themes
 
-* [Alpha](alpha/index.md) - decisions about the alpha subsystem's public API surface
-* [Beta](beta/index.md) - decisions about the beta subsystem's storage layer
+* [Alpha](alpha/index.md) - ${prose.alpha}
+* [Beta](beta/index.md) - ${prose.beta}
 `);
 
   write(root, 'wiki/decisions/alpha/index.md', `# Alpha Decisions
@@ -444,6 +476,10 @@ const PROMPTS = {
     consequences: 'Merge conflicts shrink and review diffs stay small; work in progress is visible on the trunk sooner, so incomplete features need a flag or to stay small enough to land in one piece.',
   }),
 };
+// The count variants reuse the A and C prompts unchanged: only the fixture's
+// index prose differs, so the prompt gives no hint that a count needs updating.
+PROMPTS['A-count'] = PROMPTS.A;
+PROMPTS['C-count'] = PROMPTS.C;
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -480,14 +516,16 @@ export function buildFixture(variant, { tmpRoot } = {}) {
       expectedTheme: null,
     };
   } else {
-    buildWikiTree(root);
+    const withCounts = variant === 'A-count' || variant === 'C-count';
+    buildWikiTree(root, { counts: withCounts ? FIXTURE_COUNTS : null });
     meta = {
       wiki: true,
       decisionsDir: 'wiki/decisions/',
       themes: ['alpha', 'beta'],
       expectedNumber: 4,
-      expectedTheme: variant === 'A' ? 'beta' : (variant === 'C' || variant === 'C-voice') ? 'alpha' : null,
+      expectedTheme: EXPECTED_THEME[variant] ?? null,
     };
+    if (withCounts) meta.counts = FIXTURE_COUNTS;
     if (variant === 'C-voice') {
       meta.voice = { tells: VOICE_TELLS, required: VOICE_REQUIRED };
     }

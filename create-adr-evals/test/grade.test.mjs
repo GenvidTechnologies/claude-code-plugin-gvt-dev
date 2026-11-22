@@ -520,3 +520,163 @@ test('wiki-default: fixture B pins docs/decisions/ in paths', () => {
     cleanup(root);
   }
 });
+
+// ---------------------------------------------------------------------------
+// A-count / C-count: index prose that states an ADR count (#473)
+// ---------------------------------------------------------------------------
+
+// Replace `from` with `to` in a fixture file, and fail if `from` is absent, so
+// a fixture wording change cannot turn these edits into silent no-ops.
+function replaceIn(root, relPath, from, to) {
+  const abs = join(root, ...relPath.split('/'));
+  const text = readFileSync(abs, 'utf8');
+  assert.ok(text.includes(from), `${relPath} does not contain "${from}"`);
+  writeFileSync(abs, text.split(from).join(to), 'utf8');
+}
+
+// The count edits a correct run makes when the new record goes into `theme`.
+function updateCounts(root, theme) {
+  replaceIn(root, 'wiki/index.md', "the project's 3 ADRs", "the project's 4 ADRs");
+  for (const file of ['wiki/index.md', 'wiki/decisions/index.md']) {
+    if (theme === 'beta') replaceIn(root, file, '1 ADR about the beta', '2 ADRs about the beta');
+    if (theme === 'alpha') replaceIn(root, file, '2 ADRs about the alpha', '3 ADRs about the alpha');
+  }
+}
+
+function placeCountRecord(root, theme) {
+  write(root, `wiki/decisions/${theme}/0004-test-decision.md`, wikiRecordWithFrontmatter('0004', theme, 'Test decision'));
+  appendToIndex(root, `wiki/decisions/${theme}/index.md`, '* [Test decision](0004-test-decision.md) - a test decision\n');
+}
+
+test('gradeRun: A-count fixture seeds the counts in the root and decisions indexes', () => {
+  const { root } = buildFixture('A-count');
+  try {
+    const rootIndex = readFileSync(join(root, 'wiki/index.md'), 'utf8');
+    const decisionsIndex = readFileSync(join(root, 'wiki/decisions/index.md'), 'utf8');
+    assert.ok(rootIndex.includes("* [Decision Records](decisions/index.md) - the project's 3 ADRs, grouped by theme"), rootIndex);
+    assert.ok(rootIndex.includes("* [Beta decisions](decisions/beta/index.md) - 1 ADR about the beta subsystem's storage layer"), rootIndex);
+    assert.ok(decisionsIndex.includes("* [Alpha](alpha/index.md) - 2 ADRs about the alpha subsystem's public API surface"), decisionsIndex);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: A-count passes D8 when every stated count is updated', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    updateCounts(root, 'beta');
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, true, JSON.stringify(result.reasons));
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: A-count FAILs D8 when the stated counts are left stale', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d4, true, JSON.stringify(result.reasons));
+    assert.equal(result.assertions.d8, false);
+    assert.equal(result.allDeterministicPass, false);
+    assert.ok(result.reasons.includes('D8: wiki/index.md: the line linking decisions/index.md states [3] ADRs, expected 4'), JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: A-count FAILs D8 when only the total is updated and the theme counts stay stale', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    replaceIn(root, 'wiki/index.md', "the project's 3 ADRs", "the project's 4 ADRs");
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, false);
+    const d8 = result.reasons.filter((r) => r.startsWith('D8:'));
+    assert.deepEqual(d8, [
+      'D8: wiki/index.md: the line linking decisions/beta/index.md states [1] ADRs, expected 2',
+      'D8: wiki/decisions/index.md: the line linking beta/index.md states [1] ADRs, expected 2',
+    ]);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: A-count FAILs D8 when the wrong theme count is raised', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    replaceIn(root, 'wiki/index.md', "the project's 3 ADRs", "the project's 4 ADRs");
+    for (const file of ['wiki/index.md', 'wiki/decisions/index.md']) {
+      replaceIn(root, file, '2 ADRs about the alpha', '3 ADRs about the alpha');
+    }
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, false);
+    assert.ok(result.reasons.includes('D8: wiki/index.md: the line linking decisions/alpha/index.md states [3] ADRs, expected 2'), JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: C-count passes D8 when the alpha counts are updated', async () => {
+  const { root, before, meta } = buildFixture('C-count');
+  try {
+    placeCountRecord(root, 'alpha');
+    updateCounts(root, 'alpha');
+
+    const result = await gradeRun({ variant: 'C-count', root, before, meta });
+    assert.equal(result.assertions.d8, true, JSON.stringify(result.reasons));
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: D8 does not read a record number or range as an ADR count', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    updateCounts(root, 'beta');
+    replaceIn(root, 'wiki/index.md', "the project's 4 ADRs,", "the project's 4 ADRs (0001 to 0004),");
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, true, JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: A-count FAILs D8 when a counted index line is removed', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    updateCounts(root, 'beta');
+    replaceIn(root, 'wiki/decisions/index.md', "* [Beta](beta/index.md) - 2 ADRs about the beta subsystem's storage layer\n", '');
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, false);
+    assert.ok(result.reasons.includes('D8: wiki/decisions/index.md: expected one line linking beta/index.md, found 0'), JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('gradeRun: variants without counts apply no D8 check', async () => {
+  const { root, before, meta } = buildFixture('A');
+  try {
+    placeCountRecord(root, 'beta');
+
+    const result = await gradeRun({ variant: 'A', root, before, meta });
+    assert.equal('d8' in result.assertions, false);
+    assert.equal(result.allDeterministicPass, true, JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
