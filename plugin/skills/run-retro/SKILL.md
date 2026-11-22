@@ -85,6 +85,8 @@ If a skill improvement applies to **all consuming repos** (not just this one), i
 
 When you file such an issue against the plugin's repository, write every reference to an issue or pull request of this repository in full, as `owner/repo#N`. On the plugin's tracker, a bare `#N` names the plugin's own issue `#N`. Its triage reference check reads it that way, so a bare reference on a `Blocked by` line can block the issue on an unrelated open issue. A quoted body inside a code block can stay as it was.
 
+When the filed change must wait for another issue, for example a change in another plugin that must reach that plugin's default branch first, write the wait as a `Blocked by owner/repo#N` line. The reference check reads a wait stated in prose, such as "land no earlier than", as no blocker, so the issue reads as ready. Before you file, wrap the draft as a JSON object (`number`, `title`, `body`, `comments: []`) in a scratch file and run `node ${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs extract --single <file> --repo <owner/repo>`, with the tracker's own repository as `--repo`. Check the repository and the relation of each reference it prints. A bare `#N` that it reads as the tracker's own issue, or a wait with no `blocked-by` reference, is a defect in the draft.
+
 Note the change as a proposed plugin PR and follow the workflow in the plugin repo's CONTRIBUTING/README.
 If the repo maintains a wiki (a schema doc resolves: `paths['docs/wiki-schema.md']`, else `<wikiDir>/schema.md`, else `docs/wiki-schema.md`, the order `CONVENTIONS.md` defines), `/gvt-wiki:maintain-wiki ingest` (the gvt-wiki plugin) is the wiki tier's ingest — route durable, compounding insights there instead of (or alongside) a structured doc.
 

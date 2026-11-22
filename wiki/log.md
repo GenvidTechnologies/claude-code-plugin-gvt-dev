@@ -25,6 +25,10 @@ the full maintenance schema.
   instead of "docs index" and "resolved index". `audit-conventions-as-proto-lint.md`
   now says that this repository runs with the `paths['docs/TOC.md']` override of
   ADR-0099. From #997. Not an ingest; no `raw/` source drove it.
+* **Update**: `process/issue-triage.md`: the Mutation recipes gain "File a
+  defect found during triage", for a defect that the verification finds and
+  no open issue covers. From the retro of the triage of #1041. Not an ingest;
+  no `raw/` source drove it.
 
 ## 2026-11-21
 
