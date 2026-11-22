@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`run-retro` writes a wait on another issue as a `Blocked by` line, and checks each draft with the reference grammar before it files.** An issue filed by the retro of GenvidTechnologies/claude-code-plugin-gvt-wiki#60 stated its wait in prose, so the reference check read it as ready, and it cited the gvt-wiki issue as a bare `#60`, which the gvt-dev tracker reads as its own closed #60. The triage of GenvidTechnologies/claude-code-plugin-gvt-dev#1046 (2026-11-22) corrected both. Behavioral skill/agent change → version bump at release.
+
 ## [6.1.0] - 2026-11-22
 
 - **`run-retro` records a finding's verified version as the commit and the `plugin.json` version, with no release state.** A word such as "unreleased" or a branch name goes stale when the release ships. Three issues filed on 2026-11-21 (#1034, #1035, #1036) each needed a triage correction for it. Behavioral skill/agent change → version bump at release.
