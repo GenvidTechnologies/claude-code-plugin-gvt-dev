@@ -10,7 +10,8 @@
 // D1-D7 below are the designer's own labels (see the #582 design hand-off);
 // D5 applies only to the wiki variants (A/A-infer/C) because variant B's
 // correct behavior IS a docs/TOC.md change (the first-use scaffold's
-// self-indexed row).
+// self-indexed row). D8 was added for #473 and applies only to A-count and
+// C-count, whose index lines state ADR counts (`meta.counts`).
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -158,7 +159,54 @@ function scanAddedIndexLines(root, after, meta) {
 }
 
 // ---------------------------------------------------------------------------
-// Wiki variants: A, A-infer, C
+// Count check helpers (A-count / C-count)
+// ---------------------------------------------------------------------------
+
+// "3 ADRs", "1 ADR": a number that counts ADRs. A record number such as 0004
+// or a range such as 0001-0004 is not followed by "ADR", so it does not match.
+const ADR_COUNT_RE = /\b(\d+)\s+ADRs?\b/g;
+
+/**
+ * The index lines that state an ADR count in the count fixture
+ * (fixtures.indexProse), each found by the link it carries, and the count it
+ * must state after the run: the seeded count plus one for the total and for
+ * the theme that received the new record. Returns a list of problems.
+ */
+export function checkCountLines(root, counts, theme) {
+  const after = {
+    total: counts.total + 1,
+    alpha: counts.themes.alpha + (theme === 'alpha' ? 1 : 0),
+    beta: counts.themes.beta + (theme === 'beta' ? 1 : 0),
+  };
+  const lines = [
+    { file: 'wiki/index.md', link: 'decisions/index.md', expected: after.total },
+    { file: 'wiki/index.md', link: 'decisions/alpha/index.md', expected: after.alpha },
+    { file: 'wiki/index.md', link: 'decisions/beta/index.md', expected: after.beta },
+    { file: 'wiki/decisions/index.md', link: 'alpha/index.md', expected: after.alpha },
+    { file: 'wiki/decisions/index.md', link: 'beta/index.md', expected: after.beta },
+  ];
+  const problems = [];
+  for (const { file, link, expected } of lines) {
+    const abs = join(root, ...file.split('/'));
+    if (!existsSync(abs)) {
+      problems.push(`${file} is missing`);
+      continue;
+    }
+    const matching = readFileSync(abs, 'utf8').split(/\r?\n/).filter((l) => l.includes(`](${link})`));
+    if (matching.length !== 1) {
+      problems.push(`${file}: expected one line linking ${link}, found ${matching.length}`);
+      continue;
+    }
+    const stated = [...matching[0].matchAll(ADR_COUNT_RE)].map((m) => parseInt(m[1], 10));
+    if (stated.length !== 1 || stated[0] !== expected) {
+      problems.push(`${file}: the line linking ${link} states [${stated.join(', ')}] ADRs, expected ${expected}`);
+    }
+  }
+  return problems;
+}
+
+// ---------------------------------------------------------------------------
+// Wiki variants: A, A-infer, C, C-voice, A-count, C-count
 // ---------------------------------------------------------------------------
 
 async function gradeWikiRun({ root, before, meta }) {
@@ -268,6 +316,14 @@ async function gradeWikiRun({ root, before, meta }) {
   }
 
   const assertions = { d1, d2, d3, d4, d5, d6, d7 };
+
+  // D8 (A-count / C-count only): every index line that states an ADR count
+  // states the count after the run.
+  if (meta.counts) {
+    const problems = checkCountLines(root, meta.counts, themeIsExisting ? theme : null);
+    assertions.d8 = problems.length === 0;
+    for (const p of problems) reasons.push(`D8: ${p}`);
+  }
 
   // Voice (C-voice only): the brief's own voice must not reach the ADR, and
   // the string the brief marks as required wording must appear verbatim.
