@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-22
+
+* **Update**: `process/issue-triage.md`: the Mutation recipes gain "File a
+  defect found during triage", for a defect that the verification finds and
+  no open issue covers. From the retro of the triage of #1041. Not an ingest;
+  no `raw/` source drove it.
+
 ## 2026-11-21
 
 * **Update**: `process/issue-triage.md`: the "Set road block" recipe now says
