@@ -103,9 +103,9 @@ of the same design are rejected under Compromise.
    it. When `wiki.indexCommand` is set, the skill prints the command line to run, with the
    entry filled in, and does not run it or edit the index. When `<wikiDir>/schema.md` exists,
    the skill follows its rules for a new page, such as a log entry. A file outside the bundle,
-   when the docs index lies inside it, gets no entry, because an out-of-bundle link is a wiki
+   when the documentation index lies inside it, gets no entry, because an out-of-bundle link is a wiki
    lint finding. The skill reports that case and suggests an override into the bundle. When
-   both lie outside the bundle, the skill adds a one-line entry to the docs index,
+   both lie outside the bundle, the skill adds a one-line entry to the documentation index,
    idempotently, and skips and reports when that index is absent. The skill prints one line,
    `Acceptance index: <entry or "none">`, followed by the reason when there is none.
 7. **Commit only when git does not ignore the file.** A file that git does not ignore is a

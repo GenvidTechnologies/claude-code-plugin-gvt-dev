@@ -518,7 +518,7 @@ export async function scanOrphanedDocs(repoRoot, opts = {}) {
         kind: 'orphan-check-skipped',
         ok: false,
         severity: 'info',
-        detail: `orphan check skipped — no docs index found at ${tocPath}`,
+        detail: `orphan check skipped — no documentation index found at ${tocPath}`,
       },
     ];
   }

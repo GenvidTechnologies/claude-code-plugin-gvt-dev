@@ -165,42 +165,42 @@
     "anchor": "the docs root is `docs/`, so the glob below",
     "token": "docs/",
     "kind": "plugin-defined-location",
-    "note": "The skill defines its own fallback: when the resolved index sits at the repo root, the docs root is docs/, so that the glob does not walk the whole repository."
+    "note": "The skill defines its own fallback: when the documentation index sits at the repo root, the docs root is docs/, so that the glob does not walk the whole repository."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",
     "anchor": "They are commonly at `docs/architecture.md`",
     "token": "docs/architecture.md",
     "kind": "common-location-hint",
-    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+    "note": "The sentence finds each doc through the documentation index and names the usual paths only as a fallback when there is no index."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",
     "anchor": "They are commonly at `docs/architecture.md`",
     "token": "docs/design-patterns.md",
     "kind": "common-location-hint",
-    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+    "note": "The sentence finds each doc through the documentation index and names the usual paths only as a fallback when there is no index."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",
     "anchor": "They are commonly at `docs/architecture.md`",
     "token": "docs/coding-conventions.md",
     "kind": "common-location-hint",
-    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+    "note": "The sentence finds each doc through the documentation index and names the usual paths only as a fallback when there is no index."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",
     "anchor": "They are commonly at `docs/architecture.md`",
     "token": "docs/runbook.md",
     "kind": "common-location-hint",
-    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+    "note": "The sentence finds each doc through the documentation index and names the usual paths only as a fallback when there is no index."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",
     "anchor": "They are commonly at `docs/architecture.md`",
     "token": "docs/lessons-learned.md",
     "kind": "common-location-hint",
-    "note": "The sentence finds each doc through the resolved index and names the usual paths only as a fallback when there is no index."
+    "note": "The sentence finds each doc through the documentation index and names the usual paths only as a fallback when there is no index."
   },
   {
     "file": "plugin/skills/run-retro/SKILL.md",

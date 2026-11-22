@@ -29,8 +29,8 @@ Three things have since changed the surface that rule scans:
 - `--force` removed the stale duplicate when both the canonical and a near-miss were present (#507),
   a delete of hand-authored content with nobody watching.
 - Registration assumed `docs/TOC.md`. A contract inside the wiki is indexed by the wiki index, not by
-  the docs index, and some wikis generate that index (#601, #606). With no override, scaffolding wrote into
-  `docs/` even when the docs index itself lived in the wiki (#665).
+  the documentation index, and some wikis generate that index (#601, #606). With no override, scaffolding wrote into
+  `docs/` even when the documentation index itself lived in the wiki (#665).
 
 ## Decision
 
@@ -66,11 +66,11 @@ A contract outside the wiki keeps its docs-index Process row. A contract inside 
 there. When the new optional `wiki.indexCommand` key is set, the index is treated as generated: the missing
 entry is reported together with that command and is never hand-edited (897df81). `plugin/CONVENTIONS.md`
 lists the key in one edit, so consumers' copies drift once (baf94db). A contract outside the wiki whose
-docs index itself lives in the wiki is reported, not registered: an out-of-bundle link in a wiki index is a
+documentation index itself lives in the wiki is reported, not registered: an out-of-bundle link in a wiki index is a
 lint finding, so the skill suggests moving the contract into the bundle through the `paths` override.
 
 **4. The wiki scaffold default is inferred, and only the default.** With no `paths['docs/issue-triage.md']`
-override and the docs index inside the wiki, §0b scaffolds at `<wikiDir>/process/issue-triage.md` when that
+override and the documentation index inside the wiki, §0b scaffolds at `<wikiDir>/process/issue-triage.md` when that
 directory exists, else `<wikiDir>/issue-triage.md`. For the scaffold, the `paths` override is written before
 the file, so an interrupted run heals on the next run: the scaffold re-offers on Absent. The near-miss scan also covers the would-be target's parent and the wiki root, still non-recursive,
 because the scan runs before the target is computed. A near-miss found there is renamed, interactively, to the same wiki

@@ -43,7 +43,7 @@
 //
 // --index-file: passed through as opts.docsIndex to the scanOrphanedDocs call
 // only (landed alongside the OKF-bundle decline contract, ADR-0053). Use it to
-// reproduce a repo whose docs index lives somewhere other than the default,
+// reproduce a repo whose documentation index lives somewhere other than the default,
 // <docsRoot>/index.md.
 
 import { promises as fs } from 'node:fs';
