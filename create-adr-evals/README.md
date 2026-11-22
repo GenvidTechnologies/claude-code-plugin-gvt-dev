@@ -93,6 +93,26 @@ Each run's full `claude -p` transcript (stdout/stderr, JSON output included)
 is written to a per-run log file under a fresh `os.tmpdir()` directory;
 `run.mjs` prints that directory's path at the end.
 
+**`run.mjs` loads the plugin from its own checkout.** It passes
+`--plugin-dir` set to the `plugin/` folder next to it, and each run starts a
+new session that loads that folder when it starts. So do not edit `plugin/`
+while a batch runs: the later runs would test other text than the earlier
+ones. To run against the code of another commit, for example the code
+before a change:
+
+1. Add a worktree at that commit:
+   `git worktree add --detach <scratch path> <sha>`.
+2. Install its dependencies:
+   `npm ci --prefix <scratch path>/plugin --ignore-scripts --no-audit --no-fund`.
+3. Run that worktree's own `run.mjs`:
+   `node <scratch path>/create-adr-evals/run.mjs ...`.
+4. Remove the worktree after the run.
+
+Commit a new variant before the skill change that it tests. Step 1 can then
+name a commit that has the new variant and the old skill text. On #473 this
+gave the red run of A-count and C-count (0 of 4) before the change, and a
+C-voice baseline (3 of 3) to compare with the 2 of 3 after it.
+
 **Cost note: every invocation here is a real, metered Claude Code session**
 (`claude -p`), not a mock. A single run in testing cost roughly $0.97 and
 took about a minute. A full `--runs 3` sweep across all seven variants is
