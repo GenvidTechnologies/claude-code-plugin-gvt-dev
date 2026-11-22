@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.1.0] - 2026-11-22
+
 - **`run-retro` records a finding's verified version as the commit and the `plugin.json` version, with no release state.** A word such as "unreleased" or a branch name goes stale when the release ships. Three issues filed on 2026-11-21 (#1034, #1035, #1036) each needed a triage correction for it. Behavioral skill/agent change → version bump at release.
 
 ## [6.0.0] - 2026-11-21
