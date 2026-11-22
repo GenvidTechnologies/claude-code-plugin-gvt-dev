@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-10-01
 - **Issue:** #584 (F1 of the docs→wiki chain #579)
+- **Amended by:** [ADR-0099](0099-this-repo-keeps-no-docs-tree.md) — the last sentence of decision 1 and the matching Consequences sentence: `docs/TOC.md` no longer carries a pointer row into `wiki/decisions/index.md`, because the file is removed and `wiki/index.md` is the documentation index; the move of the records into the bundle stands.
 
 ## Context
 

@@ -1,15 +1,16 @@
 ---
 type: decision-record
-title: 'This repository keeps no docs/ tree: its docs index resolves to wiki/index.md and no component requires docs/TOC.md'
+title: 'This repository keeps no docs/ tree: its documentation index resolves to wiki/index.md and no component requires docs/TOC.md'
 description: 'The paths override resolves docs/TOC.md to wiki/index.md, docs/TOC.md is removed, condense-lessons declares it optional, and a test keeps docs/ empty; amends ADR-0067.'
 tags: [decisions, wiki-and-okf]
 status: stable
 ---
-# 0099. This repository keeps no docs/ tree: its docs index resolves to wiki/index.md and no component requires docs/TOC.md
+# 0099. This repository keeps no docs/ tree: its documentation index resolves to wiki/index.md and no component requires docs/TOC.md
 
 - **Status:** accepted
 - **Date:** 2026-11-20
 - **Issue:** #939 (this repository's `docs/` tree), with #375 (`condense-lessons` requires `docs/TOC.md`); epic #579
+- **Amends:** [ADR-0067](0067-decision-records-move-into-the-wiki-bundle.md), the last sentence of decision 1 and the matching Consequences sentence (the pointer row in `docs/TOC.md`), as the Architecture paragraph below states
 
 ## Context
 
@@ -40,7 +41,7 @@ this repository's records as its proof case, so moving them makes the section st
 
 ## Decision
 
-**1. The docs index resolves to the wiki.** `.gvt-agent.json` sets
+**1. The documentation index resolves to the wiki.** `.gvt-agent.json` sets
 `paths['docs/TOC.md']` to `wiki/index.md`, and `docs/TOC.md` is removed. The audit then
 takes the wiki bundle as the docs root and declines its link and orphan checks there
 ([ADR-0053](0053-audit-conventions-declines-bundle-content-to-wiki-lint.md)). The wiki
@@ -54,7 +55,7 @@ links `plugin/CONVENTIONS.md` and the `plugin/docs/` references.
 The #375 change is a behavioural skill change, and the 5.2.0 release cycle carries it.
 Recording this decision changes no version. The two changes cover different cases:
 
-- The override gives this repository a resolved index.
+- The override gives this repository a resolved documentation index.
 - The `required: false` declaration stops any repository without the file from failing
   the audit over a skill it never used.
 
@@ -75,7 +76,7 @@ a file. `commands.test` and `commands.validate` run it.
 explained through the superpowers default location, not through this repository. The rule
 is unchanged.
 
-**Architecture.** The docs index is a contract file with a `paths` override, as
+**Architecture.** The documentation index is a contract file with a `paths` override, as
 [ADR-0062](../plugin-structure/0062-runtime-path-resolution-for-declared-expectations.md)
 defines. This repository now uses that mechanism for the index, as it already did for the
 decision records and the wiki schema. ADR-0067 said that `docs/TOC.md` carries one pointer
@@ -89,9 +90,9 @@ Alternatives that were rejected:
 
 - **The override alone.** The audit passes in this repository, but the inconsistency of
   #375 stays for every consumer without `docs/TOC.md`.
-- **The #375 fix alone.** No component gets a resolved index. The docs root points at a
+- **The #375 fix alone.** No component gets a resolved documentation index. The docs root points at a
   `docs/` folder that is absent, the audit prints 11 optional lines for the missing file,
-  and it reports that the orphan check was skipped because no docs index was found.
+  and it reports that the orphan check was skipped because no documentation index was found.
 - **Placing the two records under `wiki/`.** It was measured on a scratch copy: the move
   gave 10 retired-token Info findings and 2 orphan findings. It also broke the bundle's
   frontmatter rule, so the OKF conformance claim for the bundle would no longer hold.
