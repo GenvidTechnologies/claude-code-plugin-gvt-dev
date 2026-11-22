@@ -7,6 +7,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The audit's Practice Coverage names each missing Environment signal (#390).** A `partial adoption` verdict used to give no reason, so a reader could not tell which of the six signals failed. The cell now lists each missing signal by the location the detector checked, for example ``partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`)``. The schema doc lists every location in its resolution order, or the `paths['docs/wiki-schema.md']` override alone when one is set. The verdict itself and the exit code do not change. `CONVENTIONS.md` says so where it describes the `wiki` block. Behavioral skill change → version bump at release.
 - **`create-adr` and `tech-writer` update the ADR counts that index prose states (#473).** An index can say how many ADRs it covers, for example a bundle-root `<wikiDir>/index.md` line "the project's 44 ADRs". Before, no step owned that number, so it stayed at 44 after a 45th record.
   - `tech-writer`'s decision-records steps gain step 8. After the record is written, it runs `renumber-adrs.mjs --next` and reads each index on the path from the record up to the root. It sets a count of all ADRs to the number of records, and a count of one theme to that theme's count. Any other number, such as a count of superseded ADRs, stays as it is and is reported.
   - `plan-task` gets the step through its `tech-writer` dispatch. `create-adr` runs it once for a §2b backfill batch.

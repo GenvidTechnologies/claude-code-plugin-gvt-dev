@@ -13,11 +13,14 @@
 
 import { PILLARS, computePluginCoverage } from './pillars.mjs';
 
-// Adoption verdicts a caller may pass in (mirrors the shape a wiki-style
-// detector like `detectWikiAdoption` returns: `verdict` is one of these
-// three strings). A pillar with no naReason but no adoption entry either
-// (nothing has been wired up to detect it yet) renders as 'not evaluated'
-// rather than silently reading as 'not adopted'.
+// Adoption verdicts a caller may pass in. A pillar's adoption entry is either
+// one of these three strings or a detector result such as the one
+// `detectWikiAdoption` returns: `{ verdict, missing }`, where `missing` lists
+// `{ signal, label }` for each absent signal. A partial verdict names the
+// labels, so the reader sees which signal to fix (#390); an absent verdict
+// lacks every signal and names none. A pillar with no naReason but no
+// adoption entry either (nothing has been wired up to detect it yet) renders
+// as 'not evaluated' rather than silently reading as 'not adopted'.
 const VERDICT_TEXT = {
   adopted: 'adopted',
   partial: 'partial adoption',
@@ -31,8 +34,13 @@ function adoptionCellFor(pillar, adoption) {
   if (pillar.naReason) {
     return `${pillar.detectability} (${pillar.naReason})`;
   }
-  const verdict = adoption?.[pillar.id];
-  return VERDICT_TEXT[verdict] ?? 'not evaluated';
+  const entry = adoption?.[pillar.id];
+  const verdict = typeof entry === 'string' ? entry : entry?.verdict;
+  const text = VERDICT_TEXT[verdict];
+  if (text === undefined) return 'not evaluated';
+  const missing = Array.isArray(entry?.missing) ? entry.missing : [];
+  if (verdict !== 'partial' || missing.length === 0) return text;
+  return `${text} (missing: ${missing.map((m) => m.label).join('; ')})`;
 }
 
 function componentsCellFor(pillar, coverage) {

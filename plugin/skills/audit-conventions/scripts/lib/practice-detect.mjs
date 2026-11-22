@@ -37,13 +37,15 @@ export async function detectWikiAdoption(repoRoot, config) {
   const wikiDir = effectiveWikiDir(config);
   const rawDir = config?.wiki?.rawDir ?? DEFAULT_RAW_DIR;
 
+  const { candidates: schemaCandidates } = expectationCandidates(SCHEMA_EXPECTATION, { paths: config?.paths, wikiDir });
+
   const [wikiDirPresent, indexPresent, logPresent, rawDirPresent, schemaDocPresent] =
     await Promise.all([
       dirExists(join(repoRoot, wikiDir)),
       fileExists(join(repoRoot, wikiDir, 'index.md')),
       fileExists(join(repoRoot, wikiDir, 'log.md')),
       dirExists(join(repoRoot, rawDir)),
-      schemaPresent(repoRoot, config, wikiDir),
+      schemaPresent(repoRoot, schemaCandidates),
     ]);
 
   const signals = {
@@ -63,7 +65,23 @@ export async function detectWikiAdoption(repoRoot, config) {
         ? VERDICT_ADOPTED
         : VERDICT_PARTIAL;
 
-  return { signals, verdict };
+  // Names each absent signal by the location probed (#390), so a partial
+  // verdict can say which signal it lacks. The labels are Markdown, for the
+  // report's Practice Coverage table.
+  const rawLabel = rawDir.replace(/[\\/]+$/, '');
+  const labels = {
+    wikiDir: `\`${wikiDir}/\``,
+    index: `\`${wikiDir}/index.md\``,
+    log: `\`${wikiDir}/log.md\``,
+    rawDir: `\`${rawLabel}/\``,
+    schemaDoc: schemaCandidates.map((c) => `\`${c}\``).join(' or '),
+    configBlock: 'the `wiki` block in `.gvt-agent.json`',
+  };
+  const missing = Object.keys(signals)
+    .filter((signal) => !signals[signal])
+    .map((signal) => ({ signal, label: labels[signal] }));
+
+  return { signals, verdict, missing };
 }
 
 // True only when the candidate the audit would accept holds a file, so this
@@ -76,7 +94,6 @@ export async function detectWikiAdoption(repoRoot, config) {
 //   - a wrong-kind or other candidate that is not the last falls through to
 //     the next one;
 //   - a wrong-kind last candidate gives false.
-async function schemaPresent(repoRoot, config, wikiDir) {
-  const { candidates } = expectationCandidates(SCHEMA_EXPECTATION, { paths: config?.paths, wikiDir });
+async function schemaPresent(repoRoot, candidates) {
   return (await resolveCandidate(repoRoot, SCHEMA_EXPECTATION.path, candidates)).satisfied;
 }

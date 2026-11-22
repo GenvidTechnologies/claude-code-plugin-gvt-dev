@@ -96,6 +96,36 @@ test('formatPracticeCoverage: Environment renders a distinguishable partial verd
   assert.notEqual(partial, absent);
 });
 
+// #390 — a detector result ({ verdict, missing }) renders the missing signals
+// after a partial verdict, so the reader sees which one to fix.
+test('formatPracticeCoverage: a partial detector result names its missing signals', () => {
+  const output = formatPracticeCoverage(REALISTIC_CENSUS, {
+    environment: {
+      verdict: 'partial',
+      missing: [
+        { signal: 'schemaDoc', label: '`wiki/schema.md` or `docs/wiki-schema.md`' },
+        { signal: 'configBlock', label: 'the `wiki` block in `.gvt-agent.json`' },
+      ],
+    },
+  });
+  assert.ok(
+    output.includes(
+      '| Environment | maintain-wiki, wiki-librarian | partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`; the `wiki` block in `.gvt-agent.json`) |',
+    ),
+    output,
+  );
+});
+
+test('formatPracticeCoverage: a detector result renders adopted and absent without a missing list', () => {
+  const adopted = formatPracticeCoverage(REALISTIC_CENSUS, { environment: { verdict: 'adopted', missing: [] } });
+  assert.match(adopted, /\| Environment \|[^\n]*\| adopted \|/);
+  const absent = formatPracticeCoverage(REALISTIC_CENSUS, {
+    environment: { verdict: 'absent', missing: [{ signal: 'wikiDir', label: '`wiki/`' }] },
+  });
+  assert.match(absent, /\| Environment \|[^\n]*\| not adopted \|/);
+  assert.doesNotMatch(absent, /missing:/);
+});
+
 test('formatPracticeCoverage: a pillar with no adoption data renders "not evaluated"', () => {
   const output = formatPracticeCoverage(REALISTIC_CENSUS, {});
   assert.match(output, /Spec \|.*\| not evaluated/);
