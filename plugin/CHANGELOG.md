@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The audit's Practice Coverage names each missing Environment signal (#390).** A `partial adoption` verdict used to give no reason, so a reader could not tell which of the six signals failed. The cell now lists each missing signal by the location the detector checked, for example ``partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`)``. The schema doc lists every location in its resolution order, or the `paths['docs/wiki-schema.md']` override alone when one is set. The verdict itself and the exit code do not change. Behavioral skill change → version bump at release.
+
 ## [6.1.0] - 2026-11-22
 
 - **`run-retro` records a finding's verified version as the commit and the `plugin.json` version, with no release state.** A word such as "unreleased" or a branch name goes stale when the release ships. Three issues filed on 2026-11-21 (#1034, #1035, #1036) each needed a triage correction for it. Behavioral skill/agent change → version bump at release.
