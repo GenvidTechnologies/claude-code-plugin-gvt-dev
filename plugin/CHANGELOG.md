@@ -7,7 +7,7 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- **The audit's Practice Coverage names each missing Environment signal (#390).** A `partial adoption` verdict used to give no reason, so a reader could not tell which of the six signals failed. The cell now lists each missing signal by the location the detector checked, for example ``partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`)``. The schema doc lists every location in its resolution order, or the `paths['docs/wiki-schema.md']` override alone when one is set. The verdict itself and the exit code do not change. Behavioral skill change → version bump at release.
+- **The audit's Practice Coverage names each missing Environment signal (#390).** A `partial adoption` verdict used to give no reason, so a reader could not tell which of the six signals failed. The cell now lists each missing signal by the location the detector checked, for example ``partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`)``. The schema doc lists every location in its resolution order, or the `paths['docs/wiki-schema.md']` override alone when one is set. The verdict itself and the exit code do not change. `CONVENTIONS.md` says so where it describes the `wiki` block. Behavioral skill change → version bump at release.
 
 ## [6.1.0] - 2026-11-22
 
