@@ -110,6 +110,13 @@ Gather from the user before proceeding:
    authorship); honor any stricter local indexing rule stated in the repo's
    `CLAUDE.md` or wiki schema over the defaults above.
 
+   A decision record is authored, not ingested: this skill and
+   `gvt-dev:tech-writer` write it directly, and no wiki ingest runs for it.
+   So the bookkeeping is theirs, in both regimes: the registration above, and
+   any number in index prose that counts ADRs (for example "the project's 44
+   ADRs"). Step 8 of "Decision records (ADRs)" in `gvt-dev:tech-writer` updates
+   those counts after each write (#473).
+
    **Entry shape:** mirror whatever shape the target index already uses for
    its existing entries; a fresh index uses
    `* [<Title>](NNNN-slug.md) - <description>` — title without the ADR number,
@@ -144,8 +151,9 @@ go to §3.
 3. tech-writer names the file `NNNN-kebab-title.md`, fills the template, and
    registers it per §1's regime table — self-indexing a Decision Records row
    in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)
-   outside the wiki, or indexing into the theme/root wiki index inside it. It
-   is the sole write owner; this skill does not duplicate those steps.
+   outside the wiki, or indexing into the theme/root wiki index inside it.
+   Then it updates the ADR counts that those indexes state. It is the sole
+   write owner; this skill does not duplicate those steps.
 4. Proceed to §6 (commit).
 
 ## 2b. From-empty chronological backfill (multiple records at once)
@@ -186,12 +194,17 @@ into an existing sequence (§3).
    assigned number, reusing the same content contract as §2 step 2 (template,
    resolved dir, target number, theme, wiki flag, stage-only instruction). Do
    not let tech-writer compute next-highest — pass the number explicitly, as in
-   §3e.
+   §3e. Also tell it to skip registration (its step 7), which skips its count
+   step (step 8) too: step 7 below does both for the batch.
 7. **Register the whole batch once, centrally** — per §1's regime table (the
    Decision Records section of the `paths['docs/TOC.md']` index outside the wiki; the resolved wiki
    index inside it) — not as N parallel per-record writes, which would race the
    same file. This skill (not tech-writer) owns this single registration pass
-   for the batch.
+   for the batch. The same pass updates the ADR counts that the indexes
+   state. After the last record of the batch is written, follow items 1 to 5
+   of step 8 of "Decision records (ADRs)" in `gvt-dev:tech-writer`: run
+   `--next` once, then update the counts in each index on the path to the
+   root.
 8. **Land the whole backfill as one commit** covering all N records plus the
    single index update, per §6.
 

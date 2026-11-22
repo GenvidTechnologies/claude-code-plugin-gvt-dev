@@ -45,6 +45,14 @@ inside the wiki, register it in the theme index, and leave everything else
     `tech-writer` from before the voice rule also passes this brief (2 of 2
     runs, #522), so a PASS here guards against a regression and does not show
     that the rule has an effect.
+  - **A-count** and **C-count** — the prompts of **A** and **C**, unchanged,
+    on a fixture whose index lines also state ADR counts (#473): the
+    bundle-root `wiki/index.md` says "the project's 3 ADRs", and the theme
+    rows in `wiki/index.md` and `wiki/decisions/index.md` say "2 ADRs" for
+    `alpha` and "1 ADR" for `beta`. D8 passes only when, after the run, each
+    of those five lines states the new count: 4 in total, and one more for the
+    theme that received the record. The prompts do not mention the counts, so
+    D8 tests whether `create-adr` and `tech-writer` find them on their own.
   - **B** — negative control: no `paths` override, `docs/decisions/` absent
     (the first-use scaffold path), plus a decoy `wiki/decisions/` bundle the
     agent must leave untouched
@@ -57,9 +65,12 @@ inside the wiki, register it in the theme index, and leave everything else
   must name its plugin folder, the folder that holds `skills/`;
   `node create-adr-evals/gvt-wiki-root.mjs` prints the folder it resolves),
   `docs/TOC.md`
-  unchanged (A/A-infer/C only — B's correct behavior *is* a new TOC row),
+  unchanged (every variant but B — B's correct behavior *is* a new TOC row),
   `wiki/log.md` unchanged, and `--next` agreeing post-run via
-  `describeAdrDir`. For C-voice only, a voice check also applies.
+  `describeAdrDir`. For C-voice only, a voice check also applies. For
+  A-count and C-count only, D8 checks the stated ADR counts. D8 reads a
+  count written in digits ("4 ADRs"); a run that writes the number as a word
+  ("four ADRs") fails it.
 - `run.mjs` — spawns `claude -p --plugin-dir plugin` per fixture, grades the
   result, prints a per-run table, and applies the pass rule below.
 - `test/grade.test.mjs` — unit tests for `grade.mjs` against hand-built
@@ -70,10 +81,10 @@ inside the wiki, register it in the theme index, and leave everything else
 
 ```bash
 npm ci --prefix plugin --ignore-scripts --no-audit --no-fund   # audit-core, read by grade.mjs
-node create-adr-evals/run.mjs --variant A,A-infer,C,C-voice,B --runs 3
+node create-adr-evals/run.mjs --variant A,A-infer,C,C-voice,A-count,C-count,B --runs 3
 ```
 
-- `--variant` — comma-separated subset of `A,A-infer,C,C-voice,B` (default: all five).
+- `--variant` — comma-separated subset of `A,A-infer,C,C-voice,A-count,C-count,B` (default: all seven).
 - `--runs` — runs per variant (default: 3, per the #582 design hand-off).
 - `--keep` — don't delete the fixture temp dirs after grading (useful when a
   run fails and you want to inspect the tree by hand).
@@ -82,10 +93,30 @@ Each run's full `claude -p` transcript (stdout/stderr, JSON output included)
 is written to a per-run log file under a fresh `os.tmpdir()` directory;
 `run.mjs` prints that directory's path at the end.
 
+**`run.mjs` loads the plugin from its own checkout.** It passes
+`--plugin-dir` set to the `plugin/` folder next to it, and each run starts a
+new session that loads that folder when it starts. So do not edit `plugin/`
+while a batch runs: the later runs would test other text than the earlier
+ones. To run against the code of another commit, for example the code
+before a change:
+
+1. Add a worktree at that commit:
+   `git worktree add --detach <scratch path> <sha>`.
+2. Install its dependencies:
+   `npm ci --prefix <scratch path>/plugin --ignore-scripts --no-audit --no-fund`.
+3. Run that worktree's own `run.mjs`:
+   `node <scratch path>/create-adr-evals/run.mjs ...`.
+4. Remove the worktree after the run.
+
+Commit a new variant before the skill change that it tests. Step 1 can then
+name a commit that has the new variant and the old skill text. On #473 this
+gave the red run of A-count and C-count (0 of 4) before the change, and a
+C-voice baseline (3 of 3) to compare with the 2 of 3 after it.
+
 **Cost note: every invocation here is a real, metered Claude Code session**
 (`claude -p`), not a mock. A single run in testing cost roughly $0.97 and
-took about a minute. A full `--runs 3` sweep across all four variants is
-~12 real sessions — budget and schedule accordingly. This is why `run.mjs` is
+took about a minute. A full `--runs 3` sweep across all seven variants is
+21 real sessions — budget and schedule accordingly. This is why `run.mjs` is
 never wired into `commands.test`/`commands.validate`; only `grade.mjs`'s own
 unit tests (`test/grade.test.mjs`) run there.
 
@@ -94,7 +125,7 @@ unit tests (`test/grade.test.mjs`) run there.
 - At least ⌈2N/3⌉ runs must **complete** (the `claude -p` session exits 0
   with `is_error: false` in its JSON result).
 - **Every** completed run must pass **every** deterministic assertion
-  (D1-D7, as applicable to that variant — see `grade.mjs`).
+  (D1-D8, as applicable to that variant — see `grade.mjs`).
 - For **A-infer** only: at least ⌈2N/3⌉ runs must land the new record in an
   existing theme (`alpha` or `beta`), not a newly-created one.
 - Across **all** runs of a variant (completed or not): **zero** runs may
