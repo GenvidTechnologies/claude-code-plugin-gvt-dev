@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`create-adr` and `tech-writer` update the ADR counts that index prose states (#473).** An index can say how many ADRs it covers, for example a bundle-root `<wikiDir>/index.md` line "the project's 44 ADRs". Before, no step owned that number, so it stayed at 44 after a 45th record. `tech-writer`'s decision-records steps gain step 8: after the record is written, it reads each index on the path from the record up to the root, and sets every number that counts ADRs to the count from `renumber-adrs.mjs --next`. A number whose meaning is unclear stays as it is and is reported. `plan-task` gets the step through its `tech-writer` dispatch. `create-adr` runs it once for a §2b backfill batch, and states the exception: a decision record is authored, not ingested, so no wiki ingest runs for it and the bookkeeping is the writer's. There is still no `<wikiDir>/log.md` entry. Behavioral skill/agent change → version bump at release.
+
 ## [6.1.0] - 2026-11-22
 
 - **`run-retro` records a finding's verified version as the commit and the `plugin.json` version, with no release state.** A word such as "unreleased" or a branch name goes stale when the release ships. Three issues filed on 2026-11-21 (#1034, #1035, #1036) each needed a triage correction for it. Behavioral skill/agent change → version bump at release.
