@@ -14,7 +14,7 @@ The contract itself is documented in [`CONVENTIONS.md`](plugin/CONVENTIONS.md).
 
 Maintainer rules that are not loaded automatically. Read the page before its trigger applies.
 
-- Before dogfooding a plugin orchestrator here, or when a dogfooded skill behaves unlike its source → [`wiki/maintainer/dogfooding-the-plugin.md`](wiki/maintainer/dogfooding-the-plugin.md)
+- Before dogfooding a plugin orchestrator here, before running the wiki lint on this repo's wiki, or when a dogfooded skill behaves unlike its source → [`wiki/maintainer/dogfooding-the-plugin.md`](wiki/maintainer/dogfooding-the-plugin.md)
 - Before running the audit or `commands.validate` on Windows → [`wiki/maintainer/running-the-audit-on-windows.md`](wiki/maintainer/running-the-audit-on-windows.md)
 - Before writing or editing a skill or agent `description` → [`wiki/maintainer/skill-frontmatter-rules.md`](wiki/maintainer/skill-frontmatter-rules.md)
 - Before trusting a green audit when adding a skill or agent, when writing a line-number citation, or before inserting into or rewording a file under `plugin/`, `wiki/` or `docs/` (run `pointer-baseline.mjs --targets <file>` first) → [`wiki/maintainer/audit-author-time-findings.md`](wiki/maintainer/audit-author-time-findings.md)
