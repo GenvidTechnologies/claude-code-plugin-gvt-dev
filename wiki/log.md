@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-22
 
+* **Update**: `process/issue-triage.md` gains the read-only recipe "Read the
+  road blocks of several issues", one aliased GraphQL query that prints the
+  road block of each named issue. It came from the retro of the triage of #1054
+  and #1058, where it checked the analyst's road-block claims in one call.
+
 * **Update**: `decisions/wiki-and-okf/0067-decision-records-move-into-the-wiki-bundle.md`
   gains an `Amended by` line for ADR-0099, and
   `decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md` gains the

@@ -13,6 +13,7 @@ and follows [semantic versioning](https://semver.org/).
   - `create-adr` states the exception: a decision record is authored, not ingested, so no wiki ingest runs for it and the bookkeeping is the writer's. There is still no `<wikiDir>/log.md` entry.
   Behavioral skill/agent change → version bump at release.
 - **`run-retro` writes a wait on another issue as a `Blocked by` line, and checks each draft with the reference grammar before it files.** An issue filed by the retro of GenvidTechnologies/claude-code-plugin-gvt-wiki#60 stated its wait in prose, so the reference check read it as ready, and it cited the gvt-wiki issue as a bare `#60`, which the gvt-dev tracker reads as its own closed #60. The triage of GenvidTechnologies/claude-code-plugin-gvt-dev#1046 (2026-11-22) corrected both. Behavioral skill/agent change → version bump at release.
+- **`triage-issues` writes no release state and no branch name into a verification rewrite.** A word such as "unreleased" or a branch name such as "the integration branch" goes stale when the release ships, the reason `run-retro` already drops them (6.1.0). The triage of GenvidTechnologies/claude-code-plugin-gvt-dev#1054 (2026-11-22) wrote "Version 6.2.0 is not released" and "the #473 integration branch" into its body, and the retro of that triage corrected both. A rewrite now records what was read and when, for example "on 2026-11-22 the newest tag was v6.1.0". Behavioral skill/agent change → version bump at release.
 
 ## [6.1.0] - 2026-11-22
 

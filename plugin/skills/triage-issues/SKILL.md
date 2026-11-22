@@ -594,7 +594,10 @@ split). Present them together, then apply the approved changes using the **Mutat
   and add that the artifact is the side in error, naming what settled it. Fold
   this into the mechanism rewrite when both apply — one rewrite, one approval.
   The rewrite names the claims it checked and the commit it read, rather than a
-  general "verified" stamp. Under `--non-interactive` without `--force`, post the
+  general "verified" stamp. It records no release state such as "unreleased"
+  and no branch name such as "the integration branch": both go stale when the
+  release ships. Write what was read and when instead, for example "on
+  2026-11-22 the newest tag was v6.1.0". Under `--non-interactive` without `--force`, post the
   note as a comment instead (§4). The note opens with this first line:
   `Triage verification note — [<comparand>] <outcome> — <source>`, where
   `<source>` is `<path> @ <sha>` (the target path and the read sha) for
