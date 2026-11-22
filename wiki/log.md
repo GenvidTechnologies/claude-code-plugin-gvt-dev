@@ -15,6 +15,17 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-22
+
+* **Update**: `decisions/wiki-and-okf/0067-decision-records-move-into-the-wiki-bundle.md`
+  gains an `Amended by` line for ADR-0099, and
+  `decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md` gains the
+  matching `Amends` line. ADR-0099 and its row in
+  `decisions/wiki-and-okf/index.md` now call the object "documentation index"
+  instead of "docs index" and "resolved index". `audit-conventions-as-proto-lint.md`
+  now says that this repository runs with the `paths['docs/TOC.md']` override of
+  ADR-0099. From #997. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-21
 
 * **Update**: `process/issue-triage.md`: the "Set road block" recipe now says

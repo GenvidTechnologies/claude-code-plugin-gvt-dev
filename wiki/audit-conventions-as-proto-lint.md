@@ -96,6 +96,10 @@ the guard enforces that published contract instead of changing it. The
 curated maintenance-rules doc now sits inside the bundle too, as
 `wiki/schema.md`, indexed in `wiki/index.md` rather than `docs/TOC.md`, and
 outside those two scanners' walk like every other bundle page.
+This repository runs in that state: its `.gvt-agent.json` sets
+`paths['docs/TOC.md']` to `wiki/index.md`
+([ADR 0099](decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md)), so
+its audit takes `wiki/` as the docs root and reports both declines.
 
 The practical effect is unchanged: a repo can adopt the wiki practice, run
 gvt-wiki's `maintain-wiki lint` — a mechanical checker,
