@@ -653,6 +653,21 @@ test('gradeRun: D8 does not read a record number or range as an ADR count', asyn
   }
 });
 
+test('gradeRun: A-count FAILs D8 when a counted index line is removed', async () => {
+  const { root, before, meta } = buildFixture('A-count');
+  try {
+    placeCountRecord(root, 'beta');
+    updateCounts(root, 'beta');
+    replaceIn(root, 'wiki/decisions/index.md', "* [Beta](beta/index.md) - 2 ADRs about the beta subsystem's storage layer\n", '');
+
+    const result = await gradeRun({ variant: 'A-count', root, before, meta });
+    assert.equal(result.assertions.d8, false);
+    assert.ok(result.reasons.includes('D8: wiki/decisions/index.md: expected one line linking beta/index.md, found 0'), JSON.stringify(result.reasons));
+  } finally {
+    cleanup(root);
+  }
+});
+
 test('gradeRun: variants without counts apply no D8 check', async () => {
   const { root, before, meta } = buildFixture('A');
   try {

@@ -194,16 +194,17 @@ into an existing sequence (§3).
    assigned number, reusing the same content contract as §2 step 2 (template,
    resolved dir, target number, theme, wiki flag, stage-only instruction). Do
    not let tech-writer compute next-highest — pass the number explicitly, as in
-   §3e.
+   §3e. Also tell it to skip registration (its step 7), which skips its count
+   step (step 8) too: step 7 below does both for the batch.
 7. **Register the whole batch once, centrally** — per §1's regime table (the
    Decision Records section of the `paths['docs/TOC.md']` index outside the wiki; the resolved wiki
    index inside it) — not as N parallel per-record writes, which would race the
    same file. This skill (not tech-writer) owns this single registration pass
    for the batch. The same pass updates the ADR counts that the indexes
-   state, as step 8 of "Decision records (ADRs)" in `gvt-dev:tech-writer`
-   says, with the counts from a `--next` run made after every record of the
-   batch is written. A tech-writer dispatch told to skip registration skips
-   its count step too.
+   state. After the last record of the batch is written, follow items 1 to 5
+   of step 8 of "Decision records (ADRs)" in `gvt-dev:tech-writer`: run
+   `--next` once, then update the counts in each index on the path to the
+   root.
 8. **Land the whole backfill as one commit** covering all N records plus the
    single index update, per §6.
 

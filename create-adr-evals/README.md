@@ -65,10 +65,12 @@ inside the wiki, register it in the theme index, and leave everything else
   must name its plugin folder, the folder that holds `skills/`;
   `node create-adr-evals/gvt-wiki-root.mjs` prints the folder it resolves),
   `docs/TOC.md`
-  unchanged (A/A-infer/C only — B's correct behavior *is* a new TOC row),
+  unchanged (every variant but B — B's correct behavior *is* a new TOC row),
   `wiki/log.md` unchanged, and `--next` agreeing post-run via
   `describeAdrDir`. For C-voice only, a voice check also applies. For
-  A-count and C-count only, D8 checks the stated ADR counts.
+  A-count and C-count only, D8 checks the stated ADR counts. D8 reads a
+  count written in digits ("4 ADRs"); a run that writes the number as a word
+  ("four ADRs") fails it.
 - `run.mjs` — spawns `claude -p --plugin-dir plugin` per fixture, grades the
   result, prints a per-run table, and applies the pass rule below.
 - `test/grade.test.mjs` — unit tests for `grade.mjs` against hand-built

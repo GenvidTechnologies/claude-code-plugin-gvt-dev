@@ -8,7 +8,7 @@
 // grader considers both committed and uncommitted results").
 //
 // D1-D7 below are the designer's own labels (see the #582 design hand-off);
-// D5 applies only to the wiki variants (A/A-infer/C) because variant B's
+// D5 applies only to the wiki variants (every variant but B) because variant B's
 // correct behavior IS a docs/TOC.md change (the first-use scaffold's
 // self-indexed row). D8 was added for #473 and applies only to A-count and
 // C-count, whose index lines state ADR counts (`meta.counts`).
