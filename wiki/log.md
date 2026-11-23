@@ -17,6 +17,18 @@ the full maintenance schema.
 
 ## 2026-11-22
 
+* **Update**: `maintainer/testing-the-audit.md` gains "A change that moves a default also
+  scans the eval fixtures and graders that rely on the old one", and
+  `maintainer/release-cycle-rules.md` gains "The fix of an issue rewords every sentence that
+  names its gap as open". Their descriptions and their rows in `maintainer/index.md` name
+  the new rules. From the retro of #1060. Not an ingest; no `raw/` source drove it.
+* **Update**: `decisions/skill-shapes/0066-adr-authoring-resolves-decisions-location-retires-claude-md-fallback.md`
+  gains an "Amended by" marker that links ADR-0104. The decision text of the record is
+  unchanged. From #1060. Not an ingest; no `raw/` source drove it.
+* **Creation**: `decisions/skill-shapes/0104-adr-registration-follows-the-record-location.md`,
+  the record that an ADR outside the wiki gets a Decision Records row only when the
+  documentation index is outside the wiki too. Registered in `decisions/skill-shapes/index.md`.
+  From #1060. Not an ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` gains the read-only recipe "Read the
   road blocks of several issues", one aliased GraphQL query that prints the
   road block of each named issue. It came from the retro of the triage of #1054
