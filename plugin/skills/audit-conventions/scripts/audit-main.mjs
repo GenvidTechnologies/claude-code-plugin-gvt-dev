@@ -261,9 +261,10 @@ async function main() {
   // carries each entry's raw `metadata.pillar` scalar — computePluginCoverage
   // parses it itself); the consumer-side adoption verdict is currently wired
   // for the `environment` pillar only (the wiki — the only pillar with a
-  // detector today, per lib/practice-detect.mjs).
+  // detector today, per lib/practice-detect.mjs). The whole detector result
+  // goes through, so a partial verdict names its missing signals (#390).
   const wikiAdoption = await detectWikiAdoption(REPO_ROOT, repoConfig);
-  const practices = { environment: wikiAdoption.verdict };
+  const practices = { environment: wikiAdoption };
 
   const pillarCensus = components.map((c) => ({
     name: c.name, type: c.type, pillar: c.frontmatter?.metadata?.pillar,

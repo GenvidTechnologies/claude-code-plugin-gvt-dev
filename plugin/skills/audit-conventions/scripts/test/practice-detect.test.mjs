@@ -246,6 +246,54 @@ test('wiki-default: practice-detect strips a trailing separator from wikiDir', a
   }
 });
 
+// #390 — the result names each missing signal by what was probed, so the
+// report can say which signal a `partial adoption` verdict lacks.
+const CONFIG_BLOCK_LABEL = 'the `wiki` block in `.gvt-agent.json`';
+
+test('detectWikiAdoption: missing lists each absent signal with the location probed, in signal order', async () => {
+  const { missing, verdict } = await schemaSignal(async (d) => {
+    await mkdir(join(d, 'wiki'), { recursive: true });
+    await fs.writeFile(join(d, 'wiki', 'index.md'), '# Index\n');
+    await mkdir(join(d, 'raw'), { recursive: true });
+  }, undefined);
+  assert.equal(verdict, VERDICT_PARTIAL);
+  assert.deepEqual(missing, [
+    { signal: 'log', label: '`wiki/log.md`' },
+    { signal: 'schemaDoc', label: '`wiki/schema.md` or `docs/wiki-schema.md`' },
+    { signal: 'configBlock', label: CONFIG_BLOCK_LABEL },
+  ]);
+});
+
+test('detectWikiAdoption: missing is empty when adopted, and names all six signals when absent', async () => {
+  const adopted = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: {} });
+  assert.equal(adopted.verdict, VERDICT_ADOPTED);
+  assert.deepEqual(adopted.missing, []);
+
+  const absent = await schemaSignal(async () => {}, undefined);
+  assert.equal(absent.verdict, VERDICT_ABSENT);
+  assert.deepEqual(absent.missing.map((m) => m.signal), ['wikiDir', 'index', 'log', 'rawDir', 'schemaDoc', 'configBlock']);
+});
+
+test('detectWikiAdoption: missing labels follow a custom wikiDir/rawDir and a schema paths override', async () => {
+  const custom = await schemaSignal(async () => {}, { wiki: { wikiDir: 'kb/', rawDir: 'sources/' } });
+  assert.deepEqual(custom.missing, [
+    { signal: 'wikiDir', label: '`kb/`' },
+    { signal: 'index', label: '`kb/index.md`' },
+    { signal: 'log', label: '`kb/log.md`' },
+    { signal: 'rawDir', label: '`sources/`' },
+    { signal: 'schemaDoc', label: '`kb/schema.md` or `docs/wiki-schema.md`' },
+  ]);
+
+  const override = await schemaSignal(async (d) => {
+    await wikiTiers(d);
+    await fs.writeFile(join(d, 'wiki', 'schema.md'), '# Schema\n');
+  }, { wiki: {}, paths: { 'docs/wiki-schema.md': 'wiki/contracts/wiki-schema.md' } });
+  assert.deepEqual(override.missing, [{ signal: 'schemaDoc', label: '`wiki/contracts/wiki-schema.md`' }]);
+});
+
 test('SCHEMA_EXPECTATION matches the wiki schema expectation CONVENTIONS.md defines', () => {
   // gvt-dev owns CONVENTIONS.md and gvt-wiki must agree with it, so the pin
   // reads the contract doc, not a skill that now ships from another plugin.
