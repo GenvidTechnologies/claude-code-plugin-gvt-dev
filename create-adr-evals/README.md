@@ -53,9 +53,11 @@ inside the wiki, register it in the theme index, and leave everything else
     of those five lines states the new count: 4 in total, and one more for the
     theme that received the record. The prompts do not mention the counts, so
     D8 tests whether `create-adr` and `tech-writer` find them on their own.
-  - **B** — negative control: no `paths` override, `docs/decisions/` absent
-    (the first-use scaffold path), plus a decoy `wiki/decisions/` bundle the
-    agent must leave untouched
+  - **B** — negative control: `paths` pins `docs/decisions/` and
+    `docs/TOC.md` to themselves, so the records and the documentation index
+    are both outside the wiki (ADR-0104); `docs/decisions/` is absent (the
+    first-use scaffold path), plus a decoy `wiki/decisions/` bundle the agent
+    must leave untouched
 - `grade.mjs` — pure, deterministic grading (`gradeRun`). Diffs the working
   tree against a pre-run snapshot and checks D1-D7 from the #582 design
   hand-off: new file path + number, no writes to the wrong location, OKF
