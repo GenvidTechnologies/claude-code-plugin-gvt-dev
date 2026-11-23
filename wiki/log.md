@@ -17,6 +17,16 @@ the full maintenance schema.
 
 ## 2026-11-22
 
+* **Update**: `maintainer/release-cycle-rules.md` gains "Parallel side branches put their
+  `[Unreleased]` entries at different points", and its description and its row in
+  `maintainer/index.md` name the new rule. From the retro of #1047 and #1046. Not an ingest;
+  no `raw/` source drove it.
+* **Update**: `decisions/skill-shapes/0084-near-miss-nominate-plus-veto-registration-follows-location.md`,
+  `decisions/acceptance-criteria/0102-issue-less-acceptance-fallback-resolves-a-declared-location.md`
+  and `maintainer/audit-author-time-findings.md` now call the object "documentation index"
+  instead of "docs index". The records change for the name only: no decision changes, so they
+  get no amendment marker, as for ADR-0099 under #997. From #1047. Not an ingest; no `raw/`
+  source drove it.
 * **Update**: `decisions/wiki-and-okf/0067-decision-records-move-into-the-wiki-bundle.md`
   gains an `Amended by` line for ADR-0099, and
   `decisions/wiki-and-okf/0099-this-repo-keeps-no-docs-tree.md` gains the
