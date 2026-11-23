@@ -15,6 +15,15 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-23
+
+* **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
+  issue whose premise was read at a commit that is not an ancestor of the
+  default branch waits for the issue whose change holds that commit, and triage
+  proposes a `Blocked by` comment for it. It came from the retro of the triage
+  of #1069 and #1070, which both read as ready while their premise was on
+  #1060's unmerged change.
+
 ## 2026-11-22
 
 * **Update**: `maintainer/testing-the-audit.md` gains "A change that moves a default also
