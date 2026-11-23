@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-22
 
+* **Update**: `maintainer/testing-the-audit.md` gains "A change that moves a default also
+  scans the eval fixtures and graders that rely on the old one", and
+  `maintainer/release-cycle-rules.md` gains "The fix of an issue rewords every sentence that
+  names its gap as open". Their descriptions and their rows in `maintainer/index.md` name
+  the new rules. From the retro of #1060. Not an ingest; no `raw/` source drove it.
 * **Update**: `decisions/skill-shapes/0066-adr-authoring-resolves-decisions-location-retires-claude-md-fallback.md`
   gains an "Amended by" marker that links ADR-0104. The decision text of the record is
   unchanged. From #1060. Not an ingest; no `raw/` source drove it.
