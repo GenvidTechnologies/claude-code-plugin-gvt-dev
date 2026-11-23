@@ -10,6 +10,7 @@ status: stable
 - **Status:** accepted
 - **Date:** 2026-10-01
 - **Issue:** #582 (part of the docs→wiki chain #579)
+- **Amended by:** [ADR-0104](0104-adr-registration-follows-the-record-location.md) — decision 3, its last sentence: a record outside the wiki gets a Decision Records row only when the documentation index is outside the wiki too; with the index inside it, no entry is written and the mismatch is reported. The rest stands.
 
 ## Context
 
