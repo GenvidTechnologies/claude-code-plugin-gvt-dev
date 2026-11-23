@@ -9,7 +9,7 @@ metadata:
         reason: Project triage conventions (taxonomy, priority meanings, split/duplicate policy) and mutation recipes, found at paths['docs/issue-triage.md'] when set, else at <wikiDir>/issue-triage.md; §0 adopts a near-miss-named contract when one exists, or offers to scaffold one from the bundled template otherwise
       - path: docs/TOC.md
         required: false
-        reason: "Index registration: §0c adds a one-line Process entry for a contract outside the wiki, to the resolved index (paths['docs/TOC.md'], else <wikiDir>/index.md)"
+        reason: "Index registration: §0c adds a one-line Process entry for a contract outside the wiki, to the documentation index (paths['docs/TOC.md'], else <wikiDir>/index.md)"
     config:
       - key: wiki.wikiDir
         in: .gvt-agent.json
@@ -765,7 +765,7 @@ record of why), including a near-miss whose source or destination is inside the
 wiki with the destination an interactive run would offer, an occupied
 destination with both paths, and each stale wiki-index link updated or reported
 (§0c); §0c's label-key warning or inconclusive result; any missing
-required headings; which index received the entry (the resolved index, §0c's T, under the
+required headings; which index received the entry (the documentation index, §0c's T, under the
 docs regime, or the wiki index written under the wiki regime), or why none did
 (already indexed, index absent, generated index with its regenerate command,
 or an unreachable subtree); and any dead duplicate carried forward from the both-present outcome or a "keep

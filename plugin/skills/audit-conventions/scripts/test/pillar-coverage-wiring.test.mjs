@@ -61,7 +61,7 @@ async function withTempPracticeCoverageRepo(setup) {
 }
 
 test('audit: Practice Coverage renders "not adopted" for Environment when no wiki artifacts exist, and never gates the exit code (T10, T11)', async () => {
-  // No docs index here: the audit looks the index up at its wiki-derived
+  // No documentation index here: the audit looks the index up at its wiki-derived
   // location, and writing one there would make a wiki artifact exist.
   const tmpDir = await withTempMigratedRepo();
   try {
@@ -134,6 +134,29 @@ test('audit: Practice Coverage renders "adopted" for Environment when all wiki a
       result.stdout,
       /Environment \|.*\| not adopted/,
       `Environment row should not read "not adopted" once the wiki is fully adopted:\n${result.stdout}`,
+    );
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// #390 — a partial verdict names the signal it lacks. The fixture is a
+// complete wiki with the schema in the bundle and no `wiki` config block, so
+// exactly one of the six signals is missing and the row must name it.
+test('audit: a partial Environment verdict names the missing signal (#390)', async () => {
+  const tmpDir = await withTempPracticeCoverageRepo(async (dir) => {
+    await mkdir(join(dir, 'wiki'), { recursive: true });
+    await writeFile(join(dir, 'wiki', 'index.md'), '# Index\n');
+    await writeFile(join(dir, 'wiki', 'log.md'), '# Log\n');
+    await writeFile(join(dir, 'wiki', 'schema.md'), '# Schema\n');
+    await mkdir(join(dir, 'raw'), { recursive: true });
+  });
+  try {
+    const result = spawnAudit([], tmpDir);
+    assert.equal(result.status, 0, result.stdout);
+    assert.ok(
+      result.stdout.includes('| partial adoption (missing: the `wiki` block in `.gvt-agent.json`) |'),
+      result.stdout,
     );
   } finally {
     await rm(tmpDir, { recursive: true, force: true });
@@ -257,8 +280,12 @@ test('audit: a dangling wiki/schema.md stops the chain and is reported as unread
       ),
       result.stdout,
     );
-    // The Environment row agrees with the audit's finding: the chain stopped.
-    assert.match(result.stdout, /\| Environment \|[^\n]*\| partial adoption \|/, result.stdout);
+    // The Environment row agrees with the audit's finding: the chain stopped,
+    // and the row names the schema signal as the missing one (#390).
+    assert.ok(
+      result.stdout.includes('| partial adoption (missing: `wiki/schema.md` or `docs/wiki-schema.md`) |'),
+      result.stdout,
+    );
   });
 });
 
