@@ -29,6 +29,10 @@ the full maintenance schema.
   the record that an ADR outside the wiki gets a Decision Records row only when the
   documentation index is outside the wiki too. Registered in `decisions/skill-shapes/index.md`.
   From #1060. Not an ingest; no `raw/` source drove it.
+* **Update**: `process/issue-triage.md` gains the read-only recipe "Read the
+  road blocks of several issues", one aliased GraphQL query that prints the
+  road block of each named issue. It came from the retro of the triage of #1054
+  and #1058, where it checked the analyst's road-block claims in one call.
 * **Update**: `maintainer/release-cycle-rules.md` gains "Parallel side branches put their
   `[Unreleased]` entries at different points", and its description and its row in
   `maintainer/index.md` name the new rule. From the retro of #1047 and #1046. Not an ingest;
