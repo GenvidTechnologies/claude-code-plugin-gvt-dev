@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.2.0] - 2026-11-22
+
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.
   - `tech-writer` step 7 of "Decision records (ADRs)" follows the rule. Step 8 then changes no ADR count in the documentation index, and names any such count in the report.
   - In `create-adr`, the rule applies to the §1 regime table, §2 step 3, the §2b batch registration and the §4 first-use scaffold. In the mismatch case, §4 writes the `<dir>/README.md` breadcrumb without its Index line.
