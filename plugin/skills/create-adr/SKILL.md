@@ -9,7 +9,7 @@ metadata:
         reason: Home for ADR files; scaffolded on first use if absent
       - path: docs/TOC.md
         required: false
-        reason: Decision Records index this skill self-indexes into outside the wiki, and rewrites on renumber
+        reason: Decision Records index this skill self-indexes into when both it and the ADR directory are outside the wiki, and rewrites on renumber
       - path: CLAUDE.md
         required: false
         reason: Read for commit format
@@ -101,9 +101,27 @@ Gather from the user before proceeding:
 
    | Case | File | Register in | Frontmatter | First-use scaffold |
    |---|---|---|---|---|
-   | Outside the wiki (flat or themed) | `<dir>[/<theme>]/NNNN-slug.md` | Decision Records row in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + index row (§4) |
+   | Outside the wiki (flat or themed), documentation index outside it too | `<dir>[/<theme>]/NNNN-slug.md` | Decision Records row in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`) (link includes `<theme>/` when themed) | None | `<dir>/README.md` breadcrumb + index row (§4) |
+   | Outside the wiki (flat or themed), documentation index inside it | `<dir>[/<theme>]/NNNN-slug.md` | Nothing. Report the mismatch (below) | None | `<dir>/README.md` breadcrumb without its **Index:** line, and no index row (§4) |
    | Inside the wiki, theme chosen | `<dir>/<theme>/NNNN-slug.md` | `<dir>/<theme>/index.md` (created from `decisions-index.template.md` if absent; theme row added to `<dir>/index.md` and a link to it from `<wikiDir>/index.md`) | Yes | — |
    | Inside the wiki, flat or empty themed root | `<dir>/NNNN-slug.md` | `<dir>/index.md`; if that's absent, whichever index already lists sibling ADRs; if neither exists, create `<dir>/index.md` | Yes | `<dir>/index.md` (no frontmatter) + link from `<wikiDir>/index.md` (skip if absent) + one idempotent Decision Records pointer row in the `paths['docs/TOC.md']` index, added only when that index is not `<wikiDir>/index.md` (skip if it is absent). **No README.** (§4) |
+
+   **Registration follows the record's location** (ADR-0084 decision 3,
+   ADR-0104). The documentation index is `paths['docs/TOC.md']` when that
+   override is set, else `<wikiDir>/index.md`. It is inside the wiki when its
+   path lies under `<wikiDir>/`, with `wikiDir` taken from the `--next` output.
+   With no `paths['docs/TOC.md']` override it is always inside the wiki. So
+   records outside the wiki get a Decision Records row only when
+   `paths['docs/TOC.md']` points at an index outside the wiki too.
+
+   **Outside the wiki, documentation index inside it:** write no Decision
+   Records entry. A link from a wiki index to a file outside the bundle is an
+   out-of-bundle link, which the gvt-wiki lint reports. Report the mismatch
+   instead: the ADR directory is outside the wiki bundle and the documentation
+   index is inside it. Suggest the two fixes: set `paths['docs/decisions/']`
+   to a directory under `<wikiDir>/` to move the records into the bundle, or
+   set `paths['docs/TOC.md']` to an index outside the bundle. The record itself
+   is still written.
 
    Inside the wiki: no per-record index row beyond the single pointer row above;
    no `<wikiDir>/log.md` entry (the log is ingest-scoped — git already records
@@ -151,7 +169,10 @@ go to §3.
 3. tech-writer names the file `NNNN-kebab-title.md`, fills the template, and
    registers it per §1's regime table — self-indexing a Decision Records row
    in the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`)
-   outside the wiki, or indexing into the theme/root wiki index inside it.
+   when both the record and that index are outside the wiki, or indexing into
+   the theme/root wiki index when the record is inside it. When the record is
+   outside the wiki and the documentation index is inside it, tech-writer
+   writes no entry and reports the mismatch; relay that report to the user.
    Then it updates the ADR counts that those indexes state. It is the sole
    write owner; this skill does not duplicate those steps.
 4. Proceed to §6 (commit).
@@ -197,11 +218,16 @@ into an existing sequence (§3).
    §3e. Also tell it to skip registration (its step 7), which skips its count
    step (step 8) too: step 7 below does both for the batch.
 7. **Register the whole batch once, centrally** — per §1's regime table (the
-   Decision Records section of the `paths['docs/TOC.md']` index outside the wiki; the resolved wiki
-   index inside it) — not as N parallel per-record writes, which would race the
+   Decision Records section of the `paths['docs/TOC.md']` index when both the
+   records and that index are outside the wiki; the resolved wiki index when
+   the records are inside it; no entry, and one report of the mismatch for the
+   whole batch, when the records are outside the wiki and the documentation
+   index is inside it) — not as N parallel per-record writes, which would race the
    same file. This skill (not tech-writer) owns this single registration pass
    for the batch. The same pass updates the ADR counts that the indexes
-   state. After the last record of the batch is written, follow items 1 to 5
+   state. When the pass writes no entry, it changes no number in the
+   documentation index, and the mismatch report names any ADR count that
+   index states. After the last record of the batch is written, follow items 1 to 5
    of step 8 of "Decision records (ADRs)" in `gvt-dev:tech-writer`: run
    `--next` once, then update the counts in each index on the path to the
    root.
@@ -348,7 +374,8 @@ Triggered from §1 step 2, when `layout` is `missing` or `empty`. Branch on
 §1's `wiki` flag — never hard-code the unresolved default directory name here,
 only the resolved `dir`:
 
-**Outside the wiki:** if `<dir>/README.md` is absent, scaffold it from
+**Outside the wiki, documentation index outside it too:** if
+`<dir>/README.md` is absent, scaffold it from
 `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/README.breadcrumb.template.md`,
 filling its `<toc-link>` placeholder with the relative path from `<dir>` to
 the documentation index (the file that `CONVENTIONS.md` "Runtime path resolution" resolves for `docs/TOC.md`).
@@ -358,6 +385,12 @@ planning and triage skills that discover docs via the index — the same gap
 `triage-issues` §0 addresses for `docs/issue-triage.md` (plugin issue #90).
 Idempotent: skip if `<dir>/README.md` already exists; skip gracefully if
 the index is absent.
+
+**Outside the wiki, documentation index inside it:** if `<dir>/README.md` is
+absent, scaffold it from the same template, but leave out its last paragraph,
+the **Index:** line: no index lists the records, so that line would be false.
+Do not self-index the README, and report the mismatch as §1 step 4 says.
+Idempotent: skip if `<dir>/README.md` already exists.
 
 **Inside the wiki:** no README. If `<dir>/index.md` is absent, create it from
 `${CLAUDE_PLUGIN_ROOT}/skills/create-adr/decisions-index.template.md` (no
@@ -395,7 +428,8 @@ per-file moves are safe. If running renumber steps manually, apply the same rule
    tech-writer adds the new record; one commit covers both. If §3g re-keyed
    `.pointer-baseline.json`, stage it too.
 4. Report to the user: the resolved ADR directory (`dir`), whether it's inside
-   the wiki, and the theme chosen (if any).
+   the wiki, the theme chosen (if any), and any registration mismatch from
+   §1 step 4.
 
 ## Writing style
 

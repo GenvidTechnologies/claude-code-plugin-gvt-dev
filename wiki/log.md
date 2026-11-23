@@ -17,6 +17,13 @@ the full maintenance schema.
 
 ## 2026-11-22
 
+* **Update**: `decisions/skill-shapes/0066-adr-authoring-resolves-decisions-location-retires-claude-md-fallback.md`
+  gains an "Amended by" marker that links ADR-0104. The decision text of the record is
+  unchanged. From #1060. Not an ingest; no `raw/` source drove it.
+* **Creation**: `decisions/skill-shapes/0104-adr-registration-follows-the-record-location.md`,
+  the record that an ADR outside the wiki gets a Decision Records row only when the
+  documentation index is outside the wiki too. Registered in `decisions/skill-shapes/index.md`.
+  From #1060. Not an ingest; no `raw/` source drove it.
 * **Update**: `maintainer/release-cycle-rules.md` gains "Parallel side branches put their
   `[Unreleased]` entries at different points", and its description and its row in
   `maintainer/index.md` name the new rule. From the retro of #1047 and #1046. Not an ingest;

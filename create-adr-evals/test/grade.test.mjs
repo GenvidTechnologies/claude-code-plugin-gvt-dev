@@ -511,11 +511,11 @@ test('gradeRun: B FAILs when wiki/ (the decoy bundle) was touched', async () => 
   }
 });
 
-test('wiki-default: fixture B pins docs/decisions/ in paths', () => {
+test('wiki-default: fixture B pins docs/decisions/ and docs/TOC.md in paths', () => {
   const { root } = buildFixture('B');
   try {
     const cfg = JSON.parse(readFileSync(join(root, '.gvt-agent.json'), 'utf8'));
-    assert.deepEqual(cfg.paths, { 'docs/decisions/': 'docs/decisions/' });
+    assert.deepEqual(cfg.paths, { 'docs/decisions/': 'docs/decisions/', 'docs/TOC.md': 'docs/TOC.md' });
   } finally {
     cleanup(root);
   }

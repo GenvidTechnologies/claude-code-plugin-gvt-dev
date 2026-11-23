@@ -15,8 +15,9 @@
 //              verbatim string (grade.mjs's voice check)
 //   A-count  — like A, but the index lines state ADR counts (grade.mjs's D8)
 //   C-count  — like C, but the index lines state ADR counts (grade.mjs's D8)
-//   B        — negative control: no `paths` override, docs/decisions/
-//              absent, a decoy wiki/ bundle the agent must leave untouched
+//   B        — negative control: `paths` pins docs/decisions/ and docs/TOC.md
+//              outside the wiki, docs/decisions/ absent, a decoy wiki/
+//              bundle the agent must leave untouched
 //
 // No fixture file name here is ever a committed `file.ext:NN`-shaped string
 // (the pointer-anchor scanner's corpus) — these trees exist only on disk at
@@ -363,8 +364,11 @@ Use \`<scope>: <description>\` for every commit (e.g. \`docs: add ADR 0001 — <
     features: {},
     // Self-pin of the 5.x location. With no override the default decisions
     // directory is the wiki-derived `wiki/decisions/`, so this pin is what keeps
-    // the ADR home at `docs/decisions/`.
-    paths: { 'docs/decisions/': 'docs/decisions/' },
+    // the ADR home at `docs/decisions/`. The `docs/TOC.md` pin keeps the
+    // documentation index outside the wiki too: without it the index is the
+    // wiki-derived `wiki/index.md`, and a record outside the wiki then gets no
+    // Decision Records row (ADR-0104).
+    paths: { 'docs/decisions/': 'docs/decisions/', 'docs/TOC.md': 'docs/TOC.md' },
   }, null, 2)}\n`);
 
   // Decoy wiki bundle: unrelated to this project's ADR conventions (the
