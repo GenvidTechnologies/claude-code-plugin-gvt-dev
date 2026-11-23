@@ -215,6 +215,16 @@ triage of #1023 (2026-11-21, GitHub edit times): the body forecast the merge at
 "cleared" annotation on #938's own blocker line was written at 14:00Z, after
 #938 had closed at 13:50Z.
 
+An issue whose premise was read at a commit that is not an ancestor of the
+default branch waits for the issue whose change holds that commit. A
+"Follow-up of #N" line is not a reference form, so the reference check reads
+such an issue as ready. Check each commit that an issue cites with
+`git merge-base --is-ancestor <sha> origin/main`. On exit 1, propose a
+`Blocked by #<N>` comment through the "Link dependency" recipe, and check each
+claim of the issue at that commit, not only at `main`. Observed in the triage
+of #1069 and #1070 (2026-11-23): both cited 8db91c4, the squash of #1068 for
+#1060, which was not an ancestor of `main` at d2b26c4.
+
 ## Tracker
 
 Since gvt-dev 5.0.0 the wiki practice ships as its own plugin, `gvt-wiki`,
