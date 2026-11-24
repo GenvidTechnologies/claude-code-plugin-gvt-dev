@@ -22,6 +22,14 @@
 // Every rule is its own small named predicate or function, so each can be
 // disabled on its own (mutation run).
 //
+// The values of a reference's outcome, kind and provenance are listed in three
+// other places: the schema header of test/issue-refs.test.mjs, the outcome
+// list of agents/issue-triage-analyst.md, and the [refs] paragraph of
+// skills/triage-issues/SKILL.md. skills/plan-next-issue/SKILL.md also lists
+// the provenance values of the references that decide readiness. A new value
+// is added to each list that can show it, in the same commit. No test ties them together: in #971 the test header was missed
+// until the code review.
+//
 // Regex hygiene: every pattern is linear (no nested quantifiers) because the
 // inputs include untrusted issue text and saved command output.
 
