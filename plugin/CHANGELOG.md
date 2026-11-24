@@ -13,6 +13,7 @@ and follows [semantic versioning](https://semver.org/).
   - `plan-task` Phase 0 shows each entry before Phase 1. `plan-next-issue` documents the caveat, the unattended block and the closing-summary line. `issue-triage-analyst` reports each entry as a `[refs]` finding, and `triage-issues` offers a rewrite of the section with approval, never unattended.
   - A heading title is cleaned in linear time. Before, a long run of spaces in a heading took quadratic time.
   Behavioral skill/agent change → version bump at release.
+- **`designer` and `planner` pledge a positive control as a floor when the change grows its corpus, and `ts-implementer` makes a new test's red an assertion's red.** In the #895 run, two control lines were pledged as exact counts over a decisions directory and a tracker search. The change's own record and follow-up issue raised each count, so both rows were amended as defective. `designer` (the must-match control bullet) and `planner` (item 12) now state that such a control is `≥1`. In the same run, two new tests read a key the old code lacked before any assertion, so against the old code they failed with a TypeError, and the red-run row graded unmet. `ts-implementer` item 5 now asks a new test to assert that a new key exists before it reads it. Behavioral skill/agent change → version bump at release.
 
 ## [6.2.0] - 2026-11-22
 

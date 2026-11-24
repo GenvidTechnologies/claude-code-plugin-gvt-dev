@@ -20,7 +20,11 @@
 // issue text. The one pattern that scans forward to a closing character,
 // TITLE_AFTER_RE, bounds its span (an open-ended `[^)]*` made a title of
 // repeated unclosed "(after " openers quadratic), so each opener costs at most
-// that bound.
+// that bound. A repeated class anchored at the end (`X+$`) with nothing
+// required before it is quadratic too: on a long run of X followed by another
+// character, the engine retries the run from every start. headingTitle trims
+// with a backward loop for this reason. QUALIFIER_TAIL_RE ends in such a class,
+// but a required phrase comes first and it runs over a bounded slice only.
 
 const PLACEHOLDER = String.fromCharCode(1);
 
