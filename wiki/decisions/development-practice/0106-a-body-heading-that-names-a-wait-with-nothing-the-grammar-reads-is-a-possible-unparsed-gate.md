@@ -5,7 +5,7 @@ description: 'The reference grammar reads four more deferral phrases and extract
 tags: [decisions, development-practice]
 status: stable
 ---
-# 0105. A body heading that names a wait, with nothing the grammar reads, is a possible unparsed gate
+# 0106. A body heading that names a wait, with nothing the grammar reads, is a possible unparsed gate
 
 - **Status:** accepted
 - **Date:** 2026-11-23

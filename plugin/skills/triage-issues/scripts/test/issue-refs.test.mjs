@@ -16,6 +16,11 @@
 //     checked       true/false for a child row, otherwise undefined
 //     retracted     true once a later comment withdrew this same target
 //                   (the ref stays in refs, flagged, so it can be counted)
+//     withdrawnBy   (added: #906) on a prose blocker (target null, kind
+//                   prose) only: the later comment line that opens with "No
+//                   longer blocked" and names no reference. Set with
+//                   retracted true when that blocker was the one earlier
+//                   prose blocker still standing, otherwise as evidence only.
 //     unresolvable  the kind string (prose, repo-ambiguous, heading-detached),
 //                   otherwise undefined
 //     relation      (added: premise correction 19) for 'statement' and
@@ -2972,4 +2977,364 @@ test('AC-895-6: extract --single and resolve print possibleGates, and never echo
     assert.ok(!unattended.stdout.includes('SENTINEL'));
     assert.equal(recOf(jsonLines(unattended.stdout), 1).readiness.state, 'blocked');
   });
+});
+
+// ---- WITHDRAW: a later comment that opens with "No longer blocked" (#906) ----
+// A comment line that opens with a withdrawal phrase and names no reference
+// withdraws a prose blocker (one with no target). With exactly one earlier
+// prose blocker still standing, it is retracted; with several, none is, and
+// each carries the line as `withdrawnBy` evidence. The tests marked (guard)
+// passed against the grammar before #906; the others failed against it.
+
+function proseRefs(out) {
+  return out.refs.filter((r) => r.target === null && r.unresolvable === 'prose');
+}
+
+const DISPATCH_BLOCKER = "Blocked by the CLI's task dispatch (in progress).";
+const DISPATCH_SHIPPED =
+  "No longer blocked: the CLI's task dispatch has shipped (merged 2026-11-09).";
+
+test('WITHDRAW: a later "No longer blocked" naming no target retracts the one earlier prose blocker', () => {
+  const out = extract(
+    issue('The skill change.', { comments: [cm(DISPATCH_BLOCKER, 2), cm(DISPATCH_SHIPPED, 3)] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, true);
+  assert.equal(prose[0].withdrawnBy, DISPATCH_SHIPPED);
+});
+
+test('WITHDRAW: with two earlier prose blockers, a target-less withdrawal retracts neither and is evidence on both', () => {
+  const out = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 2);
+  for (const r of prose) {
+    assert.equal(r.retracted, false, r.line);
+    assert.equal(r.withdrawnBy, DISPATCH_SHIPPED, r.line);
+  }
+});
+
+test('WITHDRAW: "No longer blocked:" naming #N retracts the reference to #N only', () => {
+  const out = extract(
+    issue('Blocked by #10.\nBlocked by #11.\nBlocked by the design review.', {
+      comments: [cm('No longer blocked: #10 has shipped.')],
+    }),
+  );
+  assert.equal(refTo(out, 10).retracted, true);
+  assert.equal(refTo(out, 11).retracted, false);
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: each opening form withdraws a single prose blocker', () => {
+  for (const form of [
+    'No longer blocked.',
+    '**No longer blocked:** the review is done.',
+    '- No longer blocked by the review, which is done.',
+    'Unblocked: the review is done.',
+    'No longer a blocker: the review is done.',
+    'No longer depends on the review.',
+    'Blocker is resolved: the review is done.',
+  ]) {
+    const out = extract(issue('Blocked by the review.', { comments: [cm(form)] }));
+    const prose = proseRefs(out);
+    assert.equal(prose.length, 1, form);
+    assert.equal(prose[0].retracted, true, form);
+    assert.equal(prose[0].withdrawnBy, form.trim(), form);
+  }
+});
+
+test('WITHDRAW: a later "No longer blocked by #N" leaves a prose blocker alone (guard)', () => {
+  const out = extract(
+    issue('Blocked by #10.\nBlocked by the design review.', {
+      comments: [cm('No longer blocked by #10.')],
+    }),
+  );
+  assert.equal(refTo(out, 10).retracted, true);
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a withdrawal naming only a repo-ambiguous reference is not target-less (guard)', () => {
+  const out = extract(
+    issue('Blocked by the design review.', { comments: [cm('No longer blocked: lib#5 shipped.')] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a withdrawal earlier than the prose blocker has no effect (guard)', () => {
+  const out = extract(
+    issue('The skill change.', { comments: [cm(DISPATCH_SHIPPED, 2), cm(DISPATCH_BLOCKER, 3)] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a mid-line, quoted, fenced or struck withdrawal has no effect (guard)', () => {
+  for (const body of [
+    'The CLI is no longer blocked, but this issue still waits on it.',
+    '> No longer blocked: the review is done.',
+    [FENCE, 'No longer blocked: the review is done.', FENCE].join('\n'),
+    '~~No longer blocked: the review is done.~~',
+    '`No longer blocked`: a label we might use.',
+  ]) {
+    const out = extract(issue('Blocked by the review.', { comments: [cm(body)] }));
+    const prose = proseRefs(out);
+    assert.equal(prose[0].retracted, false, body);
+    assert.equal(prose[0].withdrawnBy, undefined, body);
+  }
+});
+
+test('WITHDRAW: a withdrawal counts only prose blockers still standing, so a second one reaches a restated blocker', () => {
+  const out = extract(
+    issue('Blocked by the review.', {
+      comments: [
+        cm('No longer blocked: the review is done.', 2),
+        cm('Blocked by the security sign-off.', 3),
+        cm('No longer blocked: signed off.', 4),
+      ],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 2);
+  const body = prose.find((r) => r.origin === 'body');
+  const comment = prose.find((r) => r.origin === 'comment');
+  assert.equal(body.retracted, true);
+  assert.equal(body.withdrawnBy, 'No longer blocked: the review is done.');
+  assert.equal(comment.retracted, true);
+  assert.equal(comment.withdrawnBy, 'No longer blocked: signed off.');
+});
+
+test('WITHDRAW: a detached heading and a repo-ambiguous blocker are not prose blockers', () => {
+  const out = extract(
+    issue(['Blocked by the review.', 'Blocked by lib#5.', '', '## Blocked by', '', '## Notes'].join('\n'), {
+      comments: [cm('No longer blocked: the review is done.')],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, true);
+  for (const kind of ['repo-ambiguous', 'heading-detached']) {
+    const ref = out.refs.find((r) => r.unresolvable === kind);
+    assert.ok(ref, kind);
+    assert.equal(ref.retracted, false, kind);
+    assert.equal(ref.withdrawnBy, undefined, kind);
+  }
+});
+
+// The triage-issues §3 remedy for an ambiguous withdrawal: rewriting the
+// blocker that still holds into a reference leaves the withdrawn one as the
+// only prose blocker before the line, so it is retracted, and the rewritten
+// one still blocks.
+test('WITHDRAW: once the blocker that still holds names an issue, the prose blocker left is retracted', () => {
+  const before = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  assert.equal(proseRefs(before).filter((r) => r.retracted).length, 0);
+  const after = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on example-org/lib#7.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(after);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].line, "Blocked by the CLI's task dispatch.");
+  assert.equal(prose[0].retracted, true);
+  const lib = after.refs.find((r) => r.target && r.target.number === 7);
+  assert.equal(lib.retracted, false);
+});
+
+// Why §3 offers no "strike the withdrawn line" remedy: striking it leaves the
+// blocker that still holds as the only prose blocker before the line, and the
+// line then retracts that one.
+test('WITHDRAW: striking the withdrawn blocker line leaves the other prose blocker to be retracted', () => {
+  const out = extract(
+    issue("~~Blocked by the CLI's task dispatch.~~\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].line, 'Depends on the design review.');
+  assert.equal(prose[0].retracted, true);
+});
+
+test('WITHDRAW resolve: a withdrawn single prose blocker is retracted, counted and clears readiness', () => {
+  const issues = [issueOf(1, 'The skill change.')];
+  const d = dataOf(issues, { comments: { 1: [cm(DISPATCH_BLOCKER, 2), cm(DISPATCH_SHIPPED, 3)] } });
+  const rec = recOf(resolve(d, OPTS), 1);
+  const ref = rec.refs.find((r) => r.target === null);
+  assert.equal(ref.outcome, 'retracted');
+  assert.equal(ref.withdrawnBy, DISPATCH_SHIPPED);
+  assert.equal(rec.retractedCount, 1);
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('WITHDRAW resolve: two prose blockers with one withdrawal stay blocked and say the blocker may be withdrawn', () => {
+  const issues = [issueOf(1, "Blocked by the CLI's task dispatch.\nDepends on the design review.")];
+  const d = dataOf(issues, { comments: { 1: [cm(DISPATCH_SHIPPED)] } });
+  const rec = recOf(resolve(d, OPTS), 1);
+  const prose = rec.refs.filter((r) => r.target === null);
+  assert.equal(prose.length, 2);
+  for (const r of prose) {
+    assert.equal(r.outcome, 'unresolvable');
+    assert.equal(r.kind, 'prose');
+    assert.equal(r.withdrawnBy, DISPATCH_SHIPPED);
+  }
+  assert.equal(rec.retractedCount, 0);
+  assert.equal(rec.readiness.state, 'blocked');
+  assert.ok(rec.readiness.reason.includes('possibly withdrawn by a later comment'), rec.readiness.reason);
+});
+
+// ---- SENT: a blocker statement ends with its sentence (#951, folds #923) ----
+//
+// On a Blocked by / Depends on line, only the sentence that holds the statement
+// names blockers. A reference in a later sentence of the same line has relation
+// 'qualifier'. A sentence ends at ".", "!" or "?" followed by whitespace, after
+// optional closing emphasis, outside any parenthetical; a run of full stops and
+// the full stop of "cf.", "e.g.", "i.e.", "etc.", "vs." or "viz." end nothing.
+// A plain line under a Blocked by / Depends on heading keeps the whole line.
+
+function relationsOf(out, number) {
+  return out.refs
+    .filter((r) => r.target && r.target.number === number)
+    .map((r) => r.relation);
+}
+
+test('SENT: the gvt-fleet#34 line gives #36 as a qualifier, #38 and #37 as no blocker, and one prose blocker', () => {
+  const BT = String.fromCharCode(96);
+  const body =
+    `Blocked by (#36, and the deletion of side branches by ${BT}wrap${BT}): the workspace issue that asks ${BT}wrap${BT} ` +
+    'to prove and delete every branch the worker made (the wrap extra-branches issue). #38 and #37 can start ' +
+    `without it: the side branches then stay as ${BT}otherBranches${BT}, which ${BT}wrap${BT} reports and does not delete.`;
+  const x = extract(issue(body, { number: 34 }));
+  assert.equal(refTo(x, 36).relation, 'qualifier');
+  for (const n of [38, 37]) {
+    assert.ok(!relationsOf(x, n).includes('blocked-by'), `#${n}: ${JSON.stringify(relationsOf(x, n))}`);
+  }
+  const prose = x.refs.filter((r) => r.target === null && r.unresolvable === 'prose');
+  assert.equal(prose.length, 1);
+  const open = [issueOf(34, body), issueOf(36, ''), issueOf(37, ''), issueOf(38, '')];
+  const r = recOf(resolve({ open }, OPTS), 34).readiness;
+  assert.equal(r.state, 'blocked');
+  assert.deepEqual(r.blockedBy, []);
+});
+
+test('SENT: a reference in a later sentence is not a blocker', () => {
+  for (const body of [
+    'Blocked by #5. #6 is related.',
+    '**Blocked by #5.** #6 is related.',
+    'Blocked by #5! #6 is related.',
+    'Blocked by #5? #6 is related.',
+    'Blocked by #5.) #6 is related.',
+    '- Blocked by #5. #6 is related.',
+  ]) {
+    const x = extract(issue(body));
+    assert.deepEqual(relationsOf(x, 5), ['blocked-by'], body);
+    assert.deepEqual(relationsOf(x, 6), ['qualifier'], body);
+    assert.ok(!x.refs.some((r) => r.unresolvable === 'prose'), body);
+    const open = [issueOf(1, body), issueOf(5, ''), issueOf(6, '')];
+    const r = recOf(resolve({ open }, OPTS), 1).readiness;
+    assert.deepEqual(r.blockedBy, [{ repo: null, number: 5 }], body);
+  }
+  const dep = extract(issue('Depends on #5. #6 is related.'));
+  assert.deepEqual(relationsOf(dep, 5), ['depends-on']);
+  assert.deepEqual(relationsOf(dep, 6), ['qualifier']);
+});
+
+test('SENT: the #286 shape, a later sentence naming an open issue, does not block on it', () => {
+  const body =
+    '**Blocked by #193.** The same verdict is already recorded on #260; applying it consistently.';
+  const x = extract(issue(body, { number: 286 }));
+  assert.equal(refTo(x, 193).relation, 'blocked-by');
+  assert.equal(refTo(x, 260).relation, 'qualifier');
+  const open = [issueOf(286, body), issueOf(193, ''), issueOf(260, '')];
+  const r = recOf(resolve({ open }, OPTS), 286).readiness;
+  assert.deepEqual(r.blockedBy, [{ repo: null, number: 193 }]);
+});
+
+test('SENT: a prose blocker followed by a sentence naming a closed issue stays blocked', () => {
+  const body = 'Blocked by the vendor release. #5 was the earlier attempt.';
+  const x = extract(issue(body));
+  assert.equal(refTo(x, 5).relation, 'qualifier');
+  assert.equal(x.refs.filter((r) => r.unresolvable === 'prose').length, 1);
+  const comparison = [{ number: 5, state: 'CLOSED' }];
+  const r = recOf(resolve({ open: [issueOf(1, body)], comparison }, OPTS), 1).readiness;
+  assert.equal(r.state, 'blocked', r.reason);
+});
+
+test('SENT: a statement that says nothing, then a sentence naming an issue, names no blocker', () => {
+  for (const body of [
+    'Blocked-by nothing. The cleanup in #7 is related.',
+    'Blocked by: none. #7 came first.',
+    '**Blocked by nothing.** See #7.',
+    'Depends on nothing (see #7). #8 is next.',
+    '**Blocked by nothing.**',
+  ]) {
+    const x = extract(issue(body));
+    assert.ok(!x.refs.some((r) => r.relation === 'blocked-by' || r.relation === 'depends-on'), body);
+    assert.equal(x.refs.length, 0, `${body}: ${JSON.stringify(x.refs)}`);
+    const open = [issueOf(1, body), issueOf(7, ''), issueOf(8, '')];
+    assert.equal(recOf(resolve({ open }, OPTS), 1).readiness.state, 'ready', body);
+  }
+});
+
+test('SENT: regression guards, a qualifier phrase, a conjunction parenthetical and "nothing (see #N)" are unchanged', () => {
+  const see = extract(issue('Blocked by #5. See #6 for context.'));
+  assert.equal(refTo(see, 5).relation, 'blocked-by');
+  assert.equal(refTo(see, 6).relation, 'qualifier');
+  const conj = extract(issue('Blocked by #5 (and #6)'));
+  assert.equal(refTo(conj, 5).relation, 'blocked-by');
+  assert.equal(refTo(conj, 6).relation, 'blocked-by');
+  const none = extract(issue('Blocked by nothing (see #6)'));
+  assert.equal(none.refs.length, 0);
+});
+
+test('SENT: a full stop that ends no sentence keeps the references after it in the statement', () => {
+  for (const body of [
+    'Blocked by #5 e.g. #6',
+    'Blocked by #5 i.e. #6',
+    'Blocked by #5, etc. and #6',
+    'Blocked by #5 vs. #6',
+    'Blocked by #5 viz. #6',
+    'Blocked by lib v5.1.0 and #6',
+    'Blocked by #5... and #6',
+    'Blocked by #5 (it closed. It came back.) and #6',
+    'Blocked by #5.#6',
+  ]) {
+    const x = extract(issue(body));
+    assert.deepEqual(relationsOf(x, 6), ['blocked-by'], `${body}: ${JSON.stringify(x.refs)}`);
+  }
+  // A word that only ends like an abbreviation still ends its sentence.
+  assert.deepEqual(relationsOf(extract(issue('Blocked by #5 and the recipe. #6 is next.')), 6), [
+    'qualifier',
+  ]);
+});
+
+test('SENT: a reference named in the statement and again in a later sentence is a blocker once', () => {
+  const x = extract(issue('Blocked by #5. #5 also needs a review.'));
+  assert.deepEqual(relationsOf(x, 5), ['blocked-by']);
+});
+
+test('SENT: a plain line under a Blocked by heading keeps every reference on the line', () => {
+  const x = extract(issue('## Blocked by\n\n#5. #6 too.\n'));
+  assert.deepEqual(relationsOf(x, 5), ['blocked-by']);
+  assert.deepEqual(relationsOf(x, 6), ['blocked-by']);
+});
+
+test('SENT: a later sentence on a blocks or relates-to line keeps its relation', () => {
+  assert.deepEqual(relationsOf(extract(issue('Blocks #5. #6 too.')), 6), ['blocks']);
+  assert.deepEqual(relationsOf(extract(issue('Relates to #5. #6 too.')), 6), ['relates-to']);
 });

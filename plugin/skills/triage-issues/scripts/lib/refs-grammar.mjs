@@ -44,7 +44,11 @@ const TRIGGER_RE =
 const MEASUREMENT_RE =
   /\b(?:count(?:s|ed|ing)?|measure(?:s|d|ment|ments)?|measuring|probe(?:s|d)?|probing|benchmark(?:s|ed|ing)?|threshold(?:s)?)\b/i;
 const RETRACT_RE =
-  /\b(?:no longer (?:applies|depends on|blocked by|blocks|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
+  /\b(?:no longer (?:applies|depends on|blocked|blocks|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
+// A withdrawal that opens its line (after list markers and emphasis); used
+// only for a withdrawal that names no reference (#906).
+const WITHDRAW_OPEN_RE =
+  /^(?:no longer (?:blocked|depends on|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
 const TRIAGE_NOTE_RE = /^[*_\s]*triage verification note/i;
 const BLOCKER_HEADING_RE = /^(blocked[ -]by|depends[ -]on)$/i;
 const ACCEPTANCE_HEADING_RE = /^acceptance\b/i;
@@ -85,6 +89,15 @@ const CONJUNCTION_RE = /(?:and|or|plus|also)(?!\w)|[,&+]/iy;
 // optional ":" and emphasis, exactly one of these words, then an optional
 // full stop and optional trailing qualifier text opened by "(".
 const NONE_STATEMENT_RE = /^[\s:*_]*(?:none|nothing|n\/a|—|-)[*_]*\.?\s*(?:\(.*)?$/i;
+
+// A sentence end once its ".", "!" or "?" is found: optional closing emphasis,
+// brackets or quotes, then whitespace or the end of the line (sticky: tested
+// at the mark's index).
+const SENTENCE_END_RE = /[.!?][*_)\]"']*(?:\s|$)/y;
+// The word before a full stop that ends no sentence. Run over a bounded slice
+// only (ABBREVIATION_LOOKBACK), longer than the longest word here.
+const ABBREVIATION_TAIL_RE = /(?:^|[^\w.])(?:cf|e\.g|i\.e|etc|vs|viz)$/i;
+const ABBREVIATION_LOOKBACK = 8;
 
 const FENCE_LINE_RE = /^ {0,3}(?:`{3,}|~{3,})/;
 const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
@@ -164,6 +177,27 @@ function sameTarget(a, b) {
   return (
     a.number === b.number && (a.repo || '').toLowerCase() === (b.repo || '').toLowerCase()
   );
+}
+
+// Rule: a comment line withdraws a prose blocker only when it opens with a
+// withdrawal phrase and names no reference at all (a repo-ambiguous "lib#5"
+// counts as a reference). A mid-line "no longer blocked" is narrative.
+function isTargetlessWithdrawal(rest, found) {
+  return found.length === 0 && WITHDRAW_OPEN_RE.test(rest);
+}
+
+// Rule: the blockers a target-less withdrawal can reach are prose blockers,
+// a blocker line that names no reference (target null, kind prose).
+function isProseBlocker(ref) {
+  return ref.target === null && ref.unresolvable === 'prose';
+}
+
+// Rule: a target-less withdrawal retracts a prose blocker only when it is the
+// one earlier prose blocker still standing. With several, the line cannot say
+// which it withdraws, so none is retracted and each carries it as evidence.
+function applyWithdrawal(standing, line) {
+  if (standing.length === 1) standing[0].retracted = true;
+  for (const ref of standing) ref.withdrawnBy = line;
 }
 
 // Rule: a triage verification note is skipped for statements (read for
@@ -247,6 +281,38 @@ function makeParenDepth(text) {
 // blocker. Exact words only: "nobody knows yet" is prose.
 function isNoneStatement(rest) {
   return NONE_STATEMENT_RE.test(rest);
+}
+
+// Whether the full stop at index i follows an abbreviation ("cf.", "e.g.").
+function followsAbbreviation(text, i) {
+  return ABBREVIATION_TAIL_RE.test(text.slice(Math.max(0, i - ABBREVIATION_LOOKBACK), i));
+}
+
+// Rule: a Blocked by / Depends on statement ends with its sentence (#951). The
+// index in `text` (the remainder after the verb) just past the mark that ends
+// the statement's sentence, or text.length when the line holds one sentence. A
+// sentence ends at ".", "!" or "?" followed by whitespace or the line's end,
+// after optional closing emphasis, brackets or quotes (`**Blocked by #5.** #6
+// ...`). A mark
+// inside a parenthetical, a full stop in a run ("..."), and the full stop of
+// an abbreviation end no sentence. One pass, linear on any input.
+function statementSentenceEnd(text) {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(') {
+      depth++;
+    } else if (ch === ')') {
+      if (depth > 0) depth--;
+    } else if (depth === 0 && (ch === '.' || ch === '!' || ch === '?')) {
+      if (ch === '.' && (text[i - 1] === '.' || text[i + 1] === '.')) continue;
+      SENTENCE_END_RE.lastIndex = i;
+      if (!SENTENCE_END_RE.test(text)) continue;
+      if (ch === '.' && followsAbbreviation(text, i)) continue;
+      return i + 1;
+    }
+  }
+  return text.length;
 }
 
 // Rule: the banner self-declaration form.
@@ -348,7 +414,10 @@ function sameKey(target) {
 // unresolvable (repo-ambiguous). spaceForm: whether "name #N" counts.
 // qualify: mark each reference `qualifier` (see isQualifierReference); a
 // reference named both as a qualifier and as a plain item is not a qualifier.
-function scanRefs(text, ctx, spaceForm, qualify = false) {
+// scopeEnd (with qualify): a reference that starts at or after this index sits
+// past the statement's sentence (see statementSentenceEnd), so it is a
+// qualifier too.
+function scanRefs(text, ctx, spaceForm, qualify = false, scopeEnd = text.length) {
   const out = [];
   const byKey = new Map();
   let qualifier = false;
@@ -375,7 +444,12 @@ function scanRefs(text, ctx, spaceForm, qualify = false) {
     // word too; the qualifier phrase then ends after that word.
     const spaced = m[8] !== undefined && m[7] === ' ';
     const phraseEnd = spaced ? m.index + m[6].length : m.index;
-    qualifier = qualify && isQualifierReference(text, phraseEnd, depthAt(m.index));
+    // In that form the word can hold the sentence's full stop ("release. #5"),
+    // so the scope test reads the index of the "#" itself.
+    const refStart = spaced ? phraseEnd + 1 : m.index;
+    qualifier =
+      qualify &&
+      (refStart >= scopeEnd || isQualifierReference(text, phraseEnd, depthAt(m.index)));
     if (m[3] !== undefined) {
       add({ repo: normalizeRepo(`${m[1]}/${m[2]}`, ctx), number: Number(m[3]) });
     } else if (m[5] !== undefined) {
@@ -460,7 +534,7 @@ function isBlockerHeading(title) {
 // body line.
 function isNoneHeading(title) {
   const stmt = findStatement(headingTitle(title));
-  return Boolean(stmt) && isNoneStatement(stmt.rest);
+  return Boolean(stmt) && isNoneStatement(stmt.rest.slice(0, statementSentenceEnd(stmt.rest)));
 }
 
 // Rule: a gate opens in the body only, never inside an Acceptance section,
@@ -510,7 +584,7 @@ function scanTitle(title, ctx, entries) {
 }
 
 function scanText(text, origin, order, ctx, skipStatements) {
-  const out = { entries: [], triggers: [], retractions: [], gates: [] };
+  const out = { entries: [], triggers: [], retractions: [], withdrawals: [], gates: [] };
   let fence = null;
   let section = null;
   // The gate tracker runs beside `section`: a nested Blocked by or Acceptance
@@ -580,10 +654,10 @@ function scanText(text, origin, order, ctx, skipStatements) {
 
     // Retraction lines are read in comments, including triage notes.
     if (origin === 'comment' && RETRACT_RE.test(masked)) {
-      const targets = scanRefs(masked, ctx, false)
-        .filter((r) => r.target)
-        .map((r) => r.target);
+      const found = scanRefs(masked, ctx, false);
+      const targets = found.filter((r) => r.target).map((r) => r.target);
       if (targets.length) out.retractions.push({ order, targets });
+      else if (isTargetlessWithdrawal(lead.rest, found)) out.withdrawals.push({ order, line });
     }
 
     // Deferral triggers (R21), read in bodies and comments alike.
@@ -620,14 +694,18 @@ function scanText(text, origin, order, ctx, skipStatements) {
     if (stmt) {
       if (isNegatedStatement(stmt.negator)) continue;
       const blocking = stmt.relation === 'blocked-by' || stmt.relation === 'depends-on';
+      // Only the statement's own sentence names blockers; a later sentence on
+      // the line names qualifiers at most.
+      const scopeEnd = blocking ? statementSentenceEnd(stmt.rest) : stmt.rest.length;
       // "Blocked by: none" names no blocker: nothing is emitted (a trailing
-      // qualifier reference is dropped), and it answers its heading section.
-      if (blocking && isNoneStatement(stmt.rest)) {
+      // qualifier reference, or one in a later sentence, is dropped), and it
+      // answers its heading section.
+      if (blocking && isNoneStatement(stmt.rest.slice(0, scopeEnd))) {
         answerGate();
         if (section && section.kind === 'blocker') section.refCount++;
         continue;
       }
-      const found = scanRefs(stmt.rest, ctx, true, blocking);
+      const found = scanRefs(stmt.rest, ctx, true, blocking, scopeEnd);
       const blockers = found.filter((f) => !f.qualifier);
       // A blocker line with no blocking reference left (none at all, or only
       // qualifiers) is an unverified prose blocker.
@@ -692,6 +770,7 @@ export function extract(issue, options = {}) {
   const entries = [];
   const triggers = [];
   const retractions = [];
+  const withdrawals = [];
   const possibleGates = [];
 
   scanTitle(String(issue.title == null ? '' : issue.title), ctx, entries);
@@ -715,6 +794,7 @@ export function extract(issue, options = {}) {
     entries.push(...p.entries);
     triggers.push(...p.triggers);
     retractions.push(...p.retractions);
+    withdrawals.push(...p.withdrawals);
     possibleGates.push(...p.gates);
   }
 
@@ -730,6 +810,16 @@ export function extract(issue, options = {}) {
       if (e.order >= r.order) continue;
       if (r.targets.some((t) => sameTarget(t, e.ref.target))) e.ref.retracted = true;
     }
+  }
+
+  // Withdrawal pass (#906), in comment order: a later comment line that opens
+  // with "No longer blocked" (or a sibling phrase) and names no reference
+  // withdraws the earlier prose blockers still standing (see applyWithdrawal).
+  for (const w of withdrawals) {
+    const standing = entries
+      .filter((e) => e.order < w.order && isProseBlocker(e.ref) && !e.ref.retracted)
+      .map((e) => e.ref);
+    applyWithdrawal(standing, w.line);
   }
 
   return {

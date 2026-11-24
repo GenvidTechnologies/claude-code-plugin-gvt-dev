@@ -224,7 +224,10 @@ Build a **ranked shortlist** of candidate issues to address:
   `cleared` is ready; `closed-unreleased` and an `unresolvable` blocker are
   blocked; `closed-release-unverified` is ready with a caveat interactively and
   blocked under `--non-interactive`; `done-but-unclosed` and
-  `banner-no-open-child` are not ranked; `retracted` has no effect. The outcome
+  `banner-no-open-child` are not ranked; `retracted` has no effect. An
+  `unresolvable` `prose` blocker that carries `withdrawnBy` stays blocked, and
+  the readiness reason says it is possibly withdrawn by a later comment; quote
+  that line in the rationale. The outcome
   names are the analyst's own, listed in its step 8 ("**Outcomes:** `cleared`
   (`via`: …) · `closed-unreleased` … · `retracted` · `unresolvable`"). The report
   predates this run's ranking, so where §2's own resolution below read fresher

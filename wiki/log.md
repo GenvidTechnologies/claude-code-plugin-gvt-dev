@@ -15,14 +15,27 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-24
+
+* **Update**: `maintainer/release-cycle-rules.md` gains "A CHANGELOG sentence
+  that says how behaviour changed is run on the old and the new code before
+  the commit". It came from the retro of #951, whose entry first claimed a
+  behaviour that the new code did not have; a run on both sides found it
+  before the pull request was opened. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-23
 
-* **Creation**: `decisions/development-practice/0105-a-body-heading-that-names-a-wait-with-nothing-the-grammar-reads-is-a-possible-unparsed-gate.md`,
+* **Creation**: `decisions/development-practice/0106-a-body-heading-that-names-a-wait-with-nothing-the-grammar-reads-is-a-possible-unparsed-gate.md`,
   the record that the reference grammar reads four more deferral phrases and lists a body
   heading that names a wait with nothing the grammar reads as `possibleGates`, and that
   narrows the compromise of ADR-0087 for headed sections. Registered in
   `decisions/development-practice/index.md`. From #895. Not an ingest; no `raw/` source
   drove it.
+* **Update**: `maintainer/release-cycle-rules.md` gains a rule for parallel
+  integration branches that take the same ADR number. `commands.validate`
+  now runs `renumber-adrs.mjs --next`, which exits 1 on a duplicate number;
+  the rule says to re-run it after `origin/main` is merged in, and how to
+  move a duplicate record. From the retro of #906.
 * **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
   issue whose premise was read at a commit that is not an ancestor of the
   default branch waits for the issue whose change holds that commit, and triage

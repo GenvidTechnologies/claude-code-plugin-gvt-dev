@@ -1107,6 +1107,9 @@ function describeBlocker(ref) {
     }
     return `${label} (closed, release unverified)`;
   }
+  if (ref.withdrawnBy !== undefined) {
+    return `${label} (unresolvable: ${ref.kind}, possibly withdrawn by a later comment)`;
+  }
   return `${label} (unresolvable: ${ref.kind})`;
 }
 
