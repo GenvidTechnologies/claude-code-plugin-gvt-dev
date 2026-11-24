@@ -665,11 +665,14 @@ split). Present them together, then apply the approved changes using the **Mutat
     and write nothing. A `prose` finding that carries `withdrawnBy` has a later
     comment line that may withdraw it, but that line also follows another
     `prose` blocker, so the script cannot tell which one it means. Quote the
-    line with the finding and ask the user which blocker it withdraws. Two
-    approved body edits settle it: rewrite a blocker that still holds into
-    `owner/repo#N` form, which leaves one `prose` blocker before the line, so
-    the next run reads that one as `retracted`; or strike the withdrawn
-    blocker's body line (`~~…~~`), since struck text is no statement.
+    line with the finding and ask the user which blocker it withdraws. One
+    approved body edit settles it: rewrite every blocker that still holds
+    into `owner/repo#N` form. The withdrawn blocker is then the only `prose`
+    blocker before the line, so the next run reads it as `retracted`. Do not
+    strike the withdrawn blocker's line: the blocker that still holds is then
+    the only `prose` blocker before the line, and the next run retracts it.
+    When a blocker that still holds names no issue, report the finding and
+    write nothing. It stays `unresolvable`, so the issue stays blocked.
   - Two issue-level findings come from the record's `readiness.state`, not from a
     reference's `refs[].outcome`:
     - `done-but-unclosed`: propose closing the issue through the contract's
