@@ -16,6 +16,11 @@
 //     checked       true/false for a child row, otherwise undefined
 //     retracted     true once a later comment withdrew this same target
 //                   (the ref stays in refs, flagged, so it can be counted)
+//     withdrawnBy   (added: #906) on a prose blocker (target null, kind
+//                   prose) only: the later comment line that opens with "No
+//                   longer blocked" and names no reference. Set with
+//                   retracted true when that blocker was the one earlier
+//                   prose blocker still standing, otherwise as evidence only.
 //     unresolvable  the kind string (prose, repo-ambiguous, heading-detached),
 //                   otherwise undefined
 //     relation      (added: premise correction 19) for 'statement' and
@@ -2636,4 +2641,184 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   assert.ok(ms < 500, `took ${ms.toFixed(1)} ms`);
   // The bound does not stop an ordinary short "(after #N)" from being read.
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
+});
+
+// ---- WITHDRAW: a later comment that opens with "No longer blocked" (#906) ----
+// A comment line that opens with a withdrawal phrase and names no reference
+// withdraws a prose blocker (one with no target). With exactly one earlier
+// prose blocker still standing, it is retracted; with several, none is, and
+// each carries the line as `withdrawnBy` evidence. The tests marked (guard)
+// passed against the grammar before #906; the others failed against it.
+
+function proseRefs(out) {
+  return out.refs.filter((r) => r.target === null && r.unresolvable === 'prose');
+}
+
+const DISPATCH_BLOCKER = "Blocked by the CLI's task dispatch (in progress).";
+const DISPATCH_SHIPPED =
+  "No longer blocked: the CLI's task dispatch has shipped (merged 2026-11-09).";
+
+test('WITHDRAW: a later "No longer blocked" naming no target retracts the one earlier prose blocker', () => {
+  const out = extract(
+    issue('The skill change.', { comments: [cm(DISPATCH_BLOCKER, 2), cm(DISPATCH_SHIPPED, 3)] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, true);
+  assert.equal(prose[0].withdrawnBy, DISPATCH_SHIPPED);
+});
+
+test('WITHDRAW: with two earlier prose blockers, a target-less withdrawal retracts neither and is evidence on both', () => {
+  const out = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 2);
+  for (const r of prose) {
+    assert.equal(r.retracted, false, r.line);
+    assert.equal(r.withdrawnBy, DISPATCH_SHIPPED, r.line);
+  }
+});
+
+test('WITHDRAW: "No longer blocked:" naming #N retracts the reference to #N only', () => {
+  const out = extract(
+    issue('Blocked by #10.\nBlocked by #11.\nBlocked by the design review.', {
+      comments: [cm('No longer blocked: #10 has shipped.')],
+    }),
+  );
+  assert.equal(refTo(out, 10).retracted, true);
+  assert.equal(refTo(out, 11).retracted, false);
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: each opening form withdraws a single prose blocker', () => {
+  for (const form of [
+    'No longer blocked.',
+    '**No longer blocked:** the review is done.',
+    '- No longer blocked by the review, which is done.',
+    'Unblocked: the review is done.',
+    'No longer a blocker: the review is done.',
+    'No longer depends on the review.',
+    'Blocker is resolved: the review is done.',
+  ]) {
+    const out = extract(issue('Blocked by the review.', { comments: [cm(form)] }));
+    const prose = proseRefs(out);
+    assert.equal(prose.length, 1, form);
+    assert.equal(prose[0].retracted, true, form);
+    assert.equal(prose[0].withdrawnBy, form.trim(), form);
+  }
+});
+
+test('WITHDRAW: a later "No longer blocked by #N" leaves a prose blocker alone (guard)', () => {
+  const out = extract(
+    issue('Blocked by #10.\nBlocked by the design review.', {
+      comments: [cm('No longer blocked by #10.')],
+    }),
+  );
+  assert.equal(refTo(out, 10).retracted, true);
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a withdrawal naming only a repo-ambiguous reference is not target-less (guard)', () => {
+  const out = extract(
+    issue('Blocked by the design review.', { comments: [cm('No longer blocked: lib#5 shipped.')] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a withdrawal earlier than the prose blocker has no effect (guard)', () => {
+  const out = extract(
+    issue('The skill change.', { comments: [cm(DISPATCH_SHIPPED, 2), cm(DISPATCH_BLOCKER, 3)] }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose[0].retracted, false);
+  assert.equal(prose[0].withdrawnBy, undefined);
+});
+
+test('WITHDRAW: a mid-line, quoted, fenced or struck withdrawal has no effect (guard)', () => {
+  for (const body of [
+    'The CLI is no longer blocked, but this issue still waits on it.',
+    '> No longer blocked: the review is done.',
+    [FENCE, 'No longer blocked: the review is done.', FENCE].join('\n'),
+    '~~No longer blocked: the review is done.~~',
+    '`No longer blocked`: a label we might use.',
+  ]) {
+    const out = extract(issue('Blocked by the review.', { comments: [cm(body)] }));
+    const prose = proseRefs(out);
+    assert.equal(prose[0].retracted, false, body);
+    assert.equal(prose[0].withdrawnBy, undefined, body);
+  }
+});
+
+test('WITHDRAW: a withdrawal counts only prose blockers still standing, so a second one reaches a restated blocker', () => {
+  const out = extract(
+    issue('Blocked by the review.', {
+      comments: [
+        cm('No longer blocked: the review is done.', 2),
+        cm('Blocked by the security sign-off.', 3),
+        cm('No longer blocked: signed off.', 4),
+      ],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 2);
+  const body = prose.find((r) => r.origin === 'body');
+  const comment = prose.find((r) => r.origin === 'comment');
+  assert.equal(body.retracted, true);
+  assert.equal(body.withdrawnBy, 'No longer blocked: the review is done.');
+  assert.equal(comment.retracted, true);
+  assert.equal(comment.withdrawnBy, 'No longer blocked: signed off.');
+});
+
+test('WITHDRAW: a detached heading and a repo-ambiguous blocker are not prose blockers', () => {
+  const out = extract(
+    issue(['Blocked by the review.', 'Blocked by lib#5.', '', '## Blocked by', '', '## Notes'].join('\n'), {
+      comments: [cm('No longer blocked: the review is done.')],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].retracted, true);
+  for (const kind of ['repo-ambiguous', 'heading-detached']) {
+    const ref = out.refs.find((r) => r.unresolvable === kind);
+    assert.ok(ref, kind);
+    assert.equal(ref.retracted, false, kind);
+    assert.equal(ref.withdrawnBy, undefined, kind);
+  }
+});
+
+test('WITHDRAW resolve: a withdrawn single prose blocker is retracted, counted and clears readiness', () => {
+  const issues = [issueOf(1, 'The skill change.')];
+  const d = dataOf(issues, { comments: { 1: [cm(DISPATCH_BLOCKER, 2), cm(DISPATCH_SHIPPED, 3)] } });
+  const rec = recOf(resolve(d, OPTS), 1);
+  const ref = rec.refs.find((r) => r.target === null);
+  assert.equal(ref.outcome, 'retracted');
+  assert.equal(ref.withdrawnBy, DISPATCH_SHIPPED);
+  assert.equal(rec.retractedCount, 1);
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('WITHDRAW resolve: two prose blockers with one withdrawal stay blocked and say the blocker may be withdrawn', () => {
+  const issues = [issueOf(1, "Blocked by the CLI's task dispatch.\nDepends on the design review.")];
+  const d = dataOf(issues, { comments: { 1: [cm(DISPATCH_SHIPPED)] } });
+  const rec = recOf(resolve(d, OPTS), 1);
+  const prose = rec.refs.filter((r) => r.target === null);
+  assert.equal(prose.length, 2);
+  for (const r of prose) {
+    assert.equal(r.outcome, 'unresolvable');
+    assert.equal(r.kind, 'prose');
+    assert.equal(r.withdrawnBy, DISPATCH_SHIPPED);
+  }
+  assert.equal(rec.retractedCount, 0);
+  assert.equal(rec.readiness.state, 'blocked');
+  assert.ok(rec.readiness.reason.includes('possibly withdrawn by a later comment'), rec.readiness.reason);
 });

@@ -36,7 +36,11 @@ const TRIGGER_RE =
 const MEASUREMENT_RE =
   /\b(?:count(?:s|ed|ing)?|measure(?:s|d|ment|ments)?|measuring|probe(?:s|d)?|probing|benchmark(?:s|ed|ing)?|threshold(?:s)?)\b/i;
 const RETRACT_RE =
-  /\b(?:no longer (?:applies|depends on|blocked by|blocks|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
+  /\b(?:no longer (?:applies|depends on|blocked|blocks|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
+// A withdrawal that opens its line (after list markers and emphasis); used
+// only for a withdrawal that names no reference (#906).
+const WITHDRAW_OPEN_RE =
+  /^(?:no longer (?:blocked|depends on|a blocker)|blocker (?:is )?(?:satisfied|cleared|resolved)|unblocked)\b/i;
 const TRIAGE_NOTE_RE = /^[*_\s]*triage verification note/i;
 const BLOCKER_HEADING_RE = /^(blocked[ -]by|depends[ -]on)$/i;
 const ACCEPTANCE_HEADING_RE = /^acceptance\b/i;
@@ -151,6 +155,27 @@ function sameTarget(a, b) {
   return (
     a.number === b.number && (a.repo || '').toLowerCase() === (b.repo || '').toLowerCase()
   );
+}
+
+// Rule: a comment line withdraws a prose blocker only when it opens with a
+// withdrawal phrase and names no reference at all (a repo-ambiguous "lib#5"
+// counts as a reference). A mid-line "no longer blocked" is narrative.
+function isTargetlessWithdrawal(rest, found) {
+  return found.length === 0 && WITHDRAW_OPEN_RE.test(rest);
+}
+
+// Rule: the blockers a target-less withdrawal can reach are prose blockers,
+// a blocker line that names no reference (target null, kind prose).
+function isProseBlocker(ref) {
+  return ref.target === null && ref.unresolvable === 'prose';
+}
+
+// Rule: a target-less withdrawal retracts a prose blocker only when it is the
+// one earlier prose blocker still standing. With several, the line cannot say
+// which it withdraws, so none is retracted and each carries it as evidence.
+function applyWithdrawal(standing, line) {
+  if (standing.length === 1) standing[0].retracted = true;
+  for (const ref of standing) ref.withdrawnBy = line;
 }
 
 // Rule: a triage verification note is skipped for statements (read for
@@ -447,7 +472,7 @@ function scanTitle(title, ctx, entries) {
 }
 
 function scanText(text, origin, order, ctx, skipStatements) {
-  const out = { entries: [], triggers: [], retractions: [] };
+  const out = { entries: [], triggers: [], retractions: [], withdrawals: [] };
   let fence = null;
   let section = null;
 
@@ -497,10 +522,10 @@ function scanText(text, origin, order, ctx, skipStatements) {
 
     // Retraction lines are read in comments, including triage notes.
     if (origin === 'comment' && RETRACT_RE.test(masked)) {
-      const targets = scanRefs(masked, ctx, false)
-        .filter((r) => r.target)
-        .map((r) => r.target);
+      const found = scanRefs(masked, ctx, false);
+      const targets = found.filter((r) => r.target).map((r) => r.target);
       if (targets.length) out.retractions.push({ order, targets });
+      else if (isTargetlessWithdrawal(lead.rest, found)) out.withdrawals.push({ order, line });
     }
 
     // Deferral triggers (R21), read in bodies and comments alike.
@@ -601,6 +626,7 @@ export function extract(issue, options = {}) {
   const entries = [];
   const triggers = [];
   const retractions = [];
+  const withdrawals = [];
 
   scanTitle(String(issue.title == null ? '' : issue.title), ctx, entries);
 
@@ -623,6 +649,7 @@ export function extract(issue, options = {}) {
     entries.push(...p.entries);
     triggers.push(...p.triggers);
     retractions.push(...p.retractions);
+    withdrawals.push(...p.withdrawals);
   }
 
   // Self-references are never emitted, from any source.
@@ -637,6 +664,16 @@ export function extract(issue, options = {}) {
       if (e.order >= r.order) continue;
       if (r.targets.some((t) => sameTarget(t, e.ref.target))) e.ref.retracted = true;
     }
+  }
+
+  // Withdrawal pass (#906), in comment order: a later comment line that opens
+  // with "No longer blocked" (or a sibling phrase) and names no reference
+  // withdraws the earlier prose blockers still standing (see applyWithdrawal).
+  for (const w of withdrawals) {
+    const standing = entries
+      .filter((e) => e.order < w.order && isProseBlocker(e.ref) && !e.ref.retracted)
+      .map((e) => e.ref);
+    applyWithdrawal(standing, w.line);
   }
 
   return {
