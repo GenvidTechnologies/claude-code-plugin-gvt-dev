@@ -7,6 +7,12 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The reference grammar reads a later "No longer blocked" that names no issue (#906).** A blocker line that names no issue (`unresolvable` kind `prose`) could not be retracted, because a retraction applied only to the issue it named. "No longer blocked:" without "by" was not read as a retraction at all. So an issue whose author withdrew such a blocker in a later comment stayed blocked in `plan-next-issue`, and triage reported a plain `unresolvable` finding. Observed on 2026-11-10 in the triage of GenvidTechnologies/claude-code-plugin-gvt-fleet#4.
+  - A comment line that opens with "No longer blocked" (also "Unblocked", "No longer a blocker", "No longer depends on" or "Blocker is resolved") and names no reference now withdraws the earlier `prose` blockers that are still standing. When there is exactly one, it is `retracted`. When there are several, the line cannot say which one it means, so none is retracted. Each stays `unresolvable`, and the readiness reason says "possibly withdrawn by a later comment".
+  - Either way the reference carries the new key `withdrawnBy`, the withdrawing line. `issue-triage-analyst` reports it with the finding. `triage-issues` asks the user which blocker the line means, and offers two body edits that settle it. `plan-next-issue` quotes the line in the rationale, and `plan-task` Phase 0 shows it.
+  - "No longer blocked: #N …" now retracts the reference to #N, as "No longer blocked by #N" did. A line that only mentions "no longer blocked" mid-sentence still withdraws nothing.
+  Behavioral skill/agent change → version bump at release.
+
 ## [6.2.0] - 2026-11-22
 
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.

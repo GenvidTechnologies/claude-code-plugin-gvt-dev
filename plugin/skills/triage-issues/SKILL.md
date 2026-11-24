@@ -662,7 +662,14 @@ split). Present them together, then apply the approved changes using the **Mutat
     `absent`, `pr`, `nonexistent` (not found or not readable), `heading-detached`,
     `truncated`, `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.
     For a kind that rewrite cannot fix (`truncated`, `lookup-failed`), report it
-    and write nothing.
+    and write nothing. A `prose` finding that carries `withdrawnBy` has a later
+    comment line that may withdraw it, but that line also follows another
+    `prose` blocker, so the script cannot tell which one it means. Quote the
+    line with the finding and ask the user which blocker it withdraws. Two
+    approved body edits settle it: rewrite a blocker that still holds into
+    `owner/repo#N` form, which leaves one `prose` blocker before the line, so
+    the next run reads that one as `retracted`; or strike the withdrawn
+    blocker's body line (`~~…~~`), since struck text is no statement.
   - Two issue-level findings come from the record's `readiness.state`, not from a
     reference's `refs[].outcome`:
     - `done-but-unclosed`: propose closing the issue through the contract's
@@ -670,7 +677,10 @@ split). Present them together, then apply the approved changes using the **Mutat
       close-proposal walk below.
     - `banner-no-open-child`: report only. A banner is the author saying the
       issue stays open on purpose, so this is never a close proposal.
-  - `retracted`: no write. A later note already withdrew the claim.
+  - `retracted`: no write. A later note already withdrew the claim. A
+    `retracted` `prose` blocker carries the withdrawing line in `withdrawnBy`:
+    a later comment that opens with "No longer blocked" and names no
+    reference withdrew the only `prose` blocker before it. Report the line.
   Under `--non-interactive` without `--force`, post the finding as a comment
   instead (§4) and rewrite the body only under `--force`. The note opens with
   `Triage verification note — [refs] <outcome> — <source>`, where `<source>` is
