@@ -5,8 +5,8 @@
 //   input   { number, title, body, comments: [{ body, createdAt }] }
 //           The body counts as earlier than every comment; comments are
 //           ordered by createdAt (ISO-8601 strings).
-//   output  { refs: Ref[], triggers: Trigger[] }
-//   Ref     { source, origin, target, line, checked, retracted, unresolvable }
+//   output  { refs: Ref[], triggers: Trigger[], banner, possibleGates }
+//   Ref    { source, origin, target, line, checked, retracted, unresolvable }
 //     source        'statement' | 'title' | 'heading' | 'child-row' |
 //                   'row-annotation' | 'deferral'
 //     origin        'title' | 'body' | 'comment'
@@ -46,6 +46,10 @@
 //     measurement is true when the text names a count, measure, probe,
 //     benchmark or threshold. A trigger carrying a resolvable reference is
 //     ALSO emitted in refs with source 'deferral' (R17).
+//   possibleGates  [{ heading, line, origin: 'body' }]: each body heading that
+//     names a gate (when, timing, sequencing, ...) whose section gives no
+//     trigger and no blocker. heading is the trimmed heading line; line is the
+//     first prose line of the section, or null. Always an array.
 // Titles start with the row id so the plan's --test-name-pattern blocks
 // select them.
 
@@ -478,7 +482,10 @@ test('REL: extract tags relation for each statement verb', () => {
 //   triggers      extract()'s triggers, plus fired (boolean) and
 //                 firedBy ('reference' | 'comment' | null)
 //   banner        { line } | null
-//   native        { status: 'data' | 'no-data', parent: number | null,
+//   possibleGates extract()'s possibleGates; a gate reads ready-caveat, or
+//                 blocked under --non-interactive, and never lifts a deferred,
+//                 blocked or umbrella issue
+//   native       { status: 'data' | 'no-data', parent: number | null,
 //                   total: number | null, completed: number | null }
 //   commentsTruncated  true when the bulk comment array holds >= 100 entries
 //   retractedCount     number of refs whose outcome is 'retracted'
@@ -494,7 +501,7 @@ test('REL: extract tags relation for each statement verb', () => {
 //     routedTo    the lowest-numbered open child that is itself ready, or null
 //     decidedBy   [{ source, provenance, target?, outcome? }] with source one
 //                 of 'title' | 'body' | 'comment' | 'deferral' | 'native'
-//                 | 'checklist' | 'banner'
+//                 | 'checklist' | 'banner' | 'gate'
 //     disagreements  string[], one per tick-versus-state or native-versus-
 //                 checklist mismatch
 //
@@ -509,7 +516,7 @@ test('REL: extract tags relation for each statement verb', () => {
 //           --state-template t [--root dir]        JSON lines of Entry
 //   resolve the same flags, plus --non-interactive  JSON lines of Record
 //   extract --single <readOne.json>                 one JSON object
-//           { refs, triggers }
+//           { refs, triggers, banner, possibleGates }
 // A bad usage or an unsafe --repo exits 2 with the reason on stderr.
 // Titles start with the row id so the plan's --test-name-pattern blocks
 // select them. The prefixes SAFE:, 404:, TRUNC:, KIND:, ROW:, RETRACT:,
@@ -2830,4 +2837,118 @@ test('AC-895-4: the gate vocabulary is a word-bounded prefix of the heading', ()
   for (const title of ['Whenever', 'Gateway', 'Notes', 'Unblocked now']) {
     assert.deepEqual(gatesOf(`## ${title}\n\nSome prose.\n`), [], title);
   }
+});
+
+// ---- AC-895-5 and AC-895-6: a possible gate in resolve and on the CLI ----
+
+const GATE_HEADING = '## When unblocked';
+const GATE_SECTION = `${GATE_HEADING}\n\nAfter the boundary decision lands.\n`;
+const GATE_TEXT = `possible unparsed gate under heading "${GATE_HEADING}"`;
+const GATE_DECIDED = { source: 'gate', provenance: 'in hand', outcome: 'unparsed' };
+
+function gateDecisions(rec) {
+  return rec.readiness.decidedBy.filter((x) => x.source === 'gate');
+}
+
+test('AC-895-5: a gate is a caveat with its heading in the reason, and blocks under non-interactive', () => {
+  const d = dataOf([issueOf(1, GATE_SECTION)]);
+  const rec = recOf(resolve(d, OPTS), 1);
+  assert.deepEqual(rec.possibleGates, [
+    { heading: GATE_HEADING, line: 'After the boundary decision lands.', origin: 'body' },
+  ]);
+  assert.equal(rec.readiness.state, 'ready-caveat');
+  assert.equal(rec.readiness.rankable, true);
+  assert.equal(rec.readiness.reason, `ready with a caveat: ${GATE_TEXT}`);
+  assert.deepEqual(rec.readiness.blockedBy, []);
+  assert.deepEqual(gateDecisions(rec), [GATE_DECIDED]);
+  const unattended = recOf(resolve(d, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(unattended.readiness.state, 'blocked');
+  assert.equal(unattended.readiness.rankable, true);
+  assert.equal(unattended.readiness.reason, `blocked by ${GATE_TEXT}`);
+  assert.deepEqual(unattended.readiness.blockedBy, []);
+  assert.deepEqual(gateDecisions(unattended), [GATE_DECIDED]);
+  const none = recOf(resolve(dataOf([issueOf(2, 'No gate here.')]), OPTS), 2);
+  assert.deepEqual(none.possibleGates, []);
+  assert.deepEqual(gateDecisions(none), []);
+  assert.equal(none.readiness.state, 'ready');
+});
+
+test('AC-895-5: a gate never lifts a deferred, blocked or umbrella issue, and a release-unverified blocker is named with it', () => {
+  // deferred: a trigger outside the gate's section wins, and its reason is unchanged.
+  const deferredBody = `Revisit when the parser is stable.\n\n${GATE_SECTION}`;
+  for (const o of [OPTS, { ...OPTS, nonInteractive: true }]) {
+    const rec = recOf(resolve(dataOf([issueOf(1, deferredBody)]), o), 1);
+    assert.equal(rec.readiness.state, 'deferred');
+    assert.equal(rec.readiness.reason, 'deferred: Revisit when the parser is stable.');
+    assert.deepEqual(gateDecisions(rec), [GATE_DECIDED]);
+  }
+  // blocked: an open reference keeps its own reason; the gate joins it only when it blocks.
+  const blockedData = withState(dataOf([issueOf(1, `Blocked by #12.\n\n${GATE_SECTION}`)]), OPTS, {
+    [`${REPO}#12`]: stJson(12, 'open'),
+  });
+  const blocked = recOf(resolve(blockedData, OPTS), 1);
+  assert.equal(blocked.readiness.state, 'blocked');
+  assert.equal(blocked.readiness.reason, 'blocked by #12 (open)');
+  assert.deepEqual(blocked.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  const blockedUnattended = recOf(resolve(blockedData, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(blockedUnattended.readiness.state, 'blocked');
+  assert.equal(blockedUnattended.readiness.reason, `blocked by #12 (open), ${GATE_TEXT}`);
+  assert.deepEqual(blockedUnattended.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  // umbrella: the title prefix wins over the gate.
+  const umbrella = recOf(
+    resolve(dataOf([issueOf(1, GATE_SECTION, { title: 'Epic: migrate the loader' })]), OPTS),
+    1,
+  );
+  assert.equal(umbrella.readiness.state, 'umbrella');
+  assert.equal(umbrella.readiness.rankable, false);
+  assert.deepEqual(gateDecisions(umbrella), [GATE_DECIDED]);
+  // a release-unverified blocker and a gate: both are named, in either mode.
+  const unverified = withState(
+    dataOf([issueOf(1, `Blocked by ${LIB}#12.\n\n${GATE_SECTION}`)]),
+    OPTS,
+    { [`${LIB}#12`]: stJson(12, 'closed') },
+  );
+  const BLOCKER = `${LIB}#12 (closed, release unverified)`;
+  const caveat = recOf(resolve(unverified, OPTS), 1);
+  assert.equal(caveat.readiness.state, 'ready-caveat');
+  assert.equal(caveat.readiness.reason, `ready with a caveat: ${BLOCKER}, ${GATE_TEXT}`);
+  const hard = recOf(resolve(unverified, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(hard.readiness.state, 'blocked');
+  assert.equal(hard.readiness.reason, `blocked by ${BLOCKER}, ${GATE_TEXT}`);
+});
+
+test('AC-895-6: extract --single and resolve print possibleGates, and never echo the rest of the section', () => {
+  withTmp((dir) => {
+    const body = `${GATE_SECTION}\nSENTINEL_GATE_cc33 second line that must never be echoed.\n`;
+    const one = writeJson(dir, 'one.json', {
+      number: 1,
+      title: 'Example title',
+      body,
+      labels: [],
+      comments: [],
+    });
+    const ex = runCli(['extract', '--single', one]);
+    assert.equal(ex.status, 0, ex.stderr);
+    assert.ok(!ex.stdout.includes('SENTINEL'));
+    const out = JSON.parse(ex.stdout);
+    assert.deepEqual(Object.keys(out), ['refs', 'triggers', 'banner', 'possibleGates']);
+    assert.deepEqual(out.possibleGates, [
+      { heading: GATE_HEADING, line: 'After the boundary decision lands.', origin: 'body' },
+    ]);
+    const issues = [issueOf(1, body)];
+    const comments = [{ number: 1, comments: [] }];
+    const structure = [srow(1, null, 0, 0)];
+    const args = cliArgsFor(dir, issues, { comments, structure });
+    const interactive = runCli(['resolve', ...args]);
+    assert.equal(interactive.status, 0, interactive.stderr);
+    assert.ok(!interactive.stdout.includes('SENTINEL'));
+    const rec = recOf(jsonLines(interactive.stdout), 1);
+    assert.deepEqual(rec.possibleGates, out.possibleGates);
+    assert.equal(rec.readiness.state, 'ready-caveat');
+    assert.ok(rec.readiness.reason.includes(GATE_TEXT), rec.readiness.reason);
+    const unattended = runCli(['resolve', ...args, '--non-interactive']);
+    assert.equal(unattended.status, 0, unattended.stderr);
+    assert.ok(!unattended.stdout.includes('SENTINEL'));
+    assert.equal(recOf(jsonLines(unattended.stdout), 1).readiness.state, 'blocked');
+  });
 });
