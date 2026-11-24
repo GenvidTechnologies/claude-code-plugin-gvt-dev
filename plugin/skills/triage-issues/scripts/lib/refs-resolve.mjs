@@ -828,15 +828,16 @@ function isTickedStateUnknown(st) {
   return st.state === null || st.state === 'pr' || st.state === 'nonexistent';
 }
 
-// Rule (#971): a non-blocking reference (Blocks, Relates to or a qualifier)
-// gets no lookup of its own, so
-// its target is often unread. With no known state it is "unknown", never
-// "not-open": the kind names why (cross-repo-unread, absent, truncated,
-// lookup-failed), and a cross-repo target that nothing read has provenance
-// "none", not "in hand". It never blocks and is not a finding.
+// Rule (#971, #1049): a non-blocking reference (Blocks, Relates to or a
+// qualifier) gets no lookup of its own, so its target is often unread. Only a
+// target known to be closed or not open is "not-open". Any other state is
+// "unknown", never "not-open": the kind names why (cross-repo-unread, absent,
+// truncated, lookup-failed, or pr and nonexistent when a lookup made for
+// another reference read it so), and a cross-repo target that nothing read has
+// provenance "none", not "in hand". It never blocks and is not a finding.
 function classifyNonBlocking(st) {
   if (st.state === 'open') return { outcome: 'live' };
-  if (st.state !== null) return { outcome: 'not-open' };
+  if (st.state === 'closed' || st.state === 'not-open') return { outcome: 'not-open' };
   const out = { outcome: 'unknown', kind: unresolvableKindOf(st) };
   if (st.gap === 'unread') out.provenance = 'none';
   return out;

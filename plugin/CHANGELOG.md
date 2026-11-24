@@ -9,6 +9,7 @@ and follows [semantic versioning](https://semver.org/).
 
 - **`issue-refs` no longer reports a non-blocking reference as `not-open` when it never read the target (#971).** No lookup is planned for a `Blocks`, `Relates to` or `qualifier` reference. Before, such a reference to a cross-repository target got outcome `not-open` with provenance `in hand`, though nothing was read. A same-repository target missing from the comparison set, or cut from a truncated list, got the same. In the triage of genvid-holdings/burbank#359 (2026-11-18), one such target was open.
   - The reference now gets the new outcome `unknown`. Its `kind` names why the state is not known: `cross-repo-unread`, `absent`, `truncated` or `lookup-failed`.
+  - A lookup made for another reference can read the target as a pull request or as not found. That also gave `not-open`, and now gives `unknown` with kind `pr` or `nonexistent` (#1049, #1078).
   - A cross-repository target that nothing read has provenance `none`.
   - An `unknown` reference never blocks and is not a finding.
   - A target read as closed, or missing from an untruncated open list with no comparison set, is still `not-open`.

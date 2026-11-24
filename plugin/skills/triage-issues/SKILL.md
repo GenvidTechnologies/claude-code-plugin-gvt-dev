@@ -635,8 +635,9 @@ split). Present them together, then apply the approved changes using the **Mutat
   issue (a cross-reference whose recorded state disagrees with the tracker's),
   present the reference, its relation, its outcome and the evidence, and remedy it
   by outcome. A reference with relation `qualifier` never blocks and is not a
-  finding. A `Blocks`, `Relates to` or `qualifier` reference whose target state
-  is not known has outcome `unknown`, never blocks and is not a finding either.
+  finding. A `Blocks`, `Relates to` or `qualifier` reference whose target is not
+  known to be open, closed or not open (unread, or read as a pull request or as
+  not found) has outcome `unknown`, never blocks and is not a finding either.
   On a `Blocked by` or `Depends on` line, or a plain line under a
   `Blocked by` or `Depends on` heading, a reference inside a parenthetical, or
   right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in",

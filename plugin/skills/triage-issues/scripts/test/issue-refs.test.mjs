@@ -469,9 +469,10 @@ test('REL: extract tags relation for each statement verb', () => {
 //     kind        for 'unresolvable': prose, repo-ambiguous, cross-repo-unread,
 //                 absent, pr, nonexistent, heading-detached, truncated, or
 //                 lookup-failed (not in the design: a lookup whose output is
-//                 not a state and not a 404). For 'unknown' (#971, a
-//                 non-blocking reference whose target state is not known):
-//                 cross-repo-unread, absent, truncated or lookup-failed
+//                 not a state and not a 404). For 'unknown' (#971, #1049, a
+//                 non-blocking reference whose target is not known to be
+//                 open, closed or not open): cross-repo-unread, absent,
+//                 truncated, lookup-failed, pr or nonexistent
 //     via         for 'cleared': 'same-repo' | 'source-consumed'
 //                 | 'released (version check only)'
 //     latest      for 'closed-unreleased': the newest published version
@@ -2741,4 +2742,44 @@ test('AC-971-x: a non-blocking reference keeps not-open when read closed, and is
   assert.equal(qr.outcome, 'unknown');
   assert.equal(qr.provenance, 'none');
   assert.equal(q.readiness.state, 'blocked');
+});
+
+// ---- #1049 and #1078: a non-blocking reference read as a PR or a 404 ----
+//
+// A lookup made for another reference can read a non-blocking target as a
+// pull request or as not found. That is not "not open": the outcome is
+// 'unknown', with kind 'pr' or 'nonexistent', from the lookup.
+
+test('AC-1049-1: a non-blocking reference read as a pull request or a 404 is unknown, not not-open', () => {
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const answers = {
+    pr: JSON.stringify({ number: 5, state: 'open', pull_request: true }),
+    nonexistent: `${NOT_FOUND}`,
+  };
+  for (const body of [`Relates to ${OTHER}#5.`, `Blocks ${OTHER}#5.`]) {
+    for (const [kind, text] of Object.entries(answers)) {
+      const data = { ...dataOf([issueOf(1, body)]), lookups: { [key]: text } };
+      const rec = recOf(resolve(data, OPTS), 1);
+      const ref = refOf(rec, 5, OTHER);
+      assert.notEqual(ref.outcome, 'not-open', `${body} ${kind}`);
+      assert.equal(ref.outcome, 'unknown', `${body} ${kind}`);
+      assert.equal(ref.kind, kind, `${body} ${kind}`);
+      assert.equal(ref.provenance, 'lookup', `${body} ${kind}`);
+      assert.equal(rec.readiness.state, 'ready', `${body} ${kind}`);
+    }
+  }
+});
+
+test('AC-1049-2: (expected green before the fix) a non-blocking reference read open or closed keeps live or not-open', () => {
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const run = (text) => {
+    const data = { ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]), lookups: { [key]: text } };
+    return recOf(resolve(data, OPTS), 1);
+  };
+  const open = run(stJson(5, 'open'));
+  assert.equal(refOf(open, 5, OTHER).outcome, 'live');
+  assert.equal(open.readiness.state, 'ready');
+  const closed = run(stJson(5, 'closed'));
+  assert.equal(refOf(closed, 5, OTHER).outcome, 'not-open');
+  assert.equal(closed.readiness.state, 'ready');
 });
