@@ -828,6 +828,20 @@ function isTickedStateUnknown(st) {
   return st.state === null || st.state === 'pr' || st.state === 'nonexistent';
 }
 
+// Rule (#971): a non-blocking reference (Blocks, Relates to or a qualifier)
+// gets no lookup of its own, so
+// its target is often unread. With no known state it is "unknown", never
+// "not-open": the kind names why (cross-repo-unread, absent, truncated,
+// lookup-failed), and a cross-repo target that nothing read has provenance
+// "none", not "in hand". It never blocks and is not a finding.
+function classifyNonBlocking(st) {
+  if (st.state === 'open') return { outcome: 'live' };
+  if (st.state !== null) return { outcome: 'not-open' };
+  const out = { outcome: 'unknown', kind: unresolvableKindOf(st) };
+  if (st.gap === 'unread') out.provenance = 'none';
+  return out;
+}
+
 // The outcome of one resolvable reference, given what is known of its target.
 function classifyRef(ref, st, ctx) {
   const child = ref.source === 'child-row';
@@ -839,8 +853,8 @@ function classifyRef(ref, st, ctx) {
     }
     return { outcome: 'not-open' };
   }
-  // Blocks and Relates to are reported nowhere unless the form is broken.
-  if (!child && !isBlockingRef(ref)) return { outcome: st.state === 'open' ? 'live' : 'not-open' };
+  // Blocks, Relates to and qualifiers are reported nowhere unless the form is broken.
+  if (!child && !isBlockingRef(ref)) return classifyNonBlocking(st);
   const kind = unresolvableKindOf(st);
   if (kind) return { outcome: 'unresolvable', kind };
   if (st.state === 'open') return { outcome: 'live' };
