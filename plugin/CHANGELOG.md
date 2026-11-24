@@ -8,6 +8,7 @@ and follows [semantic versioning](https://semver.org/).
 ## [Unreleased]
 
 - **The `triage-issues` linear-time test for 8,000 name-and-number items no longer fails on a loaded machine (#982).** The test compared one run of `extract` with a fixed limit of 500 ms, and a correct run took 517 ms while the machine was loaded, which stopped `commands.validate`. It now times 1,000 and 8,000 items in ten rounds and requires the ratio of the median times to stay under 25. Linear code gives about 8, and quadratic code about 64. Measured 2026-11-23 while a full `commands.validate` ran: 8.0 to 14.4 for `extract`, and 45.6 to 77.5 for a variant that deduplicates by scanning every key. Both quadratic variants that were tried fail the test. The two other linear-time tests in the file keep their 500 ms limit. No consumer-facing behavior change → no version bump.
+- **A maintainer page, `wiki/maintainer/timing-tests.md`, gives the rules for a test of running time.** They come from #982: compare two sizes, use the median of several rounds, run every round, choose the limit from measurements under load, and prove the test with a quadratic mutation. `CLAUDE.md` routes to the page. No consumer-facing behavior change → no version bump.
 
 ## [6.2.0] - 2026-11-22
 
