@@ -74,8 +74,8 @@ ADR-0087 says one definition serves four callers. gvt-fleet, the coordinator, is
 **Vocabulary and match rule.** The three options were measured over the cached issues of 20 repositories of the managed set: 1,848 issues, all states, with 4,294 texts (bodies plus comments), on 2026-11-23.
 
 - **V-A (recommended).** Chosen. A word at the start of the cleaned heading title, body only, not opened inside an Acceptance section, and an exact `Blocked by` or `Depends on` heading stays a blocker heading. It gives 37 entries, 7 of them on open issues. Read by hand, each of the 7 is a real wait or ordering constraint.
-- **V-B.** Rejected. It adds the word `deferred` to the list and has no Acceptance rule. It gives 42 entries, still 7 on open issues. The 5 more entries are all false flags: two gate headings nested under an Acceptance section and three "Deferred …" headings. The count of 5 was re-measured; the list of the five comes from the prototype run that preceded the design.
-- **V-C.** Rejected. It matches the whole title only. It gives 20 entries, 3 on open issues. It drops 4 of the 7 open entries, and with them real closed gates headed "Gated on" or as a precondition.
+- **V-B.** Rejected. It adds the word `deferred` to the list and has no Acceptance rule. It gives 42 entries, still 7 on open issues. The count of 5 more entries was re-measured. The list of the five comes from the prototype run that preceded the design, which read them as false flags: two gate headings nested under an Acceptance section and three "Deferred …" headings.
+- **V-C.** Rejected. It matches the whole title only. It gives 20 entries, 3 on open issues. It drops 4 of the 7 open entries.
 
 **Output key and entry shape.**
 

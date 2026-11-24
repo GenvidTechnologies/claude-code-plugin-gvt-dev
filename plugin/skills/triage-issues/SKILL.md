@@ -685,8 +685,9 @@ split). Present them together, then apply the approved changes using the **Mutat
     closing summary (§5) and write nothing: no body rewrite, no comment, also
     under `--force`, because the right form depends on what the author meant.
   - `retracted`: no write. A later note already withdrew the claim.
-  Under `--non-interactive` without `--force`, post the finding as a comment
-  instead (§4) and rewrite the body only under `--force`. The note opens with
+  For every finding except a possible unparsed gate, under `--non-interactive`
+  without `--force`, post the finding as a comment instead (§4) and rewrite the
+  body only under `--force`. The note opens with
   `Triage verification note — [refs] <outcome> — <source>`, where `<source>` is
   `<target> @ <state anchor>` and the state anchor is `closed <closed_at>`,
   `open`, `latest <version>`, or `sub-issues <completed>/<total>` (for
