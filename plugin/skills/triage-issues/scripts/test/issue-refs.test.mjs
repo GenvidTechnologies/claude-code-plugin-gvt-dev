@@ -2796,6 +2796,45 @@ test('WITHDRAW: a detached heading and a repo-ambiguous blocker are not prose bl
   }
 });
 
+// The triage-issues §3 remedy for an ambiguous withdrawal: rewriting the
+// blocker that still holds into a reference leaves the withdrawn one as the
+// only prose blocker before the line, so it is retracted, and the rewritten
+// one still blocks.
+test('WITHDRAW: once the blocker that still holds names an issue, the prose blocker left is retracted', () => {
+  const before = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  assert.equal(proseRefs(before).filter((r) => r.retracted).length, 0);
+  const after = extract(
+    issue("Blocked by the CLI's task dispatch.\nDepends on example-org/lib#7.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(after);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].line, "Blocked by the CLI's task dispatch.");
+  assert.equal(prose[0].retracted, true);
+  const lib = after.refs.find((r) => r.target && r.target.number === 7);
+  assert.equal(lib.retracted, false);
+});
+
+// Why §3 offers no "strike the withdrawn line" remedy: striking it leaves the
+// blocker that still holds as the only prose blocker before the line, and the
+// line then retracts that one.
+test('WITHDRAW: striking the withdrawn blocker line leaves the other prose blocker to be retracted', () => {
+  const out = extract(
+    issue("~~Blocked by the CLI's task dispatch.~~\nDepends on the design review.", {
+      comments: [cm(DISPATCH_SHIPPED)],
+    }),
+  );
+  const prose = proseRefs(out);
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].line, 'Depends on the design review.');
+  assert.equal(prose[0].retracted, true);
+});
+
 test('WITHDRAW resolve: a withdrawn single prose blocker is retracted, counted and clears readiness', () => {
   const issues = [issueOf(1, 'The skill change.')];
   const d = dataOf(issues, { comments: { 1: [cm(DISPATCH_BLOCKER, 2), cm(DISPATCH_SHIPPED, 3)] } });

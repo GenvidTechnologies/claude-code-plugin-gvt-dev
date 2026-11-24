@@ -43,7 +43,7 @@ In both cases the reference carries a new key `withdrawnBy`, the withdrawing lin
 **Callers.**
 
 - `issue-triage-analyst` step 8 reports `withdrawnBy` with the finding.
-- `triage-issues` §3 asks which blocker an ambiguous line means. It offers two body edits, each with per-issue approval: rewrite a blocker that still holds into `owner/repo#N` form, which leaves one prose blocker before the line, or strike the withdrawn blocker's body line.
+- `triage-issues` §3 asks which blocker an ambiguous line means. With per-issue approval, it rewrites each blocker that still holds into `owner/repo#N` form, which leaves the withdrawn one as the only prose blocker before the line. It never strikes the withdrawn line: the blocker that still holds would then be the only prose blocker before the line, and the line would retract it.
 - `plan-next-issue` quotes the line in its rationale.
 - `plan-task` Phase 0 shows it.
 
