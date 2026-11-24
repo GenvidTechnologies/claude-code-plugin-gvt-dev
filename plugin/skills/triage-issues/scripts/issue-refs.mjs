@@ -179,7 +179,14 @@ function main(argv) {
       if (values.parent !== undefined) options.parent = intFlag(values, 'parent');
       const issue = readJson('single', positionals[0]);
       const result = extract(issue, options);
-      console.log(JSON.stringify({ refs: result.refs, triggers: result.triggers, banner: result.banner }));
+      console.log(
+        JSON.stringify({
+          refs: result.refs,
+          triggers: result.triggers,
+          banner: result.banner,
+          possibleGates: result.possibleGates,
+        }),
+      );
       return 0;
     }
     printLines(runPlanOrResolve(sub, values));

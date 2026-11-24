@@ -31,6 +31,12 @@ the full maintenance schema.
   with a quadratic mutation. `CLAUDE.md` routes to it from its Knowledge base
   list. It came from the retro of #982, whose W11 8,000-item test failed a
   fixed 500 ms limit on a loaded machine.
+* **Creation**: `decisions/development-practice/0106-a-body-heading-that-names-a-wait-with-nothing-the-grammar-reads-is-a-possible-unparsed-gate.md`,
+  the record that the reference grammar reads four more deferral phrases and lists a body
+  heading that names a wait with nothing the grammar reads as `possibleGates`, and that
+  narrows the compromise of ADR-0087 for headed sections. Registered in
+  `decisions/development-practice/index.md`. From #895. Not an ingest; no `raw/` source
+  drove it.
 * **Update**: `maintainer/release-cycle-rules.md` gains a rule for parallel
   integration branches that take the same ADR number. `commands.validate`
   now runs `renumber-adrs.mjs --next`, which exits 1 on a duplicate number;
