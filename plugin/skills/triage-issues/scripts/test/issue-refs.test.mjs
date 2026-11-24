@@ -2724,3 +2724,110 @@ test('AC-895-3: "Not blocked by" names no reference and "Blocked by" still block
   assert.equal(ref.source, 'statement');
   assert.equal(ref.relation, 'blocked-by');
 });
+
+// ---- AC-895-4: possible gates, a heading that names a wait with no trigger or blocker ----
+
+function gatesOf(body, comments = []) {
+  return extract(issue(body, { comments })).possibleGates;
+}
+
+function gateComment(body) {
+  return { body, createdAt: '2026-01-02T00:00:00Z' };
+}
+
+test('AC-895-4: a gate is listed with its heading and first line, and never with the rest of the section', () => {
+  const body = [
+    '## Plan',
+    '',
+    'Do the work.',
+    '',
+    '## When unblocked',
+    '',
+    'After the boundary decision lands.',
+    '',
+    'SENTINEL-NEVER-LISTED second line.',
+    '',
+    '## Notes',
+    '',
+    'Other.',
+  ].join('\n');
+  const out = extract(issue(body));
+  assert.deepEqual(out.possibleGates, [
+    { heading: '## When unblocked', line: 'After the boundary decision lands.', origin: 'body' },
+  ]);
+  assert.ok(!JSON.stringify(out).includes('SENTINEL-NEVER-LISTED'));
+  assert.deepEqual(gatesOf('Just text.'), []);
+  assert.deepEqual(gatesOf('## Timing'), [{ heading: '## Timing', line: null, origin: 'body' }]);
+  const skipped = '## Sequencing\n\n```\ncode line\n```\n> quoted line\n\n  The real first line.  \n';
+  assert.equal(gatesOf(skipped)[0].line, 'The real first line.');
+  // A blocks or relates-to statement and a checklist child row do not answer a gate.
+  const unanswered = ['## When', '', 'Blocks #20.', '', '- [ ] #21', '', 'Relates to #22.'].join('\n');
+  const listed = gatesOf(unanswered);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].line, 'Blocks #20.');
+});
+
+test('AC-895-4: a gate that holds a trigger, a blocker, a deferral, a row annotation or a none-statement is not listed', () => {
+  const PLAIN = 'Some plain prose.';
+  const cases = [
+    ['trigger', 'Revisit when the parser is stable.'],
+    ['blocking statement', 'Blocked by #12.'],
+    ['depends-on statement', 'Depends on #13.'],
+    ['prose blocker', 'Blocked by the vendor review.'],
+    ['deferral reference', 'Deferral trigger: needs #70 first.'],
+    ['row annotation', '- [ ] #14 blocked by #15'],
+    ['none-statement', 'Blocked by: none.'],
+    ['nested Blocked by with a detached heading', '### Blocked by\n\n(nothing to name here)'],
+    ['nested Blocked by with a reference', '### Blocked by\n\n- #16'],
+  ];
+  for (const [name, content] of cases) {
+    const answered = gatesOf(`## When\n\n${content}\n`);
+    assert.deepEqual(answered, [], `${name} must answer the gate`);
+    // The same section with the answering text replaced by prose is listed, so the
+    // answering text is what removes it.
+    const control = gatesOf(`## When\n\n${PLAIN}\n`);
+    assert.equal(control.length, 1, `${name}: the control section is a gate`);
+  }
+});
+
+test('AC-895-4: a comment, a fence, a blockquote, an Acceptance section, an exact Blocked by and Deferred item are not gates', () => {
+  const TEXT = '## When\n\nNot yet decided.\n';
+  assert.equal(gatesOf(TEXT).length, 1, 'the bare text is a gate');
+  assert.deepEqual(gatesOf('Intro.', [gateComment(TEXT)]), [], 'comment');
+  assert.deepEqual(gatesOf('```\n## When\n\nNot yet decided.\n```\n'), [], 'fence');
+  assert.deepEqual(gatesOf('> ## When\n>\n> Not yet decided.\n'), [], 'blockquote');
+  const underAcceptance = '## Acceptance Criteria\n\n### Gate\n\nAfter the boundary decision.\n';
+  assert.deepEqual(gatesOf(underAcceptance), [], 'nested under Acceptance');
+  const control = '## Plan\n\n### Gate\n\nAfter the boundary decision.\n';
+  assert.equal(gatesOf(control).length, 1, 'the same heading outside Acceptance is a gate');
+  assert.deepEqual(gatesOf('## Blocked by\n\nThe vendor review.\n'), [], 'exact Blocked by');
+  assert.deepEqual(gatesOf('## Depends on\n\nThe vendor review.\n'), [], 'exact Depends on');
+  assert.deepEqual(gatesOf('## Deferred item 1\n\nLater.\n'), [], 'Deferred item');
+});
+
+test('AC-895-4: the gate vocabulary is a word-bounded prefix of the heading', () => {
+  const listed = [
+    'When unblocked',
+    'Timing',
+    'Deferral',
+    'Gate',
+    'Gated on the release',
+    'Gating',
+    'Blockers',
+    'Blocked on the vendor',
+    'Blocked by #61',
+    'Precondition',
+    'Prerequisites',
+    'Sequencing',
+    'Not before the release',
+    '**When unblocked**:',
+  ];
+  for (const title of listed) {
+    const gates = gatesOf(`## ${title}\n\nSome prose.\n`);
+    assert.equal(gates.length, 1, title);
+    assert.equal(gates[0].heading, `## ${title}`);
+  }
+  for (const title of ['Whenever', 'Gateway', 'Notes', 'Unblocked now']) {
+    assert.deepEqual(gatesOf(`## ${title}\n\nSome prose.\n`), [], title);
+  }
+});
