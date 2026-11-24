@@ -22,6 +22,14 @@
 // Every rule is its own small named predicate or function, so each can be
 // disabled on its own (mutation run).
 //
+// The values of a reference's outcome, kind and provenance are listed in three
+// other places: the schema header of test/issue-refs.test.mjs, the outcome
+// list of agents/issue-triage-analyst.md, and the [refs] paragraph of
+// skills/triage-issues/SKILL.md. skills/plan-next-issue/SKILL.md also lists
+// the provenance values of the references that decide readiness. A new value
+// is added to each list that can show it, in the same commit. No test ties them together: in #971 the test header was missed
+// until the code review.
+//
 // Regex hygiene: every pattern is linear (no nested quantifiers) because the
 // inputs include untrusted issue text and saved command output.
 
@@ -828,6 +836,21 @@ function isTickedStateUnknown(st) {
   return st.state === null || st.state === 'pr' || st.state === 'nonexistent';
 }
 
+// Rule (#971, #1049): a non-blocking reference (Blocks, Relates to or a
+// qualifier) gets no lookup of its own, so its target is often unread. Only a
+// target known to be closed or not open is "not-open". Any other state is
+// "unknown", never "not-open": the kind names why (cross-repo-unread, absent,
+// truncated, lookup-failed, or pr and nonexistent when a lookup made for
+// another reference read it so), and a cross-repo target that nothing read has
+// provenance "none", not "in hand". It never blocks and is not a finding.
+function classifyNonBlocking(st) {
+  if (st.state === 'open') return { outcome: 'live' };
+  if (st.state === 'closed' || st.state === 'not-open') return { outcome: 'not-open' };
+  const out = { outcome: 'unknown', kind: unresolvableKindOf(st) };
+  if (st.gap === 'unread') out.provenance = 'none';
+  return out;
+}
+
 // The outcome of one resolvable reference, given what is known of its target.
 function classifyRef(ref, st, ctx) {
   const child = ref.source === 'child-row';
@@ -839,8 +862,8 @@ function classifyRef(ref, st, ctx) {
     }
     return { outcome: 'not-open' };
   }
-  // Blocks and Relates to are reported nowhere unless the form is broken.
-  if (!child && !isBlockingRef(ref)) return { outcome: st.state === 'open' ? 'live' : 'not-open' };
+  // Blocks, Relates to and qualifiers are reported nowhere unless the form is broken.
+  if (!child && !isBlockingRef(ref)) return classifyNonBlocking(st);
   const kind = unresolvableKindOf(st);
   if (kind) return { outcome: 'unresolvable', kind };
   if (st.state === 'open') return { outcome: 'live' };

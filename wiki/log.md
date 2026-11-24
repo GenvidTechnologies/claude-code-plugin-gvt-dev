@@ -25,6 +25,12 @@ the full maintenance schema.
 
 ## 2026-11-23
 
+* **Creation**: `maintainer/timing-tests.md` holds the rules for a test of
+  running time: compare two sizes, use the median of several rounds, run every
+  round, choose the limit from measurements under load, and prove the test
+  with a quadratic mutation. `CLAUDE.md` routes to it from its Knowledge base
+  list. It came from the retro of #982, whose W11 8,000-item test failed a
+  fixed 500 ms limit on a loaded machine.
 * **Creation**: `decisions/development-practice/0106-a-body-heading-that-names-a-wait-with-nothing-the-grammar-reads-is-a-possible-unparsed-gate.md`,
   the record that the reference grammar reads four more deferral phrases and lists a body
   heading that names a wait with nothing the grammar reads as `possibleGates`, and that

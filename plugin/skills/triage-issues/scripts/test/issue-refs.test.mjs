@@ -474,15 +474,19 @@ test('REL: extract tags relation for each statement verb', () => {
 //     outcome     'live' | 'not-open' | 'cleared' | 'closed-unreleased'
 //                 | 'closed-release-unverified' | 'ticked-open'
 //                 | 'unticked-closed' | 'unticked-not-open' | 'retracted'
-//                 | 'unresolvable'
+//                 | 'unresolvable' | 'unknown'
 //     kind        for 'unresolvable': prose, repo-ambiguous, cross-repo-unread,
 //                 absent, pr, nonexistent, heading-detached, truncated, or
 //                 lookup-failed (not in the design: a lookup whose output is
-//                 not a state and not a 404)
+//                 not a state and not a 404). For 'unknown' (#971, #1049, a
+//                 non-blocking reference whose target is not known to be
+//                 open, closed or not open): cross-repo-unread, absent,
+//                 truncated, lookup-failed, pr or nonexistent
 //     via         for 'cleared': 'same-repo' | 'source-consumed'
 //                 | 'released (version check only)'
 //     latest      for 'closed-unreleased': the newest published version
-//     provenance  'in hand' | 'lookup' | 'registry'
+//     provenance  'in hand' | 'lookup' | 'registry' | 'none' (an 'unknown'
+//                 cross-repo reference that nothing read, #971)
 //     skipped     'cap' when the lookup was cut by the cap
 //   triggers      extract()'s triggers, plus fired (boolean) and
 //                 firedBy ('reference' | 'comment' | null)
@@ -534,7 +538,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { resolve, plan } from '../lib/refs-resolve.mjs';
+import { resolve, plan, stateKey } from '../lib/refs-resolve.mjs';
 
 const CLI = fileURLToPath(new URL('../issue-refs.mjs', import.meta.url));
 const REPO = 'example-org/example-repo';
@@ -2273,14 +2277,49 @@ test('REVIEW: W11 a 60,000-underscore line resolves in linear time', () => {
   assert.ok(ms < 500, `took ${ms} ms`);
 });
 
+// The check compares two sizes instead of one time with a fixed limit, because
+// load on the machine slowed a correct run past 500 ms (#982). Linear code
+// takes about 8 times as long for 8,000 items as for 1,000; quadratic code
+// takes about 64 times as long. Ten rounds time both sizes back to back, and
+// the test compares the median time of each size, so a slowdown during a few
+// runs, of either size, does not count. Measured 2026-11-23 while a full
+// commands.validate ran: 8.0 to 14.4 times for this extract (100 samples), 45.6
+// to 77.5 times for a quadratic variant that deduplicates by scanning every key
+// (10 samples). The limit of 25 sits between the two. The shortest time of each
+// size was not robust enough: it reached 36.1 times for this extract.
 test('REVIEW: W11 8,000 name-and-number items extract in linear time', () => {
-  const body = `Blocked by ${Array.from({ length: 8000 }, (_, i) => `foo #${i + 1}`).join(', ')}`;
-  const t0 = Date.now();
-  const out = extract(issue(body, { number: 99999 }));
-  const ms = Date.now() - t0;
+  const bodyOf = (n) => `Blocked by ${Array.from({ length: n }, (_, i) => `foo #${i + 1}`).join(', ')}`;
+  const timed = (body) => {
+    const start = process.hrtime.bigint();
+    const out = extract(issue(body, { number: 99999 }));
+    return { out, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+  };
+  const small = bodyOf(1000);
+  const large = bodyOf(8000);
+  const LIMIT = 25;
+  const median = (xs) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return (s[(s.length - 1) >> 1] + s[s.length >> 1]) / 2;
+  };
+  timed(small); // The first call also compiles the code; it is not counted.
+  const smallTimes = [];
+  const largeTimes = [];
+  let out;
+  for (let round = 0; round < 10; round++) {
+    smallTimes.push(timed(small).ms);
+    const run = timed(large);
+    out = run.out;
+    largeTimes.push(run.ms);
+  }
+  const smallMs = median(smallTimes);
+  const largeMs = median(largeTimes);
+  const ratio = largeMs / smallMs;
   assert.equal(out.refs.length, 8000);
   assert.ok(out.refs.every((r) => r.unresolvable === 'repo-ambiguous'));
-  assert.ok(ms < 500, `took ${ms} ms`);
+  assert.ok(
+    ratio < LIMIT,
+    `8,000 items took ${ratio.toFixed(1)} times as long as 1,000 (medians ${largeMs.toFixed(1)} ms and ${smallMs.toFixed(1)} ms)`,
+  );
 });
 
 test('REVIEW: W11 the same repo-ambiguous text named twice is one reference; different text is not', () => {
@@ -2648,6 +2687,148 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   assert.ok(ms < 500, `took ${ms.toFixed(1)} ms`);
   // The bound does not stop an ordinary short "(after #N)" from being read.
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
+});
+
+// ---- #971: a Blocks or Relates to reference whose target state is unknown ----
+//
+// No lookup is planned for a non-blocking reference, so its target is often
+// never read. Such a reference has outcome 'unknown' (kind names why), never
+// 'not-open', and its provenance names no source that was not read.
+
+const OTHER = 'other-org/other-repo';
+
+test('AC-971-1: a cross-repo Relates to with no lookup is unknown, not not-open in hand', () => {
+  const data = dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]);
+  const rec = recOf(resolve(data, OPTS), 1);
+  const ref = refOf(rec, 5, OTHER);
+  assert.equal(ref.relation, 'relates-to');
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'cross-repo-unread');
+  assert.equal(ref.state, null);
+  assert.notEqual(ref.provenance, 'in hand');
+  assert.equal(ref.provenance, 'none');
+  assert.equal(rec.readiness.state, 'ready');
+  // Still no lookup is spent on it.
+  assert.deepEqual(plan(data, OPTS), []);
+});
+
+test('AC-971-2: a cross-repo Blocks with no lookup is unknown and does not block', () => {
+  const data = dataOf([issueOf(1, `Blocks ${OTHER}#5.`)]);
+  const rec = recOf(resolve(data, OPTS), 1);
+  const ref = refOf(rec, 5, OTHER);
+  assert.equal(ref.relation, 'blocks');
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'cross-repo-unread');
+  assert.equal(ref.provenance, 'none');
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('AC-971-3: a same-repo Relates to absent from the comparison set is unknown', () => {
+  const open = [issueOf(1, 'Relates to #5.')];
+  const comparison = [{ number: 6, state: 'OPEN' }];
+  const rec = recOf(resolve({ open, comparison }, OPTS), 1);
+  const ref = refOf(rec, 5);
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'absent');
+  assert.equal(rec.readiness.state, 'ready');
+  // A comparison set at its limit gives the truncated kind instead.
+  const cut = recOf(resolve({ open, comparison }, { ...OPTS, comparisonLimit: 1 }), 1);
+  assert.equal(refOf(cut, 5).outcome, 'unknown');
+  assert.equal(refOf(cut, 5).kind, 'truncated');
+});
+
+test('AC-971-4: (expected green before the fix) a same-repo Relates to absent from an untruncated open list stays not-open', () => {
+  const rec = recOf(resolve(dataOf([issueOf(1, 'Relates to #5.')]), OPTS), 1);
+  const ref = refOf(rec, 5);
+  assert.equal(ref.outcome, 'not-open');
+  assert.equal(ref.provenance, 'in hand');
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('AC-971-5: (expected green before the fix) a cross-repo Relates to whose lookup reads open is live', () => {
+  const data = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [stateKey({ repo: OTHER, number: 5 })]: stJson(5, 'open') },
+  };
+  const ref = refOf(recOf(resolve(data, OPTS), 1), 5, OTHER);
+  assert.equal(ref.outcome, 'live');
+  assert.equal(ref.provenance, 'lookup');
+});
+
+test('AC-971-x: a non-blocking reference keeps not-open when read closed, and is unknown when cut or failed', () => {
+  // Read closed by a lookup made for another reference: not-open, from the lookup.
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const closed = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [key]: stJson(5, 'closed') },
+  };
+  const c = refOf(recOf(resolve(closed, OPTS), 1), 5, OTHER);
+  assert.equal(c.outcome, 'not-open');
+  assert.equal(c.provenance, 'lookup');
+  // A failed lookup: unknown, kind lookup-failed, from the lookup.
+  const failed = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [key]: 'gh: Server Error (HTTP 500)\n' },
+  };
+  const f = refOf(recOf(resolve(failed, OPTS), 1), 5, OTHER);
+  assert.equal(f.outcome, 'unknown');
+  assert.equal(f.kind, 'lookup-failed');
+  // A same-repo target cut from a truncated open list: unknown, kind truncated.
+  const cut = resolve(dataOf([issueOf(1, 'Blocks #77.'), issueOf(2, '')]), { ...OPTS, limit: 2 });
+  const t = refOf(recOf(cut, 1), 77);
+  assert.equal(t.outcome, 'unknown');
+  assert.equal(t.kind, 'truncated');
+  assert.equal(recOf(cut, 1).readiness.state, 'ready');
+  // A qualifier never blocks either: unread, it is unknown, and only the real blocker counts.
+  const q = recOf(resolve(dataOf([issueOf(1, `Blocked by #2 (see ${OTHER}#5).`), issueOf(2, '')]), OPTS), 1);
+  const qr = refOf(q, 5, OTHER);
+  assert.equal(qr.relation, 'qualifier');
+  assert.equal(qr.outcome, 'unknown');
+  assert.equal(qr.provenance, 'none');
+  assert.equal(q.readiness.state, 'blocked');
+});
+
+// ---- #1049 and #1078: a non-blocking reference read as a PR or a 404 ----
+//
+// A lookup made for another reference can read a non-blocking target as a
+// pull request or as not found. That is not "not open": the outcome is
+// 'unknown', with kind 'pr' or 'nonexistent', from the lookup.
+
+test('AC-1049-1: a non-blocking reference read as a pull request or a 404 is unknown, not not-open', () => {
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const answers = {
+    pr: JSON.stringify({ number: 5, state: 'open', pull_request: true }),
+    nonexistent: `${NOT_FOUND}`,
+  };
+  for (const body of [`Relates to ${OTHER}#5.`, `Blocks ${OTHER}#5.`]) {
+    for (const [kind, text] of Object.entries(answers)) {
+      const data = { ...dataOf([issueOf(1, body)]), lookups: { [key]: text } };
+      const rec = recOf(resolve(data, OPTS), 1);
+      const ref = refOf(rec, 5, OTHER);
+      assert.notEqual(ref.outcome, 'not-open', `${body} ${kind}`);
+      assert.equal(ref.outcome, 'unknown', `${body} ${kind}`);
+      assert.equal(ref.kind, kind, `${body} ${kind}`);
+      assert.equal(ref.provenance, 'lookup', `${body} ${kind}`);
+      assert.equal(rec.readiness.state, 'ready', `${body} ${kind}`);
+    }
+  }
+});
+
+test('AC-1049-2: (expected green before the fix) a non-blocking reference read open or closed keeps live or not-open', () => {
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const run = (text) => {
+    const data = { ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]), lookups: { [key]: text } };
+    return recOf(resolve(data, OPTS), 1);
+  };
+  const open = run(stJson(5, 'open'));
+  assert.equal(refOf(open, 5, OTHER).outcome, 'live');
+  assert.equal(open.readiness.state, 'ready');
+  const closed = run(stJson(5, 'closed'));
+  assert.equal(refOf(closed, 5, OTHER).outcome, 'not-open');
+  assert.equal(closed.readiness.state, 'ready');
 });
 
 test('RR: W1 a heading with a long trailing run of spaces is cleaned in linear time', () => {
