@@ -25,6 +25,11 @@ the full maintenance schema.
 
 ## 2026-11-23
 
+* **Update**: `maintainer/release-cycle-rules.md` gains a rule for parallel
+  integration branches that take the same ADR number. `commands.validate`
+  now runs `renumber-adrs.mjs --next`, which exits 1 on a duplicate number;
+  the rule says to re-run it after `origin/main` is merged in, and how to
+  move a duplicate record. From the retro of #906.
 * **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
   issue whose premise was read at a commit that is not an ancestor of the
   default branch waits for the issue whose change holds that commit, and triage
