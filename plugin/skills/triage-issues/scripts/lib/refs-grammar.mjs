@@ -77,6 +77,15 @@ const CONJUNCTION_RE = /(?:and|or|plus|also)(?!\w)|[,&+]/iy;
 // full stop and optional trailing qualifier text opened by "(".
 const NONE_STATEMENT_RE = /^[\s:*_]*(?:none|nothing|n\/a|—|-)[*_]*\.?\s*(?:\(.*)?$/i;
 
+// A sentence end once its ".", "!" or "?" is found: optional closing emphasis,
+// brackets or quotes, then whitespace or the end of the line (sticky: tested
+// at the mark's index).
+const SENTENCE_END_RE = /[.!?][*_)\]"']*(?:\s|$)/y;
+// The word before a full stop that ends no sentence. Run over a bounded slice
+// only (ABBREVIATION_LOOKBACK), longer than the longest word here.
+const ABBREVIATION_TAIL_RE = /(?:^|[^\w.])(?:cf|e\.g|i\.e|etc|vs|viz)$/i;
+const ABBREVIATION_LOOKBACK = 8;
+
 const FENCE_LINE_RE = /^ {0,3}(?:`{3,}|~{3,})/;
 const BANNER_DO_NOT_PLAN_RE = /^do not plan this issue\b/i;
 const BANNER_THIS_ISSUE_RE =
@@ -261,6 +270,38 @@ function isNoneStatement(rest) {
   return NONE_STATEMENT_RE.test(rest);
 }
 
+// Whether the full stop at index i follows an abbreviation ("cf.", "e.g.").
+function followsAbbreviation(text, i) {
+  return ABBREVIATION_TAIL_RE.test(text.slice(Math.max(0, i - ABBREVIATION_LOOKBACK), i));
+}
+
+// Rule: a Blocked by / Depends on statement ends with its sentence (#951). The
+// index in `text` (the remainder after the verb) just past the mark that ends
+// the statement's sentence, or text.length when the line holds one sentence. A
+// sentence ends at ".", "!" or "?" followed by whitespace or the line's end,
+// after optional closing emphasis, brackets or quotes (`**Blocked by #5.** #6
+// ...`). A mark
+// inside a parenthetical, a full stop in a run ("..."), and the full stop of
+// an abbreviation end no sentence. One pass, linear on any input.
+function statementSentenceEnd(text) {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(') {
+      depth++;
+    } else if (ch === ')') {
+      if (depth > 0) depth--;
+    } else if (depth === 0 && (ch === '.' || ch === '!' || ch === '?')) {
+      if (ch === '.' && (text[i - 1] === '.' || text[i + 1] === '.')) continue;
+      SENTENCE_END_RE.lastIndex = i;
+      if (!SENTENCE_END_RE.test(text)) continue;
+      if (ch === '.' && followsAbbreviation(text, i)) continue;
+      return i + 1;
+    }
+  }
+  return text.length;
+}
+
 // Rule: the banner self-declaration form.
 function isSelfDeclaringBanner(text) {
   return (
@@ -360,7 +401,10 @@ function sameKey(target) {
 // unresolvable (repo-ambiguous). spaceForm: whether "name #N" counts.
 // qualify: mark each reference `qualifier` (see isQualifierReference); a
 // reference named both as a qualifier and as a plain item is not a qualifier.
-function scanRefs(text, ctx, spaceForm, qualify = false) {
+// scopeEnd (with qualify): a reference that starts at or after this index sits
+// past the statement's sentence (see statementSentenceEnd), so it is a
+// qualifier too.
+function scanRefs(text, ctx, spaceForm, qualify = false, scopeEnd = text.length) {
   const out = [];
   const byKey = new Map();
   let qualifier = false;
@@ -387,7 +431,12 @@ function scanRefs(text, ctx, spaceForm, qualify = false) {
     // word too; the qualifier phrase then ends after that word.
     const spaced = m[8] !== undefined && m[7] === ' ';
     const phraseEnd = spaced ? m.index + m[6].length : m.index;
-    qualifier = qualify && isQualifierReference(text, phraseEnd, depthAt(m.index));
+    // In that form the word can hold the sentence's full stop ("release. #5"),
+    // so the scope test reads the index of the "#" itself.
+    const refStart = spaced ? phraseEnd + 1 : m.index;
+    qualifier =
+      qualify &&
+      (refStart >= scopeEnd || isQualifierReference(text, phraseEnd, depthAt(m.index)));
     if (m[3] !== undefined) {
       add({ repo: normalizeRepo(`${m[1]}/${m[2]}`, ctx), number: Number(m[3]) });
     } else if (m[5] !== undefined) {
@@ -561,13 +610,17 @@ function scanText(text, origin, order, ctx, skipStatements) {
     if (stmt) {
       if (isNegatedStatement(stmt.negator)) continue;
       const blocking = stmt.relation === 'blocked-by' || stmt.relation === 'depends-on';
+      // Only the statement's own sentence names blockers; a later sentence on
+      // the line names qualifiers at most.
+      const scopeEnd = blocking ? statementSentenceEnd(stmt.rest) : stmt.rest.length;
       // "Blocked by: none" names no blocker: nothing is emitted (a trailing
-      // qualifier reference is dropped), and it answers its heading section.
-      if (blocking && isNoneStatement(stmt.rest)) {
+      // qualifier reference, or one in a later sentence, is dropped), and it
+      // answers its heading section.
+      if (blocking && isNoneStatement(stmt.rest.slice(0, scopeEnd))) {
         if (section && section.kind === 'blocker') section.refCount++;
         continue;
       }
-      const found = scanRefs(stmt.rest, ctx, true, blocking);
+      const found = scanRefs(stmt.rest, ctx, true, blocking, scopeEnd);
       const blockers = found.filter((f) => !f.qualifier);
       // A blocker line with no blocking reference left (none at all, or only
       // qualifiers) is an unverified prose blocker.

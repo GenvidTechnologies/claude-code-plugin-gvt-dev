@@ -12,6 +12,12 @@ and follows [semantic versioning](https://semver.org/).
   - Either way the reference carries the new key `withdrawnBy`, the withdrawing line. `issue-triage-analyst` reports it with the finding. `triage-issues` asks the user which blocker the line means, and offers to rewrite each blocker that still holds into `owner/repo#N` form, which settles it. It does not offer to strike the withdrawn line, because the line would then retract the blocker that still holds. `plan-next-issue` quotes the line in the rationale, and `plan-task` Phase 0 shows it.
   - "No longer blocked: #N …" now retracts the reference to #N, as "No longer blocked by #N" did. A line that only mentions "no longer blocked" mid-sentence still withdraws nothing.
   Behavioral skill/agent change → version bump at release.
+- **A `Blocked by` or `Depends on` statement names blockers only in its own sentence (#951, and #923 folded in).** The reference grammar of `triage-issues` read every reference on a blocker line as a blocker, so a later sentence could say the opposite and still count. GenvidTechnologies/claude-code-plugin-gvt-fleet#34 listed #38 and #37 as blockers from the sentence "#38 and #37 can start without it". #286 read as blocked by #260, named only in a later sentence. `Blocked by the vendor release. #5 was the earlier attempt.` read as ready once #5 closed. `Blocked by nothing. <sentence naming #N>` read #N as a blocker.
+  - `issue-refs` `extract` now gives a reference in a later sentence of the line relation `qualifier`, which never blocks. A sentence ends at `.`, `!` or `?` followed by a space or the end of the line, after any closing emphasis, bracket or quote. A mark inside a parenthetical, a run such as `...`, and the full stop of `cf.`, `e.g.`, `i.e.`, `etc.`, `vs.` or `viz.` end no sentence.
+  - A statement whose sentence is `none` (or `nothing`, `n/a`, a dash) yields no reference, also from a later sentence of its line. As a side effect, `**Blocked by nothing.**` now reads as none; it was a prose blocker before.
+  - A plain line under a `Blocked by` or `Depends on` heading has no statement sentence, so every reference on it stays in scope, as before. `Blocks` and `Relates to` lines do not change.
+  - `issue-triage-analyst`, `plan-task` Phase 0 and `triage-issues` state the rule beside the qualifier rule.
+  Behavioral skill/agent change → version bump at release.
 
 ## [6.2.0] - 2026-11-22
 

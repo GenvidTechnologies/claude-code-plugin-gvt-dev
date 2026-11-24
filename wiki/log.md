@@ -15,6 +15,14 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-24
+
+* **Update**: `maintainer/release-cycle-rules.md` gains "A CHANGELOG sentence
+  that says how behaviour changed is run on the old and the new code before
+  the commit". It came from the retro of #951, whose entry first claimed a
+  behaviour that the new code did not have; a run on both sides found it
+  before the pull request was opened. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-23
 
 * **Update**: `maintainer/release-cycle-rules.md` gains a rule for parallel

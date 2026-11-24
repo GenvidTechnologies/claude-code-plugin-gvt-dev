@@ -2861,3 +2861,144 @@ test('WITHDRAW resolve: two prose blockers with one withdrawal stay blocked and 
   assert.equal(rec.readiness.state, 'blocked');
   assert.ok(rec.readiness.reason.includes('possibly withdrawn by a later comment'), rec.readiness.reason);
 });
+
+// ---- SENT: a blocker statement ends with its sentence (#951, folds #923) ----
+//
+// On a Blocked by / Depends on line, only the sentence that holds the statement
+// names blockers. A reference in a later sentence of the same line has relation
+// 'qualifier'. A sentence ends at ".", "!" or "?" followed by whitespace, after
+// optional closing emphasis, outside any parenthetical; a run of full stops and
+// the full stop of "cf.", "e.g.", "i.e.", "etc.", "vs." or "viz." end nothing.
+// A plain line under a Blocked by / Depends on heading keeps the whole line.
+
+function relationsOf(out, number) {
+  return out.refs
+    .filter((r) => r.target && r.target.number === number)
+    .map((r) => r.relation);
+}
+
+test('SENT: the gvt-fleet#34 line gives #36 as a qualifier, #38 and #37 as no blocker, and one prose blocker', () => {
+  const BT = String.fromCharCode(96);
+  const body =
+    `Blocked by (#36, and the deletion of side branches by ${BT}wrap${BT}): the workspace issue that asks ${BT}wrap${BT} ` +
+    'to prove and delete every branch the worker made (the wrap extra-branches issue). #38 and #37 can start ' +
+    `without it: the side branches then stay as ${BT}otherBranches${BT}, which ${BT}wrap${BT} reports and does not delete.`;
+  const x = extract(issue(body, { number: 34 }));
+  assert.equal(refTo(x, 36).relation, 'qualifier');
+  for (const n of [38, 37]) {
+    assert.ok(!relationsOf(x, n).includes('blocked-by'), `#${n}: ${JSON.stringify(relationsOf(x, n))}`);
+  }
+  const prose = x.refs.filter((r) => r.target === null && r.unresolvable === 'prose');
+  assert.equal(prose.length, 1);
+  const open = [issueOf(34, body), issueOf(36, ''), issueOf(37, ''), issueOf(38, '')];
+  const r = recOf(resolve({ open }, OPTS), 34).readiness;
+  assert.equal(r.state, 'blocked');
+  assert.deepEqual(r.blockedBy, []);
+});
+
+test('SENT: a reference in a later sentence is not a blocker', () => {
+  for (const body of [
+    'Blocked by #5. #6 is related.',
+    '**Blocked by #5.** #6 is related.',
+    'Blocked by #5! #6 is related.',
+    'Blocked by #5? #6 is related.',
+    'Blocked by #5.) #6 is related.',
+    '- Blocked by #5. #6 is related.',
+  ]) {
+    const x = extract(issue(body));
+    assert.deepEqual(relationsOf(x, 5), ['blocked-by'], body);
+    assert.deepEqual(relationsOf(x, 6), ['qualifier'], body);
+    assert.ok(!x.refs.some((r) => r.unresolvable === 'prose'), body);
+    const open = [issueOf(1, body), issueOf(5, ''), issueOf(6, '')];
+    const r = recOf(resolve({ open }, OPTS), 1).readiness;
+    assert.deepEqual(r.blockedBy, [{ repo: null, number: 5 }], body);
+  }
+  const dep = extract(issue('Depends on #5. #6 is related.'));
+  assert.deepEqual(relationsOf(dep, 5), ['depends-on']);
+  assert.deepEqual(relationsOf(dep, 6), ['qualifier']);
+});
+
+test('SENT: the #286 shape, a later sentence naming an open issue, does not block on it', () => {
+  const body =
+    '**Blocked by #193.** The same verdict is already recorded on #260; applying it consistently.';
+  const x = extract(issue(body, { number: 286 }));
+  assert.equal(refTo(x, 193).relation, 'blocked-by');
+  assert.equal(refTo(x, 260).relation, 'qualifier');
+  const open = [issueOf(286, body), issueOf(193, ''), issueOf(260, '')];
+  const r = recOf(resolve({ open }, OPTS), 286).readiness;
+  assert.deepEqual(r.blockedBy, [{ repo: null, number: 193 }]);
+});
+
+test('SENT: a prose blocker followed by a sentence naming a closed issue stays blocked', () => {
+  const body = 'Blocked by the vendor release. #5 was the earlier attempt.';
+  const x = extract(issue(body));
+  assert.equal(refTo(x, 5).relation, 'qualifier');
+  assert.equal(x.refs.filter((r) => r.unresolvable === 'prose').length, 1);
+  const comparison = [{ number: 5, state: 'CLOSED' }];
+  const r = recOf(resolve({ open: [issueOf(1, body)], comparison }, OPTS), 1).readiness;
+  assert.equal(r.state, 'blocked', r.reason);
+});
+
+test('SENT: a statement that says nothing, then a sentence naming an issue, names no blocker', () => {
+  for (const body of [
+    'Blocked-by nothing. The cleanup in #7 is related.',
+    'Blocked by: none. #7 came first.',
+    '**Blocked by nothing.** See #7.',
+    'Depends on nothing (see #7). #8 is next.',
+    '**Blocked by nothing.**',
+  ]) {
+    const x = extract(issue(body));
+    assert.ok(!x.refs.some((r) => r.relation === 'blocked-by' || r.relation === 'depends-on'), body);
+    assert.equal(x.refs.length, 0, `${body}: ${JSON.stringify(x.refs)}`);
+    const open = [issueOf(1, body), issueOf(7, ''), issueOf(8, '')];
+    assert.equal(recOf(resolve({ open }, OPTS), 1).readiness.state, 'ready', body);
+  }
+});
+
+test('SENT: regression guards, a qualifier phrase, a conjunction parenthetical and "nothing (see #N)" are unchanged', () => {
+  const see = extract(issue('Blocked by #5. See #6 for context.'));
+  assert.equal(refTo(see, 5).relation, 'blocked-by');
+  assert.equal(refTo(see, 6).relation, 'qualifier');
+  const conj = extract(issue('Blocked by #5 (and #6)'));
+  assert.equal(refTo(conj, 5).relation, 'blocked-by');
+  assert.equal(refTo(conj, 6).relation, 'blocked-by');
+  const none = extract(issue('Blocked by nothing (see #6)'));
+  assert.equal(none.refs.length, 0);
+});
+
+test('SENT: a full stop that ends no sentence keeps the references after it in the statement', () => {
+  for (const body of [
+    'Blocked by #5 e.g. #6',
+    'Blocked by #5 i.e. #6',
+    'Blocked by #5, etc. and #6',
+    'Blocked by #5 vs. #6',
+    'Blocked by #5 viz. #6',
+    'Blocked by lib v5.1.0 and #6',
+    'Blocked by #5... and #6',
+    'Blocked by #5 (it closed. It came back.) and #6',
+    'Blocked by #5.#6',
+  ]) {
+    const x = extract(issue(body));
+    assert.deepEqual(relationsOf(x, 6), ['blocked-by'], `${body}: ${JSON.stringify(x.refs)}`);
+  }
+  // A word that only ends like an abbreviation still ends its sentence.
+  assert.deepEqual(relationsOf(extract(issue('Blocked by #5 and the recipe. #6 is next.')), 6), [
+    'qualifier',
+  ]);
+});
+
+test('SENT: a reference named in the statement and again in a later sentence is a blocker once', () => {
+  const x = extract(issue('Blocked by #5. #5 also needs a review.'));
+  assert.deepEqual(relationsOf(x, 5), ['blocked-by']);
+});
+
+test('SENT: a plain line under a Blocked by heading keeps every reference on the line', () => {
+  const x = extract(issue('## Blocked by\n\n#5. #6 too.\n'));
+  assert.deepEqual(relationsOf(x, 5), ['blocked-by']);
+  assert.deepEqual(relationsOf(x, 6), ['blocked-by']);
+});
+
+test('SENT: a later sentence on a blocks or relates-to line keeps its relation', () => {
+  assert.deepEqual(relationsOf(extract(issue('Blocks #5. #6 too.')), 6), ['blocks']);
+  assert.deepEqual(relationsOf(extract(issue('Relates to #5. #6 too.')), 6), ['relates-to']);
+});
