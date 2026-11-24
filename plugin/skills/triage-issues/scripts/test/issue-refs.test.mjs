@@ -2637,3 +2637,90 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   // The bound does not stop an ordinary short "(after #N)" from being read.
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
 });
+
+// ---- AC-895: deferral trigger phrases for a "not before" condition ----
+
+const PHRASES_895 = ['Not before', 'Not until', 'Blocked until', 'On hold until'];
+
+test('AC-895-1: the reproduction body gives both the "Not before" and the "Deferred until" trigger', () => {
+  const body =
+    '## Proposed change\n\nRemove the alias.\n\n## When\n\n' +
+    'Not before every supported client build reads `payload`.\n\n' +
+    'Deferred until the client floor is raised.\n';
+  const out = extract(issue(body));
+  assert.ok(
+    out.triggers.some((t) => t.line === 'Not before every supported client build reads `payload`.'),
+    JSON.stringify(out.triggers),
+  );
+  assert.ok(
+    out.triggers.some((t) => t.line === 'Deferred until the client floor is raised.'),
+    JSON.stringify(out.triggers),
+  );
+  assert.equal(out.triggers.length, 2);
+});
+
+test('AC-895-1: each new phrase is a trigger at line start, after a list marker and in bold', () => {
+  PHRASES_895.forEach((phrase, i) => {
+    const forms = {
+      plain: `${phrase} marker-plain-${i} is raised.`,
+      list: `- ${phrase} marker-list-${i} is raised.`,
+      bold: `**${phrase}** marker-bold-${i} is raised.`,
+    };
+    for (const [form, line] of Object.entries(forms)) {
+      const out = extract(issue(`Intro.\n\n${line}\n`));
+      assert.equal(out.triggers.length, 1, `${phrase} (${form}): ${JSON.stringify(out.triggers)}`);
+      assert.ok(out.triggers[0].line.includes(`marker-${form}-${i}`), `${phrase} (${form})`);
+    }
+  });
+});
+
+test('AC-895-2: a "Blocked until" line is a trigger with a deferral reference, never a statement', () => {
+  const out = extract(issue('Blocked until #12 ships.'));
+  assert.equal(out.triggers.length, 1);
+  const ref = refTo(out, 12);
+  assert.ok(ref, JSON.stringify(out.refs));
+  assert.equal(ref.source, 'deferral');
+  assert.ok(!out.refs.some((r) => r.source === 'statement'), JSON.stringify(out.refs));
+});
+
+test('AC-895-2: through resolve, an open target holds the issue back and a closed target fires the trigger', () => {
+  const data = dataOf([issueOf(1, 'Blocked until #12 ships.')]);
+  const open = withState(data, OPTS, { [`${REPO}#12`]: stJson(12, 'open') });
+  const held = recOf(resolve(open, OPTS), 1);
+  assert.equal(refOf(held, 12).source, 'deferral');
+  assert.equal(held.triggers.length, 1);
+  assert.equal(held.triggers[0].fired, false);
+  // A deferral reference is an ordinary blocker while its target is open.
+  assert.equal(held.readiness.state, 'blocked');
+  assert.deepEqual(held.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  const closed = withState(data, OPTS, { [`${REPO}#12`]: stJson(12, 'closed') });
+  const fired = recOf(resolve(closed, OPTS), 1);
+  assert.equal(fired.triggers.length, 1);
+  assert.equal(fired.triggers[0].fired, true);
+  assert.equal(fired.triggers[0].firedBy, 'reference');
+  assert.equal(fired.readiness.state, 'ready');
+});
+
+test('AC-895-3: a phrase in mid-sentence position is not a trigger', () => {
+  const body = [
+    'We should do this not before the client floor is raised.',
+    'The work is blocked until the vendor answers.',
+    'It stays on hold until then.',
+    'Not-before dates are ignored here.',
+  ].join('\n\n');
+  const out = extract(issue(body));
+  assert.deepEqual(out.triggers, []);
+  assert.deepEqual(out.refs, []);
+});
+
+test('AC-895-3: "Not blocked by" names no reference and "Blocked by" still blocks', () => {
+  const negated = extract(issue('Not blocked by #5.'));
+  assert.deepEqual(negated.triggers, []);
+  assert.equal(refTo(negated, 5), undefined);
+  const blocked = extract(issue('Blocked by #5.'));
+  assert.deepEqual(blocked.triggers, []);
+  const ref = refTo(blocked, 5);
+  assert.ok(ref, JSON.stringify(blocked.refs));
+  assert.equal(ref.source, 'statement');
+  assert.equal(ref.relation, 'blocked-by');
+});

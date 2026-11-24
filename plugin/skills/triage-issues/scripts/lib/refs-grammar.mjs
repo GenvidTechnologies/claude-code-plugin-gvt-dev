@@ -32,7 +32,7 @@ const LEAD_RE = /^\s*(?:([-*+]|\d{1,9}[.)])\s+)?(?:\[([ xX])\]\s+)?[*_]*/;
 const STATEMENT_RE =
   /^(?:(not|no longer|never|no)\s+)?(blocked[ -]by|depends[ -]on|blocks|relates[ -]to)\b/i;
 const TRIGGER_RE =
-  /^(?:deferral trigger|pick this up when|pick it up (?:only )?when|revisit when|not urgent|deferred until|parked until)\b/i;
+  /^(?:deferral trigger|pick this up when|pick it up (?:only )?when|revisit when|not urgent|deferred until|parked until|not before|not until|blocked until|on hold until)\b/i;
 const MEASUREMENT_RE =
   /\b(?:count(?:s|ed|ing)?|measure(?:s|d|ment|ments)?|measuring|probe(?:s|d)?|probing|benchmark(?:s|ed|ing)?|threshold(?:s)?)\b/i;
 const RETRACT_RE =
