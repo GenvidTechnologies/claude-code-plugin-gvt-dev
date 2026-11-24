@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`issue-refs` no longer reports a non-blocking reference as `not-open` when it never read the target (#971).** No lookup is planned for a `Blocks`, `Relates to` or `qualifier` reference. Before, such a reference to a cross-repository target got outcome `not-open` with provenance `in hand`, though nothing was read. A same-repository target missing from the comparison set, or cut from a truncated list, got the same. In the triage of genvid-holdings/burbank#359 (2026-11-18), one such target was open.
+  - The reference now gets the new outcome `unknown`. Its `kind` names why the state is not known: `cross-repo-unread`, `absent`, `truncated` or `lookup-failed`.
+  - A cross-repository target that nothing read has provenance `none`.
+  - An `unknown` reference never blocks and is not a finding.
+  - A target read as closed, or missing from an untruncated open list with no comparison set, is still `not-open`.
+  - `issue-triage-analyst` lists the outcome and does not record such a target as open or closed. `triage-issues` says that it is not a finding.
+  Behavioral skill/agent change → version bump at release.
+
 ## [6.2.0] - 2026-11-22
 
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.

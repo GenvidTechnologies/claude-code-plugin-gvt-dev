@@ -465,15 +465,18 @@ test('REL: extract tags relation for each statement verb', () => {
 //     outcome     'live' | 'not-open' | 'cleared' | 'closed-unreleased'
 //                 | 'closed-release-unverified' | 'ticked-open'
 //                 | 'unticked-closed' | 'unticked-not-open' | 'retracted'
-//                 | 'unresolvable'
+//                 | 'unresolvable' | 'unknown'
 //     kind        for 'unresolvable': prose, repo-ambiguous, cross-repo-unread,
 //                 absent, pr, nonexistent, heading-detached, truncated, or
 //                 lookup-failed (not in the design: a lookup whose output is
-//                 not a state and not a 404)
+//                 not a state and not a 404). For 'unknown' (#971, a
+//                 non-blocking reference whose target state is not known):
+//                 cross-repo-unread, absent, truncated or lookup-failed
 //     via         for 'cleared': 'same-repo' | 'source-consumed'
 //                 | 'released (version check only)'
 //     latest      for 'closed-unreleased': the newest published version
-//     provenance  'in hand' | 'lookup' | 'registry'
+//     provenance  'in hand' | 'lookup' | 'registry' | 'none' (an 'unknown'
+//                 cross-repo reference that nothing read, #971)
 //     skipped     'cap' when the lookup was cut by the cap
 //   triggers      extract()'s triggers, plus fired (boolean) and
 //                 firedBy ('reference' | 'comment' | null)
@@ -522,7 +525,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { resolve, plan } from '../lib/refs-resolve.mjs';
+import { resolve, plan, stateKey } from '../lib/refs-resolve.mjs';
 
 const CLI = fileURLToPath(new URL('../issue-refs.mjs', import.meta.url));
 const REPO = 'example-org/example-repo';
@@ -2636,4 +2639,106 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   assert.ok(ms < 500, `took ${ms.toFixed(1)} ms`);
   // The bound does not stop an ordinary short "(after #N)" from being read.
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
+});
+
+// ---- #971: a Blocks or Relates to reference whose target state is unknown ----
+//
+// No lookup is planned for a non-blocking reference, so its target is often
+// never read. Such a reference has outcome 'unknown' (kind names why), never
+// 'not-open', and its provenance names no source that was not read.
+
+const OTHER = 'other-org/other-repo';
+
+test('AC-971-1: a cross-repo Relates to with no lookup is unknown, not not-open in hand', () => {
+  const data = dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]);
+  const rec = recOf(resolve(data, OPTS), 1);
+  const ref = refOf(rec, 5, OTHER);
+  assert.equal(ref.relation, 'relates-to');
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'cross-repo-unread');
+  assert.equal(ref.state, null);
+  assert.notEqual(ref.provenance, 'in hand');
+  assert.equal(ref.provenance, 'none');
+  assert.equal(rec.readiness.state, 'ready');
+  // Still no lookup is spent on it.
+  assert.deepEqual(plan(data, OPTS), []);
+});
+
+test('AC-971-2: a cross-repo Blocks with no lookup is unknown and does not block', () => {
+  const data = dataOf([issueOf(1, `Blocks ${OTHER}#5.`)]);
+  const rec = recOf(resolve(data, OPTS), 1);
+  const ref = refOf(rec, 5, OTHER);
+  assert.equal(ref.relation, 'blocks');
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'cross-repo-unread');
+  assert.equal(ref.provenance, 'none');
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('AC-971-3: a same-repo Relates to absent from the comparison set is unknown', () => {
+  const open = [issueOf(1, 'Relates to #5.')];
+  const comparison = [{ number: 6, state: 'OPEN' }];
+  const rec = recOf(resolve({ open, comparison }, OPTS), 1);
+  const ref = refOf(rec, 5);
+  assert.notEqual(ref.outcome, 'not-open');
+  assert.equal(ref.outcome, 'unknown');
+  assert.equal(ref.kind, 'absent');
+  assert.equal(rec.readiness.state, 'ready');
+  // A comparison set at its limit gives the truncated kind instead.
+  const cut = recOf(resolve({ open, comparison }, { ...OPTS, comparisonLimit: 1 }), 1);
+  assert.equal(refOf(cut, 5).outcome, 'unknown');
+  assert.equal(refOf(cut, 5).kind, 'truncated');
+});
+
+test('AC-971-4: (expected green before the fix) a same-repo Relates to absent from an untruncated open list stays not-open', () => {
+  const rec = recOf(resolve(dataOf([issueOf(1, 'Relates to #5.')]), OPTS), 1);
+  const ref = refOf(rec, 5);
+  assert.equal(ref.outcome, 'not-open');
+  assert.equal(ref.provenance, 'in hand');
+  assert.equal(rec.readiness.state, 'ready');
+});
+
+test('AC-971-5: (expected green before the fix) a cross-repo Relates to whose lookup reads open is live', () => {
+  const data = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [stateKey({ repo: OTHER, number: 5 })]: stJson(5, 'open') },
+  };
+  const ref = refOf(recOf(resolve(data, OPTS), 1), 5, OTHER);
+  assert.equal(ref.outcome, 'live');
+  assert.equal(ref.provenance, 'lookup');
+});
+
+test('AC-971-x: a non-blocking reference keeps not-open when read closed, and is unknown when cut or failed', () => {
+  // Read closed by a lookup made for another reference: not-open, from the lookup.
+  const key = stateKey({ repo: OTHER, number: 5 });
+  const closed = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [key]: stJson(5, 'closed') },
+  };
+  const c = refOf(recOf(resolve(closed, OPTS), 1), 5, OTHER);
+  assert.equal(c.outcome, 'not-open');
+  assert.equal(c.provenance, 'lookup');
+  // A failed lookup: unknown, kind lookup-failed, from the lookup.
+  const failed = {
+    ...dataOf([issueOf(1, `Relates to ${OTHER}#5.`)]),
+    lookups: { [key]: 'gh: Server Error (HTTP 500)\n' },
+  };
+  const f = refOf(recOf(resolve(failed, OPTS), 1), 5, OTHER);
+  assert.equal(f.outcome, 'unknown');
+  assert.equal(f.kind, 'lookup-failed');
+  // A same-repo target cut from a truncated open list: unknown, kind truncated.
+  const cut = resolve(dataOf([issueOf(1, 'Blocks #77.'), issueOf(2, '')]), { ...OPTS, limit: 2 });
+  const t = refOf(recOf(cut, 1), 77);
+  assert.equal(t.outcome, 'unknown');
+  assert.equal(t.kind, 'truncated');
+  assert.equal(recOf(cut, 1).readiness.state, 'ready');
+  // A qualifier never blocks either: unread, it is unknown, and only the real blocker counts.
+  const q = recOf(resolve(dataOf([issueOf(1, `Blocked by #2 (see ${OTHER}#5).`), issueOf(2, '')]), OPTS), 1);
+  const qr = refOf(q, 5, OTHER);
+  assert.equal(qr.relation, 'qualifier');
+  assert.equal(qr.outcome, 'unknown');
+  assert.equal(qr.provenance, 'none');
+  assert.equal(q.readiness.state, 'blocked');
 });
