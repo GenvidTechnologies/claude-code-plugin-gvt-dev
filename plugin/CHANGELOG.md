@@ -7,6 +7,14 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **`issue-refs` no longer reports a non-blocking reference as `not-open` when it never read the target (#971).** No lookup is planned for a `Blocks`, `Relates to` or `qualifier` reference. Before, such a reference to a cross-repository target got outcome `not-open` with provenance `in hand`, though nothing was read. A same-repository target missing from the comparison set, or cut from a truncated list, got the same. In the triage of genvid-holdings/burbank#359 (2026-11-18), one such target was open.
+  - The reference now gets the new outcome `unknown`. Its `kind` names why the state is not known: `cross-repo-unread`, `absent`, `truncated` or `lookup-failed`.
+  - A lookup made for another reference can read the target as a pull request or as not found. That also gave `not-open`, and now gives `unknown` with kind `pr` or `nonexistent` (#1049, #1078).
+  - A cross-repository target that nothing read has provenance `none`.
+  - An `unknown` reference never blocks and is not a finding.
+  - A target read as closed, or missing from an untruncated open list with no comparison set, is still `not-open`.
+  - `issue-triage-analyst` lists the outcome and does not record such a target as open or closed. `triage-issues` says that it is not a finding.
+  Behavioral skill/agent change → version bump at release.
 - **The reference grammar reads a later "No longer blocked" that names no issue (#906).** A blocker line that names no issue (`unresolvable` kind `prose`) could not be retracted, because a retraction applied only to the issue it named. "No longer blocked:" without "by" was not read as a retraction at all. So an issue whose author withdrew such a blocker in a later comment stayed blocked in `plan-next-issue`, and triage reported a plain `unresolvable` finding. Observed on 2026-11-10 in the triage of GenvidTechnologies/claude-code-plugin-gvt-fleet#4.
   - A comment line that opens with "No longer blocked" (also "Unblocked", "No longer a blocker", "No longer depends on" or "Blocker is resolved") and names no reference now withdraws the earlier `prose` blockers that are still standing. When there is exactly one, it is `retracted`. When there are several, the line cannot say which one it means, so none is retracted. Each stays `unresolvable`, and the readiness reason says "possibly withdrawn by a later comment".
   - Either way the reference carries the new key `withdrawnBy`, the withdrawing line. `issue-triage-analyst` reports it with the finding. `triage-issues` asks the user which blocker the line means, and offers to rewrite each blocker that still holds into `owner/repo#N` form, which settles it. It does not offer to strike the withdrawn line, because the line would then retract the blocker that still holds. `plan-next-issue` quotes the line in the rationale, and `plan-task` Phase 0 shows it.
