@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The reference grammar reads "Not before" deferrals and lists the gates it cannot read (#895).** An issue whose only gate was a "Not before …" line under a `## When` heading came back from `issue-refs.mjs extract` with no trigger, so `plan-task` Phase 0 read it as ready. ADR-0105 records the decision.
+  - "Not before", "Not until", "Blocked until" and "On hold until" at line start are deferral triggers, like "Deferred until". A reference on such a line holds the issue while that issue is open.
+  - `extract` returns `possibleGates`, and `extract --single` prints it: each body heading that names a wait (such as `## When` or `## Sequencing`) whose section gives no trigger and no blocker the grammar reads, as `{heading, line, origin}`. `resolve` reads an issue with one as `ready-caveat` interactively and `blocked` under `--non-interactive`, and names the heading in the reason. Writing the wait in a form the grammar reads, or `Blocked by: none`, inside that section clears it.
+  - `plan-task` Phase 0 shows each entry before Phase 1. `plan-next-issue` documents the caveat, the unattended block and the closing-summary line. `issue-triage-analyst` reports each entry as a `[refs]` finding, and `triage-issues` offers a rewrite of the section with approval, never unattended.
+  - A heading title is cleaned in linear time. Before, a long run of spaces in a heading took quadratic time.
+  Behavioral skill/agent change → version bump at release.
+
 ## [6.2.0] - 2026-11-22
 
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.

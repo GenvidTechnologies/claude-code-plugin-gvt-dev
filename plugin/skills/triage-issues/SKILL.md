@@ -574,10 +574,12 @@ split). Present them together, then apply the approved changes using the **Mutat
   read-one JSON object (`number`, `title`, `body`, `comments: []`) in a scratch
   file, and run
   `node ${CLAUDE_PLUGIN_ROOT}/skills/triage-issues/scripts/issue-refs.mjs extract --single <file> --repo <owner/repo>`.
-  Show the references it prints, with their relations, beside the preview. A
-  reference that blocks where the draft means only to relate, or a bare `#N`
-  that the grammar takes for an issue of the tracker's own repository, is a
-  defect in the draft: fix it before you ask. The body readback after the write
+  Show the references it prints, with their relations, beside the preview. Show
+  its `possibleGates` too: an entry means a heading of the draft names a wait that
+  the grammar cannot read, so write the wait in a form it reads, inside that
+  section, before you ask. A reference that blocks where the draft means only to
+  relate, or a bare `#N` that the grammar takes for an issue of the tracker's own
+  repository, is a defect in the draft: fix it before you ask. The body readback after the write
   proves only that the text matches the draft. It cannot show what the
   grammar reads in that text;
 - when a body rewrite in this walk already carries a dependency or related
@@ -670,9 +672,22 @@ split). Present them together, then apply the approved changes using the **Mutat
       close-proposal walk below.
     - `banner-no-open-child`: report only. A banner is the author saying the
       issue stays open on purpose, so this is never a close proposal.
+  - A third issue-level finding comes from the record's `possibleGates[]`: a
+    possible unparsed gate, a heading that names a wait whose section the grammar
+    cannot read as one. Present the heading and the line the analyst carries,
+    and offer a body rewrite inside that section, with per-issue approval: the
+    wait written as a deferral trigger line, as a `Blocked by` line naming the
+    blocker, or as `Blocked by: none` when nothing blocks. Ask what the section
+    waits for when the line does not say; never guess the blocker or invent a
+    trigger. A rewrite outside the flagged section does not clear the finding.
+    Check the draft with `extract` (above) and confirm that `possibleGates` no
+    longer lists the heading. Under `--non-interactive`, report the finding in the
+    closing summary (§5) and write nothing: no body rewrite, no comment, also
+    under `--force`, because the right form depends on what the author meant.
   - `retracted`: no write. A later note already withdrew the claim.
-  Under `--non-interactive` without `--force`, post the finding as a comment
-  instead (§4) and rewrite the body only under `--force`. The note opens with
+  For every finding except a possible unparsed gate, under `--non-interactive`
+  without `--force`, post the finding as a comment instead (§4) and rewrite the
+  body only under `--force`. The note opens with
   `Triage verification note — [refs] <outcome> — <source>`, where `<source>` is
   `<target> @ <state anchor>` and the state anchor is `closed <closed_at>`,
   `open`, `latest <version>`, or `sub-issues <completed>/<total>` (for
@@ -734,6 +749,7 @@ regardless; only the create is best-effort (see
 | `needs-info` label + comment | approve | auto-apply |
 | Dependency links | approve | auto-apply |
 | Body annotation from a `[refs]` finding (§3) — a cleared line, or a mismatched row | per-issue approval | **comment only** — posted as a comment; the body is annotated only under `--force`. Never tick or untick a row |
+| Body rewrite from a possible unparsed gate (§3) | per-issue approval | **reported only** — no comment and no body write, also under `--force` |
 | Close as completed / not planned (done-but-unclosed, or a carried-in proposal) (§3) | approve per item | **deferred** unless `--force` |
 | Close-as-duplicate / create split issues | approve per item | **deferred** unless `--force` |
 | Label readback (§3) | always | always |
@@ -751,7 +767,9 @@ comparand (`[artifact]`, `[comments]` or `[refs]`) and outcome, and which were
 rewritten into the body versus posted as a comment. For `[refs]`, also report the
 `retracted` count (findings withdrawn by an earlier note, so nothing was written),
 the truncated count (lists or comment sets cut off at their limit, so some
-references were not resolved), and each close applied or deferred, with any
+references were not resolved), each possible unparsed gate with its issue,
+heading and line (with the rewrite applied or declined, or only reported under
+`--non-interactive`), and each close applied or deferred, with any
 approved close left outstanding for lack of a Close recipe.
 
 Report the label readback per issue (§3): matched, re-applied, or failed. Report

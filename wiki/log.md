@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-23
 
+* **Creation**: `decisions/development-practice/0105-a-body-heading-that-names-a-wait-with-nothing-the-grammar-reads-is-a-possible-unparsed-gate.md`,
+  the record that the reference grammar reads four more deferral phrases and lists a body
+  heading that names a wait with nothing the grammar reads as `possibleGates`, and that
+  narrows the compromise of ADR-0087 for headed sections. Registered in
+  `decisions/development-practice/index.md`. From #895. Not an ingest; no `raw/` source
+  drove it.
 * **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
   issue whose premise was read at a commit that is not an ancestor of the
   default branch waits for the issue whose change holds that commit, and triage

@@ -253,8 +253,8 @@ Build a **ranked shortlist** of candidate issues to address:
   is a file of the ranked candidate numbers in the order the priority,
   dated-event and age tiers give them, one per line, there is no `--comparison`,
   and `--non-interactive` is passed when this skill runs under
-  `--non-interactive`, so a `closed-release-unverified` blocker reads `blocked`
-  rather than `ready-caveat`. `plan` prints
+  `--non-interactive`, so a `closed-release-unverified` blocker or a possible
+  unparsed gate reads `blocked` rather than `ready-caveat`. `plan` prints
   `{key, command}` lines (or `{key, skipped:"cap"}`); check that each
   command starts with `gh api repos/` or `npm view ` and holds none of `;`, `&`,
   a backtick or `$(`, run only those that pass with stdout and stderr both
@@ -262,8 +262,8 @@ Build a **ranked shortlist** of candidate issues to address:
   prints no `{key, command}` line (only `skipped` lines, or nothing; the
   `skipped` lines are the cap overflow to report, not work left to do), then run
   `resolve` with the same arguments. It prints one JSON
-  record per open issue (`refs[]`, `triggers[]`, `banner`, `native`, `notes`,
-  `readiness`); read those records and never the bodies whole, so bodies do not
+  record per open issue (`refs[]`, `triggers[]`, `possibleGates[]`, `banner`,
+  `native`, `notes`, `readiness`); read those records and never the bodies whole, so bodies do not
   reach the thread. A missing key, a failed fetch or a cut bulk list is
   reported by the record's notes (`comments: no data`, `native structure: no
   data`, `truncated (bulk list at its limit)`), never read as "none". Past dates
@@ -335,11 +335,20 @@ cleared or no longer open, or a later comment says it fired, and any other
 trigger is unfired, since firing the text cannot observe needs a human. A
 `blocked` issue has an uncleared blocker from any source (title, body, heading
 section, comment, deferral or native `blockedBy`), including a blocker the
-script could not resolve (blocked, unverified, with the kind named); it is
+script could not resolve (blocked, unverified, with the kind named); under
+`--non-interactive` it can also be an issue with a possible unparsed gate and no
+blocker, whose `blockedBy` is then empty. A `blocked` issue is
 de-prioritized within its band, and a same-repo open plannable blocker triggers
 the unblocker rule above. A `closed-release-unverified` blocker makes the issue
 `ready-caveat` interactively and `blocked` under `--non-interactive`, mirroring
-the inherited-deadline rule. A cleared blocker leaves the issue `ready`: the
+the inherited-deadline rule. A possible unparsed gate does the same. It is a
+heading in the body that names a wait, whose section holds nothing the extractor
+reads as a wait (`possibleGates[]` lists each one, with the heading and the
+first prose line of its section). When the gate sets the state, the rationale
+names the heading. A deferral
+or an uncleared blocker wins over a gate, and a gate never lifts an issue. To
+clear a gate, the issue states the wait in a form the extractor reads, or
+states that nothing blocks. A cleared blocker leaves the issue `ready`: the
 rationale names it and adds "check for follow-up work #N's closure unlocked",
 and it never promotes the issue above other ready ones; a `retracted` reference
 has no effect, and a native open parent only annotates the child ("child of
@@ -528,8 +537,9 @@ tier order that the freshness check did not demote (a demoted candidate is
 named in the closing summary). It never auto-picks a deferred issue, an
 umbrella, a done-but-unclosed issue, a blocked issue (a blocker that is
 unresolved and so unverified counts), a `closed-unreleased` blocker's issue, or
-a `closed-release-unverified` blocker's issue, which under `--non-interactive`
-is `blocked`; a `banner-no-open-child` issue is not rankable either. A
+a `closed-release-unverified` blocker's issue, or an issue with a possible
+unparsed gate, both of which under `--non-interactive` are `blocked`; a
+`banner-no-open-child` issue is not rankable either. A
 measurement is never auto-run, and a close proposal is never applied. Each
 candidate skipped for one of these reasons is named in the closing summary with
 its reason.
@@ -585,8 +595,8 @@ no URL, of the comment it came from, so `plan-task` can re-read it), so `plan-ta
 the body's superseded one — it rides with
 that item, or as its own; and any deadline, labelled
 **verified** (from a milestone) or **inherited** (from issue text); and the
-**readiness findings** for that issue: each blocker, deferral or umbrella fact
-with its outcome, source and provenance (`in hand`, `lookup` or `registry`), any
+**readiness findings** for that issue: each blocker, deferral, possible gate or
+umbrella fact with its outcome, source and provenance (`in hand`, `lookup` or `registry`), any
 measurement answer, and any `released (version check only)` blocker, so
 `plan-task` owes the content check for it. A state read by a lookup or registry
 check this run is verified; open-list absence and issue text are inherited.
@@ -631,8 +641,9 @@ fallback decided, say the choice was arbitrary. Under `--non-interactive`, name
 any demoted candidate with its outcome, and if the auto-picked candidate took a
 demoted one's slot and so was not freshness-checked, say "freshness not
 checked". Name every candidate skipped for readiness (deferred, umbrella,
-done-but-unclosed, banner-no-open-child, blocked, or release-unverified under
-`--non-interactive`) with its state and reason, and every close proposal made
+done-but-unclosed, banner-no-open-child, blocked, or release-unverified or
+holding a possible unparsed gate under `--non-interactive`) with its state and
+reason, and, for a gate, the heading it names, and every close proposal made
 or left unapplied. Point the user at the plan(s) `plan-task` produced.
 
 If a delegated skill (`triage-issues`, `plan-task`) drafted a follow-up issue but
