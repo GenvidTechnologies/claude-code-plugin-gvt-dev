@@ -5,8 +5,8 @@
 //   input   { number, title, body, comments: [{ body, createdAt }] }
 //           The body counts as earlier than every comment; comments are
 //           ordered by createdAt (ISO-8601 strings).
-//   output  { refs: Ref[], triggers: Trigger[] }
-//   Ref     { source, origin, target, line, checked, retracted, unresolvable }
+//   output  { refs: Ref[], triggers: Trigger[], banner, possibleGates }
+//   Ref    { source, origin, target, line, checked, retracted, unresolvable }
 //     source        'statement' | 'title' | 'heading' | 'child-row' |
 //                   'row-annotation' | 'deferral'
 //     origin        'title' | 'body' | 'comment'
@@ -46,6 +46,10 @@
 //     measurement is true when the text names a count, measure, probe,
 //     benchmark or threshold. A trigger carrying a resolvable reference is
 //     ALSO emitted in refs with source 'deferral' (R17).
+//   possibleGates  [{ heading, line, origin: 'body' }]: each body heading that
+//     names a gate (when, timing, sequencing, ...) whose section gives no
+//     trigger and no blocker. heading is the trimmed heading line; line is the
+//     first prose line of the section, or null. Always an array.
 // Titles start with the row id so the plan's --test-name-pattern blocks
 // select them.
 
@@ -478,7 +482,10 @@ test('REL: extract tags relation for each statement verb', () => {
 //   triggers      extract()'s triggers, plus fired (boolean) and
 //                 firedBy ('reference' | 'comment' | null)
 //   banner        { line } | null
-//   native        { status: 'data' | 'no-data', parent: number | null,
+//   possibleGates extract()'s possibleGates; a gate reads ready-caveat, or
+//                 blocked under --non-interactive, and never lifts a deferred,
+//                 blocked or umbrella issue
+//   native       { status: 'data' | 'no-data', parent: number | null,
 //                   total: number | null, completed: number | null }
 //   commentsTruncated  true when the bulk comment array holds >= 100 entries
 //   retractedCount     number of refs whose outcome is 'retracted'
@@ -494,7 +501,7 @@ test('REL: extract tags relation for each statement verb', () => {
 //     routedTo    the lowest-numbered open child that is itself ready, or null
 //     decidedBy   [{ source, provenance, target?, outcome? }] with source one
 //                 of 'title' | 'body' | 'comment' | 'deferral' | 'native'
-//                 | 'checklist' | 'banner'
+//                 | 'checklist' | 'banner' | 'gate'
 //     disagreements  string[], one per tick-versus-state or native-versus-
 //                 checklist mismatch
 //
@@ -509,7 +516,7 @@ test('REL: extract tags relation for each statement verb', () => {
 //           --state-template t [--root dir]        JSON lines of Entry
 //   resolve the same flags, plus --non-interactive  JSON lines of Record
 //   extract --single <readOne.json>                 one JSON object
-//           { refs, triggers }
+//           { refs, triggers, banner, possibleGates }
 // A bad usage or an unsafe --repo exits 2 with the reason on stderr.
 // Titles start with the row id so the plan's --test-name-pattern blocks
 // select them. The prefixes SAFE:, 404:, TRUNC:, KIND:, ROW:, RETRACT:,
@@ -2636,4 +2643,333 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   assert.ok(ms < 500, `took ${ms.toFixed(1)} ms`);
   // The bound does not stop an ordinary short "(after #N)" from being read.
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
+});
+
+test('RR: W1 a heading with a long trailing run of spaces is cleaned in linear time', () => {
+  const spaces = ' '.repeat(100000);
+  const body = `## When${spaces}y\n\nNot yet decided.\n`;
+  const start = process.hrtime.bigint();
+  const out = extract(issue(body));
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  assert.ok(ms < 1000, `took ${ms.toFixed(1)} ms`);
+  // The cleaned title still reads as a gate, and a title ending in spaces is trimmed.
+  assert.equal(out.possibleGates.length, 1);
+  assert.equal(extract(issue(`## When  ::  \n\nNot yet decided.\n`)).possibleGates.length, 1);
+});
+
+// ---- AC-895: deferral trigger phrases for a "not before" condition ----
+
+const PHRASES_895 = ['Not before', 'Not until', 'Blocked until', 'On hold until'];
+
+test('AC-895-1: the reproduction body gives both the "Not before" and the "Deferred until" trigger', () => {
+  const body =
+    '## Proposed change\n\nRemove the alias.\n\n## When\n\n' +
+    'Not before every supported client build reads `payload`.\n\n' +
+    'Deferred until the client floor is raised.\n';
+  const out = extract(issue(body));
+  assert.ok(
+    out.triggers.some((t) => t.line === 'Not before every supported client build reads `payload`.'),
+    JSON.stringify(out.triggers),
+  );
+  assert.ok(
+    out.triggers.some((t) => t.line === 'Deferred until the client floor is raised.'),
+    JSON.stringify(out.triggers),
+  );
+  assert.equal(out.triggers.length, 2);
+});
+
+test('AC-895-1: each new phrase is a trigger at line start, after a list marker and in bold', () => {
+  PHRASES_895.forEach((phrase, i) => {
+    const forms = {
+      plain: `${phrase} marker-plain-${i} is raised.`,
+      list: `- ${phrase} marker-list-${i} is raised.`,
+      bold: `**${phrase}** marker-bold-${i} is raised.`,
+    };
+    for (const [form, line] of Object.entries(forms)) {
+      const out = extract(issue(`Intro.\n\n${line}\n`));
+      assert.equal(out.triggers.length, 1, `${phrase} (${form}): ${JSON.stringify(out.triggers)}`);
+      assert.ok(out.triggers[0].line.includes(`marker-${form}-${i}`), `${phrase} (${form})`);
+    }
+  });
+});
+
+test('AC-895-2: a "Blocked until" line is a trigger with a deferral reference, never a statement', () => {
+  const out = extract(issue('Blocked until #12 ships.'));
+  assert.equal(out.triggers.length, 1);
+  const ref = refTo(out, 12);
+  assert.ok(ref, JSON.stringify(out.refs));
+  assert.equal(ref.source, 'deferral');
+  assert.ok(!out.refs.some((r) => r.source === 'statement'), JSON.stringify(out.refs));
+});
+
+test('AC-895-2: through resolve, an open target holds the issue back and a closed target fires the trigger', () => {
+  const data = dataOf([issueOf(1, 'Blocked until #12 ships.')]);
+  const open = withState(data, OPTS, { [`${REPO}#12`]: stJson(12, 'open') });
+  const held = recOf(resolve(open, OPTS), 1);
+  assert.equal(refOf(held, 12).source, 'deferral');
+  assert.equal(held.triggers.length, 1);
+  assert.equal(held.triggers[0].fired, false);
+  // A deferral reference is an ordinary blocker while its target is open.
+  assert.equal(held.readiness.state, 'blocked');
+  assert.deepEqual(held.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  const closed = withState(data, OPTS, { [`${REPO}#12`]: stJson(12, 'closed') });
+  const fired = recOf(resolve(closed, OPTS), 1);
+  assert.equal(fired.triggers.length, 1);
+  assert.equal(fired.triggers[0].fired, true);
+  assert.equal(fired.triggers[0].firedBy, 'reference');
+  assert.equal(fired.readiness.state, 'ready');
+});
+
+test('AC-895-3: a phrase in mid-sentence position is not a trigger', () => {
+  const body = [
+    'We should do this not before the client floor is raised.',
+    'The work is blocked until the vendor answers.',
+    'It stays on hold until then.',
+    'Not-before dates are ignored here.',
+  ].join('\n\n');
+  const out = extract(issue(body));
+  assert.deepEqual(out.triggers, []);
+  assert.deepEqual(out.refs, []);
+});
+
+test('AC-895-3: "Not blocked by" names no reference and "Blocked by" still blocks', () => {
+  const negated = extract(issue('Not blocked by #5.'));
+  assert.deepEqual(negated.triggers, []);
+  assert.equal(refTo(negated, 5), undefined);
+  const blocked = extract(issue('Blocked by #5.'));
+  assert.deepEqual(blocked.triggers, []);
+  const ref = refTo(blocked, 5);
+  assert.ok(ref, JSON.stringify(blocked.refs));
+  assert.equal(ref.source, 'statement');
+  assert.equal(ref.relation, 'blocked-by');
+});
+
+// ---- AC-895-4: possible gates, a heading that names a wait with no trigger or blocker ----
+
+function gatesOf(body, comments = []) {
+  const out = extract(issue(body, { comments }));
+  assert.ok(Array.isArray(out.possibleGates), 'extract returns a possibleGates array');
+  return out.possibleGates;
+}
+
+function gateComment(body) {
+  return { body, createdAt: '2026-01-02T00:00:00Z' };
+}
+
+test('AC-895-4: a gate is listed with its heading and first line, and never with the rest of the section', () => {
+  const body = [
+    '## Plan',
+    '',
+    'Do the work.',
+    '',
+    '## When unblocked',
+    '',
+    'After the boundary decision lands.',
+    '',
+    'SENTINEL-NEVER-LISTED second line.',
+    '',
+    '## Notes',
+    '',
+    'Other.',
+  ].join('\n');
+  const out = extract(issue(body));
+  assert.deepEqual(out.possibleGates, [
+    { heading: '## When unblocked', line: 'After the boundary decision lands.', origin: 'body' },
+  ]);
+  assert.ok(!JSON.stringify(out).includes('SENTINEL-NEVER-LISTED'));
+  assert.deepEqual(gatesOf('Just text.'), []);
+  assert.deepEqual(gatesOf('## Timing'), [{ heading: '## Timing', line: null, origin: 'body' }]);
+  const skipped = '## Sequencing\n\n```\ncode line\n```\n> quoted line\n\n  The real first line.  \n';
+  assert.equal(gatesOf(skipped)[0].line, 'The real first line.');
+  // A blocks or relates-to statement and a checklist child row do not answer a gate.
+  const unanswered = ['## When', '', 'Blocks #20.', '', '- [ ] #21', '', 'Relates to #22.'].join('\n');
+  const listed = gatesOf(unanswered);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].line, 'Blocks #20.');
+});
+
+test('AC-895-4: a gate that holds a trigger, a blocker, a deferral, a row annotation or a none-statement is not listed', () => {
+  const PLAIN = 'Some plain prose.';
+  const cases = [
+    ['trigger', 'Revisit when the parser is stable.'],
+    ['blocking statement', 'Blocked by #12.'],
+    ['depends-on statement', 'Depends on #13.'],
+    ['prose blocker', 'Blocked by the vendor review.'],
+    ['deferral reference', 'Deferral trigger: needs #70 first.'],
+    ['row annotation', '- [ ] #14 blocked by #15'],
+    ['none-statement', 'Blocked by: none.'],
+    ['nested Blocked by with a detached heading', '### Blocked by\n\n(nothing to name here)'],
+    ['nested Blocked by with a reference', '### Blocked by\n\n- #16'],
+  ];
+  for (const [name, content] of cases) {
+    const answered = gatesOf(`## When\n\n${content}\n`);
+    assert.deepEqual(answered, [], `${name} must answer the gate`);
+    // The same section with the answering text replaced by prose is listed, so the
+    // answering text is what removes it.
+    const control = gatesOf(`## When\n\n${PLAIN}\n`);
+    assert.equal(control.length, 1, `${name}: the control section is a gate`);
+  }
+});
+
+test('AC-895-4: a comment, a fence, a blockquote, an Acceptance section, an exact Blocked by and Deferred item are not gates', () => {
+  const TEXT = '## When\n\nNot yet decided.\n';
+  assert.equal(gatesOf(TEXT).length, 1, 'the bare text is a gate');
+  assert.deepEqual(gatesOf('Intro.', [gateComment(TEXT)]), [], 'comment');
+  assert.deepEqual(gatesOf('```\n## When\n\nNot yet decided.\n```\n'), [], 'fence');
+  assert.deepEqual(gatesOf('> ## When\n>\n> Not yet decided.\n'), [], 'blockquote');
+  const underAcceptance = '## Acceptance Criteria\n\n### Gate\n\nAfter the boundary decision.\n';
+  assert.deepEqual(gatesOf(underAcceptance), [], 'nested under Acceptance');
+  const control = '## Plan\n\n### Gate\n\nAfter the boundary decision.\n';
+  assert.equal(gatesOf(control).length, 1, 'the same heading outside Acceptance is a gate');
+  assert.deepEqual(gatesOf('## Blocked by\n\nThe vendor review.\n'), [], 'exact Blocked by');
+  assert.deepEqual(gatesOf('## Depends on\n\nThe vendor review.\n'), [], 'exact Depends on');
+  assert.deepEqual(gatesOf('## Deferred item 1\n\nLater.\n'), [], 'Deferred item');
+  // A heading that itself says there is no blocker names no wait.
+  for (const title of ['Blocked by: none', '**Blocked by**: none.', 'Depends on: none', 'Blocked by: nothing']) {
+    assert.deepEqual(gatesOf(`## ${title}\n\nThe vendor review.\n`), [], title);
+  }
+  const elsewhere = gatesOf('## Blocked by something else\n\nThe vendor review.\n');
+  assert.equal(elsewhere.length, 1, 'a Blocked by heading that is not "none" is still a gate');
+  assert.equal(elsewhere[0].heading, '## Blocked by something else');
+});
+
+test('AC-895-4: the gate vocabulary is a word-bounded prefix of the heading', () => {
+  const listed = [
+    'When unblocked',
+    'Timing',
+    'Deferral',
+    'Gate',
+    'Gated on the release',
+    'Gating',
+    'Blockers',
+    'Blocked on the vendor',
+    'Blocked by #61',
+    'Precondition',
+    'Prerequisites',
+    'Sequencing',
+    'Not before the release',
+    '**When unblocked**:',
+  ];
+  for (const title of listed) {
+    const gates = gatesOf(`## ${title}\n\nSome prose.\n`);
+    assert.equal(gates.length, 1, title);
+    assert.equal(gates[0].heading, `## ${title}`);
+  }
+  for (const title of ['Whenever', 'Gateway', 'Notes', 'Unblocked now']) {
+    assert.deepEqual(gatesOf(`## ${title}\n\nSome prose.\n`), [], title);
+  }
+});
+
+// ---- AC-895-5 and AC-895-6: a possible gate in resolve and on the CLI ----
+
+const GATE_HEADING = '## When unblocked';
+const GATE_SECTION = `${GATE_HEADING}\n\nAfter the boundary decision lands.\n`;
+const GATE_TEXT = `possible unparsed gate under heading "${GATE_HEADING}"`;
+const GATE_DECIDED = { source: 'gate', provenance: 'in hand', outcome: 'unparsed' };
+
+function gateDecisions(rec) {
+  return rec.readiness.decidedBy.filter((x) => x.source === 'gate');
+}
+
+test('AC-895-5: a gate is a caveat with its heading in the reason, and blocks under non-interactive', () => {
+  const d = dataOf([issueOf(1, GATE_SECTION)]);
+  const rec = recOf(resolve(d, OPTS), 1);
+  assert.deepEqual(rec.possibleGates, [
+    { heading: GATE_HEADING, line: 'After the boundary decision lands.', origin: 'body' },
+  ]);
+  assert.equal(rec.readiness.state, 'ready-caveat');
+  assert.equal(rec.readiness.rankable, true);
+  assert.equal(rec.readiness.reason, `ready with a caveat: ${GATE_TEXT}`);
+  assert.deepEqual(rec.readiness.blockedBy, []);
+  assert.deepEqual(gateDecisions(rec), [GATE_DECIDED]);
+  const unattended = recOf(resolve(d, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(unattended.readiness.state, 'blocked');
+  assert.equal(unattended.readiness.rankable, true);
+  assert.equal(unattended.readiness.reason, `blocked by ${GATE_TEXT}`);
+  assert.deepEqual(unattended.readiness.blockedBy, []);
+  assert.deepEqual(gateDecisions(unattended), [GATE_DECIDED]);
+  const none = recOf(resolve(dataOf([issueOf(2, 'No gate here.')]), OPTS), 2);
+  assert.deepEqual(none.possibleGates, []);
+  assert.deepEqual(gateDecisions(none), []);
+  assert.equal(none.readiness.state, 'ready');
+});
+
+test('AC-895-5: a gate never lifts a deferred, blocked or umbrella issue, and a release-unverified blocker is named with it', () => {
+  // deferred: a trigger outside the gate's section wins, and its reason is unchanged.
+  const deferredBody = `Revisit when the parser is stable.\n\n${GATE_SECTION}`;
+  for (const o of [OPTS, { ...OPTS, nonInteractive: true }]) {
+    const rec = recOf(resolve(dataOf([issueOf(1, deferredBody)]), o), 1);
+    assert.equal(rec.readiness.state, 'deferred');
+    assert.equal(rec.readiness.reason, 'deferred: Revisit when the parser is stable.');
+    assert.deepEqual(gateDecisions(rec), [GATE_DECIDED]);
+  }
+  // blocked: an open reference keeps its own reason; the gate joins it only when it blocks.
+  const blockedData = withState(dataOf([issueOf(1, `Blocked by #12.\n\n${GATE_SECTION}`)]), OPTS, {
+    [`${REPO}#12`]: stJson(12, 'open'),
+  });
+  const blocked = recOf(resolve(blockedData, OPTS), 1);
+  assert.equal(blocked.readiness.state, 'blocked');
+  assert.equal(blocked.readiness.reason, 'blocked by #12 (open)');
+  assert.deepEqual(blocked.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  const blockedUnattended = recOf(resolve(blockedData, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(blockedUnattended.readiness.state, 'blocked');
+  assert.equal(blockedUnattended.readiness.reason, `blocked by #12 (open), ${GATE_TEXT}`);
+  assert.deepEqual(blockedUnattended.readiness.blockedBy, [{ repo: null, number: 12 }]);
+  // umbrella: the title prefix wins over the gate.
+  const umbrella = recOf(
+    resolve(dataOf([issueOf(1, GATE_SECTION, { title: 'Epic: migrate the loader' })]), OPTS),
+    1,
+  );
+  assert.equal(umbrella.readiness.state, 'umbrella');
+  assert.equal(umbrella.readiness.rankable, false);
+  assert.deepEqual(gateDecisions(umbrella), [GATE_DECIDED]);
+  // a release-unverified blocker and a gate: both are named, in either mode.
+  const unverified = withState(
+    dataOf([issueOf(1, `Blocked by ${LIB}#12.\n\n${GATE_SECTION}`)]),
+    OPTS,
+    { [`${LIB}#12`]: stJson(12, 'closed') },
+  );
+  const BLOCKER = `${LIB}#12 (closed, release unverified)`;
+  const caveat = recOf(resolve(unverified, OPTS), 1);
+  assert.equal(caveat.readiness.state, 'ready-caveat');
+  assert.equal(caveat.readiness.reason, `ready with a caveat: ${BLOCKER}, ${GATE_TEXT}`);
+  const hard = recOf(resolve(unverified, { ...OPTS, nonInteractive: true }), 1);
+  assert.equal(hard.readiness.state, 'blocked');
+  assert.equal(hard.readiness.reason, `blocked by ${BLOCKER}, ${GATE_TEXT}`);
+});
+
+test('AC-895-6: extract --single and resolve print possibleGates, and never echo the rest of the section', () => {
+  withTmp((dir) => {
+    const body = `${GATE_SECTION}\nSENTINEL_GATE_cc33 second line that must never be echoed.\n`;
+    const one = writeJson(dir, 'one.json', {
+      number: 1,
+      title: 'Example title',
+      body,
+      labels: [],
+      comments: [],
+    });
+    const ex = runCli(['extract', '--single', one]);
+    assert.equal(ex.status, 0, ex.stderr);
+    assert.ok(!ex.stdout.includes('SENTINEL'));
+    const out = JSON.parse(ex.stdout);
+    assert.deepEqual(Object.keys(out), ['refs', 'triggers', 'banner', 'possibleGates']);
+    assert.deepEqual(out.possibleGates, [
+      { heading: GATE_HEADING, line: 'After the boundary decision lands.', origin: 'body' },
+    ]);
+    const issues = [issueOf(1, body)];
+    const comments = [{ number: 1, comments: [] }];
+    const structure = [srow(1, null, 0, 0)];
+    const args = cliArgsFor(dir, issues, { comments, structure });
+    const interactive = runCli(['resolve', ...args]);
+    assert.equal(interactive.status, 0, interactive.stderr);
+    assert.ok(!interactive.stdout.includes('SENTINEL'));
+    const rec = recOf(jsonLines(interactive.stdout), 1);
+    assert.deepEqual(rec.possibleGates, out.possibleGates);
+    assert.equal(rec.readiness.state, 'ready-caveat');
+    assert.ok(rec.readiness.reason.includes(GATE_TEXT), rec.readiness.reason);
+    const unattended = runCli(['resolve', ...args, '--non-interactive']);
+    assert.equal(unattended.status, 0, unattended.stderr);
+    assert.ok(!unattended.stdout.includes('SENTINEL'));
+    assert.equal(recOf(jsonLines(unattended.stdout), 1).readiness.state, 'blocked');
+  });
 });

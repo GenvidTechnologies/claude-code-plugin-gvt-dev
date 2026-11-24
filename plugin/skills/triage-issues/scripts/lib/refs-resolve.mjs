@@ -1077,6 +1077,21 @@ function isCaveat(ref, ctx) {
   return ref.outcome === 'closed-release-unverified' && !ctx.nonInteractive;
 }
 
+// Rule: a possible unparsed gate (a heading that names a wait, with no trigger
+// and no blocker in its section) blocks under --non-interactive and is a
+// caveat interactively.
+function isGateBlock(ctx) {
+  return Boolean(ctx.nonInteractive);
+}
+
+function isGateCaveat(ctx) {
+  return !ctx.nonInteractive;
+}
+
+function describeGate(gate) {
+  return `possible unparsed gate under heading "${gate.heading}"`;
+}
+
 function describeBlocker(ref) {
   const label = ref.target ? targetLabel(ref.target) : 'unverified blocker';
   if (ref.outcome === 'live') return `${label} (open)`;
@@ -1182,6 +1197,14 @@ function coreReadiness(rec, facts, ctx) {
   const caveats = blockers.filter((r) => isCaveat(r, ctx));
   const satisfied = blockers.filter((r) => SATISFIED_OUTCOMES.has(r.outcome));
   const unfired = rec.triggers.filter((t, i) => !t.fired && !facts[i].hasRefs);
+  const gates = rec.possibleGates;
+  const gateBlocks = gates.length > 0 && isGateBlock(ctx);
+  const gateCaveats = gates.length > 0 && isGateCaveat(ctx);
+  // A gate is named, after the references, only in the reason of the mode it
+  // decides: the blocked reason under --non-interactive, the caveat reason
+  // otherwise. An interactive issue blocked by a reference does not name it.
+  const blockedParts = uncleared.map(describeBlocker).concat(gateBlocks ? gates.map(describeGate) : []);
+  const caveatParts = caveats.map(describeBlocker).concat(gateCaveats ? gates.map(describeGate) : []);
 
   const decidedBy = blockers.map(decidedEntry);
   rec.triggers.forEach((t, i) => {
@@ -1193,18 +1216,21 @@ function coreReadiness(rec, facts, ctx) {
     });
   });
   for (const r of rec.refs) if (r.source === 'child-row') decidedBy.push(decidedEntry(r));
+  for (let i = 0; i < gates.length; i++) {
+    decidedBy.push({ source: 'gate', provenance: 'in hand', outcome: 'unparsed' });
+  }
 
   let state = 'ready';
   let reason;
   if (unfired.length) {
     state = 'deferred';
     reason = `deferred: ${unfired.map((t) => t.line).join('; ')}`;
-  } else if (uncleared.length) {
+  } else if (uncleared.length || gateBlocks) {
     state = 'blocked';
-    reason = `blocked by ${uncleared.map(describeBlocker).join(', ')}`;
-  } else if (caveats.length) {
+    reason = `blocked by ${blockedParts.join(', ')}`;
+  } else if (caveats.length || gateCaveats) {
     state = 'ready-caveat';
-    reason = `ready with a caveat: ${caveats.map(describeBlocker).join(', ')}`;
+    reason = `ready with a caveat: ${caveatParts.join(', ')}`;
   } else if (satisfied.length) {
     reason = `ready: ${uniqueTargets(satisfied).map(targetLabel).join(', ')} no longer blocks`;
   } else {
@@ -1403,6 +1429,7 @@ function buildRecord(entry, ctx) {
     refs,
     triggers,
     banner: detectBanner(entry, ctx),
+    possibleGates: entry.possibleGates || [],
     umbrellaTitle: hasUmbrellaTitlePrefix(entry.issue.title),
     native,
     commentsTruncated,

@@ -7,6 +7,10 @@
 // records (never whole bodies). Every exclusion below is its own small named
 // function or branch, so each can be disabled on its own (mutation run).
 //
+// A body heading that names a gate ("When", "Timing", "Sequencing", ...) whose
+// section gives no trigger and no blocker is returned by extract() as a
+// possible gate: a wait written in a form this grammar cannot read.
+//
 // The SD9 banner (a self-declared umbrella line in the body) is detected here
 // too, so extract() and resolve share one self-declaration predicate. The
 // parent-naming exclusion needs the parent, which extract alone does not know:
@@ -32,7 +36,7 @@ const LEAD_RE = /^\s*(?:([-*+]|\d{1,9}[.)])\s+)?(?:\[([ xX])\]\s+)?[*_]*/;
 const STATEMENT_RE =
   /^(?:(not|no longer|never|no)\s+)?(blocked[ -]by|depends[ -]on|blocks|relates[ -]to)\b/i;
 const TRIGGER_RE =
-  /^(?:deferral trigger|pick this up when|pick it up (?:only )?when|revisit when|not urgent|deferred until|parked until)\b/i;
+  /^(?:deferral trigger|pick this up when|pick it up (?:only )?when|revisit when|not urgent|deferred until|parked until|not before|not until|blocked until|on hold until)\b/i;
 const MEASUREMENT_RE =
   /\b(?:count(?:s|ed|ing)?|measure(?:s|d|ment|ments)?|measuring|probe(?:s|d)?|probing|benchmark(?:s|ed|ing)?|threshold(?:s)?)\b/i;
 const RETRACT_RE =
@@ -40,6 +44,11 @@ const RETRACT_RE =
 const TRIAGE_NOTE_RE = /^[*_\s]*triage verification note/i;
 const BLOCKER_HEADING_RE = /^(blocked[ -]by|depends[ -]on)$/i;
 const ACCEPTANCE_HEADING_RE = /^acceptance\b/i;
+// The words that open a possible gate: a body heading that names a wait the
+// grammar may not have parsed. Prefix match on the cleaned title, so
+// "When unblocked" opens one and "Whenever" does not.
+const GATE_HEADING_RE =
+  /^(?:when|timing|deferral|gate|gated|gating|blockers?|blocked|preconditions?|prerequisites?|sequencing|not before)\b/i;
 const CHILD_ROW_RE = /^[*_]*((?:[\w.-]+\/[\w.-]+)?#(\d{1,9}))(?!\w)(.*)$/;
 const ANNOTATION_RE = /\bblocked[ -]by\b/i;
 const TITLE_AFTER_RE = /\(\s*after\s+([^)]{0,300})\)/gi;
@@ -408,8 +417,20 @@ function stripLead(masked) {
   };
 }
 
+// The trailing trim walks back from the end one character at a time. A regex
+// `[#:\s]+$` retries from every start of a long run of spaces that ends in
+// another character, which is quadratic in the length of the title.
+const TITLE_TAIL_CHAR_RE = /[#:\s]/;
+
+function headingTitle(title) {
+  const text = title.replace(/[*_]/g, '');
+  let end = text.length;
+  while (end > 0 && TITLE_TAIL_CHAR_RE.test(text[end - 1])) end--;
+  return text.slice(0, end).trim();
+}
+
 function headingKind(title) {
-  const clean = title.replace(/[*_]/g, '').replace(/[#:\s]+$/, '').trim();
+  const clean = headingTitle(title);
   if (BLOCKER_HEADING_RE.test(clean)) return 'blocker';
   if (ACCEPTANCE_HEADING_RE.test(clean)) return 'acceptance';
   return null;
@@ -417,6 +438,44 @@ function headingKind(title) {
 
 function headingRelation(title) {
   return /^blocked/i.test(title.replace(/[*_\s]/g, '')) ? 'blocked-by' : 'depends-on';
+}
+
+// Rule: the gate vocabulary (a prefix of the cleaned title).
+function isGateHeading(title) {
+  return GATE_HEADING_RE.test(headingTitle(title));
+}
+
+// Rule: an exact "Blocked by" / "Depends on" heading is a blocker section,
+// never a gate.
+function isBlockerHeading(title) {
+  return headingKind(title) === 'blocker';
+}
+
+// Rule: a heading that itself says there is no blocker ("Blocked by: none")
+// names no wait. It reads the heading with the same none-statement rule as a
+// body line.
+function isNoneHeading(title) {
+  const stmt = findStatement(headingTitle(title));
+  return Boolean(stmt) && isNoneStatement(stmt.rest);
+}
+
+// Rule: a gate opens in the body only, never inside an Acceptance section,
+// never on a blocker heading, and never on a heading that says "none".
+function opensGate(origin, section, title) {
+  if (origin !== 'body') return false;
+  if (inAcceptanceScope(section)) return false;
+  if (isBlockerHeading(title)) return false;
+  if (isNoneHeading(title)) return false;
+  return isGateHeading(title);
+}
+
+// Rule: which emitted references answer a gate. A blocking or depends-on
+// relation (prose blockers included), a deferral reference and a row
+// annotation do. `blocks` and `relates-to` statements and checklist child rows
+// do not.
+function answersGate(source, relation) {
+  if (source === 'deferral' || source === 'row-annotation') return true;
+  return relation === 'blocked-by' || relation === 'depends-on';
 }
 
 // ---- scanning ----
@@ -447,12 +506,25 @@ function scanTitle(title, ctx, entries) {
 }
 
 function scanText(text, origin, order, ctx, skipStatements) {
-  const out = { entries: [], triggers: [], retractions: [] };
+  const out = { entries: [], triggers: [], retractions: [], gates: [] };
   let fence = null;
   let section = null;
+  // The gate tracker runs beside `section`: a nested Blocked by or Acceptance
+  // heading keeps its own meaning inside a gate's scope.
+  let gate = null;
 
+  const answerGate = () => {
+    if (gate) gate.answered = true;
+  };
+  const closeGate = () => {
+    if (gate && !gate.answered) {
+      out.gates.push({ heading: gate.heading, line: gate.line, origin });
+    }
+    gate = null;
+  };
   const closeSection = () => {
     if (section && section.kind === 'blocker' && section.refCount === 0) {
+      answerGate();
       out.entries.push({
         order,
         ref: makeRef({
@@ -467,6 +539,7 @@ function scanText(text, origin, order, ctx, skipStatements) {
     }
   };
   const emit = (source, target, line, extra = {}) => {
+    if (answersGate(source, extra.relation)) answerGate();
     out.entries.push({ order, ref: makeRef({ source, origin, target, line, ...extra }) });
   };
 
@@ -490,8 +563,14 @@ function scanText(text, origin, order, ctx, skipStatements) {
           ? { level, kind, refCount: 0, line, relation: headingRelation(title) }
           : null;
       }
+      if (gate && level <= gate.level) closeGate();
+      if (!gate && opensGate(origin, section, heading[2])) {
+        gate = { level, heading: line, line: null, answered: false };
+      }
       continue;
     }
+
+    if (gate && gate.line === null && line !== '') gate.line = line;
 
     const lead = stripLead(masked);
 
@@ -505,6 +584,7 @@ function scanText(text, origin, order, ctx, skipStatements) {
 
     // Deferral triggers (R21), read in bodies and comments alike.
     if (TRIGGER_RE.test(lead.rest)) {
+      answerGate();
       out.triggers.push({ line, origin, measurement: MEASUREMENT_RE.test(lead.rest) });
       for (const r of scanRefs(lead.rest, ctx, false)) {
         if (r.target) emit('deferral', r.target, line);
@@ -539,6 +619,7 @@ function scanText(text, origin, order, ctx, skipStatements) {
       // "Blocked by: none" names no blocker: nothing is emitted (a trailing
       // qualifier reference is dropped), and it answers its heading section.
       if (blocking && isNoneStatement(stmt.rest)) {
+        answerGate();
         if (section && section.kind === 'blocker') section.refCount++;
         continue;
       }
@@ -581,6 +662,7 @@ function scanText(text, origin, order, ctx, skipStatements) {
     }
   }
   closeSection();
+  closeGate();
   return out;
 }
 
@@ -594,13 +676,19 @@ function scanText(text, origin, order, ctx, skipStatements) {
  *   banner line naming it is not a banner (banner without parent exclusion
  *   unless options.parent is given).
  * @returns {{ refs: object[], triggers: object[],
- *             banner: { line: string, origin: 'body' } | null }}
+ *             banner: { line: string, origin: 'body' } | null,
+ *             possibleGates: Array<{ heading: string, line: string | null,
+ *                                    origin: 'body' }> }}
+ *   possibleGates: each body heading that names a gate (a wait the grammar may
+ *   not have parsed) whose section gives no trigger and no blocker. Always an
+ *   array. Only the heading line and the section's first prose line go out.
  */
 export function extract(issue, options = {}) {
   const ctx = { repo: options && options.repo ? String(options.repo).toLowerCase() : null };
   const entries = [];
   const triggers = [];
   const retractions = [];
+  const possibleGates = [];
 
   scanTitle(String(issue.title == null ? '' : issue.title), ctx, entries);
 
@@ -623,6 +711,7 @@ export function extract(issue, options = {}) {
     entries.push(...p.entries);
     triggers.push(...p.triggers);
     retractions.push(...p.retractions);
+    possibleGates.push(...p.gates);
   }
 
   // Self-references are never emitted, from any source.
@@ -643,5 +732,6 @@ export function extract(issue, options = {}) {
     refs: entries.map((e) => e.ref),
     triggers,
     banner: detectBanner(body, parentSetOf(options && options.parent)),
+    possibleGates,
   };
 }
