@@ -635,15 +635,28 @@ split). Present them together, then apply the approved changes using the **Mutat
   issue (a cross-reference whose recorded state disagrees with the tracker's),
   present the reference, its relation, its outcome and the evidence, and remedy it
   by outcome. A reference with relation `qualifier` never blocks and is not a
-  finding. On a `Blocked by` or `Depends on` line, or a plain line under a
+  finding. A `Blocks`, `Relates to` or `qualifier` reference whose target is not
+  known to be open, closed or not open (unread, or read as a pull request or as
+  not found) has outcome `unknown`, never blocks and is not a finding either.
+  On a `Blocked by` or `Depends on` line, or a plain line under a
   `Blocked by` or `Depends on` heading, a reference inside a parenthetical, or
   right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in",
   "from" or "under", has relation `qualifier`, unless the parenthetical opens
   with "and", "or", "plus", "also", "&", "+" or ",", as in `Blocked by #5 (and #6)`,
-  which holds a real blocker; a blocker line left with no other reference is
-  `unresolvable` kind `prose`. A blocker statement whose remainder is `none`
+  which holds a real blocker. Only the sentence that holds the statement names
+  blockers: on a `Blocked by` or `Depends on` line, a reference in a later
+  sentence also has relation `qualifier`, as in `Blocked by #5. #6 is related.`
+  A sentence ends at `.`, `!` or `?` followed by a space or the end of the
+  line, after any closing emphasis, bracket or quote, as in
+  `**Blocked by #5.** #6 is related.` A mark inside a parenthetical, a run such
+  as `...`, and the full stop of `cf.`, `e.g.`, `i.e.`, `etc.`, `vs.` or `viz.`
+  end no sentence. A plain line under a
+  `Blocked by` or `Depends on` heading has no statement sentence, so every
+  reference on it stays in scope. A blocker line left with no other reference
+  is `unresolvable` kind `prose`. A blocker statement whose sentence is `none`
   (also `nothing`, `n/a` or a dash), optionally followed by a parenthetical, is
-  no statement and yields no reference. A remedy that edits the body is offered with per-issue approval;
+  no statement and yields no reference, also from a later sentence of its line.
+  A remedy that edits the body is offered with per-issue approval;
   annotate the line or row and never tick or untick it, because ticking is reverse
   propagation and out of scope:
   - `cleared` (`via` is `same-repo`, `source-consumed` or `released (version check
@@ -662,7 +675,17 @@ split). Present them together, then apply the approved changes using the **Mutat
     `absent`, `pr`, `nonexistent` (not found or not readable), `heading-detached`,
     `truncated`, `lookup-failed`): offer to rewrite the reference into `owner/repo#N` form.
     For a kind that rewrite cannot fix (`truncated`, `lookup-failed`), report it
-    and write nothing.
+    and write nothing. A `prose` finding that carries `withdrawnBy` has a later
+    comment line that may withdraw it, but that line also follows another
+    `prose` blocker, so the script cannot tell which one it means. Quote the
+    line with the finding and ask the user which blocker it withdraws. One
+    approved body edit settles it: rewrite every blocker that still holds
+    into `owner/repo#N` form. The withdrawn blocker is then the only `prose`
+    blocker before the line, so the next run reads it as `retracted`. Do not
+    strike the withdrawn blocker's line: the blocker that still holds is then
+    the only `prose` blocker before the line, and the next run retracts it.
+    When a blocker that still holds names no issue, report the finding and
+    write nothing. It stays `unresolvable`, so the issue stays blocked.
   - Two issue-level findings come from the record's `readiness.state`, not from a
     reference's `refs[].outcome`:
     - `done-but-unclosed`: propose closing the issue through the contract's
@@ -670,7 +693,10 @@ split). Present them together, then apply the approved changes using the **Mutat
       close-proposal walk below.
     - `banner-no-open-child`: report only. A banner is the author saying the
       issue stays open on purpose, so this is never a close proposal.
-  - `retracted`: no write. A later note already withdrew the claim.
+  - `retracted`: no write. A later note already withdrew the claim. A
+    `retracted` `prose` blocker carries the withdrawing line in `withdrawnBy`:
+    a later comment that opens with "No longer blocked" and names no
+    reference withdrew the only `prose` blocker before it. Report the line.
   Under `--non-interactive` without `--force`, post the finding as a comment
   instead (§4) and rewrite the body only under `--force`. The note opens with
   `Triage verification note — [refs] <outcome> — <source>`, where `<source>` is

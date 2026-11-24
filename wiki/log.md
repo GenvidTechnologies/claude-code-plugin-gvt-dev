@@ -15,6 +15,14 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-24
+
+* **Update**: `maintainer/release-cycle-rules.md` gains "A CHANGELOG sentence
+  that says how behaviour changed is run on the old and the new code before
+  the commit". It came from the retro of #951, whose entry first claimed a
+  behaviour that the new code did not have; a run on both sides found it
+  before the pull request was opened. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-23
 
 * **Creation**: `maintainer/timing-tests.md` holds the rules for a test of
@@ -23,6 +31,11 @@ the full maintenance schema.
   with a quadratic mutation. `CLAUDE.md` routes to it from its Knowledge base
   list. It came from the retro of #982, whose W11 8,000-item test failed a
   fixed 500 ms limit on a loaded machine.
+* **Update**: `maintainer/release-cycle-rules.md` gains a rule for parallel
+  integration branches that take the same ADR number. `commands.validate`
+  now runs `renumber-adrs.mjs --next`, which exits 1 on a duplicate number;
+  the rule says to re-run it after `origin/main` is merged in, and how to
+  move a duplicate record. From the retro of #906.
 * **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
   issue whose premise was read at a commit that is not an ancestor of the
   default branch waits for the issue whose change holds that commit, and triage
