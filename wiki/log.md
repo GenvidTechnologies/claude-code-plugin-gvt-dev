@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-23
 
+* **Creation**: `maintainer/timing-tests.md` holds the rules for a test of
+  running time: compare two sizes, use the median of several rounds, run every
+  round, choose the limit from measurements under load, and prove the test
+  with a quadratic mutation. `CLAUDE.md` routes to it from its Knowledge base
+  list. It came from the retro of #982, whose W11 8,000-item test failed a
+  fixed 500 ms limit on a loaded machine.
 * **Update**: `process/issue-triage.md` gains a Dependencies paragraph: an
   issue whose premise was read at a commit that is not an ancestor of the
   default branch waits for the issue whose change holds that commit, and triage
