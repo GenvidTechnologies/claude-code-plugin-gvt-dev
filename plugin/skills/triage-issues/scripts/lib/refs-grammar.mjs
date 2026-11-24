@@ -408,8 +408,12 @@ function stripLead(masked) {
   };
 }
 
+function headingTitle(title) {
+  return title.replace(/[*_]/g, '').replace(/[#:\s]+$/, '').trim();
+}
+
 function headingKind(title) {
-  const clean = title.replace(/[*_]/g, '').replace(/[#:\s]+$/, '').trim();
+  const clean = headingTitle(title);
   if (BLOCKER_HEADING_RE.test(clean)) return 'blocker';
   if (ACCEPTANCE_HEADING_RE.test(clean)) return 'acceptance';
   return null;
