@@ -2261,14 +2261,49 @@ test('REVIEW: W11 a 60,000-underscore line resolves in linear time', () => {
   assert.ok(ms < 500, `took ${ms} ms`);
 });
 
+// The check compares two sizes instead of one time with a fixed limit, because
+// load on the machine slowed a correct run past 500 ms (#982). Linear code
+// takes about 8 times as long for 8,000 items as for 1,000; quadratic code
+// takes about 64 times as long. Ten rounds time both sizes back to back, and
+// the test compares the median time of each size, so a slowdown during a few
+// runs, of either size, does not count. Measured 2026-11-23 while a full
+// commands.validate ran: 8.0 to 14.4 times for this extract (100 samples), 45.6
+// to 77.5 times for a quadratic variant that deduplicates by scanning every key
+// (10 samples). The limit of 25 sits between the two. The shortest time of each
+// size was not robust enough: it reached 36.1 times for this extract.
 test('REVIEW: W11 8,000 name-and-number items extract in linear time', () => {
-  const body = `Blocked by ${Array.from({ length: 8000 }, (_, i) => `foo #${i + 1}`).join(', ')}`;
-  const t0 = Date.now();
-  const out = extract(issue(body, { number: 99999 }));
-  const ms = Date.now() - t0;
+  const bodyOf = (n) => `Blocked by ${Array.from({ length: n }, (_, i) => `foo #${i + 1}`).join(', ')}`;
+  const timed = (body) => {
+    const start = process.hrtime.bigint();
+    const out = extract(issue(body, { number: 99999 }));
+    return { out, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+  };
+  const small = bodyOf(1000);
+  const large = bodyOf(8000);
+  const LIMIT = 25;
+  const median = (xs) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return (s[(s.length - 1) >> 1] + s[s.length >> 1]) / 2;
+  };
+  timed(small); // The first call also compiles the code; it is not counted.
+  const smallTimes = [];
+  const largeTimes = [];
+  let out;
+  for (let round = 0; round < 10; round++) {
+    smallTimes.push(timed(small).ms);
+    const run = timed(large);
+    out = run.out;
+    largeTimes.push(run.ms);
+  }
+  const smallMs = median(smallTimes);
+  const largeMs = median(largeTimes);
+  const ratio = largeMs / smallMs;
   assert.equal(out.refs.length, 8000);
   assert.ok(out.refs.every((r) => r.unresolvable === 'repo-ambiguous'));
-  assert.ok(ms < 500, `took ${ms} ms`);
+  assert.ok(
+    ratio < LIMIT,
+    `8,000 items took ${ratio.toFixed(1)} times as long as 1,000 (medians ${largeMs.toFixed(1)} ms and ${smallMs.toFixed(1)} ms)`,
+  );
 });
 
 test('REVIEW: W11 the same repo-ambiguous text named twice is one reference; different text is not', () => {
