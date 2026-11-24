@@ -417,8 +417,16 @@ function stripLead(masked) {
   };
 }
 
+// The trailing trim walks back from the end one character at a time. A regex
+// `[#:\s]+$` retries from every start of a long run of spaces that ends in
+// another character, which is quadratic in the length of the title.
+const TITLE_TAIL_CHAR_RE = /[#:\s]/;
+
 function headingTitle(title) {
-  return title.replace(/[*_]/g, '').replace(/[#:\s]+$/, '').trim();
+  const text = title.replace(/[*_]/g, '');
+  let end = text.length;
+  while (end > 0 && TITLE_TAIL_CHAR_RE.test(text[end - 1])) end--;
+  return text.slice(0, end).trim();
 }
 
 function headingKind(title) {
@@ -443,12 +451,21 @@ function isBlockerHeading(title) {
   return headingKind(title) === 'blocker';
 }
 
+// Rule: a heading that itself says there is no blocker ("Blocked by: none")
+// names no wait. It reads the heading with the same none-statement rule as a
+// body line.
+function isNoneHeading(title) {
+  const stmt = findStatement(headingTitle(title));
+  return Boolean(stmt) && isNoneStatement(stmt.rest);
+}
+
 // Rule: a gate opens in the body only, never inside an Acceptance section,
-// and never on a blocker heading.
+// never on a blocker heading, and never on a heading that says "none".
 function opensGate(origin, section, title) {
   if (origin !== 'body') return false;
   if (inAcceptanceScope(section)) return false;
   if (isBlockerHeading(title)) return false;
+  if (isNoneHeading(title)) return false;
   return isGateHeading(title);
 }
 

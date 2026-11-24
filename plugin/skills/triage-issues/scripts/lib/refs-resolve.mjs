@@ -1200,7 +1200,9 @@ function coreReadiness(rec, facts, ctx) {
   const gates = rec.possibleGates;
   const gateBlocks = gates.length > 0 && isGateBlock(ctx);
   const gateCaveats = gates.length > 0 && isGateCaveat(ctx);
-  // The blocked and caveat reasons name each gate after the references.
+  // A gate is named, after the references, only in the reason of the mode it
+  // decides: the blocked reason under --non-interactive, the caveat reason
+  // otherwise. An interactive issue blocked by a reference does not name it.
   const blockedParts = uncleared.map(describeBlocker).concat(gateBlocks ? gates.map(describeGate) : []);
   const caveatParts = caveats.map(describeBlocker).concat(gateCaveats ? gates.map(describeGate) : []);
 

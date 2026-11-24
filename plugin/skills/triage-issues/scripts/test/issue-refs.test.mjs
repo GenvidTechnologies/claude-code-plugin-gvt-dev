@@ -2645,6 +2645,18 @@ test('RR: W-h a title of repeated unclosed "(after " openers resolves in linear 
   assert.equal(refTo(extract(issue('x', { title: 'Do it (after #12)' })), 12).source, 'title');
 });
 
+test('RR: W1 a heading with a long trailing run of spaces is cleaned in linear time', () => {
+  const spaces = ' '.repeat(100000);
+  const body = `## When${spaces}y\n\nNot yet decided.\n`;
+  const start = process.hrtime.bigint();
+  const out = extract(issue(body));
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  assert.ok(ms < 1000, `took ${ms.toFixed(1)} ms`);
+  // The cleaned title still reads as a gate, and a title ending in spaces is trimmed.
+  assert.equal(out.possibleGates.length, 1);
+  assert.equal(extract(issue(`## When  ::  \n\nNot yet decided.\n`)).possibleGates.length, 1);
+});
+
 // ---- AC-895: deferral trigger phrases for a "not before" condition ----
 
 const PHRASES_895 = ['Not before', 'Not until', 'Blocked until', 'On hold until'];
@@ -2735,7 +2747,9 @@ test('AC-895-3: "Not blocked by" names no reference and "Blocked by" still block
 // ---- AC-895-4: possible gates, a heading that names a wait with no trigger or blocker ----
 
 function gatesOf(body, comments = []) {
-  return extract(issue(body, { comments })).possibleGates;
+  const out = extract(issue(body, { comments }));
+  assert.ok(Array.isArray(out.possibleGates), 'extract returns a possibleGates array');
+  return out.possibleGates;
 }
 
 function gateComment(body) {
@@ -2810,6 +2824,13 @@ test('AC-895-4: a comment, a fence, a blockquote, an Acceptance section, an exac
   assert.deepEqual(gatesOf('## Blocked by\n\nThe vendor review.\n'), [], 'exact Blocked by');
   assert.deepEqual(gatesOf('## Depends on\n\nThe vendor review.\n'), [], 'exact Depends on');
   assert.deepEqual(gatesOf('## Deferred item 1\n\nLater.\n'), [], 'Deferred item');
+  // A heading that itself says there is no blocker names no wait.
+  for (const title of ['Blocked by: none', '**Blocked by**: none.', 'Depends on: none', 'Blocked by: nothing']) {
+    assert.deepEqual(gatesOf(`## ${title}\n\nThe vendor review.\n`), [], title);
+  }
+  const elsewhere = gatesOf('## Blocked by something else\n\nThe vendor review.\n');
+  assert.equal(elsewhere.length, 1, 'a Blocked by heading that is not "none" is still a gate');
+  assert.equal(elsewhere[0].heading, '## Blocked by something else');
 });
 
 test('AC-895-4: the gate vocabulary is a word-bounded prefix of the heading', () => {
