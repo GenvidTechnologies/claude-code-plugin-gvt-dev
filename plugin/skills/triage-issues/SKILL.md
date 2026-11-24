@@ -640,10 +640,20 @@ split). Present them together, then apply the approved changes using the **Mutat
   right after "sub-issue of", "part of", "child of", "see", "cf.", "per", "as in",
   "from" or "under", has relation `qualifier`, unless the parenthetical opens
   with "and", "or", "plus", "also", "&", "+" or ",", as in `Blocked by #5 (and #6)`,
-  which holds a real blocker; a blocker line left with no other reference is
-  `unresolvable` kind `prose`. A blocker statement whose remainder is `none`
+  which holds a real blocker. Only the sentence that holds the statement names
+  blockers: on a `Blocked by` or `Depends on` line, a reference in a later
+  sentence also has relation `qualifier`, as in `Blocked by #5. #6 is related.`
+  A sentence ends at `.`, `!` or `?` followed by a space or the end of the
+  line, after any closing emphasis, bracket or quote, as in
+  `**Blocked by #5.** #6 is related.` A mark inside a parenthetical, a run such
+  as `...`, and the full stop of `cf.`, `e.g.`, `i.e.`, `etc.`, `vs.` or `viz.`
+  end no sentence. A plain line under a
+  `Blocked by` or `Depends on` heading has no statement sentence, so every
+  reference on it stays in scope. A blocker line left with no other reference
+  is `unresolvable` kind `prose`. A blocker statement whose sentence is `none`
   (also `nothing`, `n/a` or a dash), optionally followed by a parenthetical, is
-  no statement and yields no reference. A remedy that edits the body is offered with per-issue approval;
+  no statement and yields no reference, also from a later sentence of its line.
+  A remedy that edits the body is offered with per-issue approval;
   annotate the line or row and never tick or untick it, because ticking is reverse
   propagation and out of scope:
   - `cleared` (`via` is `same-repo`, `source-consumed` or `released (version check

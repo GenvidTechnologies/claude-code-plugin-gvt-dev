@@ -7,6 +7,13 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **A `Blocked by` or `Depends on` statement names blockers only in its own sentence (#951, and #923 folded in).** The reference grammar of `triage-issues` read every reference on a blocker line as a blocker, so a later sentence could say the opposite and still count. GenvidTechnologies/claude-code-plugin-gvt-fleet#34 listed #38 and #37 as blockers from the sentence "#38 and #37 can start without it". #286 read as blocked by #260, named only in a later sentence. `Blocked by the vendor release. #5 was the earlier attempt.` read as ready once #5 closed. `Blocked by nothing. <sentence naming #N>` read #N as a blocker.
+  - `issue-refs` `extract` now gives a reference in a later sentence of the line relation `qualifier`, which never blocks. A sentence ends at `.`, `!` or `?` followed by a space or the end of the line, after any closing emphasis, bracket or quote. A mark inside a parenthetical, a run such as `...`, and the full stop of `cf.`, `e.g.`, `i.e.`, `etc.`, `vs.` or `viz.` end no sentence.
+  - A statement whose sentence is `none` (or `nothing`, `n/a`, a dash) yields no reference, also from a later sentence of its line. As a side effect, `**Blocked by nothing.**` now reads as none; it was a prose blocker before.
+  - A plain line under a `Blocked by` or `Depends on` heading has no statement sentence, so every reference on it stays in scope, as before. `Blocks` and `Relates to` lines do not change.
+  - `issue-triage-analyst`, `plan-task` Phase 0 and `triage-issues` state the rule beside the qualifier rule.
+  Behavioral skill/agent change → version bump at release.
+
 ## [6.2.0] - 2026-11-22
 
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.
