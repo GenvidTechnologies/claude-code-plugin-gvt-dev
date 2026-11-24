@@ -7,6 +7,8 @@ and follows [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The `triage-issues` linear-time test for 8,000 name-and-number items no longer fails on a loaded machine (#982).** The test compared one run of `extract` with a fixed limit of 500 ms, and a correct run took 517 ms while the machine was loaded, which stopped `commands.validate`. It now times 1,000 and 8,000 items in ten rounds and requires the ratio of the median times to stay under 25. Linear code gives about 8, and quadratic code about 64. Measured 2026-11-23 while a full `commands.validate` ran: 8.0 to 14.4 for `extract`, and 45.6 to 77.5 for a variant that deduplicates by scanning every key. Both quadratic variants that were tried fail the test. The two other linear-time tests in the file keep their 500 ms limit. No consumer-facing behavior change → no version bump.
+
 ## [6.2.0] - 2026-11-22
 
 - **An ADR outside the wiki is registered only when the documentation index is outside the wiki too (#1060).** Before, `tech-writer` and `create-adr` added a Decision Records row to the documentation index wherever that index lay. Since 6.0.0 the documentation index is `<wikiDir>/index.md` when `paths['docs/TOC.md']` is not set, so a consumer that keeps its records outside the wiki got a row in the wiki index that links outside the bundle, which the gvt-wiki lint reports as out-of-bundle. Now, with the records outside the wiki and the documentation index inside it, no entry is written. The writer reports the mismatch. It suggests setting `paths['docs/decisions/']` to a directory under `<wikiDir>/`, or `paths['docs/TOC.md']` to an index outside the bundle. ADR-0104 records the change to ADR-0066 decision 3.
