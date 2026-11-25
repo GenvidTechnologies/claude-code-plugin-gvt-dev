@@ -106,7 +106,8 @@ The road block is not a label either. It is the `Road block` field of the
 `gvt-plugins` project: one option per larger goal of the project, plus
 `Standalone` for a bug or small improvement that serves no larger goal. Each
 option's description gives the goal and its "done when". Propose a road block
-for each triaged issue, beside the class, and set it only with the coach's
+for each triaged issue, except a duplicate closed in the triage run (see
+Duplicates), beside the class, and set it only with the coach's
 approval, through the recipe "Set road block". When no road block fits and the
 issue is not standalone, say so in the triage report: the project may need a
 new goal.
@@ -166,6 +167,23 @@ Policy: **link, do not auto-close.** For a duplicate cluster, choose the
 canonical (usually the oldest with the best repro), add `duplicate` to the
 others, and comment `Duplicate of #<canonical>` on each. Close a duplicate only
 with explicit per-item approval.
+
+A duplicate closed in the triage run gets the `area:*` and `priority/*` labels
+of an open issue, the `duplicate` label and `triaged`, and no road block.
+Observed in the triage of #1097 (2026-11-25): the closed duplicates #968, #919
+and #891 carried that label set and had no road block value, and #1097 was
+closed the same way.
+
+Run "Close duplicate" alone, without the comment of "Mark duplicate": its
+`--comment` already posts `Duplicate of #<canonical>`, and the two recipes in
+turn post that line twice (#907, observed on #891). This workaround holds only
+when the close follows in the same run; #907 tracks the fix for a close
+approved later.
+
+When the duplicate holds evidence that the canonical lacks, such as a new
+observation or a probe, post that evidence on the canonical through the
+Comment recipe. Observed in the triage of #1097 (2026-11-25): its second
+observation and its probes of `extract` went to #949 as a comment.
 
 ## Dependencies
 
