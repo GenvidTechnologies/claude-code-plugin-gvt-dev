@@ -17,6 +17,11 @@ the full maintenance schema.
 
 ## 2026-11-25
 
+* **Update**: `process/issue-triage.md`'s Tracker section now asks for a search
+  of the other plugin's tracker before either half of a cross-cutting issue is
+  filed, and names gvt-fleet and gvt-construct3 beside gvt-wiki. It came from
+  the retro of the refactoring audit that filed #1102 to #1127. Not an ingest;
+  no `raw/` source drove it.
 * **Update**: `process/issue-triage.md` gains a "Read back comment" recipe, a
   Dependencies paragraph for a cited commit that fails the ancestor check only
   because its change reached `main` under another sha, and a sentence on how to

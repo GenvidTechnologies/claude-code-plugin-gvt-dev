@@ -264,7 +264,16 @@ issue belongs to the plugin that ships the component it changes.
 - **Cross-cutting:** when the fix has a half in each plugin, keep or move the
   issue by its main half and file the other half as a new issue in the other
   tracker, linked both ways. Never fix it in gvt-dev by reading a file that
-  ships only in gvt-wiki (ADR-0096 decision 5).
+  ships only in gvt-wiki (ADR-0096 decision 5). Before filing either half,
+  search the other tracker's open issues for the component, as for a
+  duplicate in this tracker. An open issue there can change the premise of
+  the half filed here. This holds for every plugin of the marketplace with
+  its own tracker: gvt-wiki, gvt-fleet and gvt-construct3. Observed in a
+  refactoring audit on 2026-11-25: #1115 was filed to make the git-state
+  guard library identical in gvt-dev and gvt-wiki, while
+  GenvidTechnologies/claude-code-plugin-gvt-wiki#85, filed earlier that day,
+  proposes a read-only allow-list for the gvt-wiki guard. #1115's body was
+  corrected after filing, to share only the parser.
 
 A title match is not enough to decide. The first pass (#443, 2026-11-12) moved
 35 of the 42 open issues with a wiki or OKF title and kept 6. It split one
