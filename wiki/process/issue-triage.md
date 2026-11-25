@@ -193,6 +193,14 @@ line went on to cite genvid-holdings/burbank#359 and `burbank-playfab#536`.
 unresolvable (`repo-ambiguous`). With those sentences moved off that line,
 only #956 was left.
 
+`extract --single` on a draft alone reads only the draft. A note that retracts
+a blocker given in an earlier comment (`No longer blocked by #N`) prints no
+reference that way. To see the retraction, put the issue's existing comments
+and then the draft in the `comments` list: the earlier blocker then reads
+`retracted: true`. Observed in the triage of #1079 to #1088 (2026-11-25), on
+the cleared notes for #1069 and #1070: the draft alone printed `refs: []`, and
+with the comments the `Blocked by #1060` comment read `retracted: true`.
+
 A defect in the reference check can make an open issue read as blocked when
 it is not, or as ready when it is blocked. When triage finds such a defect,
 look for open issues that it changes now, and offer the smallest body edit
@@ -224,6 +232,18 @@ such an issue as ready. Check each commit that an issue cites with
 claim of the issue at that commit, not only at `main`. Observed in the triage
 of #1069 and #1070 (2026-11-23): both cited 8db91c4, the squash of #1068 for
 #1060, which was not an ancestor of `main` at d2b26c4.
+
+A commit can also fail the ancestor check because the change it holds reached
+the default branch under another sha: a side pull request's squash into an
+issue branch never becomes an ancestor once that branch is squash-merged. Then
+no blocker is needed. Find the issue whose change holds the commit. When that
+issue is closed and its pull request merged into the default branch, check the
+claims at the default branch, and record in the body the sha that was read and
+the sha under which the change reached the default branch. Observed in the
+triage of #1079, #1082 and #1088 (2026-11-25): b297cac, 8ef85e3 and 4f153f9
+were squashes of side pull requests into the branches of #971, #951 and #982,
+which reached `main` as 270fc1a, 479c015 and 4e36581. A `Blocked by` comment
+there would have named a closed issue.
 
 ## Tracker
 
@@ -293,6 +313,7 @@ repository.
 - Read back body: `gh issue view {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --json body --jq .body | tr -d '\r' | head -c -1 | diff - {tmpfile}` — prints nothing and exits 0 when the body on the issue equals `{tmpfile}`. `--jq` adds a final newline, which `head -c -1` removes; without it, `diff` reports a difference on a body that matches. Measured 2026-11-13: on #929 the form without `head -c -1` reported one extra line on a matching body; on #930 this form printed nothing
 - Edit title (only with approval): `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --title "{title}"` — the same call can also take `--body-file {tmpfile}` when the title and the body change in one approved rewrite. Read the title back with `gh issue view {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --json title --jq .title`. Added after the triage of #964 (2026-11-18), where a retitle to the component-prefix form went through an ad-hoc call because no recipe covered it
 - Comment: `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body-file {tmpfile}` — the skill writes the comment text to `{tmpfile}` first
+- Read back comment: `gh issue view {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --json comments --jq '.comments[-1].body' | tr -d '\r' | head -c -1 | diff - {tmpfile}` — prints nothing and exits 0 when the newest comment on the issue equals `{tmpfile}`. As in "Read back body", `--jq` adds a final newline, which `head -c -1` removes. Added after the triage of #1079 to #1088 (2026-11-25): without `head -c -1`, the readback of the notes on #1069 and #1070 reported one extra line on comments that matched
 - Flag missing info: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label {needsInfoLabel}` (pair with a Comment saying what's missing)
 - Mark duplicate: `gh issue edit {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --add-label duplicate` then `gh issue comment {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --body "Duplicate of #{canonical}"`
 - Close duplicate (only with approval): `gh issue close {id} --repo GenvidTechnologies/claude-code-plugin-gvt-dev --reason "not planned" --comment "Duplicate of #{canonical}"`
