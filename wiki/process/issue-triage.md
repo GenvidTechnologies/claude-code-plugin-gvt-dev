@@ -169,12 +169,16 @@ others, and comment `Duplicate of #<canonical>` on each. Close a duplicate only
 with explicit per-item approval.
 
 A duplicate closed in the triage run gets the `area:*` and `priority/*` labels
-of an open issue, the `duplicate` label and `triaged`, and no road block. Run
-"Close duplicate" alone, without the comment of "Mark duplicate": its
-`--comment` already posts `Duplicate of #<canonical>`, so both recipes in one
-run would post that line twice. Observed in the triage of #1097 (2026-11-25):
-the closed duplicates #968, #919 and #891 carried that label set and had no
-road block value, and #1097 was closed the same way.
+of an open issue, the `duplicate` label and `triaged`, and no road block.
+Observed in the triage of #1097 (2026-11-25): the closed duplicates #968, #919
+and #891 carried that label set and had no road block value, and #1097 was
+closed the same way.
+
+Run "Close duplicate" alone, without the comment of "Mark duplicate": its
+`--comment` already posts `Duplicate of #<canonical>`, and the two recipes in
+turn post that line twice (#907, observed on #891). This workaround holds only
+when the close follows in the same run; #907 tracks the fix for a close
+approved later.
 
 When the duplicate holds evidence that the canonical lacks, such as a new
 observation or a probe, post that evidence on the canonical through the
