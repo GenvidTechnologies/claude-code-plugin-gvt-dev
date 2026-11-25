@@ -15,6 +15,15 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-25
+
+* **Update**: `process/issue-triage.md` gains a "Read back comment" recipe, a
+  Dependencies paragraph for a cited commit that fails the ancestor check only
+  because its change reached `main` under another sha, and a sentence on how to
+  check a note that retracts a comment blocker with `extract`. They came from
+  the retro of the triage of #1079, #1081, #1082 and #1088. Not an ingest; no
+  `raw/` source drove it.
+
 ## 2026-11-24
 
 * **Update**: `maintainer/release-cycle-rules.md` gains "A CHANGELOG sentence
