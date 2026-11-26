@@ -15,6 +15,13 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-26
+
+* **Update**: `process/issue-triage.md`'s Class section says that the two
+  halves of a cross-cutting issue get the same road block, and that a half
+  with no road block or no triage labels is reported. It came from the retro
+  of the triage of #1141 and #1142. Not an ingest; no `raw/` source drove it.
+
 ## 2026-11-25
 
 * **Update**: `process/issue-triage.md`'s mutation recipes changed after the
