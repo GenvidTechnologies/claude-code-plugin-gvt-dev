@@ -17,6 +17,14 @@ the full maintenance schema.
 
 ## 2026-11-25
 
+* **Update**: `process/issue-triage.md`'s mutation recipes changed after the
+  triage of #1102 to #1132. "Create split issue" passes a priority label and
+  says to read back the body, set the road block and stamp `triaged` in the
+  same run. "Set road block" passes `--apply` as its last argument and says
+  what the script prints with and without it (#1131), and the Class section
+  no longer says that the script has no dry run. A new recipe, "Add a road
+  block option", adds a goal to the project's `Road block` field. Not an
+  ingest; no `raw/` source drove it.
 * **Update**: `process/issue-triage.md`'s Tracker section now asks for a search
   of the other plugin's tracker before either half of a cross-cutting issue is
   filed, and names gvt-fleet and gvt-construct3 beside gvt-wiki. It came from
