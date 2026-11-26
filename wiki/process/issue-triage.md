@@ -128,6 +128,16 @@ Observed in the triage of #980 and #982 (2026-11-20): neither issue was in the
 project, and after the road block was set each item read back with an empty
 Iteration.
 
+An issue whose other half is filed in another plugin's tracker (a
+cross-cutting issue, see Tracker) serves the same goal as that half. Propose
+the same road block for both. Read the other half's road block first: add an
+alias for the other repository to the recipe "Read the road blocks of several
+issues". When the other half has no road block, or no triage labels, say so
+in the triage report, because that half is set by the triage of its own
+tracker. Observed in the triage of #1141 and #1142 (2026-11-26, UTC): #1142
+got G21, and its other half, GenvidTechnologies/claude-code-plugin-gvt-fleet#190,
+had no labels and was not in the project.
+
 ## Labels
 
 - `type:*` — exactly one (mutually exclusive): `type:bug`, `type:crash`, `type:regression`.
