@@ -198,6 +198,15 @@ observation or a probe, post that evidence on the canonical through the
 Comment recipe. Observed in the triage of #1097 (2026-11-25): its second
 observation and its probes of `extract` went to #949 as a comment.
 
+An issue can duplicate a proposal made in a comment of another open issue,
+and not that issue's own body. Keep both issues open. The issue that has its
+own acceptance rows tracks the proposal. Correct what its text says about the
+other issue, and post on the other issue a `Relates to` comment that names the
+issue that now tracks the proposal (recipe "Link related"). Observed in the
+triage of #1146 (2026-11-27): a comment of 2026-11-21 on #542 proposed the
+same check for rows that the filer wrote. #1146 kept that check, and #542 kept
+the rows that triage writes or amends.
+
 ## Dependencies
 
 Express a dependency with a comment on the blocked issue: `Blocked by #<id>`

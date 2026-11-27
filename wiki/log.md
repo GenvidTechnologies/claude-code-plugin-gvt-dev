@@ -15,6 +15,14 @@ before. If a past entry itself needs correcting, add a new entry that says
 so; never edit or remove the old one in place. See `wiki/schema.md` for
 the full maintenance schema.
 
+## 2026-11-27
+
+* **Update**: `process/issue-triage.md`'s Duplicates section says how to
+  handle an issue that duplicates a proposal made in a comment of another
+  open issue: keep both open, and link them with a `Relates to` comment on the
+  other issue. It came from the retro of the triage of #1146. Not an ingest;
+  no `raw/` source drove it.
+
 ## 2026-11-26
 
 * **Update**: `process/issue-triage.md`'s mutation recipes add "Check body
