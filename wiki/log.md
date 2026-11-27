@@ -17,6 +17,12 @@ the full maintenance schema.
 
 ## 2026-11-26
 
+* **Update**: `process/issue-triage.md`'s mutation recipes add "Check body
+  unchanged before edit", which compares the live body with the body a draft
+  was built from, just before "Edit body". It is a workaround until #924 adds
+  the check to the skill. It came from the retro of the triage of #1144. Not
+  an ingest; no `raw/` source drove it.
+
 * **Update**: `process/issue-triage.md`'s Class section says that the two
   halves of a cross-cutting issue get the same road block, and that a half
   with no road block or no triage labels is reported. It came from the retro
